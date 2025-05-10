@@ -8,7 +8,7 @@
 }
 
 .accent-text {
-  @apply text-slate-600;
+  @apply text-slate-600 dark:text-slate-400;
 }
 
 .button {
@@ -22,7 +22,7 @@ body {
 }
 
 .input-field {
-  @apply w-full px-3 py-2 rounded-md bg-transparent border-2 border-slate-200 focus:outline-none focus:border-blue-500 transition-colors;
+  @apply w-full px-3 py-2 rounded-md bg-transparent border-2 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors text-gray-900 dark:text-gray-100;
 }
 
 .auth-button {
@@ -30,5 +30,14 @@ body {
 }
 
 .link-text {
-  @apply text-blue-500 hover:underline cursor-pointer font-medium;
+  @apply text-blue-500 dark:text-blue-400 hover:underline cursor-pointer font-medium;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out forwards;
 }

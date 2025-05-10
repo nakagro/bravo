@@ -1,39 +1,55 @@
 import { Authenticated, Unauthenticated } from "convex/react";
-import { SignInForm } from "./SignInForm";
-import { SignOutButton } from "./SignOutButton";
-import { HoseInventory } from "./HoseInventory";
-import { Toaster } from "sonner";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { MainLayout } from "./components/layout/MainLayout";
+import { HosesPage } from "./pages/HosesPage";
+import { AuthPage } from "./pages/AuthPage";
+import { DutyCrewPage } from "./pages/DutyCrewPage";
+import { AppliancesPage } from "./pages/AppliancesPage";
+import { AvailabilityPage } from "./pages/AvailabilityPage";
+import { UserSettingsPage } from "./pages/UserSettingsPage";
+import { ThemeProvider } from "./lib/context/ThemeContext";
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
-        <h2 className="text-xl font-semibold text-red-700">Wyndham Vale Fire Brigade</h2>
-        <SignOutButton />
-      </header>
-      <main className="flex-1 p-4">
-        <div className="max-w-7xl mx-auto">
-          <Content />
-        </div>
-      </main>
-      <Toaster />
-    </div>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Authenticated>
+          <AuthenticatedApp />
+        </Authenticated>
+        <Unauthenticated>
+          <UnauthenticatedApp />
+        </Unauthenticated>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
-function Content() {
+function AuthenticatedApp() {
   return (
-    <div className="flex flex-col gap-8">
-      <Authenticated>
-        <HoseInventory />
-      </Authenticated>
-      <Unauthenticated>
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-red-700 mb-4">Hose Inventory Management</h1>
-          <p className="text-xl text-slate-600 mb-8">Sign in to access the system</p>
-          <SignInForm />
-        </div>
-      </Unauthenticated>
-    </div>
+    <MainLayout>
+      <Routes>
+        <Route path="/hoses" element={<HosesPage />} />
+        <Route path="/dutycrew" element={<DutyCrewPage />} />
+        <Route path="/appliances" element={<AppliancesPage />} />
+        <Route path="/availability" element={<AvailabilityPage />} />
+        <Route path="/settings" element={<UserSettingsPage />} />
+        
+        {/* Redirect root to hoses page */}
+        <Route path="/" element={<Navigate to="/hoses" replace />} />
+        
+        {/* Catch all other routes and redirect to hoses */}
+        <Route path="*" element={<Navigate to="/hoses" replace />} />
+      </Routes>
+    </MainLayout>
+  );
+}
+
+function UnauthenticatedApp() {
+  return (
+    <MainLayout>
+      <Routes>
+        <Route path="*" element={<AuthPage />} />
+      </Routes>
+    </MainLayout>
   );
 }
