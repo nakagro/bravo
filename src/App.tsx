@@ -2,6 +2,7 @@ import { Authenticated, Unauthenticated } from "convex/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { HosesPage } from "./pages/HosesPage";
+import { KeysPage } from "./pages/KeysPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
@@ -29,6 +30,7 @@ function AuthenticatedApp() {
     <MainLayout>
       <Routes>
         <Route path="/hoses" element={<HosesPage />} />
+        <Route path="/keys" element={<KeysPage />} />
         <Route path="/dutycrew" element={<DutyCrewPage />} />
         <Route path="/appliances" element={<AppliancesPage />} />
         <Route path="/availability" element={<AvailabilityPage />} />

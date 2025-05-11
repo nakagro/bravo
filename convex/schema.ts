@@ -61,6 +61,45 @@ const applicationTables = {
   })
     .index("by_hose", ["hoseId"])
     .index("by_timestamp", ["timestamp"]),
+
+  // Keys table for managing protected premises keys
+  keys: defineTable({
+    pegNumber: v.string(), // Unique identifier for the peg
+    siteName: v.string(), // Company/business name
+    address: v.string(), // Address of the premises
+    contactName: v.optional(v.string()), // Contact person's name
+    contactEmail: v.optional(v.string()), // Contact email
+    contactPhone: v.optional(v.string()), // Contact phone number
+    notes: v.optional(v.string()), // General notes about the key
+    createdBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_pegNumber", ["pegNumber"]),
+    
+  // Key items table for individual keys/fobs/swipes/codes on a peg
+  keyItems: defineTable({
+    keyId: v.id("keys"), // Reference to the parent key (peg)
+    type: v.union(
+      v.literal("Key"),
+      v.literal("Fob"),
+      v.literal("Swipe"),
+      v.literal("Code")
+    ),
+    description: v.string(), // Description of the specific key/fob/swipe/code
+    createdBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_keyId", ["keyId"]),
+    
+  // Key comments for discussion about specific keys
+  keyComments: defineTable({
+    keyId: v.id("keys"),
+    userId: v.id("users"),
+    timestamp: v.number(),
+    text: v.string(),
+  })
+    .index("by_key", ["keyId"])
+    .index("by_timestamp", ["timestamp"]),
 };
 
 export default defineSchema({

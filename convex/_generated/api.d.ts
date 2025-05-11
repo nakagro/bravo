@@ -17,6 +17,9 @@ import type * as auth from "../auth.js";
 import type * as hoseComments from "../hoseComments.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
+import type * as keyComments from "../keyComments.js";
+import type * as keyItems from "../keyItems.js";
+import type * as keys from "../keys.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -31,6 +34,9 @@ declare const fullApi: ApiFromModules<{
   hoseComments: typeof hoseComments;
   hoses: typeof hoses;
   http: typeof http;
+  keyComments: typeof keyComments;
+  keyItems: typeof keyItems;
+  keys: typeof keys;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
