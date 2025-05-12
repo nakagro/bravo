@@ -15,10 +15,42 @@ const extendedAuthTables = {
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     memberNumber: v.optional(v.string()), // CFA ID
+    // Status fields
+    currentStatus: v.optional(v.union(
+      v.literal("available"),
+      v.literal("not available"),
+      v.literal("delayed response"),
+      v.literal("WFH")
+    )),
+    statusUpdatedAt: v.optional(v.number()),
+    isDutyOfficer: v.optional(v.boolean()),
   })
 };
 
 const applicationTables = {
+  // Member status history table
+  memberStatusHistory: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("available"),
+      v.literal("not available"),
+      v.literal("delayed response"),
+      v.literal("WFH")
+    ),
+    timestamp: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_timestamp", ["timestamp"]),
+    
+  // Duty officer history table
+  dutyOfficerHistory: defineTable({
+    userId: v.id("users"),
+    startTimestamp: v.number(),
+    endTimestamp: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_startTimestamp", ["startTimestamp"]),
+    
   hoses: defineTable({
     hoseId: v.string(),
     length: v.number(),
