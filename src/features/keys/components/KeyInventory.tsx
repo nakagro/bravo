@@ -108,7 +108,7 @@ export function KeyInventory() {
   return (
     <div className="space-y-6" data-component="KeyInventory">
       <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Key Inventory</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Key Management</h1>
         <div className="flex flex-wrap gap-2 ml-auto">
           {/* View mode selector */}
           <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
