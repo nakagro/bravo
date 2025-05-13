@@ -2,7 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-// Get all user statuses
+// Get all user statuses, resetting at 4am each day
 export const getStatuses = query({
   args: {},
   returns: v.array(
@@ -25,19 +25,42 @@ export const getStatuses = query({
     })
   ),
   handler: async (ctx) => {
+    // Calculate the timestamp for 4am of the current day
+    const now = new Date();
+    const today4am = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      4, // 4am
+      0, // 0 minutes
+      0, // 0 seconds
+      0 // 0 milliseconds
+    ).getTime();
+    
+    // If current time is before 4am, use 4am from the previous day
+    const cutoffTime = now.getHours() < 4 ? 
+      today4am - 24 * 60 * 60 * 1000 : // Subtract one day if before 4am
+      today4am;
+      
     const users = await ctx.db.query("users").collect();
     
-    // Map users to the format we need
-    return users.map((user) => ({
-      _id: user._id,
-      name: user.name,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      memberNumber: user.memberNumber,
-      currentStatus: user.currentStatus,
-      statusUpdatedAt: user.statusUpdatedAt,
-      isDutyOfficer: user.isDutyOfficer,
-    }));
+    // Map users to the format we need, but reset status if it was updated before the cutoff time
+    return users.map((user) => {
+      // Check if the status was updated after the cutoff time
+      const isStatusCurrent = user.statusUpdatedAt && user.statusUpdatedAt >= cutoffTime;
+      
+      return {
+        _id: user._id,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        memberNumber: user.memberNumber,
+        // Only include currentStatus if it was updated after the cutoff time
+        currentStatus: isStatusCurrent ? user.currentStatus : undefined,
+        statusUpdatedAt: isStatusCurrent ? user.statusUpdatedAt : undefined,
+        isDutyOfficer: user.isDutyOfficer,
+      };
+    });
   },
 });
 

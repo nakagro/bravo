@@ -23,6 +23,11 @@ const AvailabilityPage: React.FC = () => {
   
   // Update status mutation
   const updateStatus = useMutation(api.availability.updateUserStatus);
+  
+  // Messages state and mutations
+  const [newMessage, setNewMessage] = useState('');
+  const messages = useQuery(api.messages.getMessages) || [];
+  const postMessage = useMutation(api.messages.postMessage);
 
   // Handle status change
   const handleStatusChange = async (status: "available" | "not available" | "delayed response" | "WFH") => {
@@ -32,6 +37,19 @@ const AvailabilityPage: React.FC = () => {
       // No need to manually refresh the data
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+  
+  // Handle message submission
+  const handleMessageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    
+    try {
+      await postMessage({ message: newMessage.trim() });
+      setNewMessage(''); // Clear the input after posting
+    } catch (error) {
+      console.error('Error posting message:', error);
     }
   };
 
@@ -119,7 +137,7 @@ const AvailabilityPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-screen-lg">
+    <div className="container">
       <h1 className="text-2xl font-bold mb-3">Availability</h1>
       
       {/* Tab Navigation */}
@@ -268,17 +286,29 @@ const AvailabilityPage: React.FC = () => {
             
             {isAuthenticated ? (
               <div className={`p-3 ${getStatusBackgroundColor(userStatus?.currentStatus)}`}>
-                <div className={`font-medium text-lg ${getStatusTextColor(userStatus?.currentStatus)}`}>
-                  {userStatus?.currentStatus === 'available' && 'Available'}
-                  {userStatus?.currentStatus === 'delayed response' && 'Delayed'}
-                  {userStatus?.currentStatus === 'WFH' && 'Working From Home'}
-                  {userStatus?.currentStatus === 'not available' && 'Unavailable'}
-                  {!userStatus?.currentStatus && 'Not Set'}
-                </div>
-                {userStatus?.statusUpdatedAt && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Updated: {getRelativeTimeString(userStatus.statusUpdatedAt)}
-                  </p>
+                {userStatus?.currentStatus ? (
+                  <>
+                    <div className={`font-medium text-lg ${getStatusTextColor(userStatus.currentStatus)}`}>
+                      {userStatus.currentStatus === 'available' && 'Available'}
+                      {userStatus.currentStatus === 'delayed response' && 'Delayed'}
+                      {userStatus.currentStatus === 'WFH' && 'Working From Home'}
+                      {userStatus.currentStatus === 'not available' && 'Unavailable'}
+                    </div>
+                    {userStatus.statusUpdatedAt && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        Updated: {getRelativeTimeString(userStatus.statusUpdatedAt)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="font-medium text-lg text-gray-600 dark:text-gray-400">
+                      End of day reset
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      Your status has been reset. Please set a new status for today.
+                    </p>
+                  </>
                 )}
               </div>
             ) : (
@@ -295,7 +325,10 @@ const AvailabilityPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <button
                   onClick={() => handleStatusChange('available')}
-                  className="flex items-center justify-center bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800/50 px-4 py-3 rounded-lg hover:shadow-md dark:hover:shadow-none transition-all"
+                  className={`flex items-center justify-center ${userStatus?.currentStatus === 'available' ? 
+                    'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-2 border-green-500 dark:border-green-600 shadow-md' : 
+                    'bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800/50 hover:shadow-md dark:hover:shadow-none'} 
+                    px-4 py-3 rounded-lg transition-all`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -304,7 +337,10 @@ const AvailabilityPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleStatusChange('delayed response')}
-                  className="flex items-center justify-center bg-white dark:bg-gray-800 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-800/50 px-4 py-3 rounded-lg hover:shadow-md dark:hover:shadow-none transition-all"
+                  className={`flex items-center justify-center ${userStatus?.currentStatus === 'delayed response' ? 
+                    'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-2 border-yellow-500 dark:border-yellow-600 shadow-md' : 
+                    'bg-white dark:bg-gray-800 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-800/50 hover:shadow-md dark:hover:shadow-none'} 
+                    px-4 py-3 rounded-lg transition-all`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -313,7 +349,10 @@ const AvailabilityPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleStatusChange('WFH')}
-                  className="flex items-center justify-center bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800/50 px-4 py-3 rounded-lg hover:shadow-md dark:hover:shadow-none transition-all"
+                  className={`flex items-center justify-center ${userStatus?.currentStatus === 'WFH' ? 
+                    'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-2 border-blue-500 dark:border-blue-600 shadow-md' : 
+                    'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800/50 hover:shadow-md dark:hover:shadow-none'} 
+                    px-4 py-3 rounded-lg transition-all`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -322,7 +361,10 @@ const AvailabilityPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleStatusChange('not available')}
-                  className="flex items-center justify-center bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-600/50 px-4 py-3 rounded-lg hover:shadow-md dark:hover:shadow-none transition-all"
+                  className={`flex items-center justify-center ${userStatus?.currentStatus === 'not available' ? 
+                    'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-400 border-2 border-gray-500 dark:border-gray-600 shadow-md' : 
+                    'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-600/50 hover:shadow-md dark:hover:shadow-none'} 
+                    px-4 py-3 rounded-lg transition-all`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -338,9 +380,60 @@ const AvailabilityPage: React.FC = () => {
       {activeTab === 'messages' && (
         <div className="bg-white dark:bg-gray-800 shadow-sm p-4 rounded">
           <h3 className="text-lg font-medium mb-3">Messages</h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            This section is coming soon. It will allow you to leave short messages for the brigade.
-          </p>
+          
+          {isAuthenticated ? (
+            <>
+              {/* Message Input Form */}
+              <form onSubmit={handleMessageSubmit} className="mb-4 flex">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  maxLength={150}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim()}
+                  className={`px-4 py-2 rounded-r-md font-medium ${!newMessage.trim() ? 
+                    'bg-gray-300 text-gray-500 dark:bg-gray-600 dark:text-gray-400 cursor-not-allowed' : 
+                    'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'}`}
+                >
+                  Post
+                </button>
+              </form>
+              
+              {/* Messages List */}
+              <div className="space-y-3">
+                {messages.length > 0 ? (
+                  messages.map((message) => (
+                    <div key={message._id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          {message.user.firstName && message.user.lastName
+                            ? `${message.user.firstName} ${message.user.lastName}`
+                            : message.user.name || "Unknown User"}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {getRelativeTimeString(message.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 dark:text-gray-300">{message.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                    No messages yet. Be the first to post!
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400">
+              Please sign in to view and post messages.
+            </p>
+          )}
         </div>
       )}
     </div>

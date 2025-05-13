@@ -51,6 +51,16 @@ const applicationTables = {
     .index("by_user", ["userId"])
     .index("by_startTimestamp", ["startTimestamp"]),
     
+  // Availability messages table
+  availabilityMessages: defineTable({
+    userId: v.id("users"),
+    message: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_timestamp", ["timestamp"]),
+    
+    
   hoses: defineTable({
     hoseId: v.string(),
     length: v.number(),

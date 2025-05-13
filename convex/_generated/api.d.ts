@@ -23,6 +23,7 @@ import type * as http from "../http.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
+import type * as messages from "../messages.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
+  messages: typeof messages;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
