@@ -8,6 +8,7 @@ import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { UserSettingsPage } from "./pages/UserSettingsPage";
+import { AdminSettingsPage } from "./pages/AdminPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 
 export default function App() {
@@ -35,6 +36,7 @@ function AuthenticatedApp() {
         <Route path="/appliances" element={<AppliancesPage />} />
         <Route path="/availability" element={<AvailabilityPage />} />
         <Route path="/settings" element={<UserSettingsPage />} />
+        <Route path="/admin" element={<AdminSettingsPage />} />
         
         {/* Redirect root to hoses page */}
         <Route path="/" element={<Navigate to="/hoses" replace />} />

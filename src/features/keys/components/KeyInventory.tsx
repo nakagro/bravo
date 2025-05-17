@@ -18,14 +18,28 @@ export function KeyInventory() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingKey, setEditingKey] = useState<Id<"keys"> | null>(null);
   const [viewingComments, setViewingComments] = useState<Id<"keys"> | null>(null);
-  // Initialize viewMode from localStorage or default to 'cards'
+  // Function to detect if user is on a mobile device
+  const isMobileDevice = () => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768; // Common breakpoint for mobile devices
+    }
+    return false;
+  };
+
+  // Initialize viewMode from localStorage or default based on device type
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Only access localStorage in browser environment
     if (typeof window !== 'undefined') {
+      // Check if user has a saved preference
       const savedViewMode = localStorage.getItem('keyInventoryViewMode');
-      return (savedViewMode === 'table' ? 'table' : 'cards') as ViewMode;
+      if (savedViewMode) {
+        return (savedViewMode === 'table' ? 'table' : 'cards') as ViewMode;
+      }
+      
+      // If no saved preference, set default based on device type
+      return isMobileDevice() ? 'cards' : 'table';
     }
-    return 'cards';
+    return 'cards'; // Server-side rendering default
   });
   const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection }>({ 
     field: 'pegNumber', 

@@ -24,6 +24,13 @@ import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
 import type * as messages from "../messages.js";
+import type * as modules from "../modules.js";
+import type * as users_getRoles from "../users/getRoles.js";
+import type * as users_getUsers from "../users/getUsers.js";
+import type * as users_roles from "../users/roles.js";
+import type * as users_updateUserRank from "../users/updateUserRank.js";
+import type * as users_updateUserRoles from "../users/updateUserRoles.js";
+import type * as users from "../users.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -45,6 +52,13 @@ declare const fullApi: ApiFromModules<{
   keyItems: typeof keyItems;
   keys: typeof keys;
   messages: typeof messages;
+  modules: typeof modules;
+  "users/getRoles": typeof users_getRoles;
+  "users/getUsers": typeof users_getUsers;
+  "users/roles": typeof users_roles;
+  "users/updateUserRank": typeof users_updateUserRank;
+  "users/updateUserRoles": typeof users_updateUserRoles;
+  users: typeof users;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

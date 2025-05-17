@@ -142,6 +142,14 @@ const AvailabilityPage: React.FC = () => {
       
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+      <button
+          className={`py-2 px-4 font-medium ${activeTab === 'you' ? 
+            'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 
+            'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`}
+          onClick={() => setActiveTab('you')}
+        >
+          You
+        </button>
         <button
           className={`py-2 px-4 font-medium ${activeTab === 'brigade' ? 
             'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 
@@ -149,14 +157,6 @@ const AvailabilityPage: React.FC = () => {
           onClick={() => setActiveTab('brigade')}
         >
           Brigade
-        </button>
-        <button
-          className={`py-2 px-4 font-medium ${activeTab === 'you' ? 
-            'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 
-            'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`}
-          onClick={() => setActiveTab('you')}
-        >
-          You
         </button>
         <button
           className={`py-2 px-4 font-medium ${activeTab === 'messages' ? 
@@ -199,7 +199,7 @@ const AvailabilityPage: React.FC = () => {
         </div>
         
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed">
+          <table className="w-full text-left border-separate border-spacing-0 table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
                 <th className="p-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
@@ -241,9 +241,14 @@ const AvailabilityPage: React.FC = () => {
                     }
                   };
                   
+                  // Extract the border classes from getRowColor for the first cell
+                  const rowColorClasses = getRowColor(user.currentStatus);
+                  const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-')).join(' ');
+                  const borderClasses = rowColorClasses.split(' ').filter(cls => cls.startsWith('border-')).join(' ');
+                  
                   return (
-                    <tr key={user._id} className={`${getRowColor(user.currentStatus)} transition-colors`}>
-                      <td className="p-3">
+                    <tr key={user._id} className={`${bgColorClass} transition-colors`}>
+                      <td className={`p-3 ${borderClasses}`}>
                         <div className="font-medium">{formatUserName(user)}</div>
                       </td>
                       <td className="p-3">
@@ -281,7 +286,7 @@ const AvailabilityPage: React.FC = () => {
           {/* Current User Status */}
           <div className="mb-4 rounded overflow-hidden shadow-sm">
             <div className="p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-medium">Your Status</h2>
+              <h2 className="text-lg font-medium">Your Status is:</h2>
             </div>
             
             {isAuthenticated ? (
@@ -424,7 +429,7 @@ const AvailabilityPage: React.FC = () => {
                   ))
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                    No messages yet. Be the first to post!
+                    No messages yet.
                   </p>
                 )}
               </div>

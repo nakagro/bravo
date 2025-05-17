@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.80",
-    "@headlessui/react": "^2.2.2",
+    "@headlessui/react": "^2.2.3",
+    "@heroicons/react": "^2.2.0",
     "clsx": "^2.1.1",
     "convex": "1.21.1-alpha.1",
     "date-fns": "^4.1.0",

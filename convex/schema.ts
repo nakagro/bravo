@@ -15,6 +15,17 @@ const extendedAuthTables = {
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     memberNumber: v.optional(v.string()), // CFA ID
+    // Rank field - a user can have only one rank
+    rank: v.optional(v.union(
+      v.literal("Probationary"),
+      v.literal("Firefighter"),
+      v.literal("Lieutenant"),
+      v.literal("Captain")
+    )),
+    // Roles field - a user can have multiple roles
+    roles: v.optional(v.array(v.string())),
+    // Admin flag - determines if the user has administrative privileges
+    isAdmin: v.optional(v.boolean()),
     // Status fields
     currentStatus: v.optional(v.union(
       v.literal("available"),
@@ -28,6 +39,42 @@ const extendedAuthTables = {
 };
 
 const applicationTables = {
+  // Module settings table
+  moduleSettings: defineTable({
+    // Module identifier
+    moduleId: v.string(),
+    // Module display name
+    moduleName: v.string(),
+    // Whether the module is enabled globally
+    isEnabled: v.boolean(),
+    // Whether this module is restricted to admin users only
+    adminOnly: v.optional(v.boolean()),
+    // Required roles to access this module (empty array means no role requirements)
+    requiredRoles: v.optional(v.array(v.string())),
+    // Required minimum rank to access this module (null means no rank requirement)
+    minimumRank: v.optional(v.union(
+      v.literal("Probationary"),
+      v.literal("Firefighter"),
+      v.literal("Lieutenant"),
+      v.literal("Captain")
+    )),
+    // Last updated timestamp
+    updatedAt: v.number(),
+    // User who last updated the settings
+    updatedBy: v.optional(v.id("users")),
+  }).index("by_moduleId", ["moduleId"]),
+  
+  // Roles table to store available roles in the system
+  roles: defineTable({
+    name: v.string(), // Role name (e.g., "Communications Officer", "Secretary")
+    description: v.optional(v.string()), // Optional description of the role
+    isActive: v.boolean(), // Whether this role is currently active in the system
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_isActive", ["isActive"]),
+    
   // Member status history table
   memberStatusHistory: defineTable({
     userId: v.id("users"),
