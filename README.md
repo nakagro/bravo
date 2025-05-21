@@ -20,6 +20,10 @@ This README serves as a guide for developers, contributors, and AI assistants (l
 *   **Notifications**: [Sonner](https://sonner.emilkowal.ski/) for toasts/notifications.
 *   **Authentication**: [@convex-dev/auth](https://auth.convex.dev/)
 
+## Development and Deployment
+
+For detailed instructions on developing and deploying with both local Docker-based Convex and Convex Cloud, see [CONVEX-SETUP.md](./CONVEX-SETUP.md).
+
 ## Project Structure
 
 ```

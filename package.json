@@ -4,9 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "convex dev --local --once && node setup.mjs && npm-run-all --parallel dev:frontend dev:backend",
+    "dev": "convex dev --once && node setup.mjs && npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
-    "dev:backend": "convex dev --local",
+    "dev:backend": "convex dev",
+    "dev:docker": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
+    "dev:docker:frontend": "VITE_CONVEX_URL=https://convex.grayhux.io vite --open",
+    "dev:docker:backend": "convex dev --local --env-file .env.docker",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy:convex:local": "convex deploy --env-file .env.docker",
+    "deploy:convex:cloud": "CONVEX_DEPLOYMENT=whimsical-hamster-488 convex deploy",
+    "deploy:vercel": "vercel deploy --prod",
+    "deploy": "npm run deploy:convex:cloud && npm run deploy:vercel",
+    "dev:cloud": "npm-run-all --parallel dev:cloud:frontend dev:cloud:backend",
+    "dev:cloud:frontend": "VITE_CONVEX_URL=https://whimsical-hamster-488.convex.cloud vite --open",
+    "dev:cloud:backend": "CONVEX_DEPLOYMENT=whimsical-hamster-488 convex dev",
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
