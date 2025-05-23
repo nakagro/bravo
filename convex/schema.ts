@@ -39,6 +39,23 @@ const extendedAuthTables = {
 };
 
 const applicationTables = {
+  // Deployment availability table
+  deploymentAvailability: defineTable({
+    userId: v.id("users"),
+    date: v.number(), // Timestamp for the date (midnight of the day)
+    availability: v.object({
+      notAvailable: v.boolean(),
+      local: v.boolean(),
+      shortHaul: v.boolean(),
+      longHaul: v.boolean(),
+    }),
+    message: v.optional(v.string()), // Optional message for this date's availability
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_date", ["date"])
+    .index("by_user_date", ["userId", "date"]),
+    
   // Module settings table
   moduleSettings: defineTable({
     // Module identifier

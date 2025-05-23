@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as availability_getStatuses from "../availability/getStatuses.js";
 import type * as availability_updateStatus from "../availability/updateStatus.js";
 import type * as availability from "../availability.js";
+import type * as deploymentAvailability from "../deploymentAvailability.js";
 import type * as hoseComments from "../hoseComments.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   "availability/getStatuses": typeof availability_getStatuses;
   "availability/updateStatus": typeof availability_updateStatus;
   availability: typeof availability;
+  deploymentAvailability: typeof deploymentAvailability;
   hoseComments: typeof hoseComments;
   hoses: typeof hoses;
   http: typeof http;
