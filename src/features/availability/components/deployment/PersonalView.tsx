@@ -13,9 +13,6 @@ const PersonalView: React.FC<PersonalViewProps> = ({
 }) => {
   return (
     <>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-        Mark your deployment availability for each day. Select all options that apply or mark as Not Available.
-      </p>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {deploymentDates.map((date) => {
@@ -160,53 +157,6 @@ const PersonalView: React.FC<PersonalViewProps> = ({
           );
         })}
       </div>
-      
-      <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-sm">
-        <div className="flex flex-wrap gap-2">
-          <div className="inline-flex items-center px-2 py-1 bg-red-50 dark:bg-red-900/10 rounded border border-red-100 dark:border-red-800/30">
-            <div className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mr-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <span className="text-xs text-red-800 dark:text-red-300">Not Available</span>
-          </div>
-          
-          <div className="inline-flex items-center px-2 py-1 bg-green-50 dark:bg-green-900/10 rounded border border-green-100 dark:border-green-800/30">
-            <div className="w-4 h-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-            <span className="text-xs text-green-800 dark:text-green-300">Local</span>
-          </div>
-          
-          <div className="inline-flex items-center px-2 py-1 bg-yellow-50 dark:bg-yellow-900/10 rounded border border-yellow-100 dark:border-yellow-800/30">
-            <div className="w-4 h-4 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center mr-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              </svg>
-            </div>
-            <span className="text-xs text-yellow-800 dark:text-yellow-300">Short Haul</span>
-          </div>
-          
-          <div className="inline-flex items-center px-2 py-1 bg-orange-50 dark:bg-orange-900/10 rounded border border-orange-100 dark:border-orange-800/30">
-            <div className="w-4 h-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mr-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945" />
-              </svg>
-            </div>
-            <span className="text-xs text-orange-800 dark:text-orange-300">Long Haul</span>
-          </div>
-        </div>
-        
-        <div className="mt-2 flex items-center text-xs text-gray-600 dark:text-gray-400">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <span>Select multiple types or mark as Not Available</span>
-        </div>
-      </div>
     </>
   );
 };
@@ -271,7 +221,6 @@ const MessageInput: React.FC<MessageInputProps> = ({ date, initialValue, availab
     <input
       type="text"
       className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-blue-500 dark:focus:border-blue-600"
-      placeholder="E.g., Only available until 2pm"
       value={inputValue}
       onChange={handleInputChange}
     />

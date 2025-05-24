@@ -171,5 +171,3 @@ This script usually runs `tsc` for type checking on both frontend and Convex cod
 (Optional: Add guidelines for contributing if this is an open project or has multiple collaborators.)
 
 ---
-
-*This README was enhanced with the assistance of Cascade, an AI coding assistant.*
