@@ -4,7 +4,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bars3Icon, ArchiveBoxIcon, KeyIcon, CalendarIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, ArchiveBoxIcon, KeyIcon, CalendarIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, HomeIcon } from "@heroicons/react/24/outline";
 
 export function HamburgerMenu() {
   const { isAuthenticated } = useConvexAuth();
@@ -83,6 +83,17 @@ export function HamburgerMenu() {
           {/* Navigation items */}
           <div className="py-1 border-b border-gray-200">
             <h3 className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Navigation</h3>
+            
+            <Link 
+              to="/"
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center ${location.pathname === '/' ? 'text-red-700 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => {
+                setIsOpen(false);
+              }}
+            >
+              <HomeIcon className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+              Dashboard
+            </Link>
             
             {hasModuleAccess("availability") && (
               <Link 
