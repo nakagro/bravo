@@ -1,8 +1,7 @@
-import React from "react";
 import AdminPage from "../features/admin/AdminPage";
 
-export const AdminSettingsPage: React.FC = () => {
+export function AdminSettingsPage() {
   return <AdminPage />;
-};
+}
 
 export default AdminSettingsPage;

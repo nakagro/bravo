@@ -9,6 +9,7 @@ import { AppliancesPage } from "./pages/AppliancesPage";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 
 export default function App() {
@@ -30,6 +31,7 @@ function AuthenticatedApp() {
   return (
     <MainLayout>
       <Routes>
+        <Route path="/" element={<DashboardPage />} />
         <Route path="/hoses" element={<HosesPage />} />
         <Route path="/keys" element={<KeysPage />} />
         <Route path="/dutycrew" element={<DutyCrewPage />} />
@@ -38,11 +40,8 @@ function AuthenticatedApp() {
         <Route path="/settings" element={<UserSettingsPage />} />
         <Route path="/admin" element={<AdminSettingsPage />} />
         
-        {/* Redirect root to hoses page */}
-        <Route path="/" element={<Navigate to="/hoses" replace />} />
-        
-        {/* Catch all other routes and redirect to hoses */}
-        <Route path="*" element={<Navigate to="/hoses" replace />} />
+        {/* Catch all other routes and redirect to dashboard */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </MainLayout>
   );

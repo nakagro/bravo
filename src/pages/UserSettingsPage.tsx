@@ -1,32 +1,56 @@
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import {
+  UserDetailsCard,
+  SkillsSelector,
+  LoadingState,
+  UnauthorizedState
+} from "../features/userSettings/components";
+
 export function UserSettingsPage() {
+  // Fetch the current user's data
+  const user = useQuery(api.auth.loggedInUser);
+  
+  // Loading state
+  if (user === undefined) {
+    return <LoadingState />;
+  }
+  
+  // If user is not found or not logged in
+  if (user === null) {
+    return <UnauthorizedState />;
+  }
+
+  // Format the user's name
+  const fullName = user.firstName && user.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user.name || "Not provided";
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">User Settings</h1>
-      <div className="p-8 text-center">
-        <div className="text-gray-500 mb-4">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-            />
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-            />
-          </svg>
+    <div className="space-y-6" data-component="UserSettingsPage">
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Settings</h1>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-6">
+        {/* Member Details Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+          <UserDetailsCard 
+            fullName={fullName}
+            memberNumber={user.memberNumber}
+            email={user.email}
+            rank={user.rank}
+          />
         </div>
-        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Coming Soon???? 🤷‍♂️</h2>
+        
+        {/* Skills Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+          <SkillsSelector userId={user._id} />
+        </div>
       </div>
     </div>
   );
 }
+
+

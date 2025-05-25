@@ -24,6 +24,8 @@ const extendedAuthTables = {
     )),
     // Roles field - a user can have multiple roles
     roles: v.optional(v.array(v.string())),
+    // Skills field - array of skill IDs that the user has
+    skills: v.optional(v.array(v.id("skills"))),
     // Admin flag - determines if the user has administrative privileges
     isAdmin: v.optional(v.boolean()),
     // Status fields
@@ -39,6 +41,20 @@ const extendedAuthTables = {
 };
 
 const applicationTables = {
+  // Skills table to store available skills in the system
+  skills: defineTable({
+    name: v.string(), // Skill name (e.g., "BA Internal (BAi)", "Driver (DR)")
+    code: v.string(), // Short code for the skill (e.g., "BAi", "DR")
+    description: v.optional(v.string()), // Optional description of the skill
+    category: v.optional(v.string()), // Optional category for grouping skills
+    isActive: v.boolean(), // Whether this skill is currently active in the system
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_code", ["code"])
+    .index("by_isActive", ["isActive"]),
+    
   // Deployment availability table
   deploymentAvailability: defineTable({
     userId: v.id("users"),

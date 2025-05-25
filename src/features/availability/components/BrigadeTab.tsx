@@ -1,5 +1,9 @@
 import React from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
+import SkillBadge from "./SkillBadge";
 
 interface BrigadeTabProps {
   statuses: any[];
@@ -75,8 +79,8 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
           <table className="w-full text-left border-separate border-spacing-0 table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="p-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
-                <th className="p-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -119,25 +123,39 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-')).join(' ');
                   const borderClasses = rowColorClasses.split(' ').filter(cls => cls.startsWith('border-')).join(' ');
                   
+                  // Check if user has skills to determine if we need a skills row
+                  const hasSkills = user.skills && user.skills.length > 0;
+                  
                   return (
-                    <tr key={user._id} className={`${bgColorClass} transition-colors`}>
-                      <td className={`p-3 ${borderClasses}`}>
-                        <div className="font-medium">{formatUserName(user)}</div>
-                      </td>
-                      <td className="p-3">
-                        <div className={`font-medium ${getTextColor(user.currentStatus)}`}>
-                          {user.currentStatus === 'available' && 'Available'}
-                          {user.currentStatus === 'delayed response' && 'Delayed'}
-                          {user.currentStatus === 'WFH' && 'WFH'}
-                          {user.currentStatus === 'not available' && 'Unavailable'}
-                        </div>
-                        {user.statusUpdatedAt && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {getRelativeTimeString(user.statusUpdatedAt)}
+                    <React.Fragment key={user._id}>
+                      <tr className={`${bgColorClass} transition-colors`}>
+                        <td className={`px-3 py-2 pb-${hasSkills ? '1' : '2'} ${borderClasses}`}>
+                          <div className="font-medium">{formatUserName(user)}</div>
+                        </td>
+                        <td className={`px-3 py-2 pb-${hasSkills ? '1' : '2'}`}>
+                          <div className="flex items-center">
+                            <span className={`font-medium ${getTextColor(user.currentStatus)}`}>
+                              {user.currentStatus === 'available' && 'Available'}
+                              {user.currentStatus === 'delayed response' && 'Delayed'}
+                              {user.currentStatus === 'WFH' && 'WFH'}
+                              {user.currentStatus === 'not available' && 'Unavailable'}
+                            </span>
+                            {user.statusUpdatedAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                ({getRelativeTimeString(user.statusUpdatedAt)})
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      
+                      {/* Skills row - only rendered if user has skills */}
+                      <UserSkillsRow 
+                        userId={user._id} 
+                        bgColorClass={bgColorClass} 
+                        borderClasses={borderClasses} 
+                      />
+                    </React.Fragment>
                   );
                 })
               ) : (
@@ -152,6 +170,41 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
         </div>
       </div>
     </>
+  );
+};
+
+// Component to display user skills in a separate row
+interface UserSkillsRowProps {
+  userId: Id<"users">;
+  bgColorClass: string;
+  borderClasses: string;
+}
+
+const UserSkillsRow: React.FC<UserSkillsRowProps> = ({ userId, bgColorClass, borderClasses }) => {
+  // Fetch user skills
+  const userSkills = useQuery(api.skills.getUserSkills, { userId });
+  
+  // If no skills or still loading, return empty fragment
+  if (!userSkills || userSkills.length === 0) {
+    return null;
+  }
+  
+  // Use the same background color as the main row
+  
+  return (
+    <tr className={`${bgColorClass} transition-colors border-b border-gray-200 dark:border-gray-700`}>
+      <td colSpan={2} className={`px-3 py-1 ${borderClasses}`}>
+        <div className="flex flex-wrap">
+          {userSkills.map(skill => (
+            <SkillBadge 
+              key={skill._id} 
+              code={skill.code} 
+              name={skill.name} 
+            />
+          ))}
+        </div>
+      </td>
+    </tr>
   );
 };
 

@@ -80,12 +80,14 @@ const AvailabilityPage: React.FC = () => {
   }
   
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">Availability</h1>
+    <div className="space-y-4" data-component="AvailabilityPage">
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Availability</h1>
+      </div>
       
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <nav className="flex space-x-4">
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-4 -mb-px">
           <button
             onClick={() => setActiveTab('you')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -130,35 +132,37 @@ const AvailabilityPage: React.FC = () => {
       </div>
       
       {/* Tab Content */}
-      {activeTab === 'you' && isAuthenticated && (
-        <YouTab
-          userStatus={userStatus}
-          handleStatusChange={handleStatusChange}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
-      
-      {activeTab === 'brigade' && isAuthenticated && (
-        <BrigadeTab
-          statuses={statuses}
-          dutyOfficer={dutyOfficer}
-          handleDutyOfficerChange={handleDutyOfficerChange}
-        />
-      )}
-      
-      {activeTab === 'messages' && isAuthenticated && (
-        <MessagesTab
-          isAuthenticated={isAuthenticated}
-          newMessage={newMessage}
-          setNewMessage={setNewMessage}
-          messages={messages}
-          handleSendMessage={handleSendMessage}
-        />
-      )}
-      
-      {activeTab === 'deployment' && isAuthenticated && (
-        <DeploymentTab isAuthenticated={isAuthenticated} />
-      )}
+      <div className="mt-4">
+        {activeTab === 'you' && isAuthenticated && (
+          <YouTab
+            userStatus={userStatus}
+            handleStatusChange={handleStatusChange}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
+        
+        {activeTab === 'brigade' && isAuthenticated && (
+          <BrigadeTab
+            statuses={statuses}
+            dutyOfficer={dutyOfficer}
+            handleDutyOfficerChange={handleDutyOfficerChange}
+          />
+        )}
+        
+        {activeTab === 'messages' && isAuthenticated && (
+          <MessagesTab
+            isAuthenticated={isAuthenticated}
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            messages={messages}
+            handleSendMessage={handleSendMessage}
+          />
+        )}
+        
+        {activeTab === 'deployment' && isAuthenticated && (
+          <DeploymentTab isAuthenticated={isAuthenticated} />
+        )}
+      </div>
     </div>
   );
 };
