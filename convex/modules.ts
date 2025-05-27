@@ -45,6 +45,14 @@ export const initializeModuleSettings = mutation({
         minimumRank: undefined
       },
       { 
+        moduleId: "dutyCrew", 
+        moduleName: "Duty Crew", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
         moduleId: "settings", 
         moduleName: "User Settings", 
         isEnabled: true,
