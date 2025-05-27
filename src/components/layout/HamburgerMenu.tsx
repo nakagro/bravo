@@ -4,7 +4,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bars3Icon, ArchiveBoxIcon, KeyIcon, CalendarIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, HomeIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, ArchiveBoxIcon, KeyIcon, CalendarIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, HomeIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 
 export function HamburgerMenu() {
   const { isAuthenticated } = useConvexAuth();
@@ -20,6 +20,7 @@ export function HamburgerMenu() {
   const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
   const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
   const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
+  const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
   
@@ -29,6 +30,7 @@ export function HamburgerMenu() {
       case "hoses": return hoseAccess === true;
       case "keys": return keysAccess === true;
       case "availability": return availabilityAccess === true;
+      case "dutyCrew": return dutyCrewAccess === true;
       case "settings": return settingsAccess === true;
       case "admin": return adminAccess === true;
       default: return false;
@@ -136,31 +138,18 @@ export function HamburgerMenu() {
               </Link>
             )}
 
-{/*             
-            <Link 
-              to="/dutycrew"
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors flex items-center ${location.pathname === '/dutycrew' ? 'text-red-700 font-medium' : 'text-gray-700'}`}
-              onClick={() => {
-                setIsOpen(false);
-              }}
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
+            {hasModuleAccess("dutyCrew") && (
+              <Link 
+                to="/dutycrew"
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center ${location.pathname === '/dutycrew' ? 'text-red-700 dark:text-red-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
+                onClick={() => {
+                  setIsOpen(false);
+                }}
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
-                />
-              </svg>
-              Duty Crew Checks
-              <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full">Preview</span>
-            </Link>
+                <CalendarIcon className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                Duty Crew Management
+              </Link>
+            )}
             
             <Link 
               to="/appliances"
@@ -185,7 +174,8 @@ export function HamburgerMenu() {
               </svg>
               Appliance Checks
               <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full">Preview</span>
-            </Link> */}
+            </Link>
+          {/* End of commented section */}
           </div>
           
           {/* Settings section */}

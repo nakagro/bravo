@@ -222,6 +222,28 @@ const applicationTables = {
   })
     .index("by_key", ["keyId"])
     .index("by_timestamp", ["timestamp"]),
+  // Duty Crew table for tracking duty crew assignments
+  dutyCrew: defineTable({
+    name: v.string(), // Name of the duty crew (e.g., "Duty Crew 1")
+    number: v.number(), // Number of the duty crew (1-4)
+    members: v.array(v.id("users")), // Array of user IDs who are part of this duty crew
+    leader: v.optional(v.id("users")), // Optional user ID of the duty crew leader
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_number", ["number"]),
+    
+  // Duty Crew Schedule table for tracking which duty crew is assigned to which Sunday
+  dutyCrewSchedule: defineTable({
+    date: v.number(), // Timestamp for the Sunday date (midnight of the day)
+    dutyCrewId: v.id("dutyCrew"), // Reference to the duty crew assigned for this date
+    isSpecial: v.boolean(), // Whether this is a special assignment (e.g., 5th Sunday working bee)
+    notes: v.optional(v.string()), // Optional notes for this duty crew assignment
+    createdBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_date", ["date"])
+    .index("by_dutyCrew", ["dutyCrewId"]),
 };
 
 export default defineSchema({
