@@ -244,6 +244,48 @@ const applicationTables = {
   })
     .index("by_date", ["date"])
     .index("by_dutyCrew", ["dutyCrewId"]),
+    
+  // Station Checks table to store checklist items
+  stationChecks: defineTable({
+    name: v.string(), // Name of the check item (e.g., "Clean multipurpose room")
+    description: v.optional(v.string()), // Optional detailed description of the check
+    isActive: v.boolean(), // Whether this check is currently active
+    order: v.number(), // Order in which the check should appear in the list
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_order", ["order"]),
+    
+  // Station Check Submissions table to record completed checklists
+  stationCheckSubmissions: defineTable({
+    date: v.number(), // Timestamp for the date of submission (usually a Sunday)
+    dutyCrewId: v.id("dutyCrew"), // Reference to the duty crew that completed the checks
+    completedBy: v.id("users"), // User who submitted the completed checklist
+    completedAt: v.number(), // Timestamp when the checklist was submitted
+    status: v.union(
+      v.literal("draft"), // Draft/in-progress submission
+      v.literal("completed") // Finalized submission
+    ),
+    lastUpdatedBy: v.optional(v.id("users")), // User who last updated the checklist
+    lastUpdatedAt: v.optional(v.number()), // Timestamp of the last update
+    checkItems: v.array(
+      v.object({
+        checkId: v.id("stationChecks"), // Reference to the check item
+        name: v.string(), // Name of the check at the time of submission (in case it changes later)
+        isCompleted: v.boolean(), // Whether this specific check was completed
+        notes: v.optional(v.string()), // Optional notes for this specific check
+        completedBy: v.optional(v.id("users")), // User who completed this specific check
+        completedAt: v.optional(v.number()), // Timestamp when this specific check was completed
+      })
+    ),
+    notes: v.optional(v.string()), // Optional general notes for the entire submission
+  })
+    .index("by_date", ["date"])
+    .index("by_dutyCrew", ["dutyCrewId"])
+    .index("by_completedBy", ["completedBy"])
+    .index("by_status", ["status"]),
 };
 
 export default defineSchema({

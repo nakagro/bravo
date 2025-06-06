@@ -147,7 +147,8 @@ export function HamburgerMenu() {
                 }}
               >
                 <CalendarIcon className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
-                Duty Crew Management
+                Duty Crew
+                <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full">Preview</span>
               </Link>
             )}
             

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { DutyCrewSchedule } from "../components/dutyCrew/DutyCrewSchedule";
 import { DutyCrewAdmin } from "../components/dutyCrew/DutyCrewAdmin";
-import { CalendarIcon, UserGroupIcon, Cog6ToothIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
+import { StationChecksTab } from "../components/dutyCrew/StationChecksTab";
+import { StationChecksAdmin } from "../components/dutyCrew/StationChecksAdmin";
+import { StationChecksHistory } from "../components/dutyCrew/StationChecksHistory";
+import { CalendarIcon, UserGroupIcon, Cog6ToothIcon, ClipboardDocumentListIcon, ClipboardDocumentCheckIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Tab } from "@headlessui/react";
@@ -12,13 +15,18 @@ export function DutyCrewPage() {
   // Define the tabs based on admin access
   const tabs = [
     { name: "Schedule", icon: CalendarIcon },
-    ...(adminAccess === true ? [{ name: "Administration", icon: Cog6ToothIcon }] : [])
+    { name: "Station Checks", icon: ClipboardDocumentCheckIcon },
+    ...(adminAccess === true ? [
+      { name: "Administration", icon: Cog6ToothIcon },
+      { name: "Station Checks Admin", icon: ClipboardDocumentListIcon },
+      { name: "Checks History", icon: ClockIcon }
+    ] : [])
   ];
   
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Duty Crew Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Duty Crew</h1>
         <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
           <span className="font-medium">Current Month: </span>
           {new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
@@ -26,12 +34,12 @@ export function DutyCrewPage() {
       </div>
       
       <Tab.Group>
-        <Tab.List className="flex space-x-1 rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-6">
+        <Tab.List className="flex space-x-1 rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-6 overflow-x-auto">
           {tabs.map((tab) => (
             <Tab
               key={tab.name}
               className={({ selected }) =>
-                `w-full rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center
+                `flex-1 min-w-max rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center
                  ${selected
                   ? 'bg-white dark:bg-gray-800 shadow text-indigo-600 dark:text-indigo-400'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] hover:text-gray-800 dark:hover:text-white'}`
@@ -44,14 +52,14 @@ export function DutyCrewPage() {
         </Tab.List>
         <Tab.Panels>
           <Tab.Panel>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
               {/* Duty Crew Schedule */}
-              <div className="lg:col-span-2">
+              <div>
                 <DutyCrewSchedule />
               </div>
               
-              {/* Duty Crew Info */}
-              <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+
+              {/* <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
                     Duty Crew Information
@@ -94,20 +102,30 @@ export function DutyCrewPage() {
                     </li>
                   </ul>
                 </div>
-              </div>
+              </div> */}
             </div>
           </Tab.Panel>
-          
+          <Tab.Panel>
+            <StationChecksTab />
+          </Tab.Panel>
           {adminAccess === true && (
-            <Tab.Panel>
-              <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  <ClipboardDocumentListIcon className="h-6 w-6 text-indigo-500 mr-2" />
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Duty Crew Administration</h2>
+            <>
+              <Tab.Panel>
+                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                  <div className="flex items-center mb-4">
+                    <ClipboardDocumentListIcon className="h-6 w-6 text-indigo-500 mr-2" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Duty Crew Administration</h2>
+                  </div>
+                  <DutyCrewAdmin />
                 </div>
-                <DutyCrewAdmin />
-              </div>
-            </Tab.Panel>
+              </Tab.Panel>
+              <Tab.Panel>
+                <StationChecksAdmin />
+              </Tab.Panel>
+              <Tab.Panel>
+                <StationChecksHistory />
+              </Tab.Panel>
+            </>
           )}
         </Tab.Panels>
       </Tab.Group>

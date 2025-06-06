@@ -4,6 +4,9 @@ import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
 import BrigadeView from './deployment/BrigadeView';
 import DetailModal from './deployment/DetailModal';
+import { Button } from "../../../components/ui/button";
+import { Card, CardHeader, CardContent } from "../../../components/ui/card";
+import { cn } from "../../../lib/utils";
 
 interface DeploymentTabProps {
   isAuthenticated: boolean;
@@ -36,7 +39,8 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
         local: boolean,
         shortHaul: boolean,
         longHaul: boolean
-      }
+      },
+      message?: string
     }>
   } | null>(null);
   
@@ -170,36 +174,37 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-950 shadow-sm p-4 rounded">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-base font-medium text-gray-800 dark:text-gray-200">Deployment Availability</h3>
-        {/* Toggle button for personal/brigade view */}
-        <button
-          onClick={() => setShowBrigadeView(!showBrigadeView)}
-          className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-            showBrigadeView 
-              ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800' 
-              : 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-          }`}
-        >
-          {showBrigadeView ? 'Show Your Availability' : 'Show Brigade View'}
-        </button>
-      </div>
-      
-      {!showBrigadeView ? (
-        <PersonalView 
-          deploymentDates={deploymentDates}
-          deploymentAvailability={deploymentAvailability}
-          handleDeploymentAvailabilityChange={handleDeploymentAvailabilityChange}
-        />
-      ) : (
-        <BrigadeView 
-          aggregatedDeploymentAvailability={aggregatedDeploymentAvailability}
-          setSelectedDetailDate={setSelectedDetailDate}
-          setShowDetailModal={setShowDetailModal}
-        />
-      )}
-      
+    <>
+      <Card className="border-gray-200 dark:border-gray-800">
+        <CardHeader className="px-4 py-3 flex flex-row justify-between items-center border-gray-100 dark:border-gray-800">
+          <h3 className="text-base font-medium text-gray-800 dark:text-gray-200">Deployment Availability</h3>
+          {/* Toggle button for personal/brigade view */}
+          <Button
+            onClick={() => setShowBrigadeView(!showBrigadeView)}
+            variant={showBrigadeView ? "default" : "secondary"}
+            size="sm"
+            className="text-xs font-medium"
+          >
+            {showBrigadeView ? 'Show Your Availability' : 'Show Brigade View'}
+          </Button>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          {!showBrigadeView ? (
+            <PersonalView 
+              deploymentDates={deploymentDates}
+              deploymentAvailability={deploymentAvailability}
+              handleDeploymentAvailabilityChange={handleDeploymentAvailabilityChange}
+            />
+          ) : (
+            <BrigadeView 
+              aggregatedDeploymentAvailability={aggregatedDeploymentAvailability}
+              setSelectedDetailDate={setSelectedDetailDate}
+              setShowDetailModal={setShowDetailModal}
+            />
+          )}
+        </CardContent>
+      </Card>
+        
       {/* Detailed View Modal */}
       {showDetailModal && selectedDetailDate && (
         <DetailModal 
@@ -207,7 +212,7 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
           setShowDetailModal={setShowDetailModal}
         />
       )}
-    </div>
+    </>
   );
 };
 
