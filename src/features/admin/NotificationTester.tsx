@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-export default function NotificationTester() {
+interface NotificationTesterProps {
+  showTitle?: boolean;
+}
+
+export default function NotificationTester({ showTitle = true }: NotificationTesterProps) {
   const sendNotification = useAction(
     api.pushNotificationAction.sendNotification
   );
@@ -23,9 +27,11 @@ export default function NotificationTester() {
 
   return (
     <div className="p-4 bg-white dark:bg-gray-800 rounded shadow space-y-4">
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-        Push Notification Tester
-      </h2>
+      {showTitle && (
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          Push Notification Tester
+        </h2>
+      )}
       <div className="space-y-2">
         <input
           type="text"

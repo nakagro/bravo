@@ -1,6 +1,13 @@
 import UserManagement from "./UserManagement";
 import ModuleSettings from "./ModuleSettings";
 import NotificationTester from "./NotificationTester";
+import AdminTasks from "./AdminTasks";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 export default function AdminPage() {
   return (
@@ -9,16 +16,32 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Settings</h1>
       </div>
       
-      <div className="grid grid-cols-1 gap-6">
-        {/* User Management - Control user roles, ranks, and permissions */}
-        <UserManagement />
+      {/* Keep User Management always visible */}
+      <UserManagement />
 
-        {/* Module Settings - Control which modules are accessible */}
-        <ModuleSettings />
+      {/* Collapsible sections */}
+      <Accordion type="multiple" className="w-full space-y-2">
+        <AccordionItem value="moduleSettings">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Module Settings</AccordionTrigger>
+          <AccordionContent>
+            <ModuleSettings showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
 
-        {/* Push Notification Tester */}
-        <NotificationTester />
-      </div>
+        <AccordionItem value="notificationTester">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Tester</AccordionTrigger>
+          <AccordionContent>
+            <NotificationTester showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="adminTasks">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Admin Tasks</AccordionTrigger>
+          <AccordionContent>
+            <AdminTasks showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

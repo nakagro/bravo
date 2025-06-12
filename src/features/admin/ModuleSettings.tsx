@@ -6,6 +6,10 @@ import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Id } from "../../../convex/_generated/dataModel";
 
+interface ModuleSettingsProps {
+  showTitle?: boolean
+}
+
 // Define rank options
 const rankOptions = [
   { value: undefined, label: "No Rank Required" },
@@ -15,7 +19,7 @@ const rankOptions = [
   { value: "Captain", label: "Captain" },
 ];
 
-const ModuleSettings: React.FC = () => {
+const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => {
   // Fetch module settings and roles
   const moduleSettings = useQuery(api.modules.getModuleSettings);
   const roles = useQuery(api.users.getRoles);
@@ -103,7 +107,9 @@ const ModuleSettings: React.FC = () => {
   if (!moduleSettings) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 dark:text-white">Module Settings</h2>
+        {showTitle && (
+          <h2 className="text-xl font-semibold mb-4 dark:text-white">Module Settings</h2>
+        )}
         <p className="text-gray-500 dark:text-gray-400">Loading module settings...</p>
       </div>
     );
@@ -111,7 +117,9 @@ const ModuleSettings: React.FC = () => {
   
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4 dark:text-white">Module Settings</h2>
+      {showTitle && (
+        <h2 className="text-xl font-semibold mb-4 dark:text-white">Module Settings</h2>
+      )}
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Configure access to modules based on global availability, user roles, and ranks.
       </p>

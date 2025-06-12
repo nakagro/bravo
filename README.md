@@ -103,6 +103,53 @@ The frontend is built with Vite, React, and TypeScript, located in the `src/` di
 *   **Pages**: Top-level views are in `src/pages/`.
 *   **Styling**: Tailwind CSS is used for styling, configured in `tailwind.config.js` and `src/index.css`.
 
+## Progressive Web App (PWA)
+
+The frontend is configured as an installable PWA via [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app/):
+
+*   `vite.config.ts` registers the plugin with `strategies: "generateSW"`.
+*   The generated service-worker precaches build assets.
+*   A custom push handler is imported via `workbox.importScripts` and lives in `public/sw-push.js`.
+*   `public/manifest.json` defines icons, theme colours, and `display: "standalone"`, allowing the site to be installed on iOS/Android/Desktop.
+
+During development Vite serves a temporary worker at `/dev-dist/dev-sw.js`; the same service-worker logic (including push handling) is available in dev via `devOptions.enabled: true`.
+
+### Offline support
+
+The precache list contains all static assets needed to render the application shell. Dynamic data is fetched from Convex APIs and will appear once online.
+
+## Push Notifications
+
+### Registration (client)
+
+`usePushRegister` hook requests browser permission, subscribes to `navigator.serviceWorker.ready.pushManager`, and stores the subscription in Convex via `pushNotifications.register`.
+
+### Backend sending
+
+*   Node-only package `web-push` is used inside `convex/pushNotificationAction.ts` (annotated with `"use node"`).
+*   The action fetches subscriptions and sends notifications; stale subscriptions are cleaned up automatically.
+
+### Testing UI
+
+`NotificationTester` component on the Admin page lets admins broadcast a test notification from the browser.
+
+### Automatic “daily reset” notifications
+
+*   `availabilityResetAction.ts` clears every member’s `currentStatus` each day and notifies them to update it.
+*   Scheduled via `convex/crons.ts` – default time 04:00 AEST (18:00 UTC). Edit the UTC time to suit your region.
+
+### VAPID keys
+
+Generate once with `npx web-push generate-vapid-keys` and set:
+
+*   `.env.local`  `VITE_VAPID_PUBLIC_KEY` ( for the browser)
+*   Convex env      `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (in the Convex dashboard)
+
+## Deployment
+
+*   **Backend (Convex)**: The Convex backend is deployed as a Docker container. Follow your standard Docker deployment procedures to host the container on your preferred infrastructure.
+*   **Frontend (Vite)**: The Vite frontend can be built using `npm run build` (or `vite build`) and the resulting static assets can be deployed to any static hosting provider or served via your backend.
+
 ## Getting Started
 
 ### Prerequisites
@@ -160,11 +207,6 @@ npm run lint
 ```
 
 This script usually runs `tsc` for type checking on both frontend and Convex code. `convex dev --once` as part of this script will interact with your Dockerized Convex backend.
-
-## Deployment
-
-*   **Backend (Convex)**: The Convex backend is deployed as a Docker container. Follow your standard Docker deployment procedures to host the container on your preferred infrastructure.
-*   **Frontend (Vite)**: The Vite frontend can be built using `npm run build` (or `vite build`) and the resulting static assets can be deployed to any static hosting provider or served via your backend.
 
 ## Contributing
 

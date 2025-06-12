@@ -6,8 +6,33 @@ import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
+// --- shadcn ui imports ---
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+
 // Format user display name
-const formatUserName = (user: { firstName?: string; lastName?: string; name?: string; email?: string; memberNumber?: string }): string => {
+const formatUserName = (user: {
+  firstName?: string
+  lastName?: string
+  name?: string
+  email?: string
+  memberNumber?: string
+}): string => {
   if (user.firstName && user.lastName) {
     return `${user.firstName} ${user.lastName}${user.memberNumber ? ` (${user.memberNumber})` : ''}`;
   }
@@ -15,8 +40,12 @@ const formatUserName = (user: { firstName?: string; lastName?: string; name?: st
 };
 
 const UserManagement: React.FC = () => {
+  // constant for no rank
+  const NO_RANK_VALUE = "none";
+
   // State
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRank, setSelectedRank] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -31,7 +60,7 @@ const UserManagement: React.FC = () => {
   // Fetch users and roles from Convex
   const users = useQuery(api.users.getUsers);
   const roles = useQuery(api.users.getRoles);
-  
+
   // Mutations
   const updateRank = useMutation(api.users.updateUserRank);
   const updateRoles = useMutation(api.users.updateUserRoles);
@@ -63,23 +92,28 @@ const UserManagement: React.FC = () => {
         const displayName = formatUserName(user).toLowerCase();
         return displayName.includes(query.toLowerCase());
       });
-      
+
   // Handle user selection
   const handleUserChange = (userId: Id<"users"> | null) => {
     setSelectedUserId(userId);
     setStatusMessage(null);
+    setDialogOpen(userId !== null);
   };
 
-  // Handle rank selection
-  const handleRankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedRank(e.target.value || null);
+  // Handle rank selection via shadcn Select
+  const handleRankChange = (value: string) => {
+    if (value === NO_RANK_VALUE) {
+      setSelectedRank(null);
+    } else {
+      setSelectedRank(value);
+    }
   };
 
   // Handle role selection
   const handleRoleToggle = (roleName: string) => {
-    setSelectedRoles(prev => {
+    setSelectedRoles((prev) => {
       if (prev.includes(roleName)) {
-        return prev.filter(r => r !== roleName);
+        return prev.filter((r) => r !== roleName);
       } else {
         return [...prev, roleName];
       }
@@ -87,26 +121,25 @@ const UserManagement: React.FC = () => {
   };
 
   // Handle admin status toggle
-  const handleAdminToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsAdmin(e.target.checked);
+  const handleAdminToggle = (checked: boolean) => {
+    setIsAdmin(checked);
   };
 
   // Handle duty officer toggle
-  const handleDutyOfficerToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.checked;
+  const handleDutyOfficerToggle = async (checked: boolean) => {
+    const newValue = checked;
     setIsDutyOfficer(newValue);
-    
-    // If turning on duty officer status, show a confirmation dialog
+
     if (newValue && selectedUserId) {
       if (window.confirm('Setting a new duty officer will remove this status from any current duty officer. Continue?')) {
         try {
           await setDutyOfficer({ userId: selectedUserId });
         } catch (error) {
           console.error('Error setting duty officer:', error);
-          setIsDutyOfficer(false); // Revert the UI state if the operation failed
+          setIsDutyOfficer(false);
         }
       } else {
-        setIsDutyOfficer(false); // User cancelled, revert the UI state
+        setIsDutyOfficer(false);
       }
     }
   };
@@ -114,65 +147,58 @@ const UserManagement: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedUserId) return;
-    
+
     setIsSubmitting(true);
     setStatusMessage(null);
-    
+
     try {
       // Update rank if changed
       if (selectedRank !== selectedUser?.rank) {
-        // Check if selectedRank is null and provide a clear error message
         if (selectedRank === null) {
           throw new Error("Please select a rank for this user before updating. Rank cannot be empty.");
         }
-        
-        await updateRank({ 
-          userId: selectedUserId, 
-          rank: selectedRank as "Probationary" | "Firefighter" | "Lieutenant" | "Captain" 
+
+        await updateRank({
+          userId: selectedUserId,
+          rank: selectedRank as "Probationary" | "Firefighter" | "Lieutenant" | "Captain",
         });
       }
-      
+
       // Update roles if changed
       const currentRoles = selectedUser?.roles || [];
       if (JSON.stringify(selectedRoles.sort()) !== JSON.stringify(currentRoles.sort())) {
         await updateRoles({ userId: selectedUserId, roles: selectedRoles });
       }
-      
+
       // Update admin status if changed
       if (isAdmin !== (selectedUser?.isAdmin || false)) {
         await updateAdminStatus({ userId: selectedUserId, isAdmin });
       }
-      
+
       setStatusMessage({
         type: "success",
-        message: "User updated successfully"
+        message: "User updated successfully",
       });
     } catch (error) {
-      // Provide more user-friendly error messages
       let errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // Check for specific Convex validation errors
       if (errorMessage.includes("ArgumentValidationError") && errorMessage.includes(".rank")) {
         errorMessage = "Please select a valid rank for this user. Rank cannot be empty.";
       }
-      
       setStatusMessage({
         type: "error",
-        message: `Error updating user: ${errorMessage}`
+        message: `Error updating user: ${errorMessage}`,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // formatUserName function has been moved to the top of the file to avoid the reference error
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4 dark:text-white">User Management</h2>
-      
+
       {/* User selection with search */}
       <div className="mb-6">
         <Combobox value={selectedUserId} onChange={handleUserChange} nullable>
@@ -189,7 +215,7 @@ const UserManagement: React.FC = () => {
                   className="w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
                   displayValue={(userId: Id<"users"> | null) => {
                     if (!userId) return "";
-                    const user = users?.find(u => u._id === userId);
+                    const user = users?.find((u) => u._id === userId);
                     return user ? formatUserName(user) : "";
                   }}
                   onChange={(event) => setQuery(event.target.value)}
@@ -208,18 +234,17 @@ const UserManagement: React.FC = () => {
               leave="transition ease-in duration-100"
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
-              afterLeave={() => setQuery('')}
+              afterLeave={() => setQuery("")}
             >
               <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                {filteredUsers?.length === 0 && query !== '' ? (
+                {filteredUsers?.length === 0 && query !== "" ? (
                   <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-gray-300">
                     No users found.
                   </div>
                 ) : (
                   filteredUsers
-                    ?.slice() // Create a copy of the array to avoid mutating the original
+                    ?.slice()
                     .sort((a, b) => {
-                      // Sort by name if available, otherwise by email or ID
                       const nameA = formatUserName(a).toLowerCase();
                       const nameB = formatUserName(b).toLowerCase();
                       return nameA.localeCompare(nameB);
@@ -229,7 +254,9 @@ const UserManagement: React.FC = () => {
                         key={user._id}
                         className={({ active }) =>
                           `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                            active ? 'bg-indigo-600 text-white' : 'text-gray-900 dark:text-gray-200'
+                            active
+                              ? "bg-indigo-600 text-white"
+                              : "text-gray-900 dark:text-gray-200"
                           }`
                         }
                         value={user._id}
@@ -238,7 +265,7 @@ const UserManagement: React.FC = () => {
                           <>
                             <span
                               className={`block truncate ${
-                                selected ? 'font-medium' : 'font-normal'
+                                selected ? "font-medium" : "font-normal"
                               }`}
                             >
                               {formatUserName(user)}
@@ -246,7 +273,7 @@ const UserManagement: React.FC = () => {
                             {selected ? (
                               <span
                                 className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
-                                  active ? 'text-white' : 'text-indigo-600'
+                                  active ? "text-white" : "text-indigo-600"
                                 }`}
                               >
                                 <CheckIcon className="h-5 w-5" aria-hidden="true" />
@@ -262,117 +289,131 @@ const UserManagement: React.FC = () => {
           </div>
         </Combobox>
       </div>
-      
-      {selectedUser && (
-        <form onSubmit={handleSubmit}>
-          {/* Rank selection */}
-          <div className="mb-6">
-            <label htmlFor="rank-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Rank
-            </label>
-            <select
-              id="rank-select"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-              value={selectedRank || ""}
-              onChange={handleRankChange}
-            >
-              <option value="">-- No rank --</option>
-              <option value="Probationary">Probationary</option>
-              <option value="Firefighter">Firefighter</option>
-              <option value="Lieutenant">Lieutenant</option>
-              <option value="Captain">Captain</option>
-            </select>
-          </div>
-          
-          {/* Roles selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Roles
-            </label>
-            <div className="space-y-2 max-h-60 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700">
-              {!roles || roles.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No roles defined in the system</p>
-              ) : (
-                roles
-                  .filter((role) => role.isActive)
-                  .map((role) => (
-                    <div key={role._id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`role-${role._id}`}
-                        checked={selectedRoles.includes(role.name)}
-                        onChange={() => handleRoleToggle(role.name)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded dark:border-gray-500"
-                      />
-                      <label htmlFor={`role-${role._id}`} className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-                        {role.name}
-                        {role.description && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">({role.description})</span>
-                        )}
-                      </label>
-                    </div>
-                  ))
+
+      {/* Settings Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setSelectedUserId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg bg-white dark:bg-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedUser ? formatUserName(selectedUser) : "User Settings"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedUser && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Rank selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium dark:text-gray-200" htmlFor="rank-select">
+                  Rank
+                </label>
+                <Select
+                  value={selectedRank ?? NO_RANK_VALUE}
+                  onValueChange={handleRankChange}
+                >
+                  <SelectTrigger id="rank-select" className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                    <SelectValue placeholder="-- No rank --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_RANK_VALUE}>-- No rank --</SelectItem>
+                    <SelectItem value="Probationary">Probationary</SelectItem>
+                    <SelectItem value="Firefighter">Firefighter</SelectItem>
+                    <SelectItem value="Lieutenant">Lieutenant</SelectItem>
+                    <SelectItem value="Captain">Captain</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Roles selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium dark:text-gray-200">Roles</label>
+                <div className="space-y-2 max-h-60 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700">
+                  {!roles || roles.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No roles defined in the system
+                    </p>
+                  ) : (
+                    roles
+                      .filter((role) => role.isActive)
+                      .map((role) => (
+                        <div key={role._id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`role-${role._id}`}
+                            checked={selectedRoles.includes(role.name)}
+                            onCheckedChange={() => handleRoleToggle(role.name)}
+                          />
+                          <label
+                            htmlFor={`role-${role._id}`}
+                            className="text-sm text-gray-900 dark:text-gray-200"
+                          >
+                            {role.name}
+                            {role.description && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                                ({role.description})
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {/* Admin status toggle */}
+              <div className="flex items-center justify-between">
+                <label htmlFor="admin-toggle" className="text-sm font-medium dark:text-gray-200">
+                  Admin
+                </label>
+                <Switch
+                  id="admin-toggle"
+                  checked={isAdmin}
+                  onCheckedChange={handleAdminToggle}
+                  className="dark:data-[state=unchecked]:bg-gray-600"
+                />
+              </div>
+
+              {/* Duty Officer toggle */}
+              <div className="flex items-center justify-between">
+                <label htmlFor="duty-officer-toggle" className="text-sm font-medium dark:text-gray-200">
+                  Duty Officer
+                </label>
+                <Switch
+                  id="duty-officer-toggle"
+                  checked={isDutyOfficer}
+                  onCheckedChange={handleDutyOfficerToggle}
+                  className="dark:data-[state=unchecked]:bg-gray-600 dark:data-[state=checked]:bg-red-600"
+                />
+              </div>
+
+              {/* Status message */}
+              {statusMessage && (
+                <div
+                  className={`p-2 rounded text-sm ${
+                    statusMessage.type === "success"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                      : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                  }`}
+                >
+                  {statusMessage.message}
+                </div>
               )}
-            </div>
-          </div>
-          
-          {/* Admin status toggle */}
-          <div className="mb-6">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="admin-toggle"
-                checked={isAdmin}
-                onChange={handleAdminToggle}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded dark:border-gray-500"
-              />
-              <label htmlFor="admin-toggle" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-                Admin
-              </label>
-            </div>
-          </div>
-          
-          {/* Duty Officer toggle */}
-          <div className="mb-6">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="duty-officer-toggle"
-                checked={isDutyOfficer}
-                onChange={handleDutyOfficerToggle}
-                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded dark:border-gray-500"
-              />
-              <label htmlFor="duty-officer-toggle" className="ml-2 block text-sm text-gray-900 dark:text-gray-200">
-                Duty Officer
-              </label>
-            </div>
-          </div>
-          
-          {/* Status message */}
-          {statusMessage && (
-            <div className={`mb-4 p-2 rounded ${
-              statusMessage.type === "success" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-            }`}>
-              {statusMessage.message}
-            </div>
+
+              <DialogFooter>
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? "Updating..." : "Update User"}
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-          
-          {/* Submit button */}
-          <div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                isSubmitting 
-                  ? "bg-indigo-300 dark:bg-indigo-800 cursor-not-allowed" 
-                  : "bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              }`}
-            >
-              {isSubmitting ? "Updating..." : "Update User"}
-            </button>
-          </div>
-        </form>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
