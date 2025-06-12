@@ -11,6 +11,7 @@ import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
+import { PushNotifier } from "./components/PushNotifier";
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
 function AuthenticatedApp() {
   return (
     <MainLayout>
+      <PushNotifier />
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/hoses" element={<HosesPage />} />

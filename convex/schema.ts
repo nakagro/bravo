@@ -286,6 +286,14 @@ const applicationTables = {
     .index("by_dutyCrew", ["dutyCrewId"])
     .index("by_completedBy", ["completedBy"])
     .index("by_status", ["status"]),
+  
+  // Push subscriptions for web push notifications
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    subscription: v.any(), // Raw PushSubscription JSON object
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
 };
 
 export default defineSchema({

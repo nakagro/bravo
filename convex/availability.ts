@@ -1,6 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { api } from "./_generated/api";
 
 // Get all user statuses, resetting at 4am each day
 export const getStatuses = query({
@@ -61,6 +62,33 @@ export const getStatuses = query({
         isDutyOfficer: user.isDutyOfficer,
       };
     });
+  },
+});
+
+// Raw query returning users' status fields without any cutoff/reset logic.
+export const getAllUsersStatus = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      currentStatus: v.optional(
+        v.union(
+          v.literal("available"),
+          v.literal("not available"),
+          v.literal("delayed response"),
+          v.literal("WFH")
+        )
+      ),
+      statusUpdatedAt: v.optional(v.number()),
+    })
+  ),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.map((u) => ({
+      _id: u._id,
+      currentStatus: u.currentStatus,
+      statusUpdatedAt: u.statusUpdatedAt,
+    }));
   },
 });
 
@@ -227,5 +255,18 @@ export const setDutyOfficer = mutation({
     });
     
     return true;
+  },
+});
+
+// Clear a user's status (internal helper)
+export const clearStatus = mutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      currentStatus: undefined,
+      statusUpdatedAt: undefined,
+    });
+    return null;
   },
 });

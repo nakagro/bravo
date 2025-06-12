@@ -1,5 +1,6 @@
 import UserManagement from "./UserManagement";
 import ModuleSettings from "./ModuleSettings";
+import NotificationTester from "./NotificationTester";
 
 export default function AdminPage() {
   return (
@@ -14,6 +15,9 @@ export default function AdminPage() {
 
         {/* Module Settings - Control which modules are accessible */}
         <ModuleSettings />
+
+        {/* Push Notification Tester */}
+        <NotificationTester />
       </div>
     </div>
   );
