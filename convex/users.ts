@@ -13,6 +13,18 @@ export const getUsers = query({
 });
 
 /**
+ * Get a user by ID
+ */
+export const getUserById = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+/**
  * Get all roles from the system
  */
 export const getRoles = query({

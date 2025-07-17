@@ -1,10 +1,11 @@
 import React, { useState, useEffect, Fragment } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 // --- shadcn ui imports ---
 import {
@@ -24,6 +25,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 
 // Format user display name
 const formatUserName = (user: {
@@ -37,6 +41,31 @@ const formatUserName = (user: {
     return `${user.firstName} ${user.lastName}${user.memberNumber ? ` (${user.memberNumber})` : ''}`;
   }
   return user.name || user.email || "Unknown User";
+};
+
+// Password strength functions
+const passwordStrength = (password: string) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 1;
+  if (/[a-z]/.test(password)) strength += 1;
+  if (/[A-Z]/.test(password)) strength += 1;
+  if (/[0-9]/.test(password)) strength += 1;
+  if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+  return strength;
+};
+
+const getStrengthColor = (strength: number) => {
+  if (strength <= 2) return "bg-red-500";
+  if (strength <= 3) return "bg-yellow-500";
+  if (strength <= 4) return "bg-blue-500";
+  return "bg-green-500";
+};
+
+const getStrengthText = (strength: number) => {
+  if (strength <= 2) return "Weak";
+  if (strength <= 3) return "Fair";
+  if (strength <= 4) return "Good";
+  return "Strong";
 };
 
 const UserManagement: React.FC = () => {
@@ -57,6 +86,13 @@ const UserManagement: React.FC = () => {
     message: string;
   } | null>(null);
 
+  // Password reset state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
   // Fetch users and roles from Convex
   const users = useQuery(api.users.getUsers);
   const roles = useQuery(api.users.getRoles);
@@ -66,6 +102,9 @@ const UserManagement: React.FC = () => {
   const updateRoles = useMutation(api.users.updateUserRoles);
   const updateAdminStatus = useMutation(api.users.updateUserAdminStatus);
   const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
+
+  // Actions
+  const adminResetPassword = useAction(api.auth.adminResetPassword);
 
   // Get the selected user
   const selectedUser = users?.find((user) => user._id === selectedUserId);
@@ -83,6 +122,12 @@ const UserManagement: React.FC = () => {
       setIsAdmin(false);
       setIsDutyOfficer(false);
     }
+    
+    // Reset password fields when user changes
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   }, [selectedUser]);
 
   // Filter users based on search query
@@ -141,6 +186,64 @@ const UserManagement: React.FC = () => {
       } else {
         setIsDutyOfficer(false);
       }
+    }
+  };
+
+  // Handle password reset
+  const handlePasswordReset = async () => {
+    if (!selectedUserId) return;
+
+    // Validation
+    if (!newPassword || !confirmPassword) {
+      setStatusMessage({
+        type: "error",
+        message: "Please enter both password fields",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setStatusMessage({
+        type: "error",
+        message: "Passwords do not match",
+      });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setStatusMessage({
+        type: "error",
+        message: "Password must be at least 8 characters long",
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setStatusMessage(null);
+
+    try {
+      await adminResetPassword({
+        targetUserId: selectedUserId,
+        newPassword,
+      });
+
+      setStatusMessage({
+        type: "success",
+        message: "Password reset successfully",
+      });
+
+      // Clear password fields
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (error) {
+      setStatusMessage({
+        type: "error",
+        message: `Error resetting password: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -390,6 +493,109 @@ const UserManagement: React.FC = () => {
                   onCheckedChange={handleDutyOfficerToggle}
                   className="dark:data-[state=unchecked]:bg-gray-600 dark:data-[state=checked]:bg-red-600"
                 />
+              </div>
+
+              <Separator />
+
+              {/* Password Reset Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium dark:text-gray-200">Reset Password</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* New Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password" className="text-sm font-medium dark:text-gray-200">
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        disabled={isResettingPassword}
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        disabled={isResettingPassword}
+                      >
+                        {showNewPassword ? (
+                          <EyeSlashIcon className="h-4 w-4" />
+                        ) : (
+                          <EyeIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {/* Password Strength Indicator */}
+                    {newPassword && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(passwordStrength(newPassword))}`}
+                              style={{ width: `${(passwordStrength(newPassword) / 5) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {getStrengthText(passwordStrength(newPassword))}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Use 8+ characters with a mix of letters, numbers & symbols
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password" className="text-sm font-medium dark:text-gray-200">
+                      Confirm New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        disabled={isResettingPassword}
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        disabled={isResettingPassword}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeSlashIcon className="h-4 w-4" />
+                        ) : (
+                          <EyeIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-sm text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={isResettingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                    className="w-full"
+                    variant="destructive"
+                  >
+                    {isResettingPassword ? "Resetting Password..." : "Reset Password"}
+                  </Button>
+                </div>
               </div>
 
               {/* Status message */}

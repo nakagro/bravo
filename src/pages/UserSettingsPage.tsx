@@ -5,7 +5,8 @@ import {
   UserDetailsCard,
   SkillsSelector,
   LoadingState,
-  UnauthorizedState
+  UnauthorizedState,
+  PasswordChangeForm
 } from "../features/userSettings/components";
 
 export function UserSettingsPage() {
@@ -47,6 +48,11 @@ export function UserSettingsPage() {
         {/* Skills Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <SkillsSelector userId={user._id} />
+        </div>
+        
+        {/* Password Change Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+          <PasswordChangeForm />
         </div>
       </div>
     </div>

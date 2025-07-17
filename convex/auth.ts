@@ -1,7 +1,8 @@
-import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
+import { convexAuth, getAuthUserId, modifyAccountCredentials, retrieveAccount } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, action } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
@@ -92,5 +93,124 @@ export const storeSignupData = mutation({
     });
     
     return { success: true };
+  },
+});
+
+// Action to change user password
+export const changePassword = action({
+  args: {
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to change your password");
+    }
+    
+    // Get user information using the existing query
+    const user = await ctx.runQuery(api.auth.loggedInUser);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // Get the user's email for verification
+    const userEmail = user.email;
+    if (!userEmail) {
+      throw new Error("User email not found");
+    }
+    
+    // Password strength validation
+    if (args.newPassword.length < 8) {
+      throw new Error("Password must be at least 8 characters long");
+    }
+    
+    try {
+      // Verify current password by attempting to retrieve the account with credentials
+      const account = await retrieveAccount(ctx, {
+        provider: "password",
+        account: { id: userEmail, secret: args.currentPassword }
+      });
+      
+      if (!account) {
+        throw new Error("Invalid current password");
+      }
+      
+      // Update the password using the proper auth library function
+      await modifyAccountCredentials(ctx, {
+        provider: "password",
+        account: {
+          id: userEmail,
+          secret: args.newPassword
+        }
+      });
+      
+      return { success: true };
+      
+    } catch (error: any) {
+      // Handle specific auth errors
+      if (error.message.includes("InvalidSecret") || error.message.includes("Invalid current password")) {
+        throw new Error("Invalid current password");
+      }
+      throw new Error("Failed to change password");
+    }
+  },
+});
+
+// Action to reset another user's password (admin only)
+export const adminResetPassword = action({
+  args: {
+    targetUserId: v.id("users"),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to reset passwords");
+    }
+    
+    // Get current user to check admin status
+    const currentUser = await ctx.runQuery(api.auth.loggedInUser);
+    if (!currentUser) {
+      throw new Error("User not found");
+    }
+    
+    // Check if current user is admin
+    if (!currentUser.isAdmin) {
+      throw new Error("Only administrators can reset passwords");
+    }
+    
+    // Get target user information
+    const targetUser = await ctx.runQuery(api.users.getUserById, { userId: args.targetUserId });
+    if (!targetUser) {
+      throw new Error("Target user not found");
+    }
+    
+    // Get the target user's email
+    const targetEmail = targetUser.email;
+    if (!targetEmail) {
+      throw new Error("Target user email not found");
+    }
+    
+    // Password strength validation
+    if (args.newPassword.length < 8) {
+      throw new Error("Password must be at least 8 characters long");
+    }
+    
+    try {
+      // Update the target user's password
+      await modifyAccountCredentials(ctx, {
+        provider: "password",
+        account: {
+          id: targetEmail,
+          secret: args.newPassword
+        }
+      });
+      
+      return { success: true };
+      
+    } catch (error: any) {
+      throw new Error("Failed to reset password");
+    }
   },
 });
