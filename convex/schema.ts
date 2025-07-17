@@ -30,7 +30,8 @@ const extendedAuthTables = {
     isAdmin: v.optional(v.boolean()),
     // Status fields
     currentStatus: v.optional(v.union(
-      v.literal("available"),
+      v.literal("available - station"),
+      v.literal("available - satellite"),
       v.literal("not available"),
       v.literal("delayed response"),
       v.literal("WFH")
@@ -112,7 +113,8 @@ const applicationTables = {
   memberStatusHistory: defineTable({
     userId: v.id("users"),
     status: v.union(
-      v.literal("available"),
+      v.literal("available - station"),
+      v.literal("available - satellite"),
       v.literal("not available"),
       v.literal("delayed response"),
       v.literal("WFH")

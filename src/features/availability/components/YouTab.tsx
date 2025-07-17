@@ -3,7 +3,7 @@ import { getRelativeTimeString } from "../../../utils/dateUtils";
 
 interface YouTabProps {
   userStatus: any;
-  handleStatusChange: (status: "available" | "delayed response" | "WFH" | "not available") => void;
+  handleStatusChange: (status: "available - station" | "available - satellite" | "delayed response" | "WFH" | "not available") => void;
   isAuthenticated: boolean;
 }
 
@@ -15,8 +15,10 @@ const YouTab: React.FC<YouTabProps> = ({
   // Helper functions for status styling
   const getStatusBackgroundColor = (status: string | undefined) => {
     switch (status) {
-      case 'available':
+      case 'available - station':
         return 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-600';
+      case 'available - satellite':
+        return 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-400 dark:border-green-500';
       case 'delayed response':
         return 'bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-500 dark:border-yellow-600';
       case 'WFH':
@@ -30,8 +32,10 @@ const YouTab: React.FC<YouTabProps> = ({
   
   const getStatusTextColor = (status: string | undefined) => {
     switch (status) {
-      case 'available':
+      case 'available - station':
         return 'text-green-800 dark:text-green-300';
+      case 'available - satellite':
+        return 'text-green-700 dark:text-green-400';
       case 'delayed response':
         return 'text-yellow-800 dark:text-yellow-300';
       case 'WFH':
@@ -56,7 +60,8 @@ const YouTab: React.FC<YouTabProps> = ({
             {userStatus?.currentStatus ? (
               <>
                 <div className={`font-medium text-lg ${getStatusTextColor(userStatus.currentStatus)}`}>
-                  {userStatus.currentStatus === 'available' && 'Available'}
+                  {userStatus.currentStatus === 'available - station' && 'Available - Station'}
+                  {userStatus.currentStatus === 'available - satellite' && 'Available - Satellite'}
                   {userStatus.currentStatus === 'delayed response' && 'Delayed'}
                   {userStatus.currentStatus === 'WFH' && 'Working From Home'}
                   {userStatus.currentStatus === 'not available' && 'Unavailable'}
@@ -89,10 +94,10 @@ const YouTab: React.FC<YouTabProps> = ({
       {isAuthenticated && (
         <div className="mb-4 p-3 bg-white dark:bg-gray-800 shadow-sm rounded">
           <h3 className="text-lg font-medium mb-3">Update Your Status</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <button
-              onClick={() => handleStatusChange('available')}
-              className={`flex items-center justify-center ${userStatus?.currentStatus === 'available' ? 
+              onClick={() => handleStatusChange('available - station')}
+              className={`flex items-center justify-center ${userStatus?.currentStatus === 'available - station' ? 
                 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-2 border-green-500 dark:border-green-600 shadow-md' : 
                 'bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800/50 hover:shadow-md dark:hover:shadow-none'} 
                 px-4 py-3 rounded-lg transition-all`}
@@ -100,7 +105,19 @@ const YouTab: React.FC<YouTabProps> = ({
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Available
+              Available - Station
+            </button>
+            <button
+              onClick={() => handleStatusChange('available - satellite')}
+              className={`flex items-center justify-center ${userStatus?.currentStatus === 'available - satellite' ? 
+                'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-2 border-green-400 dark:border-green-500 shadow-md' : 
+                'bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800/50 hover:shadow-md dark:hover:shadow-none'} 
+                px-4 py-3 rounded-lg transition-all`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Available - Satellite
             </button>
             <button
               onClick={() => handleStatusChange('delayed response')}

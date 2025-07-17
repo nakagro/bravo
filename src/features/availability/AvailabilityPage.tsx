@@ -33,7 +33,7 @@ const AvailabilityPage: React.FC = () => {
   const postMessage = useMutation(api.messages.postMessage);
   
   // Handle status change
-  const handleStatusChange = async (status: "available" | "delayed response" | "WFH" | "not available") => {
+  const handleStatusChange = async (status: "available - station" | "available - satellite" | "delayed response" | "WFH" | "not available") => {
     try {
       await updateStatus({ status });
     } catch (error) {
@@ -46,7 +46,7 @@ const AvailabilityPage: React.FC = () => {
     try {
       // Using any to bypass TypeScript error since the API might accept dutyOfficerId
       // but the type definition doesn't include it
-      await updateStatus({ status: userStatus?.currentStatus || "available", dutyOfficerId: userId } as any);
+      await updateStatus({ status: userStatus?.currentStatus || "available - station", dutyOfficerId: userId } as any);
     } catch (error) {
       console.error("Error updating duty officer:", error);
     }

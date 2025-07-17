@@ -15,7 +15,8 @@ export const getStatuses = query({
       memberNumber: v.optional(v.string()),
       currentStatus: v.optional(
         v.union(
-          v.literal("available"),
+          v.literal("available - station"),
+          v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
           v.literal("WFH")
@@ -73,7 +74,8 @@ export const getAllUsersStatus = query({
       _id: v.id("users"),
       currentStatus: v.optional(
         v.union(
-          v.literal("available"),
+          v.literal("available - station"),
+          v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
           v.literal("WFH")
@@ -130,7 +132,8 @@ export const getCurrentUserStatus = query({
     v.object({
       currentStatus: v.optional(
         v.union(
-          v.literal("available"),
+          v.literal("available - station"),
+          v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
           v.literal("WFH")
@@ -165,7 +168,8 @@ export const getCurrentUserStatus = query({
 export const updateUserStatus = mutation({
   args: {
     status: v.union(
-      v.literal("available"),
+      v.literal("available - station"),
+      v.literal("available - satellite"),
       v.literal("not available"),
       v.literal("delayed response"),
       v.literal("WFH")

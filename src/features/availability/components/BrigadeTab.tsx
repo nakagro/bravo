@@ -32,10 +32,11 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
     .filter(user => user.currentStatus) // Only include users who have set a status
     .sort((a, b) => {
       const statusOrder: Record<string, number> = {
-        'available': 1,
-        'delayed response': 2,
-        'WFH': 3,
-        'not available': 4
+        'available - station': 1,
+        'available - satellite': 2,
+        'delayed response': 3,
+        'WFH': 4,
+        'not available': 5
       };
       
       const statusA = a.currentStatus || 'not available';
@@ -89,8 +90,10 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   // Get row background color based on status
                   const getRowColor = (status: string | undefined) => {
                     switch (status) {
-                      case 'available':
+                      case 'available - station':
                         return 'bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/40 border-l-4 border-green-500 dark:border-green-600';
+                      case 'available - satellite':
+                        return 'bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/40 border-l-4 border-green-400 dark:border-green-500';
                       case 'delayed response':
                         return 'bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 border-l-4 border-yellow-500 dark:border-yellow-600';
                       case 'WFH':
@@ -105,8 +108,10 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   // Get text color based on status
                   const getTextColor = (status: string | undefined) => {
                     switch (status) {
-                      case 'available':
+                      case 'available - station':
                         return 'text-green-800 dark:text-green-300 font-medium';
+                      case 'available - satellite':
+                        return 'text-green-700 dark:text-green-400 font-medium';
                       case 'delayed response':
                         return 'text-yellow-800 dark:text-yellow-300 font-medium';
                       case 'WFH':
@@ -135,7 +140,8 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                         <td className={`px-3 py-2 pb-${hasSkills ? '1' : '2'}`}>
                           <div className="flex items-center">
                             <span className={`font-medium ${getTextColor(user.currentStatus)}`}>
-                              {user.currentStatus === 'available' && 'Available'}
+                              {user.currentStatus === 'available - station' && 'Available - Station'}
+                              {user.currentStatus === 'available - satellite' && 'Available - Satellite'}
                               {user.currentStatus === 'delayed response' && 'Delayed'}
                               {user.currentStatus === 'WFH' && 'WFH'}
                               {user.currentStatus === 'not available' && 'Unavailable'}

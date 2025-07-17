@@ -12,7 +12,8 @@ export const getStatuses = query({
       memberNumber: v.optional(v.string()),
       currentStatus: v.optional(
         v.union(
-          v.literal("available"),
+          v.literal("available - station"),
+          v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
           v.literal("WFH")
@@ -74,7 +75,8 @@ export const getCurrentUserStatus = query({
   returns: v.object({
     currentStatus: v.optional(
       v.union(
-        v.literal("available"),
+        v.literal("available - station"),
+        v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH")
