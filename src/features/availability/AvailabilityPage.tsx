@@ -33,9 +33,9 @@ const AvailabilityPage: React.FC = () => {
   const postMessage = useMutation(api.messages.postMessage);
   
   // Handle status change
-  const handleStatusChange = async (status: "available - station" | "available - satellite" | "delayed response" | "WFH" | "not available") => {
+  const handleStatusChange = async (status: string, durationHours?: number, nextStatus?: string) => {
     try {
-      await updateStatus({ status });
+      await updateStatus({ status: status as any, durationHours, nextStatus: nextStatus as any });
     } catch (error) {
       console.error("Error updating status:", error);
     }

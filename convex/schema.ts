@@ -37,6 +37,19 @@ const extendedAuthTables = {
       v.literal("WFH")
     )),
     statusUpdatedAt: v.optional(v.number()),
+    // Duration-based status fields
+    statusExpiresAt: v.optional(v.number()), // Timestamp when status expires (null = no expiration)
+    statusDurationHours: v.optional(v.number()), // Original duration in hours for display
+    // Auto-transition fields
+    nextStatus: v.optional(v.union(
+      v.literal("available - station"),
+      v.literal("available - satellite"),
+      v.literal("not available"),
+      v.literal("delayed response"),
+      v.literal("WFH"),
+      v.literal("reset") // Special value meaning "clear status" (daily reset behavior)
+    )), // Status to transition to after duration expires
+    nextStatusAt: v.optional(v.number()), // Timestamp when to transition to next status
     isDutyOfficer: v.optional(v.boolean()),
   })
 };

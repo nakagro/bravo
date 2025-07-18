@@ -15,16 +15,22 @@ export const nightlyReset = action({
 
     for (const user of users) {
       if (user.currentStatus) {
-        await ctx.runMutation(api.availability.clearStatus, { userId: user._id });
-        try {
-          await ctx.runAction(api.pushNotificationAction.sendNotification, {
-            title: "Daily Availability Reset",
-            body: "Please update your availability status for today.",
-            userId: user._id,
-          });
-          count++;
-        } catch (err) {
-          // ignore
+        // Check if the user has a duration-based status that hasn't expired
+        const hasActiveDuration = user.statusExpiresAt && user.statusExpiresAt > Date.now();
+        
+        if (!hasActiveDuration) {
+          // Only clear status if no active duration
+          await ctx.runMutation(api.availability.clearStatus, { userId: user._id });
+          try {
+            await ctx.runAction(api.pushNotificationAction.sendNotification, {
+              title: "Daily Availability Reset",
+              body: "Please update your availability status for today.",
+              userId: user._id,
+            });
+            count++;
+          } catch (err) {
+            // ignore
+          }
         }
       }
     }
