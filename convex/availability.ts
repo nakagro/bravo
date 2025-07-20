@@ -362,6 +362,8 @@ export const processStatusTransitions = mutation({
     for (const user of users) {
       if (user.nextStatusAt && user.nextStatusAt <= now && user.nextStatus) {
         // Time to transition to next status
+        const previousStatus = user.currentStatus;
+        
         if (user.nextStatus === "reset") {
           // Special case: reset means clear the status
           await ctx.db.patch(user._id, {
@@ -371,6 +373,13 @@ export const processStatusTransitions = mutation({
             statusDurationHours: undefined,
             nextStatus: undefined,
             nextStatusAt: undefined,
+          });
+          
+          // Send notification about status reset
+          await ctx.scheduler.runAfter(0, api.pushNotificationAction.sendNotification, {
+            title: "Status Updated",
+            body: `Your status has been reset from "${previousStatus}" as scheduled.`,
+            userId: user._id,
           });
         } else {
           // Transition to the specified next status
@@ -388,6 +397,13 @@ export const processStatusTransitions = mutation({
             userId: user._id,
             status: user.nextStatus,
             timestamp: now,
+          });
+          
+          // Send notification about status change
+          await ctx.scheduler.runAfter(0, api.pushNotificationAction.sendNotification, {
+            title: "Status Updated",
+            body: `Your status has changed from "${previousStatus}" to "${user.nextStatus}" as scheduled.`,
+            userId: user._id,
           });
         }
         
@@ -432,7 +448,7 @@ export const getMainStatusOptions = query({
         value: 'available - satellite', 
         label: 'Available - Satellite',
         shortLabel: 'Available - Satellite',
-        icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+        icon: 'M5 13l4 4L19 7',
         backgroundColorClass: 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-400 dark:border-green-500',
         textColorClass: 'text-green-700 dark:text-green-400',
         buttonColorClass: 'text-green-700 dark:text-green-400',

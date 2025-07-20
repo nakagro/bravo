@@ -86,7 +86,8 @@ const YouTab: React.FC<YouTabProps> = ({
     }
     
     const diffMs = targetTime.getTime() - now.getTime();
-    return Math.ceil(diffMs / (1000 * 60 * 60)); // Convert to hours, round up
+    const diffHours = diffMs / (1000 * 60 * 60); // Convert to hours
+    return Math.round(diffHours * 100) / 100; // Round to 2 decimal places (0.01 hour = 0.6 minutes)
   };
   
   // Helper function to handle custom time input
@@ -146,6 +147,27 @@ const YouTab: React.FC<YouTabProps> = ({
     }
   };
   
+  // Helper function to format combined remaining time and next status
+  const formatStatusTransition = (expiresAt: number, nextStatus: string) => {
+    const now = Date.now();
+    const remaining = expiresAt - now;
+    
+    if (remaining <= 0) return "Status expired";
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    
+    let timeStr;
+    if (hours > 0) {
+      timeStr = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    } else {
+      timeStr = `${minutes}m`;
+    }
+    
+    const nextStatusDisplay = nextStatus === 'reset' ? 'Available' : getStatusDisplayName(nextStatus);
+    return `In ${timeStr} you will be: ${nextStatusDisplay}`;
+  };
+  
   // Helper function to get status background color
   const getStatusBackgroundColor = (status: string | undefined) => {
     if (!status) return 'bg-gray-50 dark:bg-gray-800 border-l-4 border-gray-300 dark:border-gray-700';
@@ -179,14 +201,9 @@ const YouTab: React.FC<YouTabProps> = ({
                     Updated: {getRelativeTimeString(userStatus.statusUpdatedAt)}
                   </p>
                 )}
-                {userStatus.statusExpiresAt && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {formatRemainingTime(userStatus.statusExpiresAt)}
-                  </p>
-                )}
-                {userStatus.nextStatus && userStatus.nextStatusAt && (
+                {userStatus.statusExpiresAt && userStatus.nextStatus && userStatus.nextStatusAt && (
                   <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                    Then: {getStatusDisplayName(userStatus.nextStatus)}
+                    {formatStatusTransition(userStatus.statusExpiresAt, userStatus.nextStatus)}
                   </p>
                 )}
               </>
@@ -315,10 +332,12 @@ const YouTab: React.FC<YouTabProps> = ({
                 ) : (
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={timeInput}
-                    onChange={(e) => setTimeInput(e.target.value)}
+                    onChange={(e) => setTimeInput(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="Enter time (e.g., 2100, 0730, 1430)"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-base md:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeInput()}
                     maxLength={4}
                   />

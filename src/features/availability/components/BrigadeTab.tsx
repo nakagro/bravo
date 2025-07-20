@@ -153,33 +153,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                                 </span>
                               )}
                             </div>
-                            {user.statusExpiresAt && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {(() => {
-                                  const now = Date.now();
-                                  const remaining = user.statusExpiresAt - now;
-                                  if (remaining <= 0) return "Expired";
-                                  const hours = Math.floor(remaining / (1000 * 60 * 60));
-                                  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                                  return hours > 0 ? `${hours}h ${minutes}m remaining` : `${minutes}m remaining`;
-                                })()}
-                              </span>
-                            )}
-                            {user.nextStatus && user.nextStatusAt && (
-                              <span className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                                Then: {(() => {
-                                  switch (user.nextStatus) {
-                                    case 'available - station': return 'Available - Station';
-                                    case 'available - satellite': return 'Available - Satellite';
-                                    case 'delayed response': return 'Delayed';
-                                    case 'WFH': return 'WFH';
-                                    case 'not available': return 'Unavailable';
-                                    case 'reset': return 'Reset';
-                                    default: return user.nextStatus;
-                                  }
-                                })()}
-                              </span>
-                            )}
+
                           </div>
                         </td>
                       </tr>
