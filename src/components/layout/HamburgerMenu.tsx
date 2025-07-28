@@ -14,6 +14,7 @@ import {
   Users,
   Wrench,
   ShieldAlert,
+  FileText,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export function HamburgerMenu() {
   const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
   const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
+  const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
 
@@ -49,6 +51,7 @@ export function HamburgerMenu() {
       case "keys": return keysAccess === true;
       case "availability": return availabilityAccess === true;
       case "dutyCrew": return dutyCrewAccess === true;
+      case "fireReports": return fireReportsAccess === true;
       case "settings": return settingsAccess === true;
       case "admin": return adminAccess === true;
       default: return false;
@@ -135,6 +138,16 @@ export function HamburgerMenu() {
               <Users className="mr-3 h-5 w-5" />
               <span>Duty Crew</span>
               <Badge variant="outline" className="ml-auto">Preview</Badge>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("fireReports") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/fire-reports")}
+              className={location.pathname === '/fire-reports' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <FileText className="mr-3 h-5 w-5" />
+              <span>Fire Reports</span>
             </DropdownMenuItem>
           )}
 

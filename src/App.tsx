@@ -7,6 +7,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
+import { FireReportsPage } from "./pages/FireReportsPage";
 import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -39,6 +40,7 @@ function AuthenticatedApp() {
         <Route path="/dutycrew" element={<DutyCrewPage />} />
         <Route path="/appliances" element={<AppliancesPage />} />
         <Route path="/availability" element={<AvailabilityPage />} />
+        <Route path="/fire-reports" element={<FireReportsPage />} />
         <Route path="/settings" element={<UserSettingsPage />} />
         <Route path="/admin" element={<AdminSettingsPage />} />
         

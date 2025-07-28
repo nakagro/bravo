@@ -4,6 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import SkillBadge from "./SkillBadge";
+import ApplianceLocations from "./ApplianceLocations";
 
 interface BrigadeTabProps {
   statuses: any[];
@@ -61,6 +62,9 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
           </p>
         </div>
       </div>
+      
+      {/* Appliance Locations Section */}
+      <ApplianceLocations />
       
       {/* Brigade Members Status */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">

@@ -309,6 +309,164 @@ const applicationTables = {
     createdAt: v.number(),
   })
     .index("by_user", ["userId"]),
+
+  // Fire Reports - Comprehensive incident reporting system
+  // Appliance locations table to track where each appliance is stationed
+  applianceLocations: defineTable({
+    applianceName: v.union(
+      v.literal("Pumper"),
+      v.literal("Tanker"),
+      v.literal("FCV")
+    ),
+    stationLocation: v.union(
+      v.literal("Main Station"),
+      v.literal("Satellite Station")
+    ),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }),
+
+  fireReports: defineTable({
+    // Meta information
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("submitted"),
+      v.literal("approved"),
+      v.literal("archived")
+    ),
+    
+    // Core Fire Call Details (required fields)
+    incidentNumber: v.string(),
+    brigadeAdvisedDate: v.string(), // ISO date string
+    brigadeAdvisedTime: v.string(), // HH:MM format
+    attendingCapacity: v.union(v.literal("primary"), v.literal("support")),
+    typeOfAttendance: v.union(
+      v.literal("grassScrub"),
+      v.literal("incident"),
+      v.literal("structure"),
+      v.literal("nonStructure"),
+      v.literal("falseAlarm")
+    ),
+    incidentController: v.string(),
+    propertyAddress: v.string(),
+    
+    // Optional Fire Call Details
+    brigadeCaller: v.optional(v.string()),
+    firecomCaller: v.optional(v.string()),
+    jobDetail: v.optional(v.string()),
+    brigadeOIC: v.optional(v.string()),
+    propertyCoordinates: v.optional(v.string()),
+    keysUsed: v.optional(v.boolean()),
+    chargeRecommended: v.optional(v.boolean()),
+    
+    // Property Information
+    propertyInfo: v.optional(v.object({
+      occupier: v.optional(v.object({
+        name: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        type: v.optional(v.union(v.literal("private"), v.literal("government")))
+      })),
+      owner: v.optional(v.object({
+        name: v.optional(v.string()),
+        address: v.optional(v.string()),
+        phone: v.optional(v.string()),
+        type: v.optional(v.union(v.literal("private"), v.literal("government")))
+      }))
+    })),
+    
+    // Actions Taken (checkboxes)
+    actionsTaken: v.optional(v.array(v.union(
+      v.literal("calledOff"),
+      v.literal("stepUp"),
+      v.literal("investigateOnly"),
+      v.literal("fireOutOnArrival"),
+      v.literal("washaway"),
+      v.literal("removeHazard"),
+      v.literal("rescue"),
+      v.literal("isolate"),
+      v.literal("standby"),
+      v.literal("extinguish"),
+      v.literal("service"),
+      v.literal("other")
+    ))),
+    
+    // Fire Details
+    fireDetails: v.optional(v.object({
+      materialsFirstIgnited: v.optional(v.string()),
+      causeOfIgnition: v.optional(v.string()),
+      usedForExtinguishment: v.optional(v.string()),
+      numberOfHoseLinesUsed: v.optional(v.number()),
+      problems: v.optional(v.string()),
+      supply: v.optional(v.string()),
+      estimatedLoss: v.optional(v.number()),
+      insurance: v.optional(v.boolean()),
+      fireInvestigation: v.optional(v.boolean())
+    })),
+    
+    // Other Services
+    otherServices: v.optional(v.object({
+      electricity: v.optional(v.object({
+        notified: v.optional(v.boolean()),
+        attended: v.optional(v.boolean())
+      })),
+      gas: v.optional(v.object({
+        notified: v.optional(v.boolean()),
+        attended: v.optional(v.boolean())
+      })),
+      ambulance: v.optional(v.object({
+        notified: v.optional(v.boolean()),
+        attended: v.optional(v.boolean())
+      })),
+      police: v.optional(v.object({
+        notified: v.optional(v.boolean()),
+        attended: v.optional(v.boolean()),
+        details: v.optional(v.string()) // Name/Number/Station
+      })),
+      other: v.optional(v.string()),
+      firstOnScene: v.optional(v.string())
+    })),
+    
+    // Casualties (can have multiple)
+    casualties: v.optional(v.array(v.object({
+      name: v.optional(v.string()),
+      injuries: v.optional(v.union(v.literal("minor"), v.literal("major"), v.literal("fatal"))),
+      sex: v.optional(v.union(v.literal("male"), v.literal("female"))),
+      details: v.optional(v.string()),
+      transportedByAV: v.optional(v.boolean())
+    }))),
+    
+    // Mobile Property
+    mobileProperty: v.optional(v.object({
+      registration: v.optional(v.string()),
+      state: v.optional(v.string()),
+      make: v.optional(v.string()),
+      model: v.optional(v.string()),
+      year: v.optional(v.number()),
+      details: v.optional(v.string())
+    })),
+    
+    // Photos/Attachments (store file storage IDs)
+    attachments: v.optional(v.array(v.object({
+      fileId: v.id("_storage"),
+      fileName: v.string(),
+      fileType: v.string(),
+      uploadedAt: v.number()
+    }))),
+    
+    // Future extensibility - store any additional data that doesn't fit the current schema
+    additionalData: v.optional(v.any()),
+    
+    // Comments/Notes for internal use
+    notes: v.optional(v.string())
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_status", ["status"])
+    .index("by_incidentNumber", ["incidentNumber"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_brigadeAdvisedDate", ["brigadeAdvisedDate"]),
 };
 
 export default defineSchema({

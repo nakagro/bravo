@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
 import type * as availability_getStatuses from "../availability/getStatuses.js";
 import type * as availability_updateStatus from "../availability/updateStatus.js";
@@ -23,6 +24,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
 import type * as dutyCrew from "../dutyCrew.js";
 import type * as dutyCrewMembers from "../dutyCrewMembers.js";
+import type * as fireReports from "../fireReports.js";
 import type * as hoseComments from "../hoseComments.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
@@ -52,6 +54,7 @@ import type * as utils from "../utils.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  applianceLocations: typeof applianceLocations;
   auth: typeof auth;
   "availability/getStatuses": typeof availability_getStatuses;
   "availability/updateStatus": typeof availability_updateStatus;
@@ -62,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   deploymentAvailability: typeof deploymentAvailability;
   dutyCrew: typeof dutyCrew;
   dutyCrewMembers: typeof dutyCrewMembers;
+  fireReports: typeof fireReports;
   hoseComments: typeof hoseComments;
   hoses: typeof hoses;
   http: typeof http;

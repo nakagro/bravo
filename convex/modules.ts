@@ -53,6 +53,14 @@ export const initializeModuleSettings = mutation({
         minimumRank: undefined
       },
       { 
+        moduleId: "fireReports", 
+        moduleName: "Fire Reports", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
         moduleId: "settings", 
         moduleName: "User Settings", 
         isEnabled: true,

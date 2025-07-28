@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { HamburgerMenu } from "./HamburgerMenu";
-import { Toaster } from "sonner";
+import { Toaster } from "../ui/sonner";
 import { DarkModeToggle } from "../common/DarkModeToggle";
 
 interface MainLayoutProps {
