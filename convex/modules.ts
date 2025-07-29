@@ -13,13 +13,21 @@ export const getModuleSettings = query({
 });
 
 /**
- * Initialize default module settings if they don't exist
+ * Sync missing modules to existing module settings
  */
-export const initializeModuleSettings = mutation({
+export const syncModuleSettings = mutation({
   args: {},
   handler: async (ctx) => {
     // Define the default modules with role and rank requirements
     const defaultModules = [
+      { 
+        moduleId: "dashboard", 
+        moduleName: "Dashboard", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
       { 
         moduleId: "hoses", 
         moduleName: "Hose Inventory", 
@@ -45,6 +53,14 @@ export const initializeModuleSettings = mutation({
         minimumRank: undefined
       },
       { 
+        moduleId: "availabilityAdmin", 
+        moduleName: "Availability Admin Tab", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
         moduleId: "dutyCrew", 
         moduleName: "Duty Crew", 
         isEnabled: true,
@@ -59,6 +75,127 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "applianceChecks", 
+        moduleName: "Appliance Checks", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "settings", 
+        moduleName: "User Settings", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "admin", 
+        moduleName: "Admin Settings", 
+        isEnabled: true,
+        adminOnly: true,
+        requiredRoles: [],
+        minimumRank: "Captain" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+    ];
+    
+    // Get existing settings
+    const existingSettings = await ctx.db.query("moduleSettings").collect();
+    const existingModuleIds = new Set(existingSettings.map(setting => setting.moduleId));
+    
+    // Add missing modules
+    const timestamp = Date.now();
+    let addedCount = 0;
+    
+    for (const module of defaultModules) {
+      if (!existingModuleIds.has(module.moduleId)) {
+        await ctx.db.insert("moduleSettings", {
+          ...module,
+          updatedAt: timestamp,
+          updatedBy: undefined,
+        });
+        addedCount++;
+      }
+    }
+    
+    return { addedCount, totalModules: defaultModules.length };
+  },
+});
+
+/**
+ * Initialize default module settings if they don't exist
+ */
+export const initializeModuleSettings = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Define the default modules with role and rank requirements
+    const defaultModules = [
+      { 
+        moduleId: "dashboard", 
+        moduleName: "Dashboard", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "hoses", 
+        moduleName: "Hose Inventory", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "keys", 
+        moduleName: "Key Management", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: ["Key Manager"],
+        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "availability", 
+        moduleName: "Availability", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "availabilityAdmin", 
+        moduleName: "Availability Admin Tab", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "dutyCrew", 
+        moduleName: "Duty Crew", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "fireReports", 
+        moduleName: "Fire Reports", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "applianceChecks", 
+        moduleName: "Appliance Checks", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       { 
         moduleId: "settings", 

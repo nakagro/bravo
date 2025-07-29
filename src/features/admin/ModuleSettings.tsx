@@ -32,6 +32,7 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
   
   // Initialize module settings if they don't exist
   const initializeSettings = useMutation(api.modules.initializeModuleSettings);
+  const syncSettings = useMutation(api.modules.syncModuleSettings);
   const updateModuleStatus = useMutation(api.modules.updateModuleStatus);
   const updateModuleRequirements = useMutation(api.modules.updateModuleRequirements);
   
@@ -39,8 +40,11 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
   useEffect(() => {
     if (moduleSettings && moduleSettings.length === 0) {
       initializeSettings();
+    } else if (moduleSettings && moduleSettings.length > 0) {
+      // Sync missing modules to existing settings
+      syncSettings();
     }
-  }, [moduleSettings, initializeSettings]);
+  }, [moduleSettings, initializeSettings, syncSettings]);
   
   // Handle toggle change
   const handleToggleChange = async (moduleId: string, isEnabled: boolean) => {
@@ -120,9 +124,26 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
       {showTitle && (
         <h2 className="text-xl font-semibold mb-4 dark:text-white">Module Settings</h2>
       )}
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Configure access to modules based on global availability, user roles, and ranks.
-      </p>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Configure access to modules based on global availability, user roles, and ranks.
+        </p>
+        <button
+          onClick={async () => {
+            try {
+              const result = await syncSettings();
+              console.log('Sync result:', result);
+              alert(`Sync completed! Added ${result.addedCount} new modules. Total: ${result.totalModules}`);
+            } catch (error) {
+              console.error('Sync failed:', error);
+              alert('Sync failed. Check console for details.');
+            }
+          }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+        >
+          Sync Missing Modules
+        </button>
+      </div>
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

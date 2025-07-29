@@ -37,21 +37,25 @@ export function HamburgerMenu() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const dashboardAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dashboard" });
   const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
   const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
   const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
   const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
+  const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
 
   const hasModuleAccess = (moduleId: string): boolean => {
     switch (moduleId) {
+      case "dashboard": return dashboardAccess === true;
       case "hoses": return hoseAccess === true;
       case "keys": return keysAccess === true;
       case "availability": return availabilityAccess === true;
       case "dutyCrew": return dutyCrewAccess === true;
       case "fireReports": return fireReportsAccess === true;
+      case "applianceChecks": return applianceChecksAccess === true;
       case "settings": return settingsAccess === true;
       case "admin": return adminAccess === true;
       default: return false;
@@ -92,13 +96,15 @@ export function HamburgerMenu() {
 
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-sm font-semibold py-2">Navigation</DropdownMenuLabel>
-          <DropdownMenuItem
-            onClick={() => handleNavigation("/")}
-            className={location.pathname === '/' ? 'bg-accent text-accent-foreground' : ''}
-          >
-            <Home className="mr-3 h-5 w-5" />
-            <span>Dashboard</span>
-          </DropdownMenuItem>
+          {hasModuleAccess("dashboard") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/")}
+              className={location.pathname === '/' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Home className="mr-3 h-5 w-5" />
+              <span>Dashboard</span>
+            </DropdownMenuItem>
+          )}
 
           {hasModuleAccess("availability") && (
             <DropdownMenuItem
@@ -151,14 +157,16 @@ export function HamburgerMenu() {
             </DropdownMenuItem>
           )}
 
-          <DropdownMenuItem
-            onClick={() => handleNavigation("/appliances")}
-            className={location.pathname === '/appliances' ? 'bg-accent text-accent-foreground' : ''}
-          >
-            <Wrench className="mr-3 h-5 w-5" />
-            <span>Appliance Checks</span>
-            <Badge variant="outline" className="ml-auto">Preview</Badge>
-          </DropdownMenuItem>
+          {hasModuleAccess("applianceChecks") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/appliances")}
+              className={location.pathname === '/appliances' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Wrench className="mr-3 h-5 w-5" />
+              <span>Appliance Checks</span>
+              <Badge variant="outline" className="ml-auto">Preview</Badge>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
 

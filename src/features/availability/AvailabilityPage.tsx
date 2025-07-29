@@ -33,6 +33,16 @@ const AvailabilityPage: React.FC = () => {
   const messages = useQuery(api.messages.getMessages) || [];
   const postMessage = useMutation(api.messages.postMessage);
   
+  // Check permission for admin tab
+  const hasAdminTabAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availabilityAdmin" });
+  
+  // Redirect away from admin tab if user doesn't have access
+  React.useEffect(() => {
+    if (activeTab === 'admin' && hasAdminTabAccess === false) {
+      setActiveTab('you'); // Redirect to default tab
+    }
+  }, [activeTab, hasAdminTabAccess]);
+  
   // Handle status change
   const handleStatusChange = async (status: string, durationHours?: number, nextStatus?: string) => {
     try {
@@ -129,16 +139,18 @@ const AvailabilityPage: React.FC = () => {
           >
             Deployment
           </button>
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'admin' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Admin
-          </button>
+          {hasAdminTabAccess && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'admin' 
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              Admin
+            </button>
+          )}
         </nav>
       </div>
       
@@ -174,7 +186,7 @@ const AvailabilityPage: React.FC = () => {
           <DeploymentTab isAuthenticated={isAuthenticated} />
         )}
         
-        {activeTab === 'admin' && isAuthenticated && (
+        {activeTab === 'admin' && isAuthenticated && hasAdminTabAccess && (
           <AdminTab isAuthenticated={isAuthenticated} />
         )}
       </div>
