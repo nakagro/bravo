@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id, Doc } from "../../../../convex/_generated/dataModel";
@@ -14,7 +14,7 @@ import {
   // DialogClose, // May not be needed if using default DialogContent close button
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { XMarkIcon, ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, ArrowPathIcon, TrashIcon, CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,61 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
     status: hose?.status || "In date" as Status,
   });
 
+  // Update form data when hose data loads (fixes test date display bug when filtered)
+  useEffect(() => {
+    if (hose) {
+      setFormData({
+        hoseId: hose.hoseId,
+        length: hose.length,
+        size: hose.size,
+        type: hose.type,
+        testDate: hose.testDate ? new Date(hose.testDate).toISOString().split('T')[0] : "",
+        status: hose.status,
+      });
+    }
+  }, [hose]);
+
+  // Helper function to determine if a hose should be "In date" or "Due for testing" based on test date
+  const getAutoStatus = (testDate: string): "In date" | "Due for testing" => {
+    if (!testDate) return "Due for testing";
+    const testTimestamp = new Date(testDate).getTime();
+    const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000); // 365 days in milliseconds
+    return testTimestamp >= oneYearAgo ? "In date" : "Due for testing";
+  };
+
+  // Check if the test date change will trigger an automatic status change
+  const getStatusChangeWarning = () => {
+    if (!hose || !formData.testDate) return null;
+    
+    const currentStatus = hose.status;
+    const originalTestDate = hose.testDate ? new Date(hose.testDate).toISOString().split('T')[0] : "";
+    
+    // Only show warning for "In date" and "Due for testing" hoses
+    if (currentStatus !== "In date" && currentStatus !== "Due for testing") {
+      return null;
+    }
+    
+    // Only show warning if test date has actually changed
+    if (formData.testDate === originalTestDate) {
+      return null;
+    }
+    
+    const suggestedStatus = getAutoStatus(formData.testDate);
+    
+    // Only show warning if the status would actually change
+    if (currentStatus === suggestedStatus) {
+      return null;
+    }
+    
+    return {
+      currentStatus,
+      suggestedStatus,
+      isImprovement: suggestedStatus === "In date"
+    };
+  };
+
+  const statusWarning = getStatusChangeWarning();
+
   const handleReplace = async () => {
     if (!hose) {
       toast.error("Hose data not found. Cannot mark as replaced.");
@@ -83,14 +138,28 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
     e.preventDefault();
     try {
       if (hoseId) {
-        await update({
+        // Prepare update object
+        const updateData: any = {
           id: hoseId,
           length: formData.length,
           size: formData.size,
           type: formData.type,
           testDate: new Date(formData.testDate).getTime(),
-          status: formData.status,
-        });
+        };
+        
+        // Only include status if it's not going to be automatically managed
+        // or if the user manually changed it from the original
+        const originalStatus = hose?.status;
+        const hasStatusWarning = statusWarning !== null;
+        const userChangedStatus = formData.status !== originalStatus;
+        
+        // If there's a status warning and user hasn't manually changed status,
+        // let the backend handle automatic status management
+        if (!hasStatusWarning || userChangedStatus) {
+          updateData.status = formData.status;
+        }
+        
+        await update(updateData);
         toast.success("Hose updated successfully");
       } else {
         await add({
@@ -300,6 +369,44 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                   className="mt-1 block w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   required
                 />
+                
+                {/* Status Change Warning */}
+                {statusWarning && (
+                  <div className={`mt-3 p-3 rounded-lg border ${
+                    statusWarning.isImprovement 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
+                      : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {statusWarning.isImprovement ? (
+                        <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${
+                          statusWarning.isImprovement 
+                            ? 'text-green-800 dark:text-green-200' 
+                            : 'text-amber-800 dark:text-amber-200'
+                        }`}>
+                          Automatic Status Change
+                        </p>
+                        <p className={`text-sm mt-1 ${
+                          statusWarning.isImprovement 
+                            ? 'text-green-700 dark:text-green-300' 
+                            : 'text-amber-700 dark:text-amber-300'
+                        }`}>
+                          Changing the test date will automatically update the status from 
+                          <span className="font-medium">"{statusWarning.currentStatus}"</span> to 
+                          <span className="font-medium">"{statusWarning.suggestedStatus}"</span>
+                          {statusWarning.isImprovement 
+                            ? ' because the test date is within the last year.' 
+                            : ' because the test date is more than a year old.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -254,6 +254,12 @@ export const deleteHose = mutation({
   returns: v.null(),
 });
 
+// Helper function to determine if a hose should be "In date" or "Due for testing" based on test date
+function getAutoStatus(testDate: number): "In date" | "Due for testing" {
+  const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000); // 365 days in milliseconds
+  return testDate >= oneYearAgo ? "In date" : "Due for testing";
+}
+
 export const update = mutation({
   args: {
     id: v.id("hoses"),
@@ -278,9 +284,48 @@ export const update = mutation({
     const currentHose = await ctx.db.get(id);
     if (!currentHose) throw new Error("Hose not found");
     
+    // Automatic status management logic
+    let finalUpdates = { ...updates };
+    
+    // If testDate is being updated, automatically manage status for "In date" and "Due for testing" hoses
+    if (updates.testDate !== undefined) {
+      const currentStatus = currentHose.status;
+      
+      // Only auto-manage status for "In date" and "Due for testing" hoses
+      if (currentStatus === "In date" || currentStatus === "Due for testing") {
+        const autoStatus = getAutoStatus(updates.testDate);
+        
+        // Only update status if it would change and no manual status override is provided
+        if (currentStatus !== autoStatus && updates.status === undefined) {
+          finalUpdates.status = autoStatus;
+        }
+      }
+    }
+    
+    // If status is being manually updated to "In date" or "Due for testing", 
+    // verify it matches the test date logic
+    if (updates.status && (updates.status === "In date" || updates.status === "Due for testing")) {
+      const testDate = updates.testDate ?? currentHose.testDate;
+      const autoStatus = getAutoStatus(testDate);
+      
+      // If manual status doesn't match test date logic, keep the manual override
+      // but log a warning in the history
+      if (updates.status !== autoStatus) {
+        await ctx.db.insert("hoseHistory", {
+          hoseId: id,
+          timestamp: Date.now(),
+          userId,
+          changeType: "status_override",
+          field: "status",
+          oldValue: currentHose.status,
+          newValue: `${updates.status} (manual override - test date suggests: ${autoStatus})`,
+        });
+      }
+    }
+    
     // Record history for each changed field
     const timestamp = Date.now();
-    for (const [field, newValue] of Object.entries(updates)) {
+    for (const [field, newValue] of Object.entries(finalUpdates)) {
       // Type-safe way to check if the field exists and values differ
       if (field in currentHose) {
         // Use type assertion for TypeScript
@@ -300,7 +345,7 @@ export const update = mutation({
     }
     
     // Update the hose
-    await ctx.db.patch(id, { ...updates, updatedAt: timestamp });
+    await ctx.db.patch(id, { ...finalUpdates, updatedAt: timestamp });
   },
   returns: v.null(),
 });

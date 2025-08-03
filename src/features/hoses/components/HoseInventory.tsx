@@ -30,8 +30,15 @@ type ViewMode = 'cards' | 'table';
 
 type SortField = 'hoseId' | 'status' | 'size' | 'length' | 'type' | 'testDate';
 type SortDirection = 'asc' | 'desc';
+type UpcomingTestFilter = "1month" | "3months" | "6months";
+type FilterType = Status | UpcomingTestFilter | null;
 
-export function HoseInventory() {
+interface HoseInventoryProps {
+  initialStatusFilter?: FilterType;
+  onFilterApplied?: () => void;
+}
+
+export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInventoryProps = {}) {
   // Make setViewingHistory accessible to other components
   // @ts-ignore - Adding a property to the component for external access
   if (typeof document !== 'undefined') {
@@ -48,7 +55,24 @@ export function HoseInventory() {
     size: "" as Size | "",
     type: "" as Type | "",
     search: "",
+    upcomingTest: "" as UpcomingTestFilter | "",
   });
+
+  // Handle initial filter changes (status or upcoming test)
+  useEffect(() => {
+    if (initialStatusFilter) {
+      // Check if it's a status filter or upcoming test filter
+      const statusOptions: Status[] = ["In date", "Due for testing", "With district for repair", "Condemned"];
+      const upcomingTestOptions: UpcomingTestFilter[] = ["1month", "3months", "6months"];
+      
+      if (statusOptions.includes(initialStatusFilter as Status)) {
+        setFilters(prev => ({ ...prev, status: initialStatusFilter as Status, upcomingTest: "" }));
+      } else if (upcomingTestOptions.includes(initialStatusFilter as UpcomingTestFilter)) {
+        setFilters(prev => ({ ...prev, upcomingTest: initialStatusFilter as UpcomingTestFilter, status: "" }));
+      }
+      onFilterApplied?.();
+    }
+  }, [initialStatusFilter, onFilterApplied]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHose, setEditingHose] = useState<Id<"hoses"> | null>(null);
@@ -98,6 +122,7 @@ export function HoseInventory() {
       size: "",
       type: "",
       search: "",
+      upcomingTest: "",
     });
     setSearchTerm("");
   };
@@ -128,11 +153,40 @@ export function HoseInventory() {
     });
   };
 
-  // Function to sort the hoses array
+  // Function to filter hoses by upcoming test dates
+  const filterHosesByUpcomingTest = (hoses: any[], timeframe: UpcomingTestFilter) => {
+    const now = Date.now();
+    const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+    const timeframeMs = {
+      "1month": 30 * 24 * 60 * 60 * 1000,
+      "3months": 3 * 30 * 24 * 60 * 60 * 1000,
+      "6months": 6 * 30 * 24 * 60 * 60 * 1000,
+    };
+    
+    return hoses.filter(hose => {
+      // Only consider "In date" hoses for upcoming test filtering
+      if (hose.status !== "In date") return false;
+      
+      const testExpiryDate = hose.testDate + oneYearMs;
+      const timeframeFromNow = now + timeframeMs[timeframe];
+      
+      // Return hoses that will expire within the specified timeframe
+      return testExpiryDate <= timeframeFromNow && testExpiryDate > now;
+    });
+  };
+
+  // Function to sort and filter the hoses array
   const sortedHoses = useMemo(() => {
     if (!hoses) return [];
     
-    return [...hoses].sort((a, b) => {
+    let filteredHoses = [...hoses];
+    
+    // Apply upcoming test filter if set
+    if (filters.upcomingTest) {
+      filteredHoses = filterHosesByUpcomingTest(filteredHoses, filters.upcomingTest);
+    }
+    
+    return filteredHoses.sort((a, b) => {
       const { field, direction } = sortConfig;
       let comparison = 0;
       
@@ -174,7 +228,7 @@ export function HoseInventory() {
   return (
     <div className="space-y-6" data-component="HoseInventory">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white w-full sm:w-auto whitespace-nowrap">Hose Inventory</h1>
+        {/* <h1 className="text-2xl font-bold text-gray-900 dark:text-white w-full sm:w-auto whitespace-nowrap">Hose Inventory</h1> */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:ml-auto">
           {/* View mode selector */}
           <ToggleGroup
