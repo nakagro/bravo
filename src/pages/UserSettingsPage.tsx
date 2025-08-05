@@ -6,7 +6,8 @@ import {
   SkillsSelector,
   LoadingState,
   UnauthorizedState,
-  PasswordChangeForm
+  PasswordChangeForm,
+  NotificationSettings
 } from "../features/userSettings/components";
 
 export function UserSettingsPage() {
@@ -48,6 +49,11 @@ export function UserSettingsPage() {
         {/* Skills Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <SkillsSelector userId={user._id} />
+        </div>
+        
+        {/* Notification Settings Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+          <NotificationSettings />
         </div>
         
         {/* Password Change Section */}

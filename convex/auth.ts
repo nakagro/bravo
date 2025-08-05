@@ -1,12 +1,29 @@
 import { convexAuth, getAuthUserId, modifyAccountCredentials, retrieveAccount } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
-import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
 import { query, mutation, action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password, Anonymous],
+  providers: [
+    Password({
+      profile(params) {
+        return {
+          email: params.email as string,
+          name: params.email as string,
+        };
+      },
+      // Custom password validation that allows numeric passwords (CFA member numbers)
+      validatePasswordRequirements: (password: string) => {
+        // Only require minimum length of 4 characters
+        // This allows CFA member numbers which are typically 7+ digits
+        if (password.length < 4) {
+          throw new Error("Password must be at least 4 characters long");
+        }
+        // No other requirements - allows purely numeric passwords
+      },
+    }),
+  ],
 });
 
 export const loggedInUser = query({
