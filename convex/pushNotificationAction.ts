@@ -18,6 +18,7 @@ export const sendNotification = action({
     title: v.string(),
     body: v.string(),
     userId: v.optional(v.id("users")),
+    url: v.optional(v.string()), // Optional URL for deep-linking when notification is clicked
   },
   handler: async (ctx, args) => {
     if (!PUBLIC_KEY || !PRIVATE_KEY) {
@@ -30,7 +31,11 @@ export const sendNotification = action({
       args.userId ? { userId: args.userId } : { userId: undefined }
     );
 
-    const payload = JSON.stringify({ title: args.title, body: args.body });
+    const payload = JSON.stringify({ 
+      title: args.title, 
+      body: args.body,
+      ...(args.url && { url: args.url }) // Include URL if provided
+    });
 
     for (const sub of subs) {
       try {

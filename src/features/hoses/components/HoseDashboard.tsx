@@ -285,18 +285,18 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick }: HoseDa
               Hose Status Distribution
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
+          <CardContent className="p-4">
+            <ChartContainer config={chartConfig} className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius="60%"
+                    innerRadius="20%"
                     dataKey="count"
-                    label={({ status, percentage }) => `${status}: ${percentage}%`}
-                    labelLine={false}
+                    label={false}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -311,16 +311,16 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick }: HoseDa
             </ChartContainer>
             
             {/* Status Legend */}
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {statusBreakdown.map((item) => {
                 const IconComponent = statusIcons[item.status as keyof typeof statusIcons];
                 return (
-                  <div key={item.status} className="flex items-center gap-2 text-sm">
+                  <div key={item.status} className="flex items-center gap-2 text-sm truncate">
                     <IconComponent 
-                      className="h-4 w-4" 
+                      className="h-4 w-4 flex-shrink-0" 
                       style={{ color: statusColors[item.status as keyof typeof statusColors] }}
                     />
-                    <span>{item.status}: {item.count}</span>
+                    <span className="truncate">{item.status}: {item.count}</span>
                   </div>
                 );
               })}
@@ -336,12 +336,22 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick }: HoseDa
               Hose Size Distribution
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
+          <CardContent className="p-4">
+            <ChartContainer config={chartConfig} className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sizeBreakdown}>
-                  <XAxis dataKey="size" />
-                  <YAxis />
+                <BarChart 
+                  data={sizeBreakdown}
+                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                >
+                  <XAxis 
+                    dataKey="size" 
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   <ChartTooltip 
                     content={<ChartTooltipContent />}
@@ -361,12 +371,22 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick }: HoseDa
               Hose Type Distribution
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
+          <CardContent className="p-4">
+            <ChartContainer config={chartConfig} className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={typeBreakdown}>
-                  <XAxis dataKey="type" />
-                  <YAxis />
+                <BarChart 
+                  data={typeBreakdown}
+                  margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                >
+                  <XAxis 
+                    dataKey="type" 
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <ChartTooltip 
                     content={<ChartTooltipContent />}

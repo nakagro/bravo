@@ -467,6 +467,19 @@ const applicationTables = {
     .index("by_incidentNumber", ["incidentNumber"])
     .index("by_createdAt", ["createdAt"])
     .index("by_brigadeAdvisedDate", ["brigadeAdvisedDate"]),
+
+  // Notification settings for scheduled notifications
+  notificationSettings: defineTable({
+    notificationType: v.union(
+      v.literal("nightlyReset"),
+      v.literal("morningReminder")
+    ),
+    enabled: v.boolean(),
+    description: v.string(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number()
+  })
+    .index("by_notificationType", ["notificationType"]),
 };
 
 export default defineSchema({

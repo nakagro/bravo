@@ -155,9 +155,6 @@ export function FireReportsDashboard() {
       <div className="space-y-4">
         <div className="text-center sm:text-left">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Fire Reports</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            CFA Wyndham Vale Fire Brigade
-          </p>
         </div>
         {/* Mobile-optimized New Report Button */}
         <Button 

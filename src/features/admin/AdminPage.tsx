@@ -1,6 +1,7 @@
 import UserManagement from "./UserManagement";
 import ModuleSettings from "./ModuleSettings";
 import NotificationTester from "./NotificationTester";
+import NotificationSettings from "./NotificationSettings";
 import AdminTasks from "./AdminTasks";
 import {
   Accordion,
@@ -32,6 +33,13 @@ export default function AdminPage() {
           <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Tester</AccordionTrigger>
           <AccordionContent>
             <NotificationTester showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="notificationSettings">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Settings</AccordionTrigger>
+          <AccordionContent>
+            <NotificationSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 

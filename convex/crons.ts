@@ -1,13 +1,22 @@
 import { cronJobs } from "convex/server";
 import { api } from "./_generated/api";
 
-// Schedule at 12:30 PM AEST (≈ 02:30 UTC)
 const crons = cronJobs();
 
+
+// Schedule at 4am AEST (≈ 18:00 UTC)
 crons.daily(
   "nightly reset statuses", // identifier
-  { hourUTC: 2, minuteUTC: 30 }, // 02:30 UTC == 12:30 PM AEST (UTC+10)
-  api.availabilityResetAction.nightlyReset,
+  { hourUTC: 6, minuteUTC: 21 }, // 18:00 UTC == 04:00 AEST (UTC+10)
+  api.availabilityActions.nightlyReset,
+  {}
+);
+
+// Schedule at 10:00 AM AEST (≈ 00:00 UTC)
+crons.daily(
+  "morning availability reminder", // identifßier
+  { hourUTC: 10, minuteUTC: 40 }, // 00:00 UTC == 10:00 AM AEST (UTC+10)ß
+  api.availabilityActions.morningReminder,
   {}
 );
 
