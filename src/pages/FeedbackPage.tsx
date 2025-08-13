@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -54,7 +54,7 @@ export function FeedbackPage() {
         },
       });
 
-      Sentry.captureMessage("New feedback submitted", {
+      Sentry.captureMessage(`New feedback submitted: ${category} - ${Date.now()}`, {
         level: "info",
         tags: {
           feedback_category: category,
@@ -63,11 +63,12 @@ export function FeedbackPage() {
         },
         extra: {
           subject: subject.trim(),
-          message: message.trim(),
           category,
           isAnonymous,
           appVersion: getVersionString(),
+          timestamp: new Date().toISOString(),
         },
+        fingerprint: [`feedback-${category}-${Date.now()}`], // Unique fingerprint
       });
 
       // Reset form and show success toast
@@ -93,13 +94,9 @@ export function FeedbackPage() {
         </div>
         
         <div className="max-w-2xl w-full">
-          <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">
-            Help us improve the Brigade Management System by sharing your feedback, reporting bugs, or suggesting new features.
-          </p>
 
         <Card>
           <CardHeader>
-            <CardTitle>Submit Feedback</CardTitle>
             <CardDescription>
               Your input helps us make the system better for everyone in the brigade.
             </CardDescription>
@@ -107,19 +104,77 @@ export function FeedbackPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Category Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={(value: "bug" | "feature" | "improvement" | "general") => setCategory(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select feedback category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bug">🐛 Bug Report</SelectItem>
-                    <SelectItem value="feature">✨ Feature Request</SelectItem>
-                    <SelectItem value="improvement">🔧 Improvement Suggestion</SelectItem>
-                    <SelectItem value="general">💬 General Feedback</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <Label>Category</Label>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div
+                    onClick={() => setCategory("general")}
+                    className={`cursor-pointer p-2 sm:p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      category === "general"
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-400"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-lg sm:text-2xl mb-1 sm:mb-2">💬</div>
+                      <div className="font-medium text-xs sm:text-sm">General Feedback</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 hidden sm:block">
+                        Share your thoughts
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setCategory("bug")}
+                    className={`cursor-pointer p-2 sm:p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      category === "bug"
+                        ? "border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-400"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-lg sm:text-2xl mb-1 sm:mb-2">🐛</div>
+                      <div className="font-medium text-xs sm:text-sm">Bug Report</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 hidden sm:block">
+                        Something isn't working
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setCategory("feature")}
+                    className={`cursor-pointer p-2 sm:p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      category === "feature"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-lg sm:text-2xl mb-1 sm:mb-2">✨</div>
+                      <div className="font-medium text-xs sm:text-sm">Feature Request</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 hidden sm:block">
+                        Suggest a new feature
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setCategory("improvement")}
+                    className={`cursor-pointer p-2 sm:p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      category === "improvement"
+                        ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-400"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-lg sm:text-2xl mb-1 sm:mb-2">🔧</div>
+                      <div className="font-medium text-xs sm:text-sm">Improvement</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 hidden sm:block">
+                        Enhance existing features
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Subject */}
