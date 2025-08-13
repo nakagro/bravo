@@ -9,6 +9,7 @@ import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { FireReportsPage } from "./pages/FireReportsPage";
+import { FeedbackPage } from "./pages/FeedbackPage";
 import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -68,6 +69,11 @@ function AuthenticatedApp() {
         <Route path="/fire-reports" element={
           <ProtectedRoute moduleId="fireReports">
             <FireReportsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/feedback" element={
+          <ProtectedRoute moduleId="feedback">
+            <FeedbackPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

@@ -15,6 +15,7 @@ import {
   Wrench,
   ShieldAlert,
   FileText,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { getVersionString } from "@/utils/version";
 
 export function HamburgerMenu() {
   const { isAuthenticated } = useConvexAuth();
@@ -44,6 +46,7 @@ export function HamburgerMenu() {
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
   const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
   const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
+  const feedbackAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "feedback" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
 
@@ -56,6 +59,7 @@ export function HamburgerMenu() {
       case "dutyCrew": return dutyCrewAccess === true;
       case "fireReports": return fireReportsAccess === true;
       case "applianceChecks": return applianceChecksAccess === true;
+      case "feedback": return feedbackAccess === true;
       case "settings": return settingsAccess === true;
       case "admin": return adminAccess === true;
       default: return false;
@@ -136,17 +140,6 @@ export function HamburgerMenu() {
             </DropdownMenuItem>
           )}
 
-          {hasModuleAccess("dutyCrew") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/dutycrew")}
-              className={location.pathname === '/dutycrew' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Users className="mr-3 h-5 w-5" />
-              <span>Duty Crew</span>
-              <Badge variant="outline" className="ml-auto">Preview</Badge>
-            </DropdownMenuItem>
-          )}
-
           {hasModuleAccess("fireReports") && (
             <DropdownMenuItem
               onClick={() => handleNavigation("/fire-reports")}
@@ -154,8 +147,22 @@ export function HamburgerMenu() {
             >
               <FileText className="mr-3 h-5 w-5" />
               <span>Fire Reports</span>
+              <Badge variant="outline" className="ml-auto">Preview</Badge>
             </DropdownMenuItem>
           )}
+
+          {hasModuleAccess("dutyCrew") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/dutycrew")}
+              className={location.pathname === '/dutycrew' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Users className="mr-3 h-5 w-5" />
+              <span>Duty Crew</span>
+              <Badge variant="outline" className="ml-auto">WIP</Badge>
+            </DropdownMenuItem>
+          )}
+
+
 
           {hasModuleAccess("applianceChecks") && (
             <DropdownMenuItem
@@ -164,7 +171,21 @@ export function HamburgerMenu() {
             >
               <Wrench className="mr-3 h-5 w-5" />
               <span>Appliance Checks</span>
-              <Badge variant="outline" className="ml-auto">Preview</Badge>
+              <Badge variant="outline" className="ml-auto">WIP</Badge>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-sm font-semibold py-2">Support</DropdownMenuLabel>
+          {hasModuleAccess("feedback") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/feedback")}
+              className={location.pathname === '/feedback' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <MessageSquare className="mr-3 h-5 w-5" />
+              <span>Feedback</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>
@@ -198,6 +219,11 @@ export function HamburgerMenu() {
           <LogOut className="mr-3 h-5 w-5" />
           <span>Sign out</span>
         </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
+          v{getVersionString()}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -6,14 +6,16 @@ import {
   ClockIcon, 
   CheckCircleIcon,
   ArchiveBoxIcon,
-  EyeIcon
+  EyeIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FireReportForm, FireReportView } from "./index";
 import { Id } from "../../../convex/_generated/dataModel";
+import { Input } from "../ui/input";
 
 interface FireReport {
   _id: Id<"fireReports">;
@@ -32,6 +34,10 @@ export function FireReportsDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Id<"fireReports"> | null>(null);
   const [editingReport, setEditingReport] = useState<Id<"fireReports"> | null>(null);
+  const [activeTab, setActiveTab] = useState<"my" | "all">("my");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "submitted" | "approved">("all");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
   // Get all fire reports
   const allReports = useQuery(api.fireReports.getFireReports, {}) as FireReport[] | undefined;
@@ -39,10 +45,41 @@ export function FireReportsDashboard() {
   // Get user's reports
   const myReports = useQuery(api.fireReports.getMyFireReports, {}) as FireReport[] | undefined;
 
-  // Filter reports by status
-  const draftReports = myReports?.filter(report => report.status === "draft") || [];
-  const submittedReports = allReports?.filter(report => report.status === "submitted") || [];
-  const approvedReports = allReports?.filter(report => report.status === "approved") || [];
+  // Derived datasets
+  const draftReports = useMemo(
+    () => (myReports?.filter((r) => r.status === "draft") || []).sort((a, b) => (sortDir === "desc" ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)),
+    [myReports, sortDir]
+  );
+  const mySubmittedReports = useMemo(
+    () => (myReports?.filter((r) => r.status === "submitted") || []).sort((a, b) => (sortDir === "desc" ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)),
+    [myReports, sortDir]
+  );
+  const submittedReports = useMemo(
+    () => (allReports?.filter((r) => r.status === "submitted") || []).sort((a, b) => (sortDir === "desc" ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)),
+    [allReports, sortDir]
+  );
+  const approvedReports = useMemo(
+    () => (allReports?.filter((r) => r.status === "approved") || []).sort((a, b) => (sortDir === "desc" ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)),
+    [allReports, sortDir]
+  );
+
+  // Others' reports: submitted or approved, excluding my own by id
+  const myIds = useMemo(() => new Set((myReports || []).map((r) => r._id)), [myReports]);
+  const othersReports = useMemo(() => {
+    const base = (allReports || []).filter((r) => !myIds.has(r._id) && (r.status === "submitted" || r.status === "approved"));
+    const byStatus = statusFilter === "all" ? base : base.filter((r) => r.status === statusFilter);
+    const bySearch = search.trim()
+      ? byStatus.filter((r) => {
+          const q = search.toLowerCase();
+          return (
+            r.incidentNumber.toLowerCase().includes(q) ||
+            r.propertyAddress.toLowerCase().includes(q) ||
+            r.createdByName.toLowerCase().includes(q)
+          );
+        })
+      : byStatus;
+    return [...bySearch].sort((a, b) => (sortDir === "desc" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt));
+  }, [allReports, myIds, statusFilter, search, sortDir]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-AU', {
@@ -58,11 +95,25 @@ export function FireReportsDashboard() {
       case "draft":
         return <Badge variant="secondary">Draft</Badge>;
       case "submitted":
-        return <Badge variant="default">Submitted</Badge>;
+        return <Badge variant="secondary">Submitted</Badge>;
       case "approved":
-        return <Badge variant="outline" className="text-green-600 border-green-600">Approved</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="text-green-600 border-green-600 dark:text-green-300 dark:border-green-700"
+          >
+            Approved
+          </Badge>
+        );
       case "archived":
-        return <Badge variant="outline" className="text-gray-600 border-gray-600">Archived</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="text-gray-600 border-gray-600 dark:text-gray-300 dark:border-gray-700"
+          >
+            Archived
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -70,17 +121,44 @@ export function FireReportsDashboard() {
 
   const getAttendanceTypeBadge = (type: string) => {
     const typeMap: Record<string, { label: string; color: string }> = {
-      grassScrub: { label: "Grass & Scrub", color: "bg-green-100 text-green-800" },
-      incident: { label: "Incident", color: "bg-blue-100 text-blue-800" },
-      structure: { label: "Structure", color: "bg-red-100 text-red-800" },
-      nonStructure: { label: "Non-structure", color: "bg-yellow-100 text-yellow-800" },
-      falseAlarm: { label: "False Alarm", color: "bg-gray-100 text-gray-800" }
+      grassScrub: {
+        label: "Grass & Scrub",
+        color:
+          "bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800/50",
+      },
+      incident: {
+        label: "Incident",
+        color:
+          "bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800/50",
+      },
+      structure: {
+        label: "Structure",
+        color:
+          "bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800/50",
+      },
+      nonStructure: {
+        label: "Non-structure",
+        color:
+          "bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-800/50",
+      },
+      falseAlarm: {
+        label: "False Alarm",
+        color:
+          "bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-800/50",
+      },
     };
 
-    const typeInfo = typeMap[type] || { label: type, color: "bg-gray-100 text-gray-800" };
-    
+    const typeInfo =
+      typeMap[type] || {
+        label: type,
+        color:
+          "bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-900/30 dark:text-gray-200 dark:border-gray-800/50",
+      };
+
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${typeInfo.color}`}>
+      <span
+        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${typeInfo.color}`}
+      >
         {typeInfo.label}
       </span>
     );
@@ -151,23 +229,46 @@ export function FireReportsDashboard() {
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      {/* Mobile-First Header */}
-      <div className="space-y-4">
-        <div className="text-center sm:text-left">
+      {/* Header */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Fire Reports</h1>
+          <Button
+            onClick={handleNewReport}
+            className="w-full sm:w-auto gap-2 h-11 text-base font-medium"
+            size="lg"
+          >
+            <PlusIcon className="h-5 w-5" />
+            New Fire Report
+          </Button>
         </div>
-        {/* Mobile-optimized New Report Button */}
-        <Button 
-          onClick={handleNewReport} 
-          className="w-full sm:w-auto gap-2 h-12 text-base font-medium"
-          size="lg"
-        >
-          <PlusIcon className="h-5 w-5" />
-          New Fire Report
-        </Button>
+
+        {/* Tabs */}
+        <div className="inline-flex w-full sm:w-auto rounded-lg border border-border p-1 bg-background/70">
+          <button
+            type="button"
+            onClick={() => setActiveTab("my")}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "my" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+            }`}
+            aria-pressed={activeTab === "my"}
+          >
+            My Reports
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "all" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+            }`}
+            aria-pressed={activeTab === "all"}
+          >
+            Brigade
+          </button>
+        </div>
       </div>
 
-      {/* Mobile-Optimized Statistics Cards */}
+      {/* Statistics Cards */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         <Card className="touch-manipulation">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -219,123 +320,197 @@ export function FireReportsDashboard() {
         </Card>
       </div>
 
-      {/* Draft Reports - Mobile Optimized */}
-      {draftReports.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <DocumentTextIcon className="h-5 w-5" />
-              My Draft Reports
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Tap to continue editing your drafts
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3">
-              {draftReports.map((report) => (
-                <div key={report._id} className="border rounded-lg p-4 space-y-3 touch-manipulation">
-                  {/* Mobile-first content layout */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-base">{report.incidentNumber}</h3>
-                      {getStatusBadge(report.status)}
-                      {getAttendanceTypeBadge(report.typeOfAttendance)}
+      {/* Content by Tab */}
+      {activeTab === "my" ? (
+        <div className="space-y-4">
+          {/* My Drafts */}
+          {draftReports.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DocumentTextIcon className="h-5 w-5" />
+                  My Draft Reports
+                </CardTitle>
+                <CardDescription className="text-sm">Tap to continue editing your drafts</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {draftReports.map((report) => (
+                    <div
+                      key={report._id}
+                      className="border border-border rounded-lg p-4 space-y-3 touch-manipulation"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-base">{report.incidentNumber}</h3>
+                          {getStatusBadge(report.status)}
+                          {getAttendanceTypeBadge(report.typeOfAttendance)}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">📍 {report.propertyAddress}</p>
+                        <p className="text-xs text-muted-foreground">🕒 {report.brigadeAdvisedDate} at {report.brigadeAdvisedTime}</p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <Button
+                          variant="default"
+                          onClick={() => handleEditReport(report._id)}
+                          className="flex-1 h-11 text-base font-medium"
+                        >
+                          Continue Editing
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleViewReport(report._id)}
+                          className="flex-1 sm:flex-none h-11 gap-2"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                          View
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      📍 {report.propertyAddress}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      🕒 {report.brigadeAdvisedDate} at {report.brigadeAdvisedTime}
-                    </p>
-                  </div>
-                  {/* Mobile-optimized buttons */}
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <Button
-                      variant="default"
-                      onClick={() => handleEditReport(report._id)}
-                      className="flex-1 h-11 text-base font-medium"
-                    >
-                      Continue Editing
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleViewReport(report._id)}
-                      className="flex-1 sm:flex-none h-11 gap-2"
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                      View
-                    </Button>
-                  </div>
+                  ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* My Submitted */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ClockIcon className="h-5 w-5" />
+                My Submitted Reports
+              </CardTitle>
+              <CardDescription className="text-sm">Recently submitted by you</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {mySubmittedReports.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <DocumentTextIcon className="h-10 w-10 text-muted-foreground mx-auto" />
+                  <p className="text-sm text-muted-foreground">No submitted reports yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {mySubmittedReports.map((report) => (
+                    <div key={report._id} className="border border-border rounded-lg p-4 space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-base">{report.incidentNumber}</h3>
+                          {getStatusBadge(report.status)}
+                          {getAttendanceTypeBadge(report.typeOfAttendance)}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">📍 {report.propertyAddress}</p>
+                        <p className="text-xs text-muted-foreground">📅 {formatDate(report.createdAt)}</p>
+                      </div>
+                      <div className="pt-1">
+                        <Button variant="outline" onClick={() => handleViewReport(report._id)} className="w-full h-10 gap-2">
+                          <EyeIcon className="h-4 w-4" /> View Report
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search incident #, address, member"
+                className="pl-9 h-11"
+                aria-label="Search reports"
+              />
+            </div>
+            <div className="inline-flex rounded-md border border-border p-1">
+              {(["all", "submitted", "approved"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    statusFilter === s ? "bg-muted" : "hover:bg-muted/70"
+                  }`}
+                  aria-pressed={statusFilter === s}
+                >
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Reports - Mobile Optimized */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClockIcon className="h-5 w-5" />
-            Recent Reports
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Latest reports from all brigade members
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-3">
-            {allReports.length === 0 ? (
-              <div className="text-center py-12 space-y-3">
-                <DocumentTextIcon className="h-12 w-12 text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">
-                  No fire reports yet.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Create your first report to get started.
-                </p>
-              </div>
-            ) : (
-              allReports.slice(0, 10).map((report) => (
-                <div key={report._id} className="border rounded-lg p-4 space-y-3 touch-manipulation">
-                  {/* Mobile-first content layout */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-base">{report.incidentNumber}</h3>
-                      {getStatusBadge(report.status)}
-                      {getAttendanceTypeBadge(report.typeOfAttendance)}
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      📍 {report.propertyAddress}
-                    </p>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                      <p className="text-xs text-muted-foreground">
-                        👤 {report.createdByName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        📅 {formatDate(report.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  {/* Mobile-optimized view button */}
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleViewReport(report._id)}
-                      className="w-full h-11 gap-2 text-base"
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                      View Report
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
+            <div className="inline-flex rounded-md border border-border">
+              <button
+                type="button"
+                onClick={() => setSortDir("desc")}
+                className={`px-3 py-2 text-sm ${sortDir === "desc" ? "bg-muted" : "hover:bg-muted/70"}`}
+                aria-pressed={sortDir === "desc"}
+              >
+                Newest
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortDir("asc")}
+                className={`px-3 py-2 text-sm ${sortDir === "asc" ? "bg-muted" : "hover:bg-muted/70"}`}
+                aria-pressed={sortDir === "asc"}
+              >
+                Oldest
+              </button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Brigade Reports */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ClockIcon className="h-5 w-5" />
+                Brigade Reports
+              </CardTitle>
+              <CardDescription className="text-sm">Recent submitted and approved reports from your brigade</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                {othersReports.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <DocumentTextIcon className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <p className="text-muted-foreground">No matching reports.</p>
+                    <p className="text-sm text-muted-foreground">Try adjusting filters or search.</p>
+                  </div>
+                ) : (
+                  othersReports.slice(0, 15).map((report) => (
+                    <div key={report._id} className="border border-border rounded-lg p-4 space-y-3 touch-manipulation">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-base">{report.incidentNumber}</h3>
+                          {getStatusBadge(report.status)}
+                          {getAttendanceTypeBadge(report.typeOfAttendance)}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">📍 {report.propertyAddress}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                          <p className="text-xs text-muted-foreground">👤 {report.createdByName}</p>
+                          <p className="text-xs text-muted-foreground">📅 {formatDate(report.createdAt)}</p>
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleViewReport(report._id)}
+                          className="w-full h-11 gap-2 text-base"
+                        >
+                          <EyeIcon className="h-4 w-4" /> View Report
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

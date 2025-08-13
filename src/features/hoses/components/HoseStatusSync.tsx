@@ -46,11 +46,11 @@ export function HoseStatusSync() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "In date":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300";
       case "Due for testing":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
@@ -59,8 +59,8 @@ export function HoseStatusSync() {
       <Card>
         <CardContent className="p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-            <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
           </div>
         </CardContent>
       </Card>
@@ -97,18 +97,18 @@ export function HoseStatusSync() {
         <CardContent>
           {hosesNeedingUpdate.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircleIcon className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <CheckCircleIcon className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 All Hose Statuses Are Up to Date
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-400">
                 All hoses have the correct status based on their test dates.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-start gap-2 text-sm text-gray-600 mb-4 p-3 bg-amber-50 rounded-lg">
-                <ExclamationTriangleIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-300 mb-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
+                <ExclamationTriangleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
                 <span className="leading-relaxed">
                   {hosesNeedingUpdate.length} hose{hosesNeedingUpdate.length === 1 ? '' : 's'} need{hosesNeedingUpdate.length === 1 ? 's' : ''} status updates based on test dates
                 </span>
@@ -118,17 +118,17 @@ export function HoseStatusSync() {
                 {hosesNeedingUpdate.map((hose) => (
                   <div 
                     key={hose._id} 
-                    className="p-4 border border-gray-200 rounded-lg space-y-3"
+                    className="p-4 bg-card border border-border rounded-lg space-y-3"
                   >
                     {/* Hose ID and Test Info */}
                     <div>
-                      <p className="font-medium text-gray-900 text-lg">{hose.hoseId}</p>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                      <p className="font-medium text-gray-900 dark:text-gray-100 text-lg">{hose.hoseId}</p>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
                         <ClockIcon className="h-3 w-3 flex-shrink-0" />
                         <span>Tested: {formatDate(hose.testDate)}</span>
                         <span className="hidden sm:inline">({hose.daysSinceTest} days ago)</span>
                       </div>
-                      <div className="sm:hidden text-xs text-gray-500 mt-1">
+                      <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {hose.daysSinceTest} days ago
                       </div>
                     </div>
@@ -136,13 +136,13 @@ export function HoseStatusSync() {
                     {/* Status Information */}
                     <div className="space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-sm text-gray-600 font-medium min-w-[80px]">Current:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 font-medium min-w-[80px]">Current:</span>
                         <Badge className={`${getStatusColor(hose.currentStatus)} text-xs`}>
                           {hose.currentStatus}
                         </Badge>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-sm text-gray-600 font-medium min-w-[80px]">Should be:</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 font-medium min-w-[80px]">Should be:</span>
                         <Badge className={`${getStatusColor(hose.suggestedStatus)} text-xs`}>
                           {hose.suggestedStatus}
                         </Badge>
@@ -152,27 +152,27 @@ export function HoseStatusSync() {
                 ))}
               </div>
               
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-3 text-sm sm:text-base">How Automatic Status Management Works:</h4>
-                <ul className="text-xs sm:text-sm text-blue-800 space-y-2">
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-3 text-sm sm:text-base">How Automatic Status Management Works:</h4>
+                <ul className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 space-y-2">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
                     <span>Hoses tested within the last 365 days are automatically marked as "In date"</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
                     <span>Hoses tested more than 365 days ago are automatically marked as "Due for testing"</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
                     <span>Only "In date" and "Due for testing" statuses are automatically managed</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
                     <span>"With district for repair" and "Condemned" statuses require manual intervention</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
                     <span>Status changes are automatically applied when test dates are updated</span>
                   </li>
                 </ul>

@@ -27,14 +27,6 @@ export function DashboardPage() {
       {/* Welcome Section */}
       <div className="flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
-        {/* Sentry Test Button */}
-        <button 
-          onClick={() => {throw new Error("This is your first error!");}} 
-          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
-          title="Test Sentry Error Reporting"
-        >
-          Break the world
-        </button>
       </div>
       
       {/* Pending Actions Section */}

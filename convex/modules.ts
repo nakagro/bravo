@@ -93,6 +93,14 @@ export const syncModuleSettings = mutation({
         minimumRank: undefined
       },
       { 
+        moduleId: "feedback", 
+        moduleName: "Feedback", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
         moduleId: "admin", 
         moduleName: "Admin Settings", 
         isEnabled: true,
@@ -200,6 +208,14 @@ export const initializeModuleSettings = mutation({
       { 
         moduleId: "settings", 
         moduleName: "User Settings", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "feedback", 
+        moduleName: "Feedback", 
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],

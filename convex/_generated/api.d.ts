@@ -24,6 +24,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
 import type * as dutyCrew from "../dutyCrew.js";
 import type * as dutyCrewMembers from "../dutyCrewMembers.js";
+import type * as feedback from "../feedback.js";
 import type * as fireReports from "../fireReports.js";
 import type * as hoseAuditTrail from "../hoseAuditTrail.js";
 import type * as hoseComments from "../hoseComments.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   deploymentAvailability: typeof deploymentAvailability;
   dutyCrew: typeof dutyCrew;
   dutyCrewMembers: typeof dutyCrewMembers;
+  feedback: typeof feedback;
   fireReports: typeof fireReports;
   hoseAuditTrail: typeof hoseAuditTrail;
   hoseComments: typeof hoseComments;

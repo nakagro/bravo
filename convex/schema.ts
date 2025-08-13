@@ -480,6 +480,26 @@ const applicationTables = {
     updatedAt: v.number()
   })
     .index("by_notificationType", ["notificationType"]),
+
+  // Feedback submissions from users
+  feedback: defineTable({
+    subject: v.string(), // Subject/title of the feedback
+    message: v.string(), // Feedback message content
+    category: v.union(
+      v.literal("bug"),
+      v.literal("feature"),
+      v.literal("improvement"),
+      v.literal("general")
+    ),
+    isAnonymous: v.boolean(), // Whether the feedback is submitted anonymously
+    submittedBy: v.optional(v.id("users")), // User ID if not anonymous
+    submitterName: v.optional(v.string()), // User's name if not anonymous
+    appVersion: v.string(), // Version of the app when feedback was submitted
+    createdAt: v.number(), // Timestamp when feedback was created
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_submittedBy", ["submittedBy"])
+    .index("by_category", ["category"]),
 };
 
 export default defineSchema({
