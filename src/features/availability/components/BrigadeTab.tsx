@@ -2,9 +2,9 @@ import React from 'react';
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { getRelativeTimeString } from "../../../utils/dateUtils";
-import SkillBadge from "./SkillBadge";
-import ApplianceLocations from "./ApplianceLocations";
+import { getRelativeTimeCompact } from "../../../utils/dateUtils";
+import SkillBadge from "./brigadetab/SkillBadge";
+import ApplianceLocations from "./brigadetab/ApplianceLocations";
 
 interface BrigadeTabProps {
   statuses: any[];
@@ -50,14 +50,14 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
     <>
       {/* Duty Officer Section */}
       <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm p-3 rounded">
-        <h2 className="text-xl font-bold flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <h2 className="text-lg font-bold flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           Duty Officer
         </h2>
-        <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-800/30">
-          <p className="text-lg font-medium text-red-700 dark:text-red-400">
+        <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-800/30">
+          <p className="text-base font-medium text-red-700 dark:text-red-400">
             {dutyOfficer ? formatUserName(dutyOfficer) : 'None assigned'}
           </p>
         </div>
@@ -84,8 +84,8 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
           <table className="w-full text-left border-separate border-spacing-0 table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
+                <th className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
+                <th className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -132,19 +132,19 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-')).join(' ');
                   const borderClasses = rowColorClasses.split(' ').filter(cls => cls.startsWith('border-')).join(' ');
                   
-                  // Check if user has skills to determine if we need a skills row
-                  const hasSkills = user.skills && user.skills.length > 0;
-                  
                   return (
                     <React.Fragment key={user._id}>
                       <tr className={`${bgColorClass} transition-colors`}>
-                        <td className={`px-3 py-2 pb-${hasSkills ? '1' : '2'} ${borderClasses}`}>
-                          <div className="font-medium">{formatUserName(user)}</div>
+                        <td className={`px-3 py-2 ${borderClasses}`}>
+                          <div className="font-medium text-[15px] leading-tight">{formatUserName(user)}</div>
+                          {/* Inline skills, compact */}
+                          <div className="mt-0.5">
+                            <UserSkillsInline userId={user._id} max={4} />
+                          </div>
                         </td>
-                        <td className={`px-3 py-2 pb-${hasSkills ? '1' : '2'}`}>
-                          <div className="flex flex-col">
-                            <div className="flex items-center">
-                              <span className={`font-medium ${getTextColor(user.currentStatus)}`}>
+                        <td className={`px-3 py-1`}>
+                          <div className="flex items-center flex-wrap gap-x-2">
+                            <span className={`font-medium text-sm ${getTextColor(user.currentStatus)}`}>
                                 {user.currentStatus === 'available - station' && 'Available - Station'}
                                 {user.currentStatus === 'available - satellite' && 'Available - Satellite'}
                                 {user.currentStatus === 'delayed response' && 'Delayed'}
@@ -152,22 +152,13 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                                 {user.currentStatus === 'not available' && 'Unavailable'}
                               </span>
                               {user.statusUpdatedAt && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                  ({getRelativeTimeString(user.statusUpdatedAt)})
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  ({getRelativeTimeCompact(user.statusUpdatedAt)})
                                 </span>
                               )}
-                            </div>
-
                           </div>
                         </td>
                       </tr>
-                      
-                      {/* Skills row - only rendered if user has skills */}
-                      <UserSkillsRow 
-                        userId={user._id} 
-                        bgColorClass={bgColorClass} 
-                        borderClasses={borderClasses} 
-                      />
                     </React.Fragment>
                   );
                 })
@@ -186,38 +177,41 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
   );
 };
 
-// Component to display user skills in a separate row
-interface UserSkillsRowProps {
+// Compact inline skills renderer
+interface UserSkillsInlineProps {
   userId: Id<"users">;
-  bgColorClass: string;
-  borderClasses: string;
+  max?: number; // max badges to show
 }
 
-const UserSkillsRow: React.FC<UserSkillsRowProps> = ({ userId, bgColorClass, borderClasses }) => {
-  // Fetch user skills
+const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, max = 4 }) => {
   const userSkills = useQuery(api.skills.getUserSkills, { userId });
-  
-  // If no skills or still loading, return empty fragment
-  if (!userSkills || userSkills.length === 0) {
-    return null;
-  }
-  
-  // Use the same background color as the main row
-  
+
+  if (!userSkills || userSkills.length === 0) return null;
+
+  const visible = userSkills.slice(0, max);
+  const extra = Math.max(0, userSkills.length - visible.length);
+  const extraTitle =
+    extra > 0
+      ? userSkills
+          .slice(max)
+          .map((s) => `${s.code}: ${s.name}`)
+          .join(', ')
+      : undefined;
+
   return (
-    <tr className={`${bgColorClass} transition-colors border-b border-gray-200 dark:border-gray-700`}>
-      <td colSpan={2} className={`px-3 py-1 ${borderClasses}`}>
-        <div className="flex flex-wrap">
-          {userSkills.map(skill => (
-            <SkillBadge 
-              key={skill._id} 
-              code={skill.code} 
-              name={skill.name} 
-            />
-          ))}
+    <div className="flex flex-wrap items-center -mt-0.5">
+      {visible.map((skill) => (
+        <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
+      ))}
+      {extra > 0 && (
+        <div
+          className="inline-flex items-center justify-center h-4 px-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600 mr-1 mb-1"
+          title={extraTitle}
+        >
+          +{extra}
         </div>
-      </td>
-    </tr>
+      )}
+    </div>
   );
 };
 
