@@ -2,6 +2,9 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { ArchiveBoxIcon, KeyIcon, CalendarIcon } from "@heroicons/react/24/outline";
+import { FileText, Users, Wrench } from "lucide-react";
+import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
+import { Card, CardContent } from "../components/ui/card";
 
 export function DashboardPage() {
   // Fetch the current user's data
@@ -11,6 +14,9 @@ export function DashboardPage() {
   const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
   const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
   const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
+  const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
+  const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
+  const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
   
   // Fetch any pending actions or notifications
   const pendingActions = useQuery(api.dashboard.getPendingActions) || [];
@@ -70,60 +76,101 @@ export function DashboardPage() {
         </div>
       )}
       
+      {/* Calendar Events Section */}
+      <CalDAVCalendar 
+        calendarUrl="https://cal.grayhux.io/wydv/f892ab6b-44db-4f7d-2a79-9d87036546a8/"
+        maxEvents={5}
+        username={import.meta.env.VITE_CALDAV_USERNAME}
+        password={import.meta.env.VITE_CALDAV_PASSWORD}
+      />
+      
       {/* Modules Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
 
-          {/* Availability */}
-          {availabilityAccess && (
-            <Link 
-              to="/availability"
-              className="flex flex-col items-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 group"
-            >
-              <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full mb-4 group-hover:bg-green-200 dark:group-hover:bg-green-900/40 transition-colors">
-                <CalendarIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Availability</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                Manage your availability status and view brigade availability.
-              </p>
-            </Link>
-          )}
+        {/* Availability */}
+        {availabilityAccess && (
+          <Link to="/availability" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg group-hover:bg-green-200 dark:group-hover:bg-green-900/40 transition-colors">
+                  <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Availability</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
-          {/* Hose Inventory */}
-          {hoseAccess && (
-            <Link 
-              to="/hoses"
-              className="flex flex-col items-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 group"
-            >
-              <div className="p-4 bg-red-100 dark:bg-red-900/20 rounded-full mb-4 group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
-                <ArchiveBoxIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Hose Inventory</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                Manage and track hose inventory, testing, and maintenance.
-              </p>
-            </Link>
-          )}
-          
-          {/* Key Management */}
-          {keysAccess && (
-            <Link 
-              to="/keys"
-              className="flex flex-col items-center p-6 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 group"
-            >
-              <div className="p-4 bg-blue-100 dark:bg-blue-900/20 rounded-full mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/40 transition-colors">
-                <KeyIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Key Management</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                Track and manage keys for various locations and facilities.
-              </p>
-            </Link>
-          )}
-          
+        {/* Hose Inventory */}
+        {hoseAccess && (
+          <Link to="/hoses" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
+                  <ArchiveBoxIcon className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Hose Inventory</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+        
+        {/* Key Management */}
+        {keysAccess && (
+          <Link to="/keys" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/40 transition-colors">
+                  <KeyIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Key Management</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
-        </div>
+        {/* Fire Reports */}
+        {fireReportsAccess && (
+          <Link to="/fire-reports" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg group-hover:bg-orange-200 dark:group-hover:bg-orange-900/40 transition-colors">
+                  <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Fire Reports</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* Duty Crew */}
+        {dutyCrewAccess && (
+          <Link to="/dutycrew" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40 transition-colors">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Duty Crew</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* Appliance Checks */}
+        {applianceChecksAccess && (
+          <Link to="/appliances" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg group-hover:bg-yellow-200 dark:group-hover:bg-yellow-900/40 transition-colors">
+                  <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Appliance Checks</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
       </div>
     </div>
   );

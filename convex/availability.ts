@@ -93,6 +93,10 @@ export const getAllUsersStatus = query({
   returns: v.array(
     v.object({
       _id: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      memberNumber: v.optional(v.string()),
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
@@ -114,18 +118,24 @@ export const getAllUsersStatus = query({
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
+      isDutyOfficer: v.optional(v.boolean()),
     })
   ),
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
     return users.map((u) => ({
       _id: u._id,
+      name: u.name,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      memberNumber: u.memberNumber,
       currentStatus: u.currentStatus,
       statusUpdatedAt: u.statusUpdatedAt,
       statusExpiresAt: u.statusExpiresAt,
       statusDurationHours: u.statusDurationHours,
       nextStatus: u.nextStatus,
       nextStatusAt: u.nextStatusAt,
+      isDutyOfficer: u.isDutyOfficer,
     }));
   },
 });

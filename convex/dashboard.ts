@@ -44,27 +44,9 @@ export const getPendingActions = query({
       return [];
     }
     
-    // Calculate the timestamp for 4am of the current day (same logic as in availability.ts)
-    const now = new Date();
-    const today4am = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      4, // 4am
-      0, // 0 minutes
-      0, // 0 seconds
-      0 // 0 milliseconds
-    ).getTime();
-    
-    // If current time is before 4am, use 4am from the previous day
-    const cutoffTime = now.getHours() < 4 ? 
-      today4am - 24 * 60 * 60 * 1000 : // Subtract one day if before 4am
-      today4am;
-    
     // Check if the user needs to update their availability status
-    const isStatusCurrent = user.statusUpdatedAt && user.statusUpdatedAt >= cutoffTime;
-    
-    if (!isStatusCurrent) {
+    // Simply check if they have a currentStatus set, regardless of when it was updated
+    if (!user.currentStatus) {
       pendingActions.push({
         _id: "update-availability",
         title: "Update Your Availability",

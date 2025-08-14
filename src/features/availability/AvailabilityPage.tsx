@@ -22,8 +22,8 @@ const AvailabilityPage: React.FC = () => {
   // Get duty officer
   const dutyOfficer = useQuery(api.availability.getDutyOfficer);
   
-  // Fetch all user statuses
-  const statuses = useQuery(api.availability.getStatuses) || [];
+  // Fetch all user statuses (using raw query without time filtering)
+  const statuses = useQuery(api.availability.getAllUsersStatus) || [];
   
   // Update status mutation
   const updateStatus = useMutation(api.availability.updateUserStatus);
