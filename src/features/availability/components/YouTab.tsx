@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 
@@ -24,6 +24,23 @@ const YouTab: React.FC<YouTabProps> = ({
   // Fetch available status options from the backend
   const mainStatusOptions = useQuery(api.availability.getMainStatusOptions) || [];
   const nextStatusOptions = useQuery(api.availability.getAvailableStatusOptions) || [];
+  
+  // Fetch user skills to check for Officer skill
+  const userSkills = useQuery(api.skills.getUserSkills, {});
+  
+  // Get current user ID
+  const currentUserId = useQuery(api.availability.getCurrentUserId);
+  
+  // Check if current user is duty officer
+  const isCurrentUserDutyOfficer = useQuery(api.availability.isCurrentUserDutyOfficer);
+  
+  // Check if user has Officer skill
+  const hasOfficerSkill = useMemo(() => {
+    return userSkills?.some(skill => skill.code === "OF") ?? false;
+  }, [userSkills]);
+  
+  // Mutation for setting duty officer
+  const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
   
   // Create maps for easy lookup
   const statusMap = useMemo(() => {
@@ -179,6 +196,25 @@ const YouTab: React.FC<YouTabProps> = ({
     if (!status) return 'text-gray-600 dark:text-gray-400';
     const statusOption = statusMap[status];
     return statusOption?.textColorClass || 'text-gray-600 dark:text-gray-400';
+  };
+
+  // Handle duty officer toggle for users with Officer skill
+  const handleDutyOfficerToggle = async () => {
+    if (!currentUserId) {
+      console.error('No user ID available');
+      return;
+    }
+
+    const confirmMessage = 'Setting yourself as Duty Officer will remove this status from any current duty officer. Continue?';
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await setDutyOfficer({ userId: currentUserId });
+      } catch (error) {
+        console.error('Error setting duty officer:', error);
+        alert('Failed to update duty officer status. Please try again.');
+      }
+    }
   };
 
   return (
@@ -412,6 +448,35 @@ const YouTab: React.FC<YouTabProps> = ({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Duty Officer Section - Only show for users with Officer skill */}
+      {isAuthenticated && hasOfficerSkill && (
+        <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+          <div className="px-3 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-lg font-medium">
+                  Duty Officer
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {isCurrentUserDutyOfficer ? 'You are currently the Duty Officer' : 'Take over as Duty Officer'}
+                </span>
+              </div>
+              <button
+                onClick={handleDutyOfficerToggle}
+                disabled={isCurrentUserDutyOfficer} // Disable if already duty officer since there's no unset function
+                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                  isCurrentUserDutyOfficer
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 cursor-not-allowed'
+                    : 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'
+                }`}
+              >
+                {isCurrentUserDutyOfficer ? 'Active' : 'Take Over'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

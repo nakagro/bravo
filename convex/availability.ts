@@ -286,6 +286,30 @@ export const updateUserStatus = mutation({
   },
 });
 
+// Get current user ID
+export const getCurrentUserId = query({
+  args: {},
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx) => {
+    return await getAuthUserId(ctx);
+  },
+});
+
+// Check if current user is duty officer
+export const isCurrentUserDutyOfficer = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return false;
+    }
+    
+    const user = await ctx.db.get(userId);
+    return user?.isDutyOfficer ?? false;
+  },
+});
+
 // Set duty officer
 export const setDutyOfficer = mutation({
   args: {
