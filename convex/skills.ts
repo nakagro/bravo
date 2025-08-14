@@ -17,6 +17,34 @@ export const getSkills = query({
 });
 
 /**
+ * Ensure the special "None" skill exists (code: "NONE").
+ * Idempotent: returns the existing or newly created skill ID.
+ */
+export const ensureNoneSkill = mutation({
+  args: {},
+  returns: v.id("skills"),
+  handler: async (ctx) => {
+    const existing = await ctx.db
+      .query("skills")
+      .withIndex("by_code", (q) => q.eq("code", "NONE"))
+      .first();
+    if (existing) return existing._id;
+
+    const now = Date.now();
+    const id = await ctx.db.insert("skills", {
+      name: "None",
+      code: "NONE",
+      description: "No operational skills yet",
+      category: "System",
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return id;
+  },
+});
+
+/**
  * Get skills for a specific user
  */
 export const getUserSkills = query({
@@ -228,6 +256,8 @@ export const seedInitialSkills = mutation({
   args: {},
   handler: async (ctx) => {
     const initialSkills = [
+      // Special system skill indicating no operational skills
+      { name: "None", code: "NONE" },
       { name: "BA External only", code: "BAe" },
       { name: "BA Internal", code: "BAi" },
       { name: "Chain Saw Operator", code: "SAW" },

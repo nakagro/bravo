@@ -186,13 +186,15 @@ interface UserSkillsInlineProps {
 const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, max = 4 }) => {
   const userSkills = useQuery(api.skills.getUserSkills, { userId });
 
-  if (!userSkills || userSkills.length === 0) return null;
+  // Hide the special NONE skill from badges
+  const filtered = (userSkills || []).filter((s) => s.code !== "NONE");
+  if (filtered.length === 0) return null;
 
-  const visible = userSkills.slice(0, max);
-  const extra = Math.max(0, userSkills.length - visible.length);
+  const visible = filtered.slice(0, max);
+  const extra = Math.max(0, filtered.length - visible.length);
   const extraTitle =
     extra > 0
-      ? userSkills
+      ? filtered
           .slice(max)
           .map((s) => `${s.code}: ${s.name}`)
           .join(', ')

@@ -39,7 +39,7 @@ export function DashboardPage() {
       {pendingActions.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-            Actions Needed
+            Actions requiring attention
           </h2>
           <div className="space-y-4">
             {pendingActions.map((action) => (
@@ -64,7 +64,7 @@ export function DashboardPage() {
                           to={action.actionUrl}
                           className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900/40 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition-colors"
                         >
-                          Take Action
+                          {action.actionLabel ?? "Take Action"}
                         </Link>
                       </div>
                     )}

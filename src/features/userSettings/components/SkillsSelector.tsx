@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -18,11 +18,21 @@ export function SkillsSelector({ userId }: SkillsSelectorProps) {
   // Mutations for adding and removing skills
   const addSkill = useMutation(api.skills.addSkillToUser);
   const removeSkill = useMutation(api.skills.removeSkillFromUser);
+  const ensureNoneSkill = useMutation(api.skills.ensureNoneSkill);
   
   // Loading state
   const [updatingSkills, setUpdatingSkills] = useState<Record<string, boolean>>({});
   
-  // Handle skill toggle
+  // Ensure the special NONE skill exists once component mounts
+  useEffect(() => {
+    // Fire and forget; idempotent on the server
+    ensureNoneSkill().catch(() => void 0);
+  }, [ensureNoneSkill]);
+
+  const noneSkill = useMemo(() => allSkills?.find(s => s.code === "NONE"), [allSkills]);
+  const hasNone = useMemo(() => userSkills?.some(s => s.code === "NONE") ?? false, [userSkills]);
+
+  // Handle skill toggle for regular skills
   const toggleSkill = async (skillId: Id<"skills">) => {
     // Set updating state for this skill
     setUpdatingSkills(prev => ({ ...prev, [skillId]: true }));
@@ -36,6 +46,10 @@ export function SkillsSelector({ userId }: SkillsSelectorProps) {
         await removeSkill({ skillId });
         toast.success("Skill removed");
       } else {
+        // If selecting a real skill and NONE is set, remove NONE first
+        if (hasNone && noneSkill) {
+          await removeSkill({ skillId: noneSkill._id });
+        }
         // Add the skill
         await addSkill({ skillId });
         toast.success("Skill added");
@@ -48,6 +62,42 @@ export function SkillsSelector({ userId }: SkillsSelectorProps) {
       setUpdatingSkills(prev => {
         const updated = { ...prev };
         delete updated[skillId];
+        return updated;
+      });
+    }
+  };
+
+  // Toggle the special NONE skill (exclusive)
+  const toggleNone = async () => {
+    if (!noneSkill) {
+      toast.error("None option unavailable. Please try again.");
+      return;
+    }
+    const key = String(noneSkill._id);
+    setUpdatingSkills(prev => ({ ...prev, [key]: true }));
+    try {
+      if (hasNone) {
+        await removeSkill({ skillId: noneSkill._id });
+        toast.success("None unset");
+      } else {
+        // Remove all real skills first
+        const realSkillIds = (userSkills || [])
+          .filter(s => s.code !== "NONE")
+          .map(s => s._id);
+        if (realSkillIds.length) {
+          await Promise.all(realSkillIds.map(id => removeSkill({ skillId: id })));
+        }
+        // Add NONE
+        await addSkill({ skillId: noneSkill._id });
+        toast.success("Set to None");
+      }
+    } catch (error) {
+      toast.error("Failed to update None option");
+      console.error("Error toggling NONE skill:", error);
+    } finally {
+      setUpdatingSkills(prev => {
+        const updated = { ...prev };
+        delete updated[key];
         return updated;
       });
     }
@@ -88,11 +138,10 @@ export function SkillsSelector({ userId }: SkillsSelectorProps) {
       <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
         Your Skill Set
       </h2>
-      
+
       <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          
-          {allSkills.map(skill => {
+          {allSkills.filter(s => s.code !== "NONE").map(skill => {
             const isActive = hasSkill(skill._id);
             const isUpdating = updatingSkills[skill._id];
             
@@ -134,6 +183,26 @@ export function SkillsSelector({ userId }: SkillsSelectorProps) {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* NONE option (placed last) */}
+      <div className="mt-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex-1">
+            {/* <div className="text-sm font-medium text-amber-900 dark:text-amber-200">Skills not set yet</div> */}
+            <div className="text-xs text-amber-800/80 dark:text-amber-300/80">If you're a new member and you no longer have probationary status, choose "Set to None" for now. This just prevents the skill update reminders from nagging you until you have a displayable operational skill, you can change it anytime.</div>
+          </div>
+          <button
+            onClick={toggleNone}
+            disabled={!!(noneSkill && updatingSkills[String(noneSkill._id)])}
+            className={`w-full sm:w-auto mt-1 sm:mt-0 px-3 py-2 rounded-md text-sm font-medium transition-colors
+              ${hasNone
+                ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+          >
+            {hasNone ? 'Unset None' : 'Set to None'}
+          </button>
         </div>
       </div>
     </div>

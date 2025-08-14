@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ICAL from 'ical.js';
 import { CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { format, isAfter, startOfDay, addMonths } from 'date-fns';
+import { format, startOfDay, addMonths, addDays } from 'date-fns';
 
 interface CalendarEvent {
   uid: string;
@@ -140,12 +140,13 @@ export function CalDAVCalendar({
   const formatEventDate = (event: CalendarEvent) => {
     const now = new Date();
     const today = startOfDay(now);
+    const tomorrow = startOfDay(addDays(today, 1));
     const eventDate = startOfDay(event.start);
     
     if (event.allDay) {
       if (eventDate.getTime() === today.getTime()) {
         return 'Today';
-      } else if (eventDate.getTime() === today.getTime() + 24 * 60 * 60 * 1000) {
+      } else if (eventDate.getTime() === tomorrow.getTime()) {
         return 'Tomorrow';
       } else {
         return format(event.start, 'MMM d');
@@ -154,7 +155,7 @@ export function CalDAVCalendar({
     
     if (eventDate.getTime() === today.getTime()) {
       return format(event.start, 'HH:mm');
-    } else if (eventDate.getTime() === today.getTime() + 24 * 60 * 60 * 1000) {
+    } else if (eventDate.getTime() === tomorrow.getTime()) {
       return `Tomorrow ${format(event.start, 'HH:mm')}`;
     } else {
       return format(event.start, 'MMM d, HH:mm');
@@ -164,11 +165,12 @@ export function CalDAVCalendar({
   const formatEventDateShort = (event: CalendarEvent) => {
     const now = new Date();
     const today = startOfDay(now);
+    const tomorrow = startOfDay(addDays(today, 1));
     const eventDate = startOfDay(event.start);
     
     if (eventDate.getTime() === today.getTime()) {
       return 'Today';
-    } else if (eventDate.getTime() === today.getTime() + 24 * 60 * 60 * 1000) {
+    } else if (eventDate.getTime() === tomorrow.getTime()) {
       return 'Tomorrow';
     } else {
       return format(event.start, 'EEE MMM d');
