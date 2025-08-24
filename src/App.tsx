@@ -7,6 +7,7 @@ import { KeysPage } from "./pages/KeysPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
+import { VehicleFaultsPage } from "./pages/VehicleFaultsPage";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { FireReportsPage } from "./pages/FireReportsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -59,6 +60,11 @@ function AuthenticatedApp() {
         <Route path="/appliances" element={
           <ProtectedRoute moduleId="applianceChecks">
             <AppliancesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/vehicle-faults" element={
+          <ProtectedRoute moduleId="vehicleFaults">
+            <VehicleFaultsPage />
           </ProtectedRoute>
         } />
         <Route path="/availability" element={

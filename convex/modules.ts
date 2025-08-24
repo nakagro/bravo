@@ -85,6 +85,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       { 
+        moduleId: "vehicleFaults", 
+        moduleName: "Vehicle Faults", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
         moduleId: "settings", 
         moduleName: "User Settings", 
         isEnabled: true,
@@ -200,6 +208,14 @@ export const initializeModuleSettings = mutation({
       { 
         moduleId: "applianceChecks", 
         moduleName: "Appliance Checks", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "vehicleFaults", 
+        moduleName: "Vehicle Faults", 
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],

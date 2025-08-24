@@ -500,6 +500,40 @@ const applicationTables = {
     .index("by_createdAt", ["createdAt"])
     .index("by_submittedBy", ["submittedBy"])
     .index("by_category", ["category"]),
+
+  // Vehicle Faults table for tracking appliance issues
+  vehicleFaults: defineTable({
+    dateReported: v.number(), // Timestamp when the fault was first reported
+    dateLogged: v.optional(v.number()), // Timestamp when the fault was logged into CFA system
+    vehicle: v.union(
+      v.literal("Pumper"),
+      v.literal("Tanker"),
+      v.literal("FCV")
+    ),
+    shortDescription: v.string(), // Brief description of the issue (e.g., "Air leak", "Electrical issue")
+    longDescription: v.string(), // Detailed description of the issue
+    eamRequestNumber: v.optional(v.string()), // EAM Request Number from CFA system
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high")
+    ),
+    status: v.union(
+      v.literal("pending_dmo"),
+      v.literal("pending_wydv"),
+      v.literal("resolved")
+    ),
+    reportedBy: v.id("users"), // User who reported the fault
+    createdAt: v.number(), // Timestamp when the record was created
+    updatedAt: v.number(), // Timestamp when the record was last updated
+    updatedBy: v.id("users"), // User who last updated the record
+    notes: v.optional(v.string()), // Additional notes or updates about the fault
+  })
+    .index("by_vehicle", ["vehicle"])
+    .index("by_status", ["status"])
+    .index("by_dateReported", ["dateReported"])
+    .index("by_reportedBy", ["reportedBy"])
+    .index("by_createdAt", ["createdAt"]),
 };
 
 export default defineSchema({

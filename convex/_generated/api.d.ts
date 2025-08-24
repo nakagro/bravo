@@ -49,6 +49,7 @@ import type * as users_updateUserRank from "../users/updateUserRank.js";
 import type * as users_updateUserRoles from "../users/updateUserRoles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
+import type * as vehicleFaults from "../vehicleFaults.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "users/updateUserRoles": typeof users_updateUserRoles;
   users: typeof users;
   utils: typeof utils;
+  vehicleFaults: typeof vehicleFaults;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   FileText,
   MessageSquare,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export function HamburgerMenu() {
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
   const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
   const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
+  const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
   const feedbackAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "feedback" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
@@ -59,6 +61,7 @@ export function HamburgerMenu() {
       case "dutyCrew": return dutyCrewAccess === true;
       case "fireReports": return fireReportsAccess === true;
       case "applianceChecks": return applianceChecksAccess === true;
+      case "vehicleFaults": return vehicleFaultsAccess === true;
       case "feedback": return feedbackAccess === true;
       case "settings": return settingsAccess === true;
       case "admin": return adminAccess === true;
@@ -171,6 +174,17 @@ export function HamburgerMenu() {
             >
               <Wrench className="mr-3 h-5 w-5" />
               <span>Appliance Checks</span>
+              <Badge variant="outline" className="ml-auto">WIP</Badge>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("vehicleFaults") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/vehicle-faults")}
+              className={location.pathname === '/vehicle-faults' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <AlertTriangle className="mr-3 h-5 w-5" />
+              <span>Vehicle Faults</span>
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>
           )}
