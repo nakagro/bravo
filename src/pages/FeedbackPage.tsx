@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
 import { getVersionString } from "@/utils/version";
-import * as Sentry from "@sentry/react";
 
 export function FeedbackPage() {
   const [subject, setSubject] = useState("");
@@ -39,36 +38,6 @@ export function FeedbackPage() {
         category,
         isAnonymous,
         appVersion: getVersionString(),
-      });
-
-      // Send Sentry event for feedback submission
-      Sentry.addBreadcrumb({
-        message: "Feedback submitted",
-        category: "user_action",
-        level: "info",
-        data: {
-          category,
-          isAnonymous,
-          appVersion: getVersionString(),
-          subject: subject.trim().substring(0, 50) + (subject.trim().length > 50 ? "..." : ""), // Truncated for privacy
-        },
-      });
-
-      Sentry.captureMessage(`New feedback submitted: ${category} - ${Date.now()}`, {
-        level: "info",
-        tags: {
-          feedback_category: category,
-          app_version: getVersionString(),
-          submission_type: isAnonymous ? "anonymous" : "identified",
-        },
-        extra: {
-          subject: subject.trim(),
-          category,
-          isAnonymous,
-          appVersion: getVersionString(),
-          timestamp: new Date().toISOString(),
-        },
-        fingerprint: [`feedback-${category}-${Date.now()}`], // Unique fingerprint
       });
 
       // Reset form and show success toast
