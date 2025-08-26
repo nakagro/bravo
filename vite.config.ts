@@ -8,11 +8,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "prompt", // prompt user to update when new SW available
+      registerType: "autoUpdate", // automatically update when new SW available
       injectRegister: "auto", // automatically inject SW registration script
       strategies: "generateSW",
       workbox: {
         importScripts: ["./sw-push.js"], // include push handler
+        skipWaiting: true, // immediately activate new SW
+        clientsClaim: true, // take control of all clients immediately
       },
       devOptions: {
         enabled: true, // enable PWA in dev for easier testing

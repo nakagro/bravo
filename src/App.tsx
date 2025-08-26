@@ -16,6 +16,8 @@ import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
+import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
+import { usePostHogIdentify } from "./hooks/usePostHogIdentify";
 
 export default function App() {
   return (
@@ -33,9 +35,13 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
+  // Identify user with PostHog when authenticated
+  usePostHogIdentify();
+
   return (
     <MainLayout>
       <PushNotifier />
+      <PWAUpdateNotification />
       <Routes>
         <Route path="/" element={
           <ProtectedRoute moduleId="dashboard">
