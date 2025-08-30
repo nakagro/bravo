@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 type Status = "With district for repair" | "Condemned" | "Due for testing" | "In date";
 type Size = "25" | "38" | "65";
 type Type = "Canvas" | "Duraline";
+type Location = "Station" | "Pumper" | "Tanker" | "FCV" | "Other";
 
 export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onClose: () => void }) {
   const hoses = useQuery(api.hoses.list, {});
@@ -42,18 +43,29 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'history'>('details');
 
   const initialLength = hose?.length || 15;
-  const [lengthOption, setLengthOption] = useState<'15' | '30' | 'other'>(
-    initialLength === 15 ? '15' : initialLength === 30 ? '30' : 'other'
+  const [lengthOption, setLengthOption] = useState<'1.5' | '3' | '5' | '15' | '30' | 'other'>(
+    initialLength === 1.5
+      ? '1.5'
+      : initialLength === 3
+      ? '3'
+      : initialLength === 5
+      ? '5'
+      : initialLength === 15
+      ? '15'
+      : initialLength === 30
+      ? '30'
+      : 'other'
   );
   const [customLength, setCustomLength] = useState(
     initialLength !== 15 && initialLength !== 30 ? initialLength : 0
   );
 
   const [formData, setFormData] = useState({
-    hoseId: hose?.hoseId || "",
+    hoseId: hose?.hoseId || "WV",
     length: hose?.length || 15,
     size: hose?.size || "25" as Size,
     type: hose?.type || "Canvas" as Type,
+    location: (hose?.location as Location | undefined) || undefined,
     testDate: hose?.testDate ? new Date(hose.testDate).toISOString().split('T')[0] : "",
     status: hose?.status || "In date" as Status,
   });
@@ -66,6 +78,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
         length: hose.length,
         size: hose.size,
         type: hose.type,
+        location: (hose.location as Location | undefined) || undefined,
         testDate: hose.testDate ? new Date(hose.testDate).toISOString().split('T')[0] : "",
         status: hose.status,
       });
@@ -146,6 +159,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           type: formData.type,
           testDate: new Date(formData.testDate).getTime(),
         };
+        if (formData.location) updateData.location = formData.location;
         
         // Only include status if it's not going to be automatically managed
         // or if the user manually changed it from the original
@@ -167,6 +181,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           length: formData.length,
           size: formData.size,
           type: formData.type,
+          ...(formData.location ? { location: formData.location } : {}),
           testDate: new Date(formData.testDate).getTime(),
           status: formData.status,
         });
@@ -243,7 +258,27 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                   id="hoseId"
                   type="text"
                   value={formData.hoseId}
-                  onChange={(e) => setFormData(f => ({ ...f, hoseId: e.target.value }))}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    // Always update the hoseId field
+                    setFormData((f) => ({ ...f, hoseId: next }));
+                    // When adding a new hose (no existing hoseId prop), auto-select size from ID
+                    if (!hoseId) {
+                      const match = next.trim().toUpperCase().match(/^WV\s*(25|38|65)/i);
+                      if (match) {
+                        const inferred = match[1] as Size;
+                        setFormData((f) => ({ ...f, size: inferred }));
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!hoseId) {
+                      const val = e.target.value.trim();
+                      if (val === "") {
+                        setFormData((f) => ({ ...f, hoseId: "WV" }));
+                      }
+                    }
+                  }}
                   className="mt-1 block w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   placeholder="WV0001"
                   required
@@ -286,20 +321,45 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                   </Select>
                 </div>
               </div>
+
+              <div>
+                <Label htmlFor="hoseLocation" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</Label>
+                <Select
+                  value={formData.location ?? undefined}
+                  onValueChange={(value) => setFormData((f) => ({ ...f, location: value as Location }))}
+                >
+                  <SelectTrigger id="hoseLocation" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Station">Station</SelectItem>
+                    <SelectItem value="Pumper">Pumper</SelectItem>
+                    <SelectItem value="Tanker">Tanker</SelectItem>
+                    <SelectItem value="FCV">FCV</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div>
                 <Label htmlFor="lengthOption" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Length (m)</Label>
                 <Select
                   value={lengthOption}
                   onValueChange={(value) => {
-                    const val = value as '15' | '30' | 'other';
+                    const val = value as '1.5' | '3' | '5' | '15' | '30' | 'other';
                     setLengthOption(val);
-                    if (val === '15') {
-                      setFormData(f => ({ ...f, length: 15 }));
+                    if (val === '1.5') {
+                      setFormData((f) => ({ ...f, length: 1.5 }));
+                    } else if (val === '3') {
+                      setFormData((f) => ({ ...f, length: 3 }));
+                    } else if (val === '5') {
+                      setFormData((f) => ({ ...f, length: 5 }));
+                    } else if (val === '15') {
+                      setFormData((f) => ({ ...f, length: 15 }));
                     } else if (val === '30') {
-                      setFormData(f => ({ ...f, length: 30 }));
+                      setFormData((f) => ({ ...f, length: 30 }));
                     } else if (val === 'other') {
-                      setFormData(f => ({ ...f, length: customLength }));
+                      setFormData((f) => ({ ...f, length: customLength }));
                     }
                   }}
                   required
@@ -308,6 +368,9 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                     <SelectValue placeholder="Select length" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="1.5">1.5m</SelectItem>
+                    <SelectItem value="3">3m</SelectItem>
+                    <SelectItem value="5">5m</SelectItem>
                     <SelectItem value="15">15m</SelectItem>
                     <SelectItem value="30">30m</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
@@ -330,6 +393,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                       placeholder="Custom length (m)"
                       required={lengthOption === 'other'}
                       min="1"
+                      step="0.1"
                     />
                   </div>
                 )}

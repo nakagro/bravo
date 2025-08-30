@@ -161,6 +161,15 @@ const applicationTables = {
     length: v.number(),
     size: v.union(v.literal("25"), v.literal("38"), v.literal("65")),
     type: v.union(v.literal("Canvas"), v.literal("Duraline")),
+    location: v.optional(
+      v.union(
+        v.literal("Station"),
+        v.literal("Pumper"),
+        v.literal("Tanker"),
+        v.literal("FCV"),
+        v.literal("Other")
+      )
+    ),
     testDate: v.number(),
     status: v.union(
       v.literal("With district for repair"),
