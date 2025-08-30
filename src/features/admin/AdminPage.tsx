@@ -3,6 +3,7 @@ import ModuleSettings from "./ModuleSettings";
 import NotificationTester from "./NotificationTester";
 import NotificationSettings from "./NotificationSettings";
 import AdminTasks from "./AdminTasks";
+import LinksManager from "./LinksManager";
 import {
   Accordion,
   AccordionItem,
@@ -26,6 +27,13 @@ export default function AdminPage() {
           <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Module Settings</AccordionTrigger>
           <AccordionContent>
             <ModuleSettings showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="links">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Links</AccordionTrigger>
+          <AccordionContent>
+            <LinksManager showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 

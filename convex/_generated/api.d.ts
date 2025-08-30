@@ -35,6 +35,7 @@ import type * as http from "../http.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
+import type * as links from "../links.js";
 import type * as messages from "../messages.js";
 import type * as modules from "../modules.js";
 import type * as notificationSettings from "../notificationSettings.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
+  links: typeof links;
   messages: typeof messages;
   modules: typeof modules;
   notificationSettings: typeof notificationSettings;

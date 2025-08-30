@@ -14,6 +14,7 @@ import { FeedbackPage } from "./pages/FeedbackPage";
 import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { LinksPage } from "./pages/LinksPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
@@ -86,6 +87,11 @@ function AuthenticatedApp() {
         <Route path="/feedback" element={
           <ProtectedRoute moduleId="feedback">
             <FeedbackPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/links" element={
+          <ProtectedRoute moduleId="links">
+            <LinksPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

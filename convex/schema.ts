@@ -501,6 +501,21 @@ const applicationTables = {
     .index("by_submittedBy", ["submittedBy"])
     .index("by_category", ["category"]),
 
+  // Links table for configurable quick links page
+  links: defineTable({
+    title: v.string(),
+    url: v.string(),
+    category: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    order: v.number(),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"]) 
+    .index("by_order", ["order"]),
+
   // Vehicle Faults table for tracking appliance issues
   vehicleFaults: defineTable({
     dateReported: v.number(), // Timestamp when the fault was first reported

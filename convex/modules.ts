@@ -29,6 +29,14 @@ export const syncModuleSettings = mutation({
         minimumRank: undefined
       },
       { 
+        moduleId: "links", 
+        moduleName: "Links", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
         moduleId: "hoses", 
         moduleName: "Hose Inventory", 
         isEnabled: true,
@@ -152,6 +160,14 @@ export const initializeModuleSettings = mutation({
       { 
         moduleId: "dashboard", 
         moduleName: "Dashboard", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
+        moduleId: "links", 
+        moduleName: "Links", 
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],

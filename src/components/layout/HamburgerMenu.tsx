@@ -17,6 +17,7 @@ import {
   FileText,
   MessageSquare,
   AlertTriangle,
+  Link2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export function HamburgerMenu() {
   const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
   const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
   const feedbackAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "feedback" });
+  const linksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "links" });
   const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
 
@@ -60,6 +62,7 @@ export function HamburgerMenu() {
       case "availability": return availabilityAccess === true;
       case "dutyCrew": return dutyCrewAccess === true;
       case "fireReports": return fireReportsAccess === true;
+      case "links": return linksAccess === true;
       case "applianceChecks": return applianceChecksAccess === true;
       case "vehicleFaults": return vehicleFaultsAccess === true;
       case "feedback": return feedbackAccess === true;
@@ -140,6 +143,16 @@ export function HamburgerMenu() {
             >
               <KeyRound className="mr-3 h-5 w-5" />
               <span>Key Management</span>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("links") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/links")}
+              className={location.pathname === '/links' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Link2 className="mr-3 h-5 w-5" />
+              <span>Links</span>
             </DropdownMenuItem>
           )}
 
