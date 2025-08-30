@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
@@ -17,9 +18,15 @@ const YouTab: React.FC<YouTabProps> = ({
   const [selectedDuration, setSelectedDuration] = useState<number | undefined>(undefined);
   const [showDurationSection, setShowDurationSection] = useState(false);
   const [selectedNextStatus, setSelectedNextStatus] = useState<string | undefined>(undefined);
-  const [timeInputType, setTimeInputType] = useState<'hours' | 'time'>('time');
+  const [timeInputType, setTimeInputType] = useState<'hours' | 'time' | 'datetime'>('time');
   const [hoursInput, setHoursInput] = useState('');
   const [timeInput, setTimeInput] = useState('');
+  const [dateTimeInput, setDateTimeInput] = useState('');
+  // Detect touch-capable devices (heuristic for mobile/iOS overlay hint)
+  const isTouchDevice = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return 'ontouchstart' in window || (navigator as any).maxTouchPoints > 0;
+  }, []);
   
   // Fetch available status options from the backend
   const mainStatusOptions = useQuery(api.availability.getMainStatusOptions) || [];
@@ -62,16 +69,35 @@ const YouTab: React.FC<YouTabProps> = ({
   // Helper function to handle status change with duration
   const handleStatusWithDuration = (status: string) => {
     handleStatusChange(status, selectedDuration, selectedNextStatus);
+    if (selectedDuration) {
+      showDurationToast(selectedDuration);
+    }
     setSelectedDuration(undefined);
     setSelectedNextStatus(undefined);
   };
+
+  // Format a Date to "YYYY-MM-DDTHH:mm" in LOCAL time for datetime-local inputs
+  const getLocalDateTimeInputValue = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
   
-  // Helper function to apply duration to current status
-  const applyDurationToCurrentStatus = (hours: number) => {
-    if (userStatus?.currentStatus) {
-      handleStatusChange(userStatus.currentStatus, hours, selectedNextStatus);
+  // Apply staged duration to current status
+  const onApplyDurationClick = () => {
+    if (!selectedDuration) return;
+    if (!userStatus?.currentStatus) {
+      toast.warning('Select a status above, then set a duration.');
+      return;
     }
-    setSelectedDuration(hours);
+    handleStatusChange(userStatus.currentStatus, selectedDuration, selectedNextStatus);
+    showDurationToast(selectedDuration);
+    setSelectedDuration(undefined);
+    setSelectedNextStatus(undefined);
   };
   
   // Helper function to calculate hours from military time input
@@ -114,20 +140,36 @@ const YouTab: React.FC<YouTabProps> = ({
     if (timeInputType === 'hours') {
       hours = parseFloat(hoursInput);
       if (isNaN(hours) || hours <= 0) return;
-    } else {
+    } else if (timeInputType === 'time') {
       hours = calculateHoursFromTime(timeInput);
       if (!hours || hours <= 0) return;
+    } else if (timeInputType === 'datetime') {
+      hours = calculateHoursFromDateTime(dateTimeInput);
+      if (!hours || hours <= 0) return;
     }
-    
-    if (userStatus?.currentStatus) {
-      applyDurationToCurrentStatus(hours);
-    } else {
-      setSelectedDuration(hours);
-    }
+    // Narrow type for TS: ensure hours is a number
+    if (hours === null) return;
+
+    // Stage duration only; do not apply until user clicks a status or the Set button below
+    setSelectedDuration(hours);
     
     // Clear inputs
     setHoursInput('');
     setTimeInput('');
+    setDateTimeInput('');
+  };
+
+  // Helper: calculate hours from a selected local date-time string (YYYY-MM-DDTHH:mm)
+  const calculateHoursFromDateTime = (dt: string) => {
+    if (!dt) return null;
+    // datetime-local provides local time without timezone suffix; Date will interpret it as local
+    const target = new Date(dt);
+    if (isNaN(target.getTime())) return null;
+    const now = new Date();
+    if (target <= now) return null;
+    const diffMs = target.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    return Math.round(diffHours * 100) / 100;
   };
   
   // Helper function to apply next status to current status
@@ -196,6 +238,34 @@ const YouTab: React.FC<YouTabProps> = ({
     if (!status) return 'text-gray-600 dark:text-gray-400';
     const statusOption = statusMap[status];
     return statusOption?.textColorClass || 'text-gray-600 dark:text-gray-400';
+  };
+
+  // Toast helpers
+  const formatDuration = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  };
+
+  const formatUntil = (hours: number) => {
+    const end = new Date(Date.now() + hours * 60 * 60 * 1000);
+    return end.toLocaleString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const showDurationToast = (hours: number) => {
+    const base = `Duration set: ${formatDuration(hours)} (until ${formatUntil(hours)})`;
+    const tail = selectedNextStatus
+      ? ` → then ${getStatusDisplayName(selectedNextStatus)}`
+      : '';
+    toast.info(base + tail);
   };
 
   // Handle duty officer toggle for users with Officer skill
@@ -350,10 +420,20 @@ const YouTab: React.FC<YouTabProps> = ({
                 >
                   Hours
                 </button>
+                <button
+                  onClick={() => setTimeInputType('datetime')}
+                  className={`px-3 py-2 rounded text-sm transition-colors ${
+                    timeInputType === 'datetime'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Date & Time
+                </button>
               </div>
               
               {/* Time Input */}
-              <div className="flex gap-2 mb-3">
+              <div className={`flex gap-2 mb-3 ${timeInputType === 'datetime' ? 'flex-wrap' : ''}`}>
                 {timeInputType === 'hours' ? (
                   <input
                     type="number"
@@ -365,7 +445,7 @@ const YouTab: React.FC<YouTabProps> = ({
                     step="0.5"
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeInput()}
                   />
-                ) : (
+                ) : timeInputType === 'time' ? (
                   <input
                     type="text"
                     inputMode="numeric"
@@ -377,11 +457,39 @@ const YouTab: React.FC<YouTabProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeInput()}
                     maxLength={4}
                   />
+                ) : (
+                  <div className={`relative ${timeInputType === 'datetime' ? 'basis-full' : 'flex-1'} min-w-0`}>
+                    <input
+                      type="datetime-local"
+                      value={dateTimeInput}
+                      onChange={(e) => setDateTimeInput(e.target.value)}
+                      aria-label="Select date and time"
+                      title="Select date and time"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeInput()}
+                      min={getLocalDateTimeInputValue(new Date(Date.now() + 60 * 1000))}
+                    />
+                    {isTouchDevice && !dateTimeInput && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3 text-gray-500 dark:text-gray-400 text-sm">
+                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Tap to pick date & time</span>
+                      </div>
+                    )}
+                  </div>
                 )}
                 <button
                   onClick={handleCustomTimeInput}
-                  disabled={timeInputType === 'hours' ? !hoursInput : !timeInput}
-                  className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  disabled={
+                    timeInputType === 'hours' ? !hoursInput :
+                    timeInputType === 'time' ? !timeInput :
+                    !dateTimeInput
+                  }
+                  className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
                 >
                   Set
                 </button>
@@ -394,11 +502,8 @@ const YouTab: React.FC<YouTabProps> = ({
                     <button
                       key={hours}
                       onClick={() => {
-                        if (userStatus?.currentStatus) {
-                          applyDurationToCurrentStatus(hours);
-                        } else {
-                          setSelectedDuration(hours);
-                        }
+                        // Stage duration only; do not apply until user clicks a status or the Set button below
+                        setSelectedDuration(hours);
                       }}
                       className={`px-2 py-2 rounded text-sm transition-colors ${
                         (selectedDuration === hours || userStatus?.statusDurationHours === hours) 
@@ -444,6 +549,16 @@ const YouTab: React.FC<YouTabProps> = ({
                       `After ${selectedDuration}h → Status will be cleared`
                     }
                   </p>
+
+                  {/* Apply button */}
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={onApplyDurationClick}
+                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      Set
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
