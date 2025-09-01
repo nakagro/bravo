@@ -21,15 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Status, Size, Type, Location } from "../types";
 
-// Type definitions
-type Status = "With district for repair" | "Condemned" | "Due for testing" | "In date";
-type Size = "25" | "38" | "65";
-type Type = "Canvas" | "Duraline";
-type Location = "Station" | "Pumper" | "Tanker" | "FCV" | "Other";
+// Types are imported from ../types
 
 export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onClose: () => void }) {
   const hoses = useQuery(api.hoses.list, {});
+  const moduleSettings = useQuery(api.modules.getModuleSettings, {});
   const hose = hoses?.find((h: Doc<"hoses">) => h._id === hoseId);
   const add = useMutation(api.hoses.add);
   const update = useMutation(api.hoses.update);
@@ -84,6 +82,20 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       });
     }
   }, [hose]);
+
+  // Prefill default location for new hoses from module settings if available
+  useEffect(() => {
+    if (!hose && !formData.location) {
+      const hosesModule = moduleSettings?.find((m: any) => m.moduleId === "hoses");
+      const defaultLocation = hosesModule?.config?.defaultLocation as Location | undefined;
+      if (defaultLocation) {
+        setFormData((f) => ({ ...f, location: defaultLocation }));
+      } else {
+        // Fallback to Station
+        setFormData((f) => ({ ...f, location: "Station" as Location }));
+      }
+    }
+  }, [hose, formData.location, moduleSettings]);
 
   // Helper function to determine if a hose should be "In date" or "Due for testing" based on test date
   const getAutoStatus = (testDate: string): "In date" | "Due for testing" => {

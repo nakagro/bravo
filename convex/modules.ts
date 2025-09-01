@@ -13,6 +13,43 @@ export const getModuleSettings = query({
 });
 
 /**
+ * Update a module's configuration object
+ */
+export const updateModuleConfig = mutation({
+  args: {
+    moduleId: v.string(),
+    config: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const { moduleId, config } = args;
+
+    // Get the authenticated user ID
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to update module settings");
+    }
+
+    // Find the module setting
+    const moduleSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
+      .first();
+
+    if (!moduleSetting) {
+      throw new Error(`Module with ID ${moduleId} not found`);
+    }
+
+    await ctx.db.patch(moduleSetting._id, {
+      config,
+      updatedAt: Date.now(),
+      updatedBy: userId,
+    });
+
+    return true;
+  },
+});
+
+/**
  * Sync missing modules to existing module settings
  */
 export const syncModuleSettings = mutation({
@@ -42,7 +79,8 @@ export const syncModuleSettings = mutation({
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
-        minimumRank: undefined
+        minimumRank: undefined,
+        config: { defaultLocation: "Station" }
       },
       { 
         moduleId: "keys", 
@@ -179,7 +217,8 @@ export const initializeModuleSettings = mutation({
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
-        minimumRank: undefined
+        minimumRank: undefined,
+        config: { defaultLocation: "Station" }
       },
       { 
         moduleId: "keys", 

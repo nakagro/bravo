@@ -105,6 +105,8 @@ const applicationTables = {
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
+    // Optional module-specific configuration
+    config: v.optional(v.any()),
     // Last updated timestamp
     updatedAt: v.number(),
     // User who last updated the settings
