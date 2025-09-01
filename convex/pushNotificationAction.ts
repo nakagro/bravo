@@ -19,6 +19,8 @@ export const sendNotification = action({
     body: v.string(),
     userId: v.optional(v.id("users")),
     url: v.optional(v.string()), // Optional URL for deep-linking when notification is clicked
+    notificationType: v.optional(v.string()),
+    source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (!PUBLIC_KEY || !PRIVATE_KEY) {
@@ -37,9 +39,40 @@ export const sendNotification = action({
       ...(args.url && { url: args.url }) // Include URL if provided
     });
 
+    const now = Date.now();
+
+    if (subs.length === 0) {
+      // Audit: no subscriptions found for this user
+      await ctx.runMutation(api.notificationAudit.logAttempt, {
+        userId: args.userId,
+        subscriptionId: undefined,
+        endpoint: undefined,
+        notificationType: args.notificationType,
+        source: args.source,
+        title: args.title,
+        body: args.body,
+        success: false,
+        error: "no_subscriptions",
+        sentAt: now,
+      });
+      return;
+    }
+
     for (const sub of subs) {
       try {
         await webpush.sendNotification(sub.subscription, payload);
+        // Audit success
+        await ctx.runMutation(api.notificationAudit.logAttempt, {
+          userId: sub.userId,
+          subscriptionId: sub._id,
+          endpoint: sub.subscription?.endpoint,
+          notificationType: args.notificationType,
+          source: args.source,
+          title: args.title,
+          body: args.body,
+          success: true,
+          sentAt: now,
+        });
       } catch (err: any) {
         // Clean up stale subscriptions
         if (err.statusCode === 410 || err.statusCode === 404) {
@@ -47,6 +80,19 @@ export const sendNotification = action({
             id: sub._id,
           });
         }
+        // Audit failure
+        await ctx.runMutation(api.notificationAudit.logAttempt, {
+          userId: sub.userId,
+          subscriptionId: sub._id,
+          endpoint: sub.subscription?.endpoint,
+          notificationType: args.notificationType,
+          source: args.source,
+          title: args.title,
+          body: args.body,
+          success: false,
+          error: typeof err?.message === "string" ? err.message : String(err),
+          sentAt: now,
+        });
       }
     }
   },

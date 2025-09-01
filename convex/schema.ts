@@ -105,6 +105,8 @@ const applicationTables = {
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
+    // Optional module-specific configuration
+    config: v.optional(v.any()),
     // Last updated timestamp
     updatedAt: v.number(),
     // User who last updated the settings
@@ -318,6 +320,23 @@ const applicationTables = {
     createdAt: v.number(),
   })
     .index("by_user", ["userId"]),
+
+  // Notification audit log table to record delivery attempts
+  notificationAudit: defineTable({
+    userId: v.optional(v.id("users")),
+    subscriptionId: v.optional(v.id("pushSubscriptions")),
+    endpoint: v.optional(v.string()),
+    notificationType: v.optional(v.string()),
+    source: v.optional(v.string()),
+    title: v.string(),
+    body: v.string(),
+    success: v.boolean(),
+    error: v.optional(v.string()),
+    sentAt: v.number(),
+  })
+    .index("by_user", ["userId"]) 
+    .index("by_type_time", ["notificationType", "sentAt"]) 
+    .index("by_sentAt", ["sentAt"]),
 
   // Fire Reports - Comprehensive incident reporting system
   // Appliance locations table to track where each appliance is stationed

@@ -7,7 +7,7 @@ import { HoseComments } from "./HoseComments";
 import { HoseForm } from "./HoseForm";
 import { HoseHistory } from "./HoseHistory";
 import { HoseHistoryModal } from "./HoseHistoryModal";
-import { Status, Size, Type, statusColors } from "../types";
+import { Status, Size, Type, statusColors, Location, locationOptions } from "../types";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     status: "" as Status | "",
     size: "" as Size | "",
     type: "" as Type | "",
+    location: "" as Location | "",
     search: "",
     upcomingTest: "" as UpcomingTestFilter | "",
   });
@@ -121,6 +122,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
       status: "",
       size: "",
       type: "",
+      location: "",
       search: "",
       upcomingTest: "",
     });
@@ -131,6 +133,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     status: filters.status || undefined,
     size: filters.size || undefined,
     type: filters.type || undefined,
+    location: filters.location || undefined,
     search: filters.search || undefined,
   });
 
@@ -316,7 +319,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         </div>
         
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
             <Select
               value={filters.status === "" ? "all" : filters.status}
               onValueChange={(value) => setFilters(f => ({ ...f, status: value === "all" ? "" : value as Status }))}
@@ -357,6 +360,22 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="Canvas">Canvas</SelectItem>
                 <SelectItem value="Duraline">Duraline</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.location === "" ? "all" : filters.location}
+              onValueChange={(value) => setFilters(f => ({ ...f, location: value === "all" ? "" : value as Location }))}
+            >
+              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="Station">Station</SelectItem>
+                <SelectItem value="Pumper">Pumper</SelectItem>
+                <SelectItem value="Tanker">Tanker</SelectItem>
+                <SelectItem value="FCV">FCV</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>

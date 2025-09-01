@@ -4,7 +4,7 @@ import { api } from "./_generated/api";
 const crons = cronJobs();
 
 
-// Schedule at 4am AEST (≈ 18:00 UTC)
+
 crons.daily(
   "nightly reset statuses", // identifier
   { hourUTC: 18, minuteUTC: 30 }, // 18:00 UTC == 04:00 AEST (UTC+10)
@@ -12,10 +12,10 @@ crons.daily(
   {}
 );
 
-// Schedule at 10:00 AM AEST (≈ 00:00 UTC)
+
 crons.daily(
   "morning availability reminder", // identifßier
-  { hourUTC: 1, minuteUTC: 0 }, // 00:00 UTC == 10:00 AM AEST (UTC+10)ß
+  { hourUTC: 1, minuteUTC: 0 }, // 01:00 UTC == 10:00 AM AEST (UTC+10)ß
   api.availabilityActions.morningReminder,
   {}
 );

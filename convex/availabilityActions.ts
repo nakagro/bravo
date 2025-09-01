@@ -35,6 +35,8 @@ export const nightlyReset = action({
                 body: "Please update your availability status for today.",
                 userId: user._id,
                 url: "/availability", // Deep-link to availability page
+                notificationType: "nightlyReset",
+                source: "cron:nightlyReset",
               });
               count++;
             } catch (err) {
@@ -64,15 +66,15 @@ export const morningReminder = action({
       return 0;
     }
 
-    // Get all users to check their status
+    // Get all users to check their status (raw status fields)
     const users = await ctx.runQuery(api.availability.getAllUsersStatus, {});
     
     let notificationCount = 0;
 
     for (const user of users) {
-      // Since daily reset at 4am clears currentStatus for users without active durations,
-      // we can simply check if the user has a currentStatus or not
-      const needsReminder = !user.currentStatus;
+      // Treat expired statuses as unset so users with lapsed durations still get reminders
+      const hasActiveStatus = !!user.currentStatus && (!user.statusExpiresAt || user.statusExpiresAt > Date.now());
+      const needsReminder = !hasActiveStatus;
       
       if (needsReminder) {
         try {
@@ -81,6 +83,8 @@ export const morningReminder = action({
             body: "Don't forget to set your availability status for the day",
             userId: user._id,
             url: "/availability", // Deep-link to availability page
+            notificationType: "morningReminder",
+            source: "cron:morningReminder",
           });
           notificationCount++;
         } catch (err) {

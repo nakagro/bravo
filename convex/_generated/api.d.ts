@@ -38,6 +38,7 @@ import type * as keys from "../keys.js";
 import type * as links from "../links.js";
 import type * as messages from "../messages.js";
 import type * as modules from "../modules.js";
+import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationSettings from "../notificationSettings.js";
 import type * as pushNotificationAction from "../pushNotificationAction.js";
 import type * as pushNotifications from "../pushNotifications.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   links: typeof links;
   messages: typeof messages;
   modules: typeof modules;
+  notificationAudit: typeof notificationAudit;
   notificationSettings: typeof notificationSettings;
   pushNotificationAction: typeof pushNotificationAction;
   pushNotifications: typeof pushNotifications;
