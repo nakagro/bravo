@@ -18,7 +18,6 @@ import { LinksPage } from "./pages/LinksPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
-import { usePostHogIdentify } from "./hooks/usePostHogIdentify";
 
 export default function App() {
   return (
@@ -36,8 +35,7 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-  // Identify user with PostHog when authenticated
-  usePostHogIdentify();
+  // PostHog integration removed
 
   return (
     <MainLayout>
