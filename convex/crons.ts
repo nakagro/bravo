@@ -23,7 +23,7 @@ crons.daily(
 // Process status transitions every minute
 crons.interval(
   "process status transitions", // identifier
-  { minutes: 1 }, // Every minute
+  { minutes: 5 }, // Every minute
   api.availability.processStatusTransitions,
   {}
 );
