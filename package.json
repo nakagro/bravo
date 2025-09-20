@@ -13,7 +13,7 @@
     "build": "node scripts/increment-version.js && vite build",
     "build:docker": "node scripts/increment-version.js && VITE_CONVEX_URL=https://convex.grayhux.io vite build",
     "build:cloud": "node scripts/increment-version.js && VITE_CONVEX_URL=https://whimsical-hamster-488.convex.cloud vite build",
-    "build:prod": "node scripts/increment-version.js && VITE_CONVEX_URL=https://hushed-scorpion-51.convex.cloud vite build",
+    "build:prod": "node scripts/increment-version.js && VITE_CONVEX_URL=https://convex.grayhux.io vite build",
     "version:feature": "node scripts/increment-feature.js",
     "version:major": "node scripts/increment-major.js",
     "preview": "vite preview",
