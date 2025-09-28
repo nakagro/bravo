@@ -8,6 +8,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { DutyCrewPage } from "./pages/DutyCrewPage";
 import { AppliancesPage } from "./pages/AppliancesPage";
 import { VehicleFaultsPage } from "./pages/VehicleFaultsPage";
+import { ApplianceChecksTab, ApplianceChecksTemplateTab } from "./features/applianceChecks/pages";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { FireReportsPage } from "./pages/FireReportsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -97,6 +98,16 @@ function AuthenticatedApp() {
         <Route path="/appliances" element={
           <ProtectedRoute moduleId="applianceChecks">
             <AppliancesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/appliances/templates/:templateId" element={
+          <ProtectedRoute moduleId="applianceChecks">
+            <ApplianceChecksTemplateTab />
+          </ProtectedRoute>
+        } />
+        <Route path="/appliances/run/:runId" element={
+          <ProtectedRoute moduleId="applianceChecks">
+            <ApplianceChecksTab />
           </ProtectedRoute>
         } />
         <Route path="/vehicle-faults" element={

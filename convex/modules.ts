@@ -131,6 +131,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       { 
+        moduleId: "applianceChecksAdmin", 
+        moduleName: "Appliance Checks - Templates", 
+        isEnabled: true,
+        adminOnly: true,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
         moduleId: "vehicleFaults", 
         moduleName: "Vehicle Faults", 
         isEnabled: true,

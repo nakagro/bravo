@@ -577,6 +577,111 @@ const applicationTables = {
     .index("by_dateReported", ["dateReported"])
     .index("by_reportedBy", ["reportedBy"])
     .index("by_createdAt", ["createdAt"]),
+
+  // Appliance Checks - Template-driven structure (Appliance -> Sections -> Items)
+  // Templates represent a specific appliance's checklist definition (e.g., Pumper v1)
+  applianceTemplates: defineTable({
+    name: v.string(), // Appliance name or template name (e.g., "Pumper")
+    description: v.optional(v.string()),
+    version: v.number(), // Increment on significant structural changes
+    hasUnpublishedChanges: v.optional(v.boolean()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+    // For future extensibility without schema changes
+    metadata: v.optional(v.any()),
+  })
+    .index("by_name", ["name"]) 
+    .index("by_updatedAt", ["updatedAt"]),
+
+  // Sections are logical areas within an appliance (e.g., Cabin, Locker 1)
+  applianceSections: defineTable({
+    templateId: v.id("applianceTemplates"),
+    name: v.string(),
+    order: v.number(), // for display ordering
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+    metadata: v.optional(v.any()), // flexible per-section config
+  })
+    .index("by_template", ["templateId"]) 
+    .index("by_template_order", ["templateId", "order"]),
+
+  // Items are checkable elements within a section
+  applianceItems: defineTable({
+    templateId: v.id("applianceTemplates"), // denormalized for efficient queries
+    sectionId: v.id("applianceSections"),
+    name: v.string(),
+    order: v.number(),
+    // The interaction type for this item; default is boolean with optional notes
+    itemType: v.union(
+      v.literal("boolean_with_notes"),
+      v.literal("boolean"),
+      v.literal("text")
+    ),
+    isRequired: v.optional(v.boolean()),
+    defaultNotes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+    metadata: v.optional(v.any()), // flexible per-item options in future
+  })
+    .index("by_section", ["sectionId"]) 
+    .index("by_section_order", ["sectionId", "order"]) 
+    .index("by_template", ["templateId"]),
+
+  // Runs: Instances of weekly checks based on a template
+  applianceCheckRuns: defineTable({
+    templateId: v.id("applianceTemplates"),
+    templateVersion: v.number(),
+    templateName: v.string(),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    scheduledDate: v.optional(v.number()), // optional date anchor for the week
+    startedBy: v.id("users"),
+    startedAt: v.number(),
+    completedBy: v.optional(v.id("users")),
+    completedAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_status", ["status"]) 
+    .index("by_startedAt", ["startedAt"]) 
+    .index("by_template", ["templateId"]) 
+    .index("by_scheduledDate", ["scheduledDate"]),
+
+  // One document per item response in a run for efficient updates
+  applianceCheckRunItems: defineTable({
+    runId: v.id("applianceCheckRuns"),
+    // Reference back to the template entities (may be used for reporting)
+    templateId: v.id("applianceTemplates"),
+    sectionId: v.optional(v.id("applianceSections")),
+    itemId: v.optional(v.id("applianceItems")),
+    // Snapshot fields to be resilient to template changes
+    sectionName: v.string(),
+    sectionOrder: v.number(),
+    itemName: v.string(),
+    itemOrder: v.number(),
+    itemType: v.union(
+      v.literal("boolean_with_notes"),
+      v.literal("boolean"),
+      v.literal("text")
+    ),
+    // User responses
+    value: v.optional(v.union(v.literal("yes"), v.literal("no"))),
+    notes: v.optional(v.string()),
+    updatedBy: v.optional(v.id("users")),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_run", ["runId"]) 
+    .index("by_run_sectionOrder", ["runId", "sectionOrder"]) 
+    .index("by_run_itemOrder", ["runId", "itemOrder"]),
 };
 
 export default defineSchema({
