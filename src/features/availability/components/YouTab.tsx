@@ -632,38 +632,30 @@ const YouTab: React.FC<YouTabProps> = ({
               </div>
               
               {/* Action Buttons */}
-              <div className="flex flex-col gap-2">
-                {!isCurrentUserDutyOfficer && (
+              {!isCurrentUserDutyOfficer ? (
+                <button
+                  onClick={handleDutyOfficerToggle}
+                  className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                >
+                  Take Over as Duty Officer
+                </button>
+              ) : (
+                <div className="flex gap-2">
                   <button
-                    onClick={handleDutyOfficerToggle}
-                    className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                    onClick={handleStepDown}
+                    className="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
                   >
-                    Take Over as Duty Officer
+                    Step Down
                   </button>
-                )}
-                
-                {isCurrentUserDutyOfficer && (
-                  <>
-                    <div className="px-3 py-2 rounded text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-center">
-                      ✓ You are the Active Duty Officer
-                    </div>
-                    
-                    <button
-                      onClick={handleStepDown}
-                      className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
-                    >
-                      Step Down as Duty Officer
-                    </button>
-                    
-                    <button
-                      onClick={() => setShowOfficerSelection(true)}
-                      className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-                    >
-                      Select New Duty Officer
-                    </button>
-                  </>
-                )}
-              </div>
+                  
+                  <button
+                    onClick={() => setShowOfficerSelection(true)}
+                    className="flex-1 px-3 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                  >
+                    Select New Officer
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
