@@ -365,6 +365,102 @@ export const setDutyOfficer = mutation({
   },
 });
 
+// Unset duty officer (remove duty officer status from current user)
+export const unsetDutyOfficer = mutation({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    // Get the authenticated user ID
+    const currentUserId = await getAuthUserId(ctx);
+    if (!currentUserId) {
+      throw new Error("You must be signed in to unset duty officer");
+    }
+    
+    // Get the current user
+    const currentUser = await ctx.db.get(currentUserId);
+    if (!currentUser) {
+      throw new Error("User not found");
+    }
+    
+    // Check if the current user is the duty officer
+    if (!currentUser.isDutyOfficer) {
+      throw new Error("You are not currently the duty officer");
+    }
+    
+    // Remove duty officer status
+    await ctx.db.patch(currentUserId, {
+      isDutyOfficer: false,
+    });
+    
+    // Find the most recent duty officer history record for this user
+    const dutyHistory = await ctx.db
+      .query("dutyOfficerHistory")
+      .filter((q) => q.eq(q.field("userId"), currentUserId))
+      .order("desc")
+      .first();
+    
+    // Update the end time if a record exists
+    if (dutyHistory && !dutyHistory.endTimestamp) {
+      await ctx.db.patch(dutyHistory._id, {
+        endTimestamp: Date.now(),
+      });
+    }
+    
+    return true;
+  },
+});
+
+// Get all users with Officer skill
+export const getUsersWithOfficerSkill = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      memberNumber: v.optional(v.string()),
+      isDutyOfficer: v.optional(v.boolean()),
+    })
+  ),
+  handler: async (ctx) => {
+    // Get the authenticated user ID
+    const currentUserId = await getAuthUserId(ctx);
+    if (!currentUserId) {
+      return [];
+    }
+    
+    // Find the Officer skill
+    const officerSkill = await ctx.db
+      .query("skills")
+      .filter((q) => q.eq(q.field("code"), "OF"))
+      .first();
+    
+    if (!officerSkill) {
+      return [];
+    }
+    
+    // Get all users
+    const allUsers = await ctx.db.query("users").collect();
+    
+    // Filter users who have the Officer skill
+    const usersWithOfficerSkill = allUsers.filter((user) => {
+      const userSkills = user.skills || [];
+      return userSkills.includes(officerSkill._id);
+    });
+    
+    // Return only necessary fields
+    return usersWithOfficerSkill.map((user) => ({
+      _id: user._id,
+      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      memberNumber: user.memberNumber,
+      isDutyOfficer: user.isDutyOfficer,
+    }));
+  },
+});
+
 // Clear a user's status (internal helper)
 export const clearStatus = mutation({
   args: { userId: v.id("users") },

@@ -14,8 +14,8 @@ crons.daily(
 
 
 crons.daily(
-  "morning availability reminder", // identifßier
-  { hourUTC: 1, minuteUTC: 0 }, // 01:00 UTC == 10:00 AM AEST (UTC+10)ß
+  "morning availability reminder", // identifier
+  { hourUTC: 0, minuteUTC: 0 }, // 00:00 UTC == 10:00 AM AEST (UTC+10)
   api.availabilityActions.morningReminder,
   {}
 );

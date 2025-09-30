@@ -41,8 +41,15 @@ const YouTab: React.FC<YouTabProps> = ({
   const hasOfficerSkill = userInfo?.hasOfficerSkill ?? false;
   const isCurrentUserDutyOfficer = userInfo?.isCurrentUserDutyOfficer ?? false;
   
-  // Mutation for setting duty officer
+  // Mutations for duty officer management
   const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
+  const unsetDutyOfficer = useMutation(api.availability.unsetDutyOfficer);
+  
+  // Query to get all users with Officer skill
+  const usersWithOfficerSkill = useQuery(api.availability.getUsersWithOfficerSkill);
+  
+  // State for officer selection modal
+  const [showOfficerSelection, setShowOfficerSelection] = useState(false);
   
   // Use userInfo for status if available, fallback to prop for backward compatibility
   const effectiveUserStatus = userInfo ? {
@@ -285,9 +292,45 @@ const YouTab: React.FC<YouTabProps> = ({
     if (window.confirm(confirmMessage)) {
       try {
         await setDutyOfficer({ userId: currentUserId });
+        toast.success('You are now the Duty Officer');
       } catch (error) {
         console.error('Error setting duty officer:', error);
-        alert('Failed to update duty officer status. Please try again.');
+        toast.error('Failed to update duty officer status. Please try again.');
+      }
+    }
+  };
+  
+  // Handle duty officer step down
+  const handleStepDown = async () => {
+    const confirmMessage = 'Are you sure you want to step down as Duty Officer?';
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await unsetDutyOfficer();
+        toast.success('You have stepped down as Duty Officer');
+      } catch (error) {
+        console.error('Error stepping down as duty officer:', error);
+        toast.error('Failed to step down. Please try again.');
+      }
+    }
+  };
+  
+  // Handle electing another officer
+  const handleElectOfficer = async (userId: string) => {
+    const selectedUser = usersWithOfficerSkill?.find(u => u._id === userId);
+    if (!selectedUser) return;
+    
+    const userName = selectedUser.name || `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.memberNumber || 'Unknown';
+    const confirmMessage = `Set ${userName} as the new Duty Officer? This will remove your Duty Officer status.`;
+    
+    if (window.confirm(confirmMessage)) {
+      try {
+        await setDutyOfficer({ userId: userId as any });
+        setShowOfficerSelection(false);
+        toast.success(`${userName} is now the Duty Officer`);
+      } catch (error) {
+        console.error('Error setting duty officer:', error);
+        toast.error('Failed to set new duty officer. Please try again.');
       }
     }
   };
@@ -575,25 +618,107 @@ const YouTab: React.FC<YouTabProps> = ({
       {isAuthenticated && hasOfficerSkill && (
         <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
           <div className="px-3 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-lg font-medium">
-                  Duty Officer
-                </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {isCurrentUserDutyOfficer ? 'You are currently the Duty Officer' : 'Take over as Duty Officer'}
-                </span>
+            <div className="flex flex-col gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-lg font-medium">
+                    Duty Officer
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {isCurrentUserDutyOfficer ? 'You are currently the Duty Officer' : 'Manage Duty Officer status'}
+                  </span>
+                </div>
               </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2">
+                {!isCurrentUserDutyOfficer && (
+                  <button
+                    onClick={handleDutyOfficerToggle}
+                    className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    Take Over as Duty Officer
+                  </button>
+                )}
+                
+                {isCurrentUserDutyOfficer && (
+                  <>
+                    <div className="px-3 py-2 rounded text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 text-center">
+                      ✓ You are the Active Duty Officer
+                    </div>
+                    
+                    <button
+                      onClick={handleStepDown}
+                      className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
+                    >
+                      Step Down as Duty Officer
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowOfficerSelection(true)}
+                      className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                    >
+                      Select New Duty Officer
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Officer Selection Modal */}
+      {showOfficerSelection && isCurrentUserDutyOfficer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold">Select New Duty Officer</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Choose an officer to take over as Duty Officer
+              </p>
+            </div>
+            
+            {/* Officer List */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {usersWithOfficerSkill && usersWithOfficerSkill.length > 0 ? (
+                <div className="space-y-2">
+                  {usersWithOfficerSkill
+                    .filter(user => user._id !== currentUserId) // Don't show current user
+                    .map((user) => {
+                      const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.memberNumber || 'Unknown';
+                      return (
+                        <button
+                          key={user._id}
+                          onClick={() => handleElectOfficer(user._id)}
+                          className="w-full px-4 py-3 rounded text-left transition-colors bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
+                        >
+                          <div className="font-medium">{displayName}</div>
+                          {user.memberNumber && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              Member #{user.memberNumber}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No other officers available
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={handleDutyOfficerToggle}
-                disabled={isCurrentUserDutyOfficer} // Disable if already duty officer since there's no unset function
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  isCurrentUserDutyOfficer
-                    ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 cursor-not-allowed'
-                    : 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'
-                }`}
+                onClick={() => setShowOfficerSelection(false)}
+                className="w-full px-4 py-2 rounded text-sm font-medium transition-colors bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
               >
-                {isCurrentUserDutyOfficer ? 'Active' : 'Take Over'}
+                Cancel
               </button>
             </div>
           </div>
