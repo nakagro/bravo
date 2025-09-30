@@ -329,6 +329,43 @@ export const deleteItem = mutation({
   },
 });
 
+// Reorder items within a section
+export const reorderItems = mutation({
+  args: {
+    sectionId: v.id("applianceSections"),
+    itemIds: v.array(v.id("applianceItems")),
+  },
+  handler: async (ctx, { sectionId, itemIds }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("You must be signed in");
+
+    const section = await ctx.db.get(sectionId);
+    if (!section) throw new Error("Section not found");
+
+    // Update order for each item
+    for (let i = 0; i < itemIds.length; i++) {
+      const item = await ctx.db.get(itemIds[i]);
+      if (!item || item.sectionId !== sectionId) {
+        throw new Error("Invalid item or section mismatch");
+      }
+      await ctx.db.patch(itemIds[i], {
+        order: i + 1,
+        updatedAt: Date.now(),
+        updatedBy: userId,
+      });
+    }
+
+    // Mark template as having unpublished changes
+    await ctx.db.patch(section.templateId, {
+      hasUnpublishedChanges: true,
+      updatedAt: Date.now(),
+      updatedBy: userId,
+    });
+
+    return true;
+  },
+});
+
 // Publish: bump version once to capture accumulated structural changes
 export const publishTemplate = mutation({
   args: { templateId: v.id("applianceTemplates") },

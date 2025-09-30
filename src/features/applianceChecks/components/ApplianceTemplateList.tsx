@@ -7,7 +7,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
-import { PlusIcon, TrashIcon, EyeIcon, PlayIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
 interface ApplianceTemplateDoc {
@@ -27,7 +27,6 @@ export function ApplianceTemplateList() {
   const createTemplate = useMutation(api.applianceTemplates.createApplianceTemplate);
   const updateTemplate = useMutation(api.applianceTemplates.updateApplianceTemplate);
   const deleteTemplate = useMutation(api.applianceTemplates.deleteApplianceTemplate);
-  const startRun = useMutation(api.applianceCheckRuns.startRun);
   const publishTemplate = useMutation(api.applianceTemplates.publishTemplate);
   const navigate = useNavigate();
 
@@ -51,17 +50,6 @@ export function ApplianceTemplateList() {
     // no-op: navigation-based editor
   };
 
-  const handleStartCheck = async (tpl: ApplianceTemplateDoc) => {
-    if (tpl.hasUnpublishedChanges) {
-      alert("This template has unpublished changes. Please publish before starting a check.");
-      return;
-    }
-    // Optional: use today's date at midnight as scheduledDate anchor
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const runId = await startRun({ templateId: tpl._id, scheduledDate: today.getTime() });
-    navigate(`/appliances/run/${runId}`);
-  };
 
   return (
     <div className="space-y-6" data-component="ApplianceTemplateList">
@@ -98,30 +86,33 @@ export function ApplianceTemplateList() {
       )}
 
       {/* Template grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {templates?.map((tpl) => (
-          <Card key={tpl._id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                {tpl.name}
+          <Card key={tpl._id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-lg">{tpl.name}</CardTitle>
                 <Badge variant="outline">v{tpl.version}</Badge>
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => navigate(`/appliances/templates/${tpl._id}`)}>
-                  <EyeIcon className="h-4 w-4 mr-1" /> Open
-                </Button>
-                <Button variant="default" size="sm" onClick={() => handleStartCheck(tpl)}>
-                  <PlayIcon className="h-4 w-4 mr-1" /> Start Check
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(tpl)}>
-                  <TrashIcon className="h-4 w-4 mr-1" /> Delete
-                </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              {tpl.description ? (
+              {tpl.description && (
                 <p className="text-sm text-muted-foreground">{tpl.description}</p>
-              ) : null}
+              )}
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Button 
+                variant="default" 
+                className="w-full" 
+                onClick={() => navigate(`/appliances/templates/${tpl._id}`)}
+              >
+                <PencilIcon className="h-4 w-4 mr-2" /> Edit Template
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="w-full" 
+                onClick={() => handleDelete(tpl)}
+              >
+                <TrashIcon className="h-4 w-4 mr-2" /> Delete
+              </Button>
             </CardContent>
           </Card>
         ))}

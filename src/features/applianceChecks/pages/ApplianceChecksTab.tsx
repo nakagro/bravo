@@ -6,6 +6,9 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../components/ui/accordion";
+import { CheckCircle2, XCircle, ArrowLeft, CheckCheck, MessageSquarePlus } from "lucide-react";
 
 interface RunItemDoc {
   _id: Id<"applianceCheckRunItems">;
@@ -33,6 +36,19 @@ export function ApplianceChecksTab() {
   const completeRun = useMutation(api.applianceCheckRuns.completeRun);
 
   const [completing, setCompleting] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  const toggleNotes = (itemId: string) => {
+    setExpandedNotes(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
 
   const grouped = useMemo(() => {
     const items = (runData?.items as RunItemDoc[]) ?? [];
@@ -56,6 +72,14 @@ export function ApplianceChecksTab() {
   const run = runData?.run;
 
   const isReadOnly = run?.status !== "in_progress";
+
+  // Calculate progress
+  const progress = useMemo(() => {
+    const items = (runData?.items as RunItemDoc[]) ?? [];
+    const answered = items.filter(i => typeof i.value !== "undefined").length;
+    const total = items.length;
+    return { answered, total, percentage: total > 0 ? Math.round((answered / total) * 100) : 0 };
+  }, [runData]);
 
   const handleSetValue = async (runItemId: Id<"applianceCheckRunItems">, value: "yes" | "no") => {
     if (isReadOnly) return;
@@ -85,76 +109,182 @@ export function ApplianceChecksTab() {
 
   if (!run) {
     return (
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <div className="p-3 text-sm text-muted-foreground">Loading run...</div>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-sm text-muted-foreground">Loading run...</div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <div className="p-3 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-medium">{run.templateName}</h2>
-            <Badge variant={run.status === "in_progress" ? "secondary" : "outline"}>{run.status}</Badge>
-            <Badge variant="outline">v{run.templateVersion}</Badge>
+    <div className="space-y-4 pb-4">
+      {/* Sticky Header */}
+      <Card className="sticky top-0 z-10 shadow-md">
+        <CardHeader className="p-4 pb-3">
+          <div className="flex flex-col gap-3">
+            {/* Title and Badges Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-lg sm:text-xl">{run.templateName}</CardTitle>
+                <Badge variant={run.status === "in_progress" ? "secondary" : "outline"}>
+                  {run.status}
+                </Badge>
+                <Badge variant="outline" className="text-xs">v{run.templateVersion}</Badge>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            {!isReadOnly && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-medium">
+                    {progress.answered} / {progress.total} ({progress.percentage}%)
+                  </span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${progress.percentage}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate(-1)}
+                className="flex-1 sm:flex-none"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              {!isReadOnly && (
+                <Button 
+                  onClick={handleComplete} 
+                  disabled={completing}
+                  className="flex-1 sm:flex-none"
+                >
+                  <CheckCheck className="w-4 h-4 mr-2" />
+                  {completing ? "Completing..." : "Complete Check"}
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
-            <Button onClick={handleComplete} disabled={completing || isReadOnly}>
-              {completing ? "Completing..." : "Complete"}
-            </Button>
-          </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
       {/* Sections and Items */}
-      {grouped.map((section) => (
-        <div key={section.order} className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-          <div className="p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium">{section.sectionName}</h3>
-          </div>
-          <div className="p-3 space-y-3">
-            {section.items.map((item) => (
-              <div key={item._id} className="border border-gray-200 dark:border-gray-700 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{item.itemName}</div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={item.value === "yes" ? "default" : "secondary"}
-                      size="sm"
-                      onClick={() => handleSetValue(item._id, "yes")}
-                      disabled={isReadOnly}
-                    >
-                      ✓ Yes
-                    </Button>
-                    <Button
-                      variant={item.value === "no" ? "destructive" : "secondary"}
-                      size="sm"
-                      onClick={() => handleSetValue(item._id, "no")}
-                      disabled={isReadOnly}
-                    >
-                      ✕ No
-                    </Button>
-                  </div>
-                </div>
-                {(item.itemType === "boolean_with_notes" || item.itemType === "text") && (
-                  <div className="mt-2">
-                    <Textarea
-                      defaultValue={item.notes ?? ""}
-                      placeholder="Notes (optional)"
-                      onBlur={(e) => handleSaveNotes(item._id, e.target.value)}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+      <Accordion type="multiple" defaultValue={grouped.map(s => `section-${s.order}`)} className="space-y-4">
+        {grouped.map((section) => {
+          const sectionAnswered = section.items.filter(i => typeof i.value !== "undefined").length;
+          const sectionTotal = section.items.length;
+          const sectionPercentage = sectionTotal > 0 ? Math.round((sectionAnswered / sectionTotal) * 100) : 0;
+          
+          return (
+            <AccordionItem key={section.order} value={`section-${section.order}`} className="border-none">
+              <Card>
+                <CardHeader className="p-4 pb-0 bg-muted/50">
+                  <AccordionTrigger className="hover:no-underline py-3">
+                    <div className="flex items-center justify-between flex-1 pr-2">
+                      <CardTitle className="text-base sm:text-lg">{section.sectionName}</CardTitle>
+                      <Badge variant="secondary" className="ml-2">
+                        {sectionAnswered}/{sectionTotal} ({sectionPercentage}%)
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+              <AccordionContent>
+                <CardContent className="p-4 pt-4 space-y-3">
+                  {section.items.map((item) => {
+                    const hasNotes = item.notes && item.notes.trim().length > 0;
+                    const showNotes = expandedNotes.has(item._id) || hasNotes;
+                    const canHaveNotes = item.itemType === "boolean_with_notes" || item.itemType === "text";
+                    
+                    return (
+                      <Card key={item._id}>
+                        <CardContent className="p-4">
+                          {/* Item Name and Buttons */}
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div className="flex items-center justify-between flex-1 gap-2">
+                              <div className="font-medium text-sm sm:text-base pt-1">
+                                {item.itemName}
+                              </div>
+                              {canHaveNotes && !showNotes && !isReadOnly && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleNotes(item._id)}
+                                  className="text-muted-foreground hover:text-foreground shrink-0"
+                                >
+                                  <MessageSquarePlus className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="flex gap-2 sm:flex-shrink-0">
+                              <Button
+                                variant={item.value === "yes" ? "default" : "outline"}
+                                size="lg"
+                                onClick={() => handleSetValue(item._id, "yes")}
+                                disabled={isReadOnly}
+                                className={`flex-1 sm:flex-none min-w-[100px] ${
+                                  item.value === "yes" 
+                                    ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800" 
+                                    : ""
+                                }`}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                                Yes
+                              </Button>
+                              <Button
+                                variant={item.value === "no" ? "destructive" : "outline"}
+                                size="lg"
+                                onClick={() => handleSetValue(item._id, "no")}
+                                disabled={isReadOnly}
+                                className="flex-1 sm:flex-none min-w-[100px]"
+                              >
+                                <XCircle className="w-4 h-4 mr-1.5" />
+                                No
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Notes Field */}
+                          {canHaveNotes && showNotes && (
+                            <div className="mt-3 space-y-2">
+                              <Textarea
+                                defaultValue={item.notes ?? ""}
+                                placeholder="Add notes (optional)..."
+                                onBlur={(e) => handleSaveNotes(item._id, e.target.value)}
+                                disabled={isReadOnly}
+                                className="min-h-[80px] text-sm"
+                              />
+                              {!isReadOnly && !hasNotes && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleNotes(item._id)}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  Cancel
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+          );
+        })}
+      </Accordion>
     </div>
   );
 }
