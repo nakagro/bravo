@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -33,43 +34,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getVersionString } from "@/utils/version";
 
-export function HamburgerMenu() {
+export const HamburgerMenu = React.memo(() => {
   const { isAuthenticated } = useConvexAuth();
   const { signOut } = useAuthActions();
   const user = useQuery(api.auth.loggedInUser);
-  // const moduleSettings = useQuery(api.modules.getModuleSettings); // Kept from original, though not directly used in this refactored menu logic
   const location = useLocation();
   const navigate = useNavigate();
 
-  const dashboardAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dashboard" });
-  const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
-  const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
-  const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
-  const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
-  const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
-  const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
-  const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
-  const feedbackAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "feedback" });
-  const linksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "links" });
-  const settingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "settings" });
-  const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
+  // Use single optimized query instead of 12 separate queries
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
 
   const hasModuleAccess = (moduleId: string): boolean => {
-    switch (moduleId) {
-      case "dashboard": return dashboardAccess === true;
-      case "hoses": return hoseAccess === true;
-      case "keys": return keysAccess === true;
-      case "availability": return availabilityAccess === true;
-      case "dutyCrew": return dutyCrewAccess === true;
-      case "fireReports": return fireReportsAccess === true;
-      case "links": return linksAccess === true;
-      case "applianceChecks": return applianceChecksAccess === true;
-      case "vehicleFaults": return vehicleFaultsAccess === true;
-      case "feedback": return feedbackAccess === true;
-      case "settings": return settingsAccess === true;
-      case "admin": return adminAccess === true;
-      default: return false;
-    }
+    if (!moduleAccess) return false;
+    return moduleAccess[moduleId as keyof typeof moduleAccess] === true;
   };
 
   const displayName = user ? 
@@ -254,4 +231,6 @@ export function HamburgerMenu() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
+
+HamburgerMenu.displayName = 'HamburgerMenu';

@@ -574,3 +574,77 @@ export const getAvailableStatusOptions = query({
     ];
   },
 });
+
+// Combined query to fetch all user info needed for YouTab in a single call
+// This reduces query overhead from 4 separate queries to 1
+export const getUserInfoForYouTab = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      userId: v.id("users"),
+      hasOfficerSkill: v.boolean(),
+      isCurrentUserDutyOfficer: v.boolean(),
+      currentStatus: v.optional(
+        v.union(
+          v.literal("available - station"),
+          v.literal("available - satellite"),
+          v.literal("not available"),
+          v.literal("delayed response"),
+          v.literal("WFH")
+        )
+      ),
+      statusUpdatedAt: v.optional(v.number()),
+      statusExpiresAt: v.optional(v.number()),
+      statusDurationHours: v.optional(v.number()),
+      nextStatus: v.optional(v.union(
+        v.literal("available - station"),
+        v.literal("available - satellite"),
+        v.literal("not available"),
+        v.literal("delayed response"),
+        v.literal("WFH"),
+        v.literal("reset")
+      )),
+      nextStatusAt: v.optional(v.number()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return null;
+    }
+    
+    // Check if user has Officer skill
+    // Skills are stored as an array of skill IDs on the user object
+    let hasOfficerSkill = false;
+    if (user.skills && user.skills.length > 0) {
+      const skills = await Promise.all(
+        user.skills.map(async (skillId) => {
+          const skill = await ctx.db.get(skillId);
+          return skill;
+        })
+      );
+      hasOfficerSkill = skills.some(skill => skill?.code === "OF");
+    }
+    
+    // Check if status has expired
+    const hasExpired = user.statusExpiresAt && user.statusExpiresAt <= Date.now();
+    
+    return {
+      userId: userId,
+      hasOfficerSkill,
+      isCurrentUserDutyOfficer: user.isDutyOfficer ?? false,
+      currentStatus: hasExpired ? undefined : user.currentStatus,
+      statusUpdatedAt: hasExpired ? undefined : user.statusUpdatedAt,
+      statusExpiresAt: hasExpired ? undefined : user.statusExpiresAt,
+      statusDurationHours: hasExpired ? undefined : user.statusDurationHours,
+      nextStatus: hasExpired ? undefined : user.nextStatus,
+      nextStatusAt: hasExpired ? undefined : user.nextStatusAt,
+    };
+  },
+});

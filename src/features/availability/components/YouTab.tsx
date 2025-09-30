@@ -3,9 +3,10 @@ import { toast } from 'sonner';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
+import { MAIN_STATUS_OPTIONS, NEXT_STATUS_OPTIONS } from "../../../constants/statusOptions";
 
 interface YouTabProps {
-  userStatus: any;
+  userStatus: any; // Keep for backward compatibility, but we'll use userInfo internally
   handleStatusChange: (status: string, durationHours?: number, nextStatus?: string) => void;
   isAuthenticated: boolean;
 }
@@ -28,26 +29,30 @@ const YouTab: React.FC<YouTabProps> = ({
     return 'ontouchstart' in window || (navigator as any).maxTouchPoints > 0;
   }, []);
   
-  // Fetch available status options from the backend
-  const mainStatusOptions = useQuery(api.availability.getMainStatusOptions) || [];
-  const nextStatusOptions = useQuery(api.availability.getAvailableStatusOptions) || [];
+  // Use static status options (no need for reactive queries)
+  const mainStatusOptions = MAIN_STATUS_OPTIONS;
+  const nextStatusOptions = NEXT_STATUS_OPTIONS;
   
-  // Fetch user skills to check for Officer skill
-  const userSkills = useQuery(api.skills.getUserSkills, {});
+  // Fetch all user info in a single optimized query
+  const userInfo = useQuery(api.availability.getUserInfoForYouTab);
   
-  // Get current user ID
-  const currentUserId = useQuery(api.availability.getCurrentUserId);
-  
-  // Check if current user is duty officer
-  const isCurrentUserDutyOfficer = useQuery(api.availability.isCurrentUserDutyOfficer);
-  
-  // Check if user has Officer skill
-  const hasOfficerSkill = useMemo(() => {
-    return userSkills?.some(skill => skill.code === "OF") ?? false;
-  }, [userSkills]);
+  // Extract values from combined query
+  const currentUserId = userInfo?.userId;
+  const hasOfficerSkill = userInfo?.hasOfficerSkill ?? false;
+  const isCurrentUserDutyOfficer = userInfo?.isCurrentUserDutyOfficer ?? false;
   
   // Mutation for setting duty officer
   const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
+  
+  // Use userInfo for status if available, fallback to prop for backward compatibility
+  const effectiveUserStatus = userInfo ? {
+    currentStatus: userInfo.currentStatus,
+    statusUpdatedAt: userInfo.statusUpdatedAt,
+    statusExpiresAt: userInfo.statusExpiresAt,
+    statusDurationHours: userInfo.statusDurationHours,
+    nextStatus: userInfo.nextStatus,
+    nextStatusAt: userInfo.nextStatusAt,
+  } : userStatus;
   
   // Create maps for easy lookup
   const statusMap = useMemo(() => {
@@ -90,11 +95,11 @@ const YouTab: React.FC<YouTabProps> = ({
   // Apply staged duration to current status
   const onApplyDurationClick = () => {
     if (!selectedDuration) return;
-    if (!userStatus?.currentStatus) {
+    if (!effectiveUserStatus?.currentStatus) {
       toast.warning('Select a status above, then set a duration.');
       return;
     }
-    handleStatusChange(userStatus.currentStatus, selectedDuration, selectedNextStatus);
+    handleStatusChange(effectiveUserStatus.currentStatus, selectedDuration, selectedNextStatus);
     showDurationToast(selectedDuration);
     setSelectedDuration(undefined);
     setSelectedNextStatus(undefined);
@@ -174,8 +179,8 @@ const YouTab: React.FC<YouTabProps> = ({
   
   // Helper function to apply next status to current status
   const applyNextStatusToCurrentStatus = (nextStatus: string) => {
-    if (userStatus?.currentStatus && selectedDuration) {
-      handleStatusChange(userStatus.currentStatus, selectedDuration, nextStatus);
+    if (effectiveUserStatus?.currentStatus && selectedDuration) {
+      handleStatusChange(effectiveUserStatus.currentStatus, selectedDuration, nextStatus);
     }
     setSelectedNextStatus(nextStatus);
   };
@@ -296,20 +301,20 @@ const YouTab: React.FC<YouTabProps> = ({
         </div>
         
         {isAuthenticated ? (
-          <div className={`p-3 ${getStatusBackgroundColor(userStatus?.currentStatus)}`}>
-            {userStatus?.currentStatus ? (
+          <div className={`p-3 ${getStatusBackgroundColor(effectiveUserStatus?.currentStatus)}`}>
+            {effectiveUserStatus?.currentStatus ? (
               <>
-                <div className={`font-medium text-lg ${getStatusTextColor(userStatus.currentStatus)}`}>
-                  {getStatusDisplayName(userStatus.currentStatus)}
+                <div className={`font-medium text-lg ${getStatusTextColor(effectiveUserStatus.currentStatus)}`}>
+                  {getStatusDisplayName(effectiveUserStatus.currentStatus)}
                 </div>
-                {userStatus.statusUpdatedAt && (
+                {effectiveUserStatus.statusUpdatedAt && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Updated: {getRelativeTimeString(userStatus.statusUpdatedAt)}
+                    Updated: {getRelativeTimeString(effectiveUserStatus.statusUpdatedAt)}
                   </p>
                 )}
-                {userStatus.statusExpiresAt && userStatus.nextStatus && userStatus.nextStatusAt && (
+                {effectiveUserStatus.statusExpiresAt && effectiveUserStatus.nextStatus && effectiveUserStatus.nextStatusAt && (
                   <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                    {formatStatusTransition(userStatus.statusExpiresAt, userStatus.nextStatus)}
+                    {formatStatusTransition(effectiveUserStatus.statusExpiresAt, effectiveUserStatus.nextStatus)}
                   </p>
                 )}
               </>
@@ -341,7 +346,7 @@ const YouTab: React.FC<YouTabProps> = ({
                 key={option.value}
                 onClick={() => handleStatusWithDuration(option.value)}
                 className={`flex items-center justify-center ${
-                  userStatus?.currentStatus === option.value
+                  effectiveUserStatus?.currentStatus === option.value
                     ? `${option.buttonActiveColorClass} shadow-md`
                     : `bg-white dark:bg-gray-800 ${option.buttonHoverColorClass} ${option.buttonColorClass} border ${option.buttonBorderColorClass} hover:shadow-md dark:hover:shadow-none`
                 } px-4 py-3 rounded-lg transition-all`}
@@ -364,20 +369,20 @@ const YouTab: React.FC<YouTabProps> = ({
             className="w-full px-3 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
           >
             <span className="text-lg font-medium">
-              {userStatus?.statusExpiresAt ? 
-                `Duration: ${userStatus.statusDurationHours}h active` :
+              {effectiveUserStatus?.statusExpiresAt ? 
+                `Duration: ${effectiveUserStatus.statusDurationHours}h active` :
                 (selectedDuration ? `Duration: ${selectedDuration}h` : 'Add Duration')
               }
             </span>
             <div className="flex items-center gap-2">
-              {(selectedDuration || userStatus?.statusExpiresAt) && (
+              {(selectedDuration || effectiveUserStatus?.statusExpiresAt) && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedDuration(undefined);
                     setSelectedNextStatus(undefined);
-                    if (userStatus?.currentStatus) {
-                      handleStatusChange(userStatus.currentStatus, undefined, undefined);
+                    if (effectiveUserStatus?.currentStatus) {
+                      handleStatusChange(effectiveUserStatus.currentStatus, undefined, undefined);
                     }
                   }}
                   className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -506,7 +511,7 @@ const YouTab: React.FC<YouTabProps> = ({
                         setSelectedDuration(hours);
                       }}
                       className={`px-2 py-2 rounded text-sm transition-colors ${
-                        (selectedDuration === hours || userStatus?.statusDurationHours === hours) 
+                        (selectedDuration === hours || effectiveUserStatus?.statusDurationHours === hours) 
                           ? 'bg-blue-500 text-white' 
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
@@ -526,7 +531,7 @@ const YouTab: React.FC<YouTabProps> = ({
                       <button
                         key={option.value}
                         onClick={() => {
-                          if (userStatus?.currentStatus && selectedDuration) {
+                          if (effectiveUserStatus?.currentStatus && selectedDuration) {
                             applyNextStatusToCurrentStatus(option.value);
                           } else {
                             setSelectedNextStatus(option.value);

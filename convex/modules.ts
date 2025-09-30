@@ -499,3 +499,136 @@ export const checkModuleAccess = query({
     return true;
   },
 });
+
+/**
+ * Get all module access permissions for the current user in a single query
+ * This is optimized to reduce query overhead compared to calling checkModuleAccess multiple times
+ */
+export const getAllModuleAccess = query({
+  args: {},
+  returns: v.object({
+    dashboard: v.boolean(),
+    hoses: v.boolean(),
+    keys: v.boolean(),
+    availability: v.boolean(),
+    dutyCrew: v.boolean(),
+    fireReports: v.boolean(),
+    applianceChecks: v.boolean(),
+    vehicleFaults: v.boolean(),
+    feedback: v.boolean(),
+    links: v.boolean(),
+    settings: v.boolean(),
+    admin: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      // Return all false if not authenticated
+      return {
+        dashboard: false,
+        hoses: false,
+        keys: false,
+        availability: false,
+        dutyCrew: false,
+        fireReports: false,
+        applianceChecks: false,
+        vehicleFaults: false,
+        feedback: false,
+        links: false,
+        settings: false,
+        admin: false,
+      };
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return {
+        dashboard: false,
+        hoses: false,
+        keys: false,
+        availability: false,
+        dutyCrew: false,
+        fireReports: false,
+        applianceChecks: false,
+        vehicleFaults: false,
+        feedback: false,
+        links: false,
+        settings: false,
+        admin: false,
+      };
+    }
+    
+    // Admin users have access to everything
+    if (user.isAdmin) {
+      return {
+        dashboard: true,
+        hoses: true,
+        keys: true,
+        availability: true,
+        dutyCrew: true,
+        fireReports: true,
+        applianceChecks: true,
+        vehicleFaults: true,
+        feedback: true,
+        links: true,
+        settings: true,
+        admin: true,
+      };
+    }
+    
+    // Get all module settings in one query
+    const allModuleSettings = await ctx.db.query("moduleSettings").collect();
+    const moduleMap = new Map(allModuleSettings.map(m => [m.moduleId, m]));
+    
+    // Helper function to check access for a specific module
+    const checkAccess = (moduleId: string): boolean => {
+      const moduleSetting = moduleMap.get(moduleId);
+      if (!moduleSetting || !moduleSetting.isEnabled) {
+        return false;
+      }
+      
+      if (moduleSetting.adminOnly && !user.isAdmin) {
+        return false;
+      }
+      
+      if (moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0) {
+        const userRoles = user.roles || [];
+        const hasRequiredRole = moduleSetting.requiredRoles.some(role => userRoles.includes(role));
+        if (!hasRequiredRole) {
+          return false;
+        }
+      }
+      
+      if (moduleSetting.minimumRank) {
+        const rankOrder = {
+          "Probationary": 1,
+          "Firefighter": 2,
+          "Lieutenant": 3,
+          "Captain": 4
+        };
+        
+        const userRank = user.rank;
+        if (!userRank || rankOrder[userRank] < rankOrder[moduleSetting.minimumRank]) {
+          return false;
+        }
+      }
+      
+      return true;
+    };
+    
+    return {
+      dashboard: checkAccess("dashboard"),
+      hoses: checkAccess("hoses"),
+      keys: checkAccess("keys"),
+      availability: checkAccess("availability"),
+      dutyCrew: checkAccess("dutyCrew"),
+      fireReports: checkAccess("fireReports"),
+      applianceChecks: checkAccess("applianceChecks"),
+      vehicleFaults: checkAccess("vehicleFaults"),
+      feedback: checkAccess("feedback"),
+      links: checkAccess("links"),
+      settings: checkAccess("settings"),
+      admin: checkAccess("admin"),
+    };
+  },
+});
