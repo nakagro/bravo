@@ -13,6 +13,7 @@ dist-ssr
 .env.local
 .env.docker
 .env.cloud
+.env.vps
 
 # Editor directories and files
 .vscode/*
@@ -29,3 +30,4 @@ dist-ssr
 package-lock.json
 temp/ERMA - Emergency Response Member Availability.html
 # CONVEX-SETUP.md
+
