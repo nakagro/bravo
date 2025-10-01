@@ -24,11 +24,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
+      // Update theme-color meta tag for iOS status bar
+      updateThemeColor('#020617');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
+      // Update theme-color meta tag for iOS status bar
+      updateThemeColor('#ffffff');
     }
   }, [darkMode]);
+
+  // Helper function to update theme-color meta tag
+  const updateThemeColor = (color: string) => {
+    // Update or create theme-color meta tags
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]:not([media])');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+    metaThemeColor.setAttribute('content', color);
+  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
