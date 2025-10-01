@@ -41,8 +41,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Set color-scheme CSS property for iOS Safari
       document.documentElement.style.colorScheme = 'dark';
       localStorage.setItem('theme', 'dark');
-      // Update theme-color meta tag for iOS status bar
-      updateThemeColor('#171717');
+      // Update theme-color meta tag for iOS status bar (matches header bg-gray-800)
+      updateThemeColor('#1f2937');
     } else {
       document.documentElement.classList.remove('dark');
       // Set color-scheme CSS property for iOS Safari
