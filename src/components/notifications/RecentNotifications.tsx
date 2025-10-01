@@ -26,21 +26,21 @@ export function RecentNotifications() {
             key={notification._id}
             className="p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-500 rounded-r-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                   {notification.title}
                 </h3>
-                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {notification.body}
-                </p>
+                <div className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                  <ClockIcon className="h-3.5 w-3.5" />
+                  <span className="whitespace-nowrap">
+                    {formatDistanceToNow(notification.sentAt, { addSuffix: true })}
+                  </span>
+                </div>
               </div>
-              <div className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <ClockIcon className="h-3.5 w-3.5" />
-                <span>
-                  {formatDistanceToNow(notification.sentAt, { addSuffix: true })}
-                </span>
-              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {notification.body}
+              </p>
             </div>
             
             {notification.url && (
