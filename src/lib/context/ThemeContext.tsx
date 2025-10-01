@@ -25,7 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
       // Update theme-color meta tag for iOS status bar
-      updateThemeColor('#020617');
+      updateThemeColor('#171717');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');

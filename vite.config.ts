@@ -11,6 +11,13 @@ export default defineConfig({
       registerType: "autoUpdate", // automatically update when new SW available
       injectRegister: "auto", // automatically inject SW registration script
       strategies: "generateSW",
+      manifest: {
+        name: "Brigade Management System",
+        short_name: "WVFB",
+        theme_color: "#ffffff",
+        background_color: "#ffffff",
+        display: "standalone",
+      },
       workbox: {
         importScripts: ["./sw-push.js"], // include push handler
         skipWaiting: true, // immediately activate new SW
