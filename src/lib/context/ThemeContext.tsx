@@ -19,6 +19,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return false;
   });
 
+  // Helper function to update theme-color meta tag
+  const updateThemeColor = (color: string) => {
+    // Remove all existing theme-color meta tags
+    const existingMetas = document.querySelectorAll('meta[name="theme-color"]');
+    console.log(`[Theme] Removing ${existingMetas.length} existing theme-color meta tags`);
+    existingMetas.forEach(meta => meta.remove());
+    
+    // Create a single new theme-color meta tag without media query
+    const metaThemeColor = document.createElement('meta');
+    metaThemeColor.setAttribute('name', 'theme-color');
+    metaThemeColor.setAttribute('content', color);
+    document.head.appendChild(metaThemeColor);
+    console.log(`[Theme] Set theme-color to: ${color}`);
+  };
+
   useEffect(() => {
     // Update class on document element
     if (darkMode) {
@@ -33,18 +48,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       updateThemeColor('#ffffff');
     }
   }, [darkMode]);
-
-  // Helper function to update theme-color meta tag
-  const updateThemeColor = (color: string) => {
-    // Update or create theme-color meta tags
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]:not([media])');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement('meta');
-      metaThemeColor.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaThemeColor);
-    }
-    metaThemeColor.setAttribute('content', color);
-  };
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
