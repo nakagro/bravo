@@ -72,20 +72,31 @@ export const getRecentNotifications = query({
     // Filter notifications for this user:
     // - Broadcast notifications (no recipientUserIds or empty array)
     // - Targeted notifications where this user is a recipient
-    const userNotifications = allNotifications.filter((notification) => {
-      // Skip expired notifications
-      if (notification.expiresAt < now) {
-        return false;
-      }
+    const userNotifications = allNotifications
+      .filter((notification) => {
+        // Skip expired notifications
+        if (notification.expiresAt < now) {
+          return false;
+        }
 
-      // Include broadcast notifications (no recipients specified)
-      if (!notification.recipientUserIds || notification.recipientUserIds.length === 0) {
-        return true;
-      }
+        // Include broadcast notifications (no recipients specified)
+        if (!notification.recipientUserIds || notification.recipientUserIds.length === 0) {
+          return true;
+        }
 
-      // Include if user is in the recipient list
-      return notification.recipientUserIds.includes(userId);
-    });
+        // Include if user is in the recipient list
+        return notification.recipientUserIds.includes(userId);
+      })
+      .map((notification) => ({
+        _id: notification._id,
+        title: notification.title,
+        body: notification.body,
+        url: notification.url,
+        notificationType: notification.notificationType,
+        source: notification.source,
+        sentAt: notification.sentAt,
+        expiresAt: notification.expiresAt,
+      }));
 
     return userNotifications;
   },

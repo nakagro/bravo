@@ -18,9 +18,6 @@ export function RecentNotifications() {
         <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
           Recent Notifications
         </h2>
-        <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
-          Last 24 hours
-        </span>
       </div>
 
       <div className="space-y-3">
@@ -60,11 +57,8 @@ export function RecentNotifications() {
         ))}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          Notifications are automatically removed after 24 hours
-        </p>
-      </div>
+
+
     </div>
   );
 }
