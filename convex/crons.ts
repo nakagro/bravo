@@ -1,5 +1,5 @@
 import { cronJobs } from "convex/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const crons = cronJobs();
 
@@ -20,11 +20,19 @@ crons.daily(
   {}
 );
 
-// Process status transitions every minute
+// Process status transitions every 5 minutes
 crons.interval(
   "process status transitions", // identifier
-  { minutes: 5 }, // Every minute
+  { minutes: 5 },
   api.availability.processStatusTransitions,
+  {}
+);
+
+// Clean up expired notifications every hour
+crons.hourly(
+  "cleanup expired notifications", // identifier
+  { minuteUTC: 0 }, // Run at the top of every hour
+  internal.notificationHistory.cleanupExpiredNotifications,
   {}
 );
 

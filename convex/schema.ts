@@ -338,6 +338,22 @@ const applicationTables = {
     .index("by_type_time", ["notificationType", "sentAt"]) 
     .index("by_sentAt", ["sentAt"]),
 
+  // Notification history table to store notifications for 24 hours for user retrieval
+  notificationHistory: defineTable({
+    title: v.string(),
+    body: v.string(),
+    url: v.optional(v.string()), // Optional URL for deep-linking
+    notificationType: v.optional(v.string()),
+    source: v.optional(v.string()),
+    sentAt: v.number(),
+    expiresAt: v.number(), // Timestamp when this notification should be deleted (sentAt + 24 hours)
+    // Store which users received this notification (for targeted notifications)
+    // If undefined/empty, it was a broadcast to all users
+    recipientUserIds: v.optional(v.array(v.id("users"))),
+  })
+    .index("by_sentAt", ["sentAt"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   // Fire Reports - Comprehensive incident reporting system
   // Appliance locations table to track where each appliance is stationed
   applianceLocations: defineTable({

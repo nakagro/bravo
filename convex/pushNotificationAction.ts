@@ -40,6 +40,26 @@ export const sendNotification = action({
     });
 
     const now = Date.now();
+    const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours from now
+
+    // Save notification to history for user retrieval
+    // Collect recipient user IDs from subscriptions
+    const recipientUserIds = args.userId 
+      ? [args.userId] 
+      : subs.length > 0 
+        ? Array.from(new Set(subs.map(sub => sub.userId))) 
+        : undefined;
+
+    await ctx.runMutation(api.notificationHistory.createNotification, {
+      title: args.title,
+      body: args.body,
+      url: args.url,
+      notificationType: args.notificationType,
+      source: args.source,
+      sentAt: now,
+      expiresAt,
+      recipientUserIds,
+    });
 
     if (subs.length === 0) {
       // Audit: no subscriptions found for this user

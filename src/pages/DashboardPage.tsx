@@ -5,6 +5,7 @@ import { ArchiveBoxIcon, KeyIcon, CalendarIcon } from "@heroicons/react/24/outli
 import { FileText, Users, Wrench } from "lucide-react";
 import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { Card, CardContent } from "../components/ui/card";
+import { RecentNotifications } from "../components/notifications/RecentNotifications";
 
 export function DashboardPage() {
   // Fetch the current user's data
@@ -34,6 +35,9 @@ export function DashboardPage() {
       <div className="flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
       </div>
+      
+      {/* Recent Notifications Section */}
+      <RecentNotifications />
       
       {/* Pending Actions Section */}
       {pendingActions.length > 0 && (
