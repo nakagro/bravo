@@ -38,11 +38,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Update class on document element
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      // Set color-scheme CSS property for iOS Safari
+      document.documentElement.style.colorScheme = 'dark';
       localStorage.setItem('theme', 'dark');
       // Update theme-color meta tag for iOS status bar
       updateThemeColor('#171717');
     } else {
       document.documentElement.classList.remove('dark');
+      // Set color-scheme CSS property for iOS Safari
+      document.documentElement.style.colorScheme = 'light';
       localStorage.setItem('theme', 'light');
       // Update theme-color meta tag for iOS status bar
       updateThemeColor('#ffffff');
