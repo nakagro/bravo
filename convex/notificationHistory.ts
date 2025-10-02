@@ -72,10 +72,16 @@ export const getRecentNotifications = query({
     // Filter notifications for this user:
     // - Broadcast notifications (no recipientUserIds or empty array)
     // - Targeted notifications where this user is a recipient
+    // - Exclude automated cron notifications (source starts with "cron:")
     const userNotifications = allNotifications
       .filter((notification) => {
         // Skip expired notifications
         if (notification.expiresAt < now) {
+          return false;
+        }
+
+        // Skip automated cron notifications (e.g., "cron:morningReminder", "cron:nightlyReset")
+        if (notification.source && notification.source.startsWith("cron:")) {
           return false;
         }
 
