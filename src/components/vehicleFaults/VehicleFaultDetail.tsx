@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from '../../hooks/use-toast';
 import { Id } from '../../../convex/_generated/dataModel';
+import { VehicleFaultComments } from './VehicleFaultComments';
 
 type VehicleType = 'Pumper' | 'Tanker' | 'FCV';
 type StatusType = 'pending_dmo' | 'pending_wydv' | 'resolved';
@@ -569,6 +570,9 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                 </CardContent>
               </Card>
             )}
+
+            {/* Comments Section */}
+            <VehicleFaultComments faultId={fault._id} />
           </div>
         )}
       </DialogContent>

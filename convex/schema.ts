@@ -594,6 +594,16 @@ const applicationTables = {
     .index("by_reportedBy", ["reportedBy"])
     .index("by_createdAt", ["createdAt"]),
 
+  // Vehicle Fault Comments for discussion about specific faults
+  vehicleFaultComments: defineTable({
+    faultId: v.id("vehicleFaults"),
+    userId: v.id("users"),
+    timestamp: v.number(),
+    text: v.string(),
+  })
+    .index("by_fault", ["faultId", "timestamp"])
+    .index("by_timestamp", ["timestamp"]),
+
   // Appliance Checks - Template-driven structure (Appliance -> Sections -> Items)
   // Templates represent a specific appliance's checklist definition (e.g., Pumper v1)
   applianceTemplates: defineTable({

@@ -388,3 +388,84 @@ export const getVehicleFault = query({
     };
   },
 });
+
+// Query to get comments for a specific vehicle fault
+export const getVehicleFaultComments = query({
+  args: {
+    faultId: v.id("vehicleFaults"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("vehicleFaultComments"),
+    _creationTime: v.number(),
+    faultId: v.id("vehicleFaults"),
+    userId: v.id("users"),
+    timestamp: v.number(),
+    text: v.string(),
+    user: v.optional(v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+    })),
+  })),
+  handler: async (ctx, args) => {
+    const comments = await ctx.db
+      .query("vehicleFaultComments")
+      .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))
+      .order("asc")
+      .collect();
+
+    // Fetch user details for each comment
+    const commentsWithUsers = await Promise.all(
+      comments.map(async (comment) => {
+        const user = await ctx.db.get(comment.userId);
+        return {
+          ...comment,
+          user: user ? {
+            _id: user._id,
+            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          } : undefined,
+        };
+      })
+    );
+
+    return commentsWithUsers;
+  },
+});
+
+// Mutation to add a comment to a vehicle fault
+export const addVehicleFaultComment = mutation({
+  args: {
+    faultId: v.id("vehicleFaults"),
+    text: v.string(),
+  },
+  returns: v.id("vehicleFaultComments"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to add comments");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Verify the fault exists
+    const fault = await ctx.db.get(args.faultId);
+    if (!fault) {
+      throw new Error("Vehicle fault not found");
+    }
+
+    const commentId = await ctx.db.insert("vehicleFaultComments", {
+      faultId: args.faultId,
+      userId,
+      timestamp: Date.now(),
+      text: args.text,
+    });
+
+    return commentId;
+  },
+});
