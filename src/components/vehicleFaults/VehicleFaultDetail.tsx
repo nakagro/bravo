@@ -48,16 +48,25 @@ const statusConfig = {
   pending_dmo: {
     label: 'Pending - DMO',
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-900/20',
+    hoverBgColor: 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30',
+    borderColor: 'border-yellow-400 dark:border-yellow-500',
     icon: Clock,
   },
   pending_wydv: {
     label: 'Pending - WYDV',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
+    bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    hoverBgColor: 'hover:bg-blue-100 dark:hover:bg-blue-900/30',
+    borderColor: 'border-blue-400 dark:border-blue-500',
     icon: AlertTriangle,
   },
   resolved: {
     label: 'Resolved',
     color: 'bg-green-100 text-green-800 border-green-200',
+    bgColor: 'bg-green-50 dark:bg-green-900/20',
+    hoverBgColor: 'hover:bg-green-100 dark:hover:bg-green-900/30',
+    borderColor: 'border-green-400 dark:border-green-500',
     icon: CheckCircle,
   },
 };
@@ -430,28 +439,26 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
           /* View Mode - Compact Information Display */
           <div className="space-y-3">
             {/* Status Overview - Compact */}
-            <Card className="border-l-4" style={{borderLeftColor: fault.status === 'pending_dmo' ? '#f59e0b' : fault.status === 'pending_wydv' ? '#3b82f6' : '#16a34a'}}>
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Badge className={`${statusConfig[fault.status].color} border text-sm px-2 py-1`}>
-                      <StatusIcon className="w-3 h-3 mr-1" />
-                      {statusConfig[fault.status].label}
-                    </Badge>
-                    <Badge className={`${priorityConfig[fault.priority].color} border text-sm px-2 py-1`}>
-                      {priorityConfig[fault.priority].label} Priority
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Reported {new Date(fault.dateReported).toLocaleDateString('en-AU', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      year: '2-digit'
-                    })}
-                  </div>
+            <div className={`p-4 border-l-4 rounded-r-md transition-colors ${statusConfig[fault.status].bgColor} ${statusConfig[fault.status].borderColor}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge className={`${statusConfig[fault.status].color} border text-sm px-2 py-1`}>
+                    <StatusIcon className="w-3 h-3 mr-1" />
+                    {statusConfig[fault.status].label}
+                  </Badge>
+                  <Badge className={`${priorityConfig[fault.priority].color} border text-sm px-2 py-1`}>
+                    {priorityConfig[fault.priority].label} Priority
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Reported {new Date(fault.dateReported).toLocaleDateString('en-AU', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: '2-digit'
+                  })}
+                </div>
+              </div>
+            </div>
 
             {/* Two-column layout for better space usage */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

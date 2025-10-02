@@ -189,8 +189,8 @@ export function VehicleFaultsPage() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Vehicle Faults</h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* View Toggle - Only show on desktop */}
-            <div className="hidden md:flex items-center border rounded-lg p-1 bg-muted/30">
+            {/* View Toggle */}
+            <div className="flex items-center border rounded-lg p-1 bg-muted/30">
               <Button
                 variant={viewMode === 'cards' ? 'default' : 'ghost'}
                 size="sm"
@@ -306,12 +306,10 @@ export function VehicleFaultsPage() {
                 onFaultClick={(faultId) => setSelectedFault(faultId)}
               />
             ) : (
-              <div className="hidden md:block">
-                <VehicleFaultsTable 
-                  faults={filteredFaults} 
-                  onFaultClick={(faultId) => setSelectedFault(faultId)}
-                />
-              </div>
+              <VehicleFaultsTable 
+                faults={filteredFaults} 
+                onFaultClick={(faultId) => setSelectedFault(faultId)}
+              />
             )}
           </div>
         )}
