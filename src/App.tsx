@@ -20,52 +20,20 @@ import { LinksPage } from "./pages/LinksPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
-import * as Sentry from "@sentry/react";
-import { useEffect } from "react";
-import { api } from "../convex/_generated/api";
 
 export default function App() {
   return (
-    <Sentry.ErrorBoundary fallback={<p>Something went wrong. Please reload the page.</p>}>
-      <ThemeProvider>
-        <SentryUserSync />
-        <BrowserRouter>
-          <Authenticated>
-            <AuthenticatedApp />
-          </Authenticated>
-          <Unauthenticated>
-            <UnauthenticatedApp />
-          </Unauthenticated>
-        </BrowserRouter>
-      </ThemeProvider>
-    </Sentry.ErrorBoundary>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Authenticated>
+          <AuthenticatedApp />
+        </Authenticated>
+        <Unauthenticated>
+          <UnauthenticatedApp />
+        </Unauthenticated>
+      </BrowserRouter>
+    </ThemeProvider>
   );
-}
-
-function SentryUserSync() {
-  const user = useQuery(api.auth.loggedInUser);
-
-  useEffect(() => {
-    if (user === undefined) return; // loading
-    if (user === null) {
-      Sentry.setUser(null); // clear on logout / unauthenticated
-      return;
-    }
-    const fullName = user.firstName && user.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user.name ?? undefined;
-
-    Sentry.setUser({
-      id: user._id,
-      email: user.email ?? undefined,
-      username: fullName,
-    });
-    // Useful tags for filtering
-    if (user.rank) Sentry.setTag("rank", user.rank);
-    if (user.memberNumber) Sentry.setTag("memberNumber", String(user.memberNumber));
-  }, [user]);
-
-  return null;
 }
 
 function AuthenticatedApp() {

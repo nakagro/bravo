@@ -16,7 +16,7 @@ http.route({
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Accept, sentry-trace, baggage, Authorization, X-Requested-With",
+        "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization, X-Requested-With",
         "Access-Control-Max-Age": "86400",
       },
     });
