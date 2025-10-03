@@ -2,7 +2,7 @@
   "name": "Brigade Management System",
   "short_name": "WVFB",
   "description": "Brigade Management System for hose inventory and other brigade resources",
-  "start_url": "/",
+  "start_url": "/availability",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
