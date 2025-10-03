@@ -1,6 +1,7 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
+import { AuthLayout } from "./components/layout/AuthLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { HosesPage } from "./pages/HosesPage";
 import { KeysPage } from "./pages/KeysPage";
@@ -155,10 +156,10 @@ function AuthenticatedApp() {
 
 function UnauthenticatedApp() {
   return (
-    <MainLayout>
+    <AuthLayout>
       <Routes>
         <Route path="*" element={<AuthPage />} />
       </Routes>
-    </MainLayout>
+    </AuthLayout>
   );
 }
