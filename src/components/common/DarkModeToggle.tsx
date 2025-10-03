@@ -6,12 +6,17 @@ export function DarkModeToggle() {
   return (
     <button
       onClick={toggleDarkMode}
-      className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700"
+      className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 transition-all duration-200 active:scale-95 hover:shadow-sm"
       aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
     >
-      {darkMode ? (
+      <div className="relative w-5 h-5">
+        {/* Sun Icon */}
         <svg
-          className="w-5 h-5"
+          className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${
+            darkMode 
+              ? 'opacity-100 rotate-0 scale-100' 
+              : 'opacity-0 -rotate-90 scale-0'
+          }`}
           fill="currentColor"
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
@@ -22,16 +27,21 @@ export function DarkModeToggle() {
             clipRule="evenodd"
           />
         </svg>
-      ) : (
+        
+        {/* Moon Icon */}
         <svg
-          className="w-5 h-5"
+          className={`absolute inset-0 w-5 h-5 transition-all duration-300 ${
+            darkMode 
+              ? 'opacity-0 rotate-90 scale-0' 
+              : 'opacity-100 rotate-0 scale-100'
+          }`}
           fill="currentColor"
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
         </svg>
-      )}
+      </div>
     </button>
   );
 }

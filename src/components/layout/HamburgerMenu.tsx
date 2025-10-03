@@ -40,6 +40,7 @@ export const HamburgerMenu = React.memo(() => {
   const user = useQuery(api.auth.loggedInUser);
   const location = useLocation();
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = React.useState(false);
 
   // Use single optimized query instead of 12 separate queries
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
@@ -64,10 +65,18 @@ export const HamburgerMenu = React.memo(() => {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-12 w-12 p-2" aria-label="Menu">
-          <Menu className="h-8 w-8" />
+        <Button 
+          variant="ghost" 
+          className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 ${
+            isOpen 
+              ? 'bg-accent text-accent-foreground shadow-sm' 
+              : 'hover:bg-accent/50'
+          }`}
+          aria-label="Menu"
+        >
+          <Menu className={`h-8 w-8 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-72 text-base dark:border-neutral-700" align="end">
