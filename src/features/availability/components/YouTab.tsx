@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useQuery, useMutation } from "convex/react";
+import { usePostHog } from 'posthog-js/react';
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { MAIN_STATUS_OPTIONS, NEXT_STATUS_OPTIONS } from "../../../constants/statusOptions";
@@ -16,6 +17,7 @@ const YouTab: React.FC<YouTabProps> = ({
   handleStatusChange,
   isAuthenticated
 }) => {
+  const posthog = usePostHog();
   const [selectedDuration, setSelectedDuration] = useState<number | undefined>(undefined);
   const [showDurationSection, setShowDurationSection] = useState(false);
   const [selectedNextStatus, setSelectedNextStatus] = useState<string | undefined>(undefined);
@@ -80,6 +82,15 @@ const YouTab: React.FC<YouTabProps> = ({
   
   // Helper function to handle status change with duration
   const handleStatusWithDuration = (status: string) => {
+    // Track status change in PostHog
+    posthog?.capture('availability_status_changed', {
+      status: status,
+      duration_hours: selectedDuration,
+      next_status: selectedNextStatus,
+      has_duration: !!selectedDuration,
+      has_next_status: !!selectedNextStatus,
+    });
+    
     handleStatusChange(status, selectedDuration, selectedNextStatus);
     if (selectedDuration) {
       showDurationToast(selectedDuration);
@@ -106,6 +117,15 @@ const YouTab: React.FC<YouTabProps> = ({
       toast.warning('Select a status above, then set a duration.');
       return;
     }
+    
+    // Track duration application in PostHog
+    posthog?.capture('availability_duration_applied', {
+      status: effectiveUserStatus.currentStatus,
+      duration_hours: selectedDuration,
+      next_status: selectedNextStatus,
+      input_type: timeInputType,
+    });
+    
     handleStatusChange(effectiveUserStatus.currentStatus, selectedDuration, selectedNextStatus);
     showDurationToast(selectedDuration);
     setSelectedDuration(undefined);
@@ -187,6 +207,13 @@ const YouTab: React.FC<YouTabProps> = ({
   // Helper function to apply next status to current status
   const applyNextStatusToCurrentStatus = (nextStatus: string) => {
     if (effectiveUserStatus?.currentStatus && selectedDuration) {
+      // Track next status selection in PostHog
+      posthog?.capture('availability_next_status_set', {
+        current_status: effectiveUserStatus.currentStatus,
+        next_status: nextStatus,
+        duration_hours: selectedDuration,
+      });
+      
       handleStatusChange(effectiveUserStatus.currentStatus, selectedDuration, nextStatus);
     }
     setSelectedNextStatus(nextStatus);
@@ -292,6 +319,13 @@ const YouTab: React.FC<YouTabProps> = ({
     if (window.confirm(confirmMessage)) {
       try {
         await setDutyOfficer({ userId: currentUserId });
+        
+        // Track duty officer takeover in PostHog
+        posthog?.capture('duty_officer_takeover', {
+          action: 'self_takeover',
+          user_id: currentUserId,
+        });
+        
         toast.success('You are now the Duty Officer');
       } catch (error) {
         console.error('Error setting duty officer:', error);
@@ -307,6 +341,12 @@ const YouTab: React.FC<YouTabProps> = ({
     if (window.confirm(confirmMessage)) {
       try {
         await unsetDutyOfficer();
+        
+        // Track duty officer step down in PostHog
+        posthog?.capture('duty_officer_step_down', {
+          action: 'step_down',
+        });
+        
         toast.success('You have stepped down as Duty Officer');
       } catch (error) {
         console.error('Error stepping down as duty officer:', error);
@@ -326,6 +366,14 @@ const YouTab: React.FC<YouTabProps> = ({
     if (window.confirm(confirmMessage)) {
       try {
         await setDutyOfficer({ userId: userId as any });
+        
+        // Track duty officer election in PostHog
+        posthog?.capture('duty_officer_elected', {
+          action: 'elect_another',
+          new_officer_id: userId,
+          new_officer_name: userName,
+        });
+        
         setShowOfficerSelection(false);
         toast.success(`${userName} is now the Duty Officer`);
       } catch (error) {
