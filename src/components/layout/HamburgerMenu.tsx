@@ -5,7 +5,6 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Menu,
   Archive,
   KeyRound,
   CalendarDays,
@@ -33,6 +32,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { getVersionString } from "@/utils/version";
+import { AnimatedHamburger } from "@/components/common/AnimatedHamburger";
+import { DarkModeToggle } from "@/components/common/DarkModeToggle";
 
 export const HamburgerMenu = React.memo(() => {
   const { isAuthenticated } = useConvexAuth();
@@ -76,16 +77,19 @@ export const HamburgerMenu = React.memo(() => {
           }`}
           aria-label="Menu"
         >
-          <Menu className={`h-8 w-8 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+          <AnimatedHamburger isOpen={isOpen} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-72 text-base dark:border-neutral-700" align="end">
         <DropdownMenuLabel className="font-normal py-3">
-          <div className="flex flex-col space-y-2">
-            <p className="text-base font-medium leading-none">{displayName}</p>
-            <p className="text-sm leading-none text-muted-foreground truncate">
-              {user?.email}
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col space-y-2 flex-1 min-w-0">
+              <p className="text-base font-medium leading-none">{displayName}</p>
+              <p className="text-sm leading-none text-muted-foreground truncate">
+                {user?.email}
+              </p>
+            </div>
+            <DarkModeToggle />
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
