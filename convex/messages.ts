@@ -114,3 +114,41 @@ export const getMessages = query({
     return messagesWithUserInfo;
   },
 });
+
+// Get count of messages after a specific timestamp (for unread message count)
+export const getUnreadMessageCount = query({
+  args: {
+    lastViewedAt: v.number(),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    // Calculate the timestamp for 4am of the current day (same logic as getMessages)
+    const now = new Date();
+    const today4am = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      4,
+      0,
+      0,
+      0
+    ).getTime();
+    
+    const cutoffTime = now.getHours() < 4 ? 
+      today4am - 24 * 60 * 60 * 1000 : 
+      today4am;
+    
+    // Count messages that are:
+    // 1. After the cutoff time (within the daily window)
+    // 2. After the user's last viewed timestamp
+    const effectiveTimestamp = Math.max(cutoffTime, args.lastViewedAt);
+    
+    const messages = await ctx.db
+      .query("availabilityMessages")
+      .withIndex("by_timestamp")
+      .filter((q) => q.gt(q.field("timestamp"), effectiveTimestamp))
+      .collect();
+    
+    return messages.length;
+  },
+});

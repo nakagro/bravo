@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useConvexAuth } from "convex/react";
 import { useNavigate } from 'react-router-dom';
 import BrigadeTab from './components/BrigadeTab';
@@ -9,12 +9,20 @@ import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
+const MESSAGES_LAST_VIEWED_KEY = 'availability_messages_last_viewed';
+
 const AvailabilityPage: React.FC = () => {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
   
   // State to track active tab
   const [activeTab, setActiveTab] = useState('you'); // Default to the You tab
+  
+  // State to track when user last viewed messages (loaded from localStorage)
+  const [lastViewedMessagesAt, setLastViewedMessagesAt] = useState<number>(() => {
+    const stored = localStorage.getItem(MESSAGES_LAST_VIEWED_KEY);
+    return stored ? parseInt(stored, 10) : 0;
+  });
   
   // Get current user's status
   const userStatus = useQuery(api.availability.getCurrentUserStatus);
@@ -33,6 +41,11 @@ const AvailabilityPage: React.FC = () => {
   const messages = useQuery(api.messages.getMessages) || [];
   const postMessage = useMutation(api.messages.postMessage);
   
+  // Get unread message count
+  const unreadCount = useQuery(api.messages.getUnreadMessageCount, { 
+    lastViewedAt: lastViewedMessagesAt 
+  }) || 0;
+  
   // Check permission for admin tab
   const hasAdminTabAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availabilityAdmin" });
   
@@ -42,6 +55,15 @@ const AvailabilityPage: React.FC = () => {
       setActiveTab('you'); // Redirect to default tab
     }
   }, [activeTab, hasAdminTabAccess]);
+  
+  // Update last viewed timestamp when Messages tab is opened
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      const now = Date.now();
+      setLastViewedMessagesAt(now);
+      localStorage.setItem(MESSAGES_LAST_VIEWED_KEY, now.toString());
+    }
+  }, [activeTab]);
   
   // Handle status change
   const handleStatusChange = async (status: string, durationHours?: number, nextStatus?: string) => {
@@ -121,13 +143,18 @@ const AvailabilityPage: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 px-1 border-b-2 font-medium text-sm relative ${
               activeTab === 'messages' 
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Messages
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1.5">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('deployment')}
