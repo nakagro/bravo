@@ -25,7 +25,22 @@ export const list = query({
       );
     }
 
-    return results.sort((a, b) => a.pegNumber.localeCompare(b.pegNumber));
+    // Get key items count for each key
+    const keysWithItemCount = await Promise.all(
+      results.map(async (key) => {
+        const keyItems = await ctx.db
+          .query("keyItems")
+          .withIndex("by_keyId", (q) => q.eq("keyId", key._id))
+          .collect();
+        
+        return {
+          ...key,
+          itemCount: keyItems.length,
+        };
+      })
+    );
+
+    return keysWithItemCount.sort((a, b) => a.pegNumber.localeCompare(b.pegNumber));
   },
   returns: v.array(
     v.object({
@@ -40,6 +55,7 @@ export const list = query({
       notes: v.optional(v.string()),
       createdBy: v.id("users"),
       updatedAt: v.number(),
+      itemCount: v.number(),
     })
   ),
 });

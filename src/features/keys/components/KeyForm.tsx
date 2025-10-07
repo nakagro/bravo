@@ -29,6 +29,7 @@ export function KeyForm({
   
   const addKey = useMutation(api.keys.add);
   const updateKey = useMutation(api.keys.update);
+  const removeKey = useMutation(api.keys.remove);
   
   // Load existing key data if editing
   useEffect(() => {
@@ -249,7 +250,28 @@ export function KeyForm({
 
           </div>
           
-          <div className="mt-6 flex justify-end space-x-3">
+          <div className="mt-6 flex justify-between items-center">
+            {keyId && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to delete this key? This will also delete all associated key items.")) {
+                    try {
+                      await removeKey({ id: keyId });
+                      toast.success("Key deleted successfully");
+                      onClose();
+                    } catch (error: any) {
+                      toast.error(error.message || "Failed to delete key");
+                      console.error(error);
+                    }
+                  }
+                }}
+                className="px-4 py-2 border border-red-300 dark:border-red-600 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Key
+              </button>
+            )}
+            <div className="flex space-x-3 ml-auto">
             <button
               type="button"
               onClick={onClose}
@@ -274,6 +296,7 @@ export function KeyForm({
                 "Save"
               )}
             </button>
+            </div>
           </div>
         </form>
         

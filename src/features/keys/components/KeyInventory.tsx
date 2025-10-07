@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { toast } from "sonner";
 import { KeyComments } from "./KeyComments";
 import { KeyForm } from "./KeyForm";
 
@@ -13,10 +12,10 @@ import { Card, CardHeader, CardContent, CardFooter } from "../../../components/u
 import { Badge } from "../../../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { cn } from "../../../lib/utils";
-import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, Trash2, Edit, Mail, Phone, User } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, Edit, Mail, Phone, User } from "lucide-react";
 
 type ViewMode = 'cards' | 'table';
-type SortField = 'pegNumber' | 'siteName' | 'address';
+type SortField = 'pegNumber' | 'siteName' | 'address' | 'itemCount';
 type SortDirection = 'asc' | 'desc';
 
 export function KeyInventory() {
@@ -104,13 +103,26 @@ export function KeyInventory() {
       
       switch (field) {
         case 'pegNumber':
-          comparison = a.pegNumber.localeCompare(b.pegNumber);
+          // Parse as numbers for proper numeric sorting
+          const aPegNum = parseInt(a.pegNumber, 10);
+          const bPegNum = parseInt(b.pegNumber, 10);
+          
+          // If both are valid numbers, compare numerically
+          if (!isNaN(aPegNum) && !isNaN(bPegNum)) {
+            comparison = aPegNum - bPegNum;
+          } else {
+            // Fallback to string comparison if either is not a number
+            comparison = a.pegNumber.localeCompare(b.pegNumber);
+          }
           break;
         case 'siteName':
           comparison = a.siteName.localeCompare(b.siteName);
           break;
         case 'address':
           comparison = a.address.localeCompare(b.address);
+          break;
+        case 'itemCount':
+          comparison = a.itemCount - b.itemCount;
           break;
         default:
           break;
@@ -224,11 +236,11 @@ export function KeyInventory() {
               <TableHeader className="bg-gray-50 dark:bg-gray-800">
                 <TableRow>
                   <TableHead 
-                    className="cursor-pointer w-[120px]"
+                    className="cursor-pointer w-[50px]"
                     onClick={() => handleSort('pegNumber')}
                   >
                     <div className="flex items-center">
-                      Peg Number
+                      Peg
                       {sortConfig.field === 'pegNumber' && (
                         <span className="ml-1">
                           {sortConfig.direction === 'asc' ? 
@@ -268,8 +280,20 @@ export function KeyInventory() {
                       )}
                     </div>
                   </TableHead>
-                  <TableHead>
-                    Contact
+                  <TableHead 
+                    className="cursor-pointer w-[100px] text-center"
+                    onClick={() => handleSort('itemCount')}
+                  >
+                    <div className="flex items-center justify-center">
+                      Items
+                      {sortConfig.field === 'itemCount' && (
+                        <span className="ml-1">
+                          {sortConfig.direction === 'asc' ? 
+                            <ChevronUp className="h-4 w-4" /> : 
+                            <ChevronDown className="h-4 w-4" />}
+                        </span>
+                      )}
+                    </div>
                   </TableHead>
                   <TableHead>
                     Notes
@@ -295,24 +319,11 @@ export function KeyInventory() {
                     <TableCell className="font-medium">{key.pegNumber}</TableCell>
                     <TableCell>{key.siteName}</TableCell>
                     <TableCell>{key.address}</TableCell>
-                    <TableCell>
-                      {key.contactName && (
-                        <div className="flex items-center mb-1">
-                          <User className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          {key.contactName}
-                        </div>
-                      )}
-                      {key.contactEmail && (
-                        <div className="flex items-center mb-1">
-                          <Mail className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          {key.contactEmail}
-                        </div>
-                      )}
-                      {key.contactPhone && (
-                        <div className="flex items-center mb-1">
-                          <Phone className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          {key.contactPhone}
-                        </div>
+                    <TableCell className="text-center">
+                      {key.itemCount > 0 && (
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold">
+                          {key.itemCount}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -326,11 +337,11 @@ export function KeyInventory() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 h-8 px-2"
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 h-8 w-8 p-0"
                         onClick={() => setEditingKey(key._id)}
+                        title="Edit"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        <Edit className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -379,48 +390,28 @@ function KeyCard({
     contactPhone?: string,
     notes?: string,
     createdBy: Id<"users">,
-    updatedAt: number
+    updatedAt: number,
+    itemCount: number
   }, 
   onEdit: () => void
 }) {
-  const remove = useMutation(api.keys.remove);
-
-  const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this key?")) {
-      try {
-        await remove({ id: keyData._id });
-        toast.success("Key deleted successfully");
-      } catch (error) {
-        console.error("Error deleting key:", error);
-        toast.error("Failed to delete key");
-      }
-    }
-  };
-
   return (
     <Card 
-      className="cursor-pointer hover:border-red-500 dark:hover:border-red-400 border-gray-200 dark:border-gray-700 transition-colors shadow-sm"
+      className="cursor-pointer hover:border-red-500 dark:hover:border-red-400 border-gray-200 dark:border-gray-700 transition-colors shadow-sm flex flex-col"
       onClick={onEdit}
     >
       <CardHeader className="p-3 pb-0 space-y-0">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">{keyData.pegNumber}</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-red-700 dark:hover:text-red-300"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent card click from triggering
-              handleDelete();
-            }}
-            title="Delete Key"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {keyData.itemCount > 0 && (
+            <Badge variant="secondary" className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30">
+              {keyData.itemCount} {keyData.itemCount === 1 ? 'item' : 'items'}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       
-      <CardContent className="p-3 pt-2 text-sm text-gray-600 dark:text-gray-400 grid grid-cols-1 gap-y-1">
+      <CardContent className="p-3 pt-2 text-sm text-gray-600 dark:text-gray-400 grid grid-cols-1 gap-y-1 flex-1">
         <p className="font-medium text-gray-700 dark:text-gray-300">{keyData.siteName}</p>
         <p>{keyData.address}</p>
         
@@ -452,18 +443,18 @@ function KeyCard({
         )}
       </CardContent>
       
-      <CardFooter className="p-3 pt-0">
+      <CardFooter className="p-3 pt-0 flex justify-end">
         <Button
           variant="ghost"
-          size="sm"
-          className="p-0 h-auto text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-transparent"
+          size="icon"
+          className="h-8 w-8 p-0 text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
           onClick={(e) => {
             e.stopPropagation(); // Prevent card click from triggering
             onEdit();
           }}
+          title="Edit"
         >
-          <Edit className="h-3.5 w-3.5 mr-1" />
-          Edit
+          <Edit className="h-4 w-4" />
         </Button>
       </CardFooter>
     </Card>
