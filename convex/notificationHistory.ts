@@ -1,6 +1,7 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 /**
  * Create a new notification history entry
@@ -167,5 +168,17 @@ export const manualCleanup = mutation({
     }
 
     return expiredNotifications.length;
+  },
+});
+
+/**
+ * Action wrapper for manual cleanup of expired notifications (for admin use)
+ */
+export const cleanupExpiredNotificationsAction = action({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx): Promise<number> => {
+    const count: number = await ctx.runMutation(internal.notificationHistory.cleanupExpiredNotifications);
+    return count;
   },
 });

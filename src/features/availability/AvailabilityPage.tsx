@@ -40,6 +40,9 @@ const AvailabilityPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const messages = useQuery(api.messages.getMessages) || [];
   const postMessage = useMutation(api.messages.postMessage);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
+  const updateMessage = useMutation(api.messages.updateMessage);
+  const currentUserId = useQuery(api.messages.getCurrentUserId);
   
   // Get unread message count
   const unreadCount = useQuery(api.messages.getUnreadMessageCount, { 
@@ -94,6 +97,24 @@ const AvailabilityPage: React.FC = () => {
       } catch (error) {
         console.error("Error posting message:", error);
       }
+    }
+  };
+  
+  // Handle deleting a message
+  const handleDeleteMessage = async (messageId: any) => {
+    try {
+      await deleteMessage({ messageId });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
+  };
+  
+  // Handle updating a message
+  const handleUpdateMessage = async (messageId: any, message: string) => {
+    try {
+      await updateMessage({ messageId, message });
+    } catch (error) {
+      console.error("Error updating message:", error);
     }
   };
   
@@ -206,6 +227,9 @@ const AvailabilityPage: React.FC = () => {
             setNewMessage={setNewMessage}
             messages={messages}
             handleSendMessage={handleSendMessage}
+            currentUserId={currentUserId || null}
+            handleDeleteMessage={handleDeleteMessage}
+            handleUpdateMessage={handleUpdateMessage}
           />
         )}
         

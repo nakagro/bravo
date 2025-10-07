@@ -1,6 +1,17 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
+
+// Get current user ID (for checking message ownership)
+export const getCurrentUserId = query({
+  args: {},
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    return userId;
+  },
+});
 
 // Post a new availability message
 export const postMessage = mutation({
@@ -30,7 +41,8 @@ export const postMessage = mutation({
   },
 });
 
-// Get all availability messages from the current day (starting at 4am), sorted by timestamp (newest first)
+// Get all availability messages, sorted by timestamp (newest first)
+// Messages are automatically deleted at 4am daily by cron job
 export const getMessages = query({
   args: {},
   returns: v.array(
@@ -48,28 +60,10 @@ export const getMessages = query({
     })
   ),
   handler: async (ctx) => {
-    // Calculate the timestamp for 4am of the current day
-    const now = new Date();
-    const today4am = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      4, // 4am
-      0, // 0 minutes
-      0, // 0 seconds
-      0 // 0 milliseconds
-    ).getTime();
-    
-    // If current time is before 4am, use 4am from the previous day
-    const cutoffTime = now.getHours() < 4 ? 
-      today4am - 24 * 60 * 60 * 1000 : // Subtract one day if before 4am
-      today4am;
-    
-    // Get messages since the cutoff time, ordered by timestamp (newest first)
+    // Get all messages, ordered by timestamp (newest first)
     const messages = await ctx.db
       .query("availabilityMessages")
       .withIndex("by_timestamp")
-      .filter((q) => q.gte(q.field("timestamp"), cutoffTime))
       .order("desc")
       .collect();
 
@@ -80,14 +74,13 @@ export const getMessages = query({
         
         // Handle case where user might be null
         if (!user) {
-          // Create a properly formatted response object with only the fields we've defined in the validator
           return {
             _id: message._id,
             userId: message.userId,
             message: message.message,
             timestamp: message.timestamp,
             user: {
-              _id: message.userId, // Use the userId as a fallback
+              _id: message.userId,
               name: "Unknown User",
               firstName: undefined,
               lastName: undefined,
@@ -95,7 +88,6 @@ export const getMessages = query({
           };
         }
         
-        // Create a properly formatted response object with only the fields we've defined in the validator
         return {
           _id: message._id,
           userId: message.userId,
@@ -116,39 +108,125 @@ export const getMessages = query({
 });
 
 // Get count of messages after a specific timestamp (for unread message count)
+// Messages are automatically deleted at 4am daily by cron job
 export const getUnreadMessageCount = query({
   args: {
     lastViewedAt: v.number(),
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    // Calculate the timestamp for 4am of the current day (same logic as getMessages)
-    const now = new Date();
-    const today4am = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      4,
-      0,
-      0,
-      0
-    ).getTime();
-    
-    const cutoffTime = now.getHours() < 4 ? 
-      today4am - 24 * 60 * 60 * 1000 : 
-      today4am;
-    
-    // Count messages that are:
-    // 1. After the cutoff time (within the daily window)
-    // 2. After the user's last viewed timestamp
-    const effectiveTimestamp = Math.max(cutoffTime, args.lastViewedAt);
-    
+    // Count messages posted after the user's last viewed timestamp
     const messages = await ctx.db
       .query("availabilityMessages")
       .withIndex("by_timestamp")
-      .filter((q) => q.gt(q.field("timestamp"), effectiveTimestamp))
+      .filter((q) => q.gt(q.field("timestamp"), args.lastViewedAt))
       .collect();
     
     return messages.length;
+  },
+});
+
+// Update a message (only the message author can update within 10 minutes)
+export const updateMessage = mutation({
+  args: {
+    messageId: v.id("availabilityMessages"),
+    message: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to update a message");
+    }
+
+    // Get the message to verify ownership
+    const existingMessage = await ctx.db.get(args.messageId);
+    if (!existingMessage) {
+      throw new Error("Message not found");
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.userId !== userId) {
+      throw new Error("You can only update your own messages");
+    }
+
+    // Check if message is within 10-minute edit window
+    const tenMinutesInMs = 10 * 60 * 1000;
+    const messageAge = Date.now() - existingMessage.timestamp;
+    if (messageAge > tenMinutesInMs) {
+      throw new Error("Messages can only be edited within 10 minutes of posting");
+    }
+
+    // Update the message
+    await ctx.db.patch(args.messageId, {
+      message: args.message,
+      timestamp: Date.now(), // Update timestamp to reflect edit
+    });
+
+    return null;
+  },
+});
+
+// Delete a message (only the message author can delete within 10 minutes)
+export const deleteMessage = mutation({
+  args: {
+    messageId: v.id("availabilityMessages"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to delete a message");
+    }
+
+    // Get the message to verify ownership
+    const existingMessage = await ctx.db.get(args.messageId);
+    if (!existingMessage) {
+      throw new Error("Message not found");
+    }
+
+    // Verify the user owns this message
+    if (existingMessage.userId !== userId) {
+      throw new Error("You can only delete your own messages");
+    }
+
+    // Check if message is within 10-minute delete window
+    const tenMinutesInMs = 10 * 60 * 1000;
+    const messageAge = Date.now() - existingMessage.timestamp;
+    if (messageAge > tenMinutesInMs) {
+      throw new Error("Messages can only be deleted within 10 minutes of posting");
+    }
+
+    // Delete the message
+    await ctx.db.delete(args.messageId);
+
+    return null;
+  },
+});
+
+// Internal mutation to delete all messages (called by cron job at 4am)
+export const deleteAllMessages = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    // Get all messages
+    const messages = await ctx.db.query("availabilityMessages").collect();
+    
+    // Delete each message
+    await Promise.all(messages.map((message) => ctx.db.delete(message._id)));
+    
+    console.log(`Deleted ${messages.length} messages at ${new Date().toISOString()}`);
+    
+    return messages.length;
+  },
+});
+
+// Action wrapper for manual deletion of all messages (for admin use)
+export const deleteAllMessagesAction = action({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx): Promise<number> => {
+    const count: number = await ctx.runMutation(internal.messages.deleteAllMessages);
+    return count;
   },
 });
