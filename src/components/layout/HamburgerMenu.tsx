@@ -70,10 +70,10 @@ export const HamburgerMenu = React.memo(() => {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 ${
+          className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent ${
             isOpen 
               ? 'bg-accent text-accent-foreground shadow-sm' 
-              : 'hover:bg-accent/50'
+              : ''
           }`}
           aria-label="Menu"
         >
