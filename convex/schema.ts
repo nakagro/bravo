@@ -248,6 +248,21 @@ const applicationTables = {
   })
     .index("by_key", ["keyId"])
     .index("by_timestamp", ["timestamp"]),
+    
+  // Key history for audit trail of changes to keys
+  keyHistory: defineTable({
+    keyId: v.id("keys"),
+    timestamp: v.number(),
+    userId: v.id("users"),
+    changeType: v.string(), // e.g., "field_change", "key_deleted", etc.
+    field: v.string(), // The field that was changed
+    oldValue: v.any(), // The previous value
+    newValue: v.any(), // The new value
+    notes: v.optional(v.string()), // Optional notes
+  })
+    .index("by_key", ["keyId"])
+    .index("by_timestamp", ["timestamp"]),
+    
   // Duty Crew table for tracking duty crew assignments
   dutyCrew: defineTable({
     name: v.string(), // Name of the duty crew (e.g., "Duty Crew 1")

@@ -163,6 +163,31 @@ export const update = mutation({
       }
     }
 
+    const timestamp = Date.now();
+    
+    // Track changes for history
+    const fieldsToTrack = [
+      'pegNumber', 'siteName', 'address', 'contactName', 
+      'contactEmail', 'contactPhone', 'notes'
+    ];
+    
+    for (const field of fieldsToTrack) {
+      const oldValue = (key as any)[field];
+      const newValue = (args as any)[field];
+      
+      if (oldValue !== newValue) {
+        await ctx.db.insert("keyHistory", {
+          keyId: args.id,
+          timestamp,
+          userId,
+          changeType: "field_change",
+          field,
+          oldValue: oldValue || "",
+          newValue: newValue || "",
+        });
+      }
+    }
+
     // Update the key
     await ctx.db.patch(args.id, {
       pegNumber: args.pegNumber,
@@ -172,7 +197,7 @@ export const update = mutation({
       contactEmail: args.contactEmail,
       contactPhone: args.contactPhone,
       notes: args.notes,
-      updatedAt: Date.now(),
+      updatedAt: timestamp,
     });
 
     return null;
@@ -195,6 +220,28 @@ export const remove = mutation({
     const key = await ctx.db.get(args.id);
     if (!key) throw new Error("Key not found");
 
+    // Record deletion in history
+    await ctx.db.insert("keyHistory", {
+      keyId: args.id,
+      timestamp: Date.now(),
+      userId,
+      changeType: "key_deleted",
+      field: "deleted",
+      oldValue: key.pegNumber,
+      newValue: "deleted",
+      notes: `Key ${key.pegNumber} (${key.siteName}) was deleted`,
+    });
+
+    // Delete all key items for this key
+    const keyItems = await ctx.db
+      .query("keyItems")
+      .withIndex("by_keyId", q => q.eq("keyId", args.id))
+      .collect();
+    
+    for (const item of keyItems) {
+      await ctx.db.delete(item._id);
+    }
+
     // Delete all comments for this key
     const comments = await ctx.db
       .query("keyComments")
@@ -211,4 +258,58 @@ export const remove = mutation({
     return null;
   },
   returns: v.null(),
+});
+
+/**
+ * Get history for a specific key
+ */
+export const getHistory = query({
+  args: {
+    keyId: v.id("keys"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Get the history records for this key
+    const history = await ctx.db
+      .query("keyHistory")
+      .withIndex("by_key", (q) => q.eq("keyId", args.keyId))
+      .order("desc")
+      .collect();
+
+    // Enrich with user information
+    const enrichedHistory = await Promise.all(
+      history.map(async (entry) => {
+        const user = await ctx.db.get(entry.userId);
+        return {
+          ...entry,
+          user: {
+            name: user?.name || "Unknown User",
+            email: user?.email,
+          },
+        };
+      })
+    );
+
+    return enrichedHistory;
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("keyHistory"),
+      _creationTime: v.number(),
+      keyId: v.id("keys"),
+      timestamp: v.number(),
+      userId: v.id("users"),
+      changeType: v.string(),
+      field: v.string(),
+      oldValue: v.any(),
+      newValue: v.any(),
+      notes: v.optional(v.string()),
+      user: v.object({
+        name: v.string(),
+        email: v.optional(v.string()),
+      }),
+    })
+  ),
 });

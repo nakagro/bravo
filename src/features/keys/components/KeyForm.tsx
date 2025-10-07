@@ -4,6 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { KeyItems } from "./KeyItems";
+import { KeyHistory } from "./KeyHistory";
 
 export function KeyForm({ 
   keyId, 
@@ -304,6 +305,13 @@ export function KeyForm({
         {keyId && (
           <div className="px-4 pb-4">
             <KeyItems keyId={keyId} />
+          </div>
+        )}
+        
+        {/* Key History section - only show when editing an existing key */}
+        {keyId && (
+          <div className="px-4 pb-4">
+            <KeyHistory keyId={keyId} />
           </div>
         )}
 

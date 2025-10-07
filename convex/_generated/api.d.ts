@@ -34,6 +34,7 @@ import type * as hoseDashboard from "../hoseDashboard.js";
 import type * as hoseStatusSync from "../hoseStatusSync.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
+import type * as keyAuditTrail from "../keyAuditTrail.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   hoseStatusSync: typeof hoseStatusSync;
   hoses: typeof hoses;
   http: typeof http;
+  keyAuditTrail: typeof keyAuditTrail;
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
