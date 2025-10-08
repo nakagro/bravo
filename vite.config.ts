@@ -12,8 +12,8 @@ export default defineConfig({
       injectRegister: "auto", // automatically inject SW registration script
       strategies: "generateSW",
       manifest: {
-        name: "Brigade Management System",
-        short_name: "WVFB",
+        name: "Brigade Availability and Operations",
+        short_name: "BRAVO",
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",

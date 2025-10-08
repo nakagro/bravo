@@ -201,3 +201,38 @@ export const deleteRole = mutation({
     return null;
   },
 });
+
+/**
+ * Delete a user and their associated auth accounts
+ * This ensures the email can be reused after deletion
+ */
+export const deleteUser = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId } = args;
+    
+    // Verify the user exists
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Find and delete all auth accounts associated with this user
+    const authAccounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
+      .collect();
+    
+    for (const account of authAccounts) {
+      await ctx.db.delete(account._id);
+    }
+    
+    // Delete the user
+    await ctx.db.delete(userId);
+    
+    return null;
+  },
+});

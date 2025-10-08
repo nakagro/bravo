@@ -109,11 +109,40 @@ export function SignInForm() {
                 hCaptchaRef.current?.resetCaptcha();
               }
             }
-          } catch (_error) {
-            const toastTitle =
-              flow === "signIn"
-                ? "Could not sign in, did you mean to sign up?"
-                : "Could not sign up, did you mean to sign in?";
+          } catch (error: any) {
+            // Parse the error to provide specific feedback
+            const errorMessage = error?.message || error?.toString() || "";
+            console.error("Authentication error:", error);
+            let toastTitle = "";
+            
+            if (flow === "signIn") {
+              // Sign in errors
+              if (errorMessage.includes("InvalidSecret")) {
+                toastTitle = "Incorrect email or password";
+              } else if (errorMessage.includes("InvalidAccountId") || errorMessage.includes("not found")) {
+                toastTitle = "No account found with this email. Please sign up first.";
+              } else if (errorMessage.includes("TooManyFailedAttempts")) {
+                toastTitle = "Too many failed login attempts. Please try again later.";
+              } else if (errorMessage.includes("disabled")) {
+                toastTitle = "This account has been disabled. Please contact an administrator.";
+              } else {
+                toastTitle = "Could not sign in. Please check your credentials and try again.";
+              }
+            } else {
+              // Sign up errors
+              if (errorMessage.includes("already exists")) {
+                toastTitle = "An account with this email already exists.";
+              } else if (errorMessage.includes("invalid email") || errorMessage.includes("InvalidEmail")) {
+                toastTitle = "Please enter a valid email address.";
+              } else if (errorMessage.includes("Password must be")) {
+                toastTitle = errorMessage; // Show the specific password requirement error
+              } else if (errorMessage.includes("weak password") || errorMessage.includes("WeakPassword")) {
+                toastTitle = "Password is too weak. Please use a stronger password.";
+              } else {
+                toastTitle = "Could not create account. Unknown/Uncaught error.";
+              }
+            }
+            
             toast.error(toastTitle);
             setSubmitting(false);
             // Reset CAPTCHA on error

@@ -14,9 +14,6 @@ export function AuthPage() {
             <span className="text-red-600 dark:text-red-500 font-semibold">AV</span>ailability and{" "}
             <span className="text-red-600 dark:text-red-500 font-semibold">O</span>perations
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Wyndham Vale Fire Brigade
-          </p>
         </div>
         
         {/* Decorative line */}

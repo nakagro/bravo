@@ -36,7 +36,7 @@ export function NotificationSettings() {
         });
         
         // Show a test notification
-        new Notification('Brigade Management System', {
+        new Notification('BRAVO', {
           body: 'Notifications are now enabled for this device.',
           icon: '/favicon.ico'
         });
@@ -94,7 +94,7 @@ export function NotificationSettings() {
             Push Notifications
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Enable notifications to receive important updates and alerts from the Brigade Management System.
+            Enable notifications to receive important updates and alerts from BRAVO.
           </p>
         </div>
         <Bell className="h-6 w-6 text-gray-400" />

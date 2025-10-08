@@ -1,6 +1,6 @@
-# Brigade Management System
+# Brigade Availability and Operations (BRAVO)
 
-This project is a comprehensive Brigade Management System designed to assist CFA (Country Fire Authority) volunteer fire brigades in Victoria, Australia, starting with the Wyndham Vale Fire Brigade. It aims to manage various aspects of brigade operations, evolving from an initial focus on hose inventory to a broader suite of tools.
+This project is a comprehensive Brigade Availability and Operations System designed to assist CFA (Country Fire Authority) volunteer fire brigades in Victoria, Australia, starting with the Wyndham Vale Fire Brigade. It aims to manage various aspects of brigade operations, evolving from an initial focus on hose inventory to a broader suite of tools.
 
 This system is built using [Vite](https://vitejs.dev/) (with React and TypeScript) for the frontend and [Convex](https://convex.dev/) as the backend. The Convex backend is self-hosted and managed via a Docker container.
 

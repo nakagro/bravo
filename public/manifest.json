@@ -1,7 +1,7 @@
 {
-  "name": "Brigade Management System",
-  "short_name": "WVFB",
-  "description": "Brigade Management System for hose inventory and other brigade resources",
+  "name": "Brigade Availability and Operations",
+  "short_name": "BRAVO",
+  "description": "Brigade Availability and Operations",
   "start_url": "/availability",
   "display": "standalone",
   "background_color": "#ffffff",
