@@ -45,7 +45,7 @@ The project supports three deployment environments:
 src/features/
 ├── auth/           # Authentication and authorization
 ├── availability/   # Member availability and deployment status
-├── hoses/          # Fire hose inventory management
+├── hoses/          # Fire hose Management management
 ├── keys/           # Protected premises key management
 ├── admin/          # User management and system configuration
 ├── userSettings/   # User profile and preferences
@@ -129,7 +129,7 @@ This system is designed for Country Fire Authority (CFA) volunteer fire brigades
 
 ### Core Domains
 - **Member Availability**: Real-time turnout status for emergency response
-- **Equipment Management**: Fire hose inventory with testing schedules
+- **Equipment Management**: Fire hose Management with testing schedules
 - **Key Management**: Protected premises access control
 - **Duty Crew**: Station checks and crew scheduling
 - **Skills Tracking**: Member qualifications (BA Internal, Driver, etc.)

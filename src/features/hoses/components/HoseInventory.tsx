@@ -231,7 +231,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
   return (
     <div className="space-y-6" data-component="HoseInventory">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        {/* <h1 className="text-2xl font-bold text-gray-900 dark:text-white w-full sm:w-auto whitespace-nowrap">Hose Inventory</h1> */}
+        {/* <h1 className="text-2xl font-bold text-gray-900 dark:text-white w-full sm:w-auto whitespace-nowrap">Hose Management</h1> */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:ml-auto">
           {/* View mode selector */}
           <ToggleGroup

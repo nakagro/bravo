@@ -1,10 +1,8 @@
 # Brigade Availability and Operations (BRAVO)
 
-This project is a comprehensive Brigade Availability and Operations System designed to assist CFA (Country Fire Authority) volunteer fire brigades in Victoria, Australia, starting with the Wyndham Vale Fire Brigade. It aims to manage various aspects of brigade operations, evolving from an initial focus on hose inventory to a broader suite of tools.
+BRAVO (BRigade AVailability and Operations) is a comprehensive brigade management system designed for CFA (Country Fire Authority) volunteer fire brigades in Victoria, Australia, developed for the Wyndham Vale Fire Brigade. It provides a complete suite of tools for managing brigade operations, equipment, personnel, and emergency response readiness.
 
-This system is built using [Vite](https://vitejs.dev/) (with React and TypeScript) for the frontend and [Convex](https://convex.dev/) as the backend. The Convex backend is self-hosted and managed via a Docker container.
-
-This project was initially bootstrapped using a template (potentially related to 'flex-template' or 'Chef').
+This system is built using [Vite](https://vitejs.dev/) (with React and TypeScript) for the frontend and [Convex](https://convex.dev/) as the backend. The Convex backend supports both self-hosted Docker deployment and Convex Cloud.
 
 ## Purpose of this Document
 
@@ -13,12 +11,14 @@ This README serves as a guide for developers, contributors, and AI assistants (l
 ## Technology Stack
 
 *   **Frontend**: [Vite](https://vitejs.dev/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/)
-*   **Backend**: [Convex](https://convex.dev/) (Self-hosted via Docker)
+*   **Backend**: [Convex](https://convex.dev/) (Self-hosted via Docker or Convex Cloud)
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 *   **Routing**: [React Router DOM](https://reactrouter.com/)
-*   **UI Components**: Custom components, potentially using libraries like [clsx](https://github.com/lukeed/clsx) for conditional class names and [tailwind-merge](https://github.com/dcastil/tailwind-merge) for merging Tailwind classes.
-*   **Notifications**: [Sonner](https://sonner.emilkowal.ski/) for toasts/notifications.
-*   **Authentication**: [@convex-dev/auth](https://auth.convex.dev/)
+*   **UI Components**: [shadcn/ui](https://ui.shadcn.com/) with custom components
+*   **Icons**: [Lucide React](https://lucide.dev/)
+*   **Notifications**: [Sonner](https://sonner.emilkowal.ski/) for toasts/notifications
+*   **Authentication**: [Auth0](https://auth0.com/) via [@convex-dev/auth](https://auth.convex.dev/)
+*   **Monitoring**: Health check endpoints with external monitoring support (Healthcheck.io, Zabbix, Uptime Kuma)
 
 ## Development and Deployment
 
@@ -30,78 +30,199 @@ For detailed instructions on developing and deploying with both local Docker-bas
 /var/www/vite-convex-test
 ├── convex/                 # Backend Convex functions, schema, and configuration
 │   ├── _generated/         # Auto-generated Convex files
-│   ├── features/           # Backend logic for specific features (planned)
-│   ├── auth.config.ts      # Authentication provider configuration
+│   ├── features/           # Backend logic organized by feature
+│   │   ├── auth/           # Authentication logic
+│   │   └── hoses/          # Hose management backend
+│   ├── availability/       # Availability status management
+│   ├── auth.config.ts      # Auth0 provider configuration
 │   ├── auth.ts             # Custom authentication logic
-│   ├── hoses.ts            # Queries and mutations for hoses
-│   ├── hoseComments.ts     # Queries and mutations for hose comments
-│   ├── http.ts             # HTTP action endpoints
-│   └── schema.ts           # Convex database schema definition
-├── public/                 # Static assets
-├── src/                    # Frontend application code (Vite + React)
+│   ├── crons.ts            # Scheduled tasks (daily availability reset)
+│   ├── dutyCrew.ts         # Duty crew management
+│   ├── fireReports.ts      # Fire report system
+│   ├── hoses.ts            # Hose inventory queries and mutations
+│   ├── http.ts             # HTTP endpoints (health checks, webhooks)
+│   ├── keys.ts             # Key register management
+│   ├── modules.ts          # Permission system and module access control
+│   ├── schema.ts           # Complete database schema
+│   ├── skills.ts           # User skills management
+│   ├── vehicleFaults.ts    # Vehicle fault tracking
+│   └── ...                 # Additional backend modules
+├── public/                 # Static assets and PWA configuration
+│   ├── icons/              # PWA icons and favicons
+│   ├── manifest.json       # PWA manifest
+│   └── sw-push.js          # Push notification service worker
+├── src/                    # Frontend application code
 │   ├── components/         # Reusable UI components
-│   │   └── ui/             # Base UI elements (e.g., buttons, inputs)
-│   ├── features/           # Frontend logic and components for specific features
-│   │   ├── auth/
-│   │   └── hoses/
-│   ├── lib/                # Utility functions and helpers
-│   ├── main.tsx            # Main entry point for the React application
-│   ├── App.tsx             # Root React component, sets up routing
+│   │   ├── admin/          # Admin-specific components
+│   │   ├── common/         # Shared components
+│   │   ├── layout/         # Layout components (MainLayout, AuthLayout)
+│   │   └── ui/             # shadcn/ui base components
+│   ├── features/           # Feature-based modules
+│   │   ├── admin/          # Admin dashboard and tools
+│   │   ├── applianceChecks/ # Appliance check templates and runs
+│   │   ├── auth/           # Authentication components
+│   │   ├── availability/   # Availability status management
+│   │   ├── dutyCrew/       # Duty crew scheduling
+│   │   ├── fireReports/    # Fire report forms and management
+│   │   ├── hoses/          # Hose inventory management
+│   │   └── keys/           # Key register
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # Utility functions and monitoring
 │   ├── pages/              # Top-level page components
-│   └── index.css           # Global styles and Tailwind CSS setup
-├── .env.local              # Local environment variables (e.g., Convex keys)
-├── components.json         # Potentially for UI component generation (e.g. shadcn/ui)
-├── eslint.config.js        # ESLint configuration
-├── index.html              # Main HTML file for Vite
-├── package.json            # Project dependencies and scripts
+│   ├── App.tsx             # Root component with routing
+│   ├── main.tsx            # Application entry point
+│   └── index.css           # Global styles and Tailwind setup
+├── docs/                   # Documentation
+├── rules/                  # AI assistant rules and guidelines
+├── scripts/                # Utility scripts
+├── .env.local              # Local environment variables
+├── components.json         # shadcn/ui configuration
+├── package.json            # Dependencies and scripts
 ├── tailwind.config.js      # Tailwind CSS configuration
-├── tsconfig.json           # TypeScript configuration (root)
-├── tsconfig.app.json       # TypeScript configuration for the app
-├── vite.config.ts          # Vite configuration
+├── vite.config.ts          # Vite and PWA configuration
 └── README.md               # This file
 ```
 
 ## Features
 
-The system is being developed in a modular, feature-based manner.
+BRAVO is built with a modular, feature-based architecture and comprehensive permission system.
 
-### Current Features:
+### Core Modules:
 
-*   **Hose Inventory Management**:
-    *   Tracking individual fire hoses (ID, length, size, type, test date, status).
-    *   Recording hose history (status changes, replacements, etc.).
-    *   Adding comments to hoses.
-    *   User authentication to track who made changes.
+#### **Dashboard**
+*   Personalized overview with pending actions and reminders
+*   Quick access to common tasks
+*   Available to all authenticated users
 
-### Planned Features:
+#### **Availability Management**
+*   Real-time member availability status tracking
+*   Multiple status options (Available, Unavailable, Responding, etc.)
+*   Automatic daily reset with push notifications (4:00 AM AEST)
+*   Duty Officer self-service (officers can take over without admin)
+*   Appliance location tracking (Main Station/Satellite Station)
+*   Skills-based filtering and display
 
-*   **Duty Crew Checks**: Managing and recording checks for duty crews.
-*   **Appliance Checks**: Tracking and managing checks for fire trucks (appliances).
-*   **Availability Screen**: A system for members to indicate their turnout status/availability.
-*   **Key Register**: Management for keys to protected premises.
+#### **Hose Inventory Management**
+*   Complete hose tracking (ID, length, size, type, test date, status)
+*   Automatic status management based on test dates (365-day cycle)
+*   Comprehensive history logging with audit trail
+*   Comment system for maintenance notes
+*   Status synchronization tools for admins
+*   Minimum rank: Probationary
+
+#### **Key Register**
+*   Protected premises key management
+*   Key location tracking and assignment
+*   Access history and audit logging
+*   Minimum rank: Probationary
+
+#### **Duty Crew Management**
+*   Sunday duty crew scheduling (4 crews + working bee)
+*   Automatic crew assignment by week of month
+*   Crew member and leader tracking
+*   Minimum rank: Probationary
+
+#### **Appliance Checks**
+*   Customizable check templates for Pumper, Tanker, FCV
+*   Template editor with item management
+*   Check run tracking with pass/fail/N/A status
+*   Concurrency control (one active run per template)
+*   Recent runs history and reporting
+*   Minimum rank: Probationary
+
+#### **Vehicle Faults**
+*   Fault reporting for all appliances
+*   EAM request number tracking
+*   Status workflow (reported → logged → in progress → completed)
+*   Comprehensive audit trail
+*   Admin-only deletion
+*   Minimum rank: Probationary
+
+#### **Fire Reports**
+*   Comprehensive incident reporting
+*   Draft and submitted states
+*   Multi-section forms (incident details, property info, casualties, etc.)
+*   Photo upload support
+*   Integration with CFA systems
+*   Minimum rank: Probationary
+
+#### **Settings**
+*   Personal profile management
+*   Skills selection with "None" option for non-operational members
+*   Notification preferences
+*   Available to all authenticated users
+
+#### **Admin Tools**
+*   User management and permissions
+*   Module access control (role and rank-based)
+*   Appliance location management
+*   System health monitoring
+*   Push notification testing
+*   Hose status synchronization
+*   Admin-only access
+
+### Permission System
+
+*   **Role-based access control**: Admin, Officer, Member roles
+*   **Rank-based requirements**: Minimum rank per module (Probationary, Firefighter, etc.)
+*   **Module-level control**: Global enable/disable per feature
+*   **Route protection**: Both navigation hiding and direct URL blocking
+*   **Real-time permission checking**: Dynamic access control
 
 ## Backend Details (Convex)
 
 The backend is built with Convex and resides in the `convex/` directory.
 
-*   **Schema (`convex/schema.ts`)**: Defines the data models, including:
-    *   `users`: Extends `@convex-dev/auth` user table with CFA-specific fields like `firstName`, `lastName`, and `memberNumber`.
-    *   `hoses`: Stores detailed information about each fire hose.
-    *   `hoseHistory`: Logs changes made to hose records.
-    *   `hoseComments`: Stores comments related to specific hoses.
-*   **Queries and Mutations**: Located in files like `convex/hoses.ts` and `convex/hoseComments.ts`, these functions handle data interaction with the Dockerized Convex instance.
-*   **Authentication**: Uses `@convex-dev/auth`. Configuration in `convex/auth.config.ts` should be reviewed for the self-hosted environment.
+### Database Schema (`convex/schema.ts`)
+
+Comprehensive data models including:
+
+*   **User Management**: `users`, `userSkills`, `skills`, `userRoles`, `roles`
+*   **Availability**: `availabilityStatuses`, `dutyOfficer`, `applianceLocations`
+*   **Equipment**: `hoses`, `hoseHistory`, `hoseComments`, `keys`, `keyHistory`
+*   **Duty Crew**: `dutyCrew`, `dutyCrewSchedule`
+*   **Appliances**: `applianceCheckTemplates`, `applianceCheckRuns`, `applianceCheckItems`, `vehicleFaults`
+*   **Fire Reports**: `fireReports` with comprehensive incident tracking
+*   **Permissions**: `modules` for access control
+*   **Notifications**: `pushSubscriptions` for web push
+
+### Backend Functions
+
+*   **Queries and Mutations**: Feature-organized functions for all CRUD operations
+*   **Scheduled Tasks**: Daily availability reset cron job (4:00 AM AEST)
+*   **Push Notifications**: Web push integration using `web-push` package
+
+### Authentication
+
+*   **Provider**: Auth0 integration via `@convex-dev/auth`
+*   **Configuration**: `convex/auth.config.ts` for Auth0 setup
+*   **Environment Variables**: 
+    *   Backend: `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`
+    *   Frontend: `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`
 
 ## Frontend Details (Vite + React)
 
 The frontend is built with Vite, React, and TypeScript, located in the `src/` directory.
 
-*   **Entry Point**: `src/main.tsx` initializes the React application.
-*   **Root Component**: `src/App.tsx` sets up the main application layout and routing.
-*   **Components**: Reusable UI elements are in `src/components/`.
-*   **Features**: Feature-specific modules are organized under `src/features/` (e.g., `src/features/hoses/`).
-*   **Pages**: Top-level views are in `src/pages/`.
-*   **Styling**: Tailwind CSS is used for styling, configured in `tailwind.config.js` and `src/index.css`.
+### Architecture
+
+*   **Entry Point**: `src/main.tsx` with Auth0 and Convex providers
+*   **Root Component**: `src/App.tsx` with protected routing
+*   **Layouts**: 
+    *   `MainLayout` - Authenticated app with navigation
+    *   `AuthLayout` - Clean authentication pages without navbar
+*   **Components**: shadcn/ui base components with custom extensions
+*   **Features**: Feature-based organization (e.g., `src/features/hoses/`)
+*   **Styling**: Tailwind CSS with dark mode support
+
+### Key Frontend Features
+
+*   **Protected Routes**: Permission-based route protection with `ProtectedRoute` component
+*   **Dark Mode**: Full dark mode support with subtle input backgrounds (`dark:bg-white/5`)
+*   **Responsive Design**: Mobile-first approach with tablet and desktop optimizations
+*   **Real-time Updates**: Convex reactive queries for live data
+*   **Form Validation**: Comprehensive validation with user feedback
+*   **Accessibility**: ARIA labels, keyboard navigation, screen reader support
 
 ## Progressive Web App (PWA)
 
@@ -133,10 +254,12 @@ The precache list contains all static assets needed to render the application sh
 
 `NotificationTester` component on the Admin page lets admins broadcast a test notification from the browser.
 
-### Automatic “daily reset” notifications
+### Automatic "daily reset" notifications
 
-*   `availabilityResetAction.ts` clears every member’s `currentStatus` each day and notifies them to update it.
-*   Scheduled via `convex/crons.ts` – default time 04:00 AEST (18:00 UTC). Edit the UTC time to suit your region.
+*   `availabilityResetAction.ts` clears every member's `currentStatus` each day and notifies them to update it.
+*   Scheduled via `convex/crons.ts` – runs at 04:00 AEST (18:00 UTC). Edit the UTC time to suit your region.
+*   Sends push notifications to all registered devices
+*   Critical for maintaining accurate availability data for emergency response
 
 ### VAPID keys
 
@@ -147,8 +270,28 @@ Generate once with `npx web-push generate-vapid-keys` and set:
 
 ## Deployment
 
-*   **Backend (Convex)**: The Convex backend is deployed as a Docker container. Follow your standard Docker deployment procedures to host the container on your preferred infrastructure.
-*   **Frontend (Vite)**: The Vite frontend can be built using `npm run build` (or `vite build`) and the resulting static assets can be deployed to any static hosting provider or served via your backend.
+### Backend (Convex)
+
+Two deployment options:
+
+1. **Self-hosted Docker**: Deploy Convex as a Docker container on your infrastructure
+   *   Local URL: `https://convex.grayhux.io/http`
+   *   Full control over data and infrastructure
+   *   Requires Docker and container orchestration
+
+2. **Convex Cloud**: Deploy to Convex's managed cloud service
+   *   Cloud URL: `https://whimsical-hamster-488.convex.cloud`
+   *   Simplified deployment and scaling
+   *   Managed infrastructure
+
+See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed deployment instructions.
+
+### Frontend (Vite)
+
+*   Build: `npm run build`
+*   Output: Static assets in `dist/` directory
+*   Deploy to: Any static hosting (Vercel, Netlify, etc.) or serve via backend
+*   PWA support: Automatically generates service worker and manifest
 
 ## Getting Started
 
@@ -166,50 +309,107 @@ Generate once with `npx web-push generate-vapid-keys` and set:
     git clone <repository-url>
     cd vite-convex-test
     ```
-2.  Install frontend dependencies:
+
+2.  Install dependencies:
     ```bash
     npm install
     ```
-3.  Set up Convex (Self-hosted Docker):
-    *   Ensure your Convex Docker container is built and running. (Refer to your project's Docker setup for specific instructions, e.g., `docker-compose up -d` if you have a `docker-compose.yml`.)
-    *   The Convex CLI will be used to interact with this local Docker instance (e.g., for pushing schema changes).
-    *   Configure your `.env.local` file. It should contain the URL for your local Convex Docker instance. The `CONVEX_DEPLOYMENT` variable, when using the CLI with a self-hosted instance, typically points to this local URL (e.g., `http://localhost:8000` or as configured).
-    Example `.env.local`:
-    ```
+
+3.  Configure environment variables in `.env.local`:
+    ```bash
+    # Convex Backend
     CONVEX_DEPLOYMENT="http://localhost:YOUR_CONVEX_DOCKER_PORT"
-    # Ensure VITE_CONVEX_URL in your frontend's .env files also points to this local Docker instance during development
+    VITE_CONVEX_URL="http://localhost:YOUR_CONVEX_DOCKER_PORT"
+    
+    # Auth0
+    AUTH0_DOMAIN="your-domain.auth0.com"
+    AUTH0_CLIENT_ID="your-client-id"
+    VITE_AUTH0_DOMAIN="your-domain.auth0.com"
+    VITE_AUTH0_CLIENT_ID="your-client-id"
+    
+    # VAPID Keys (for push notifications)
+    VITE_VAPID_PUBLIC_KEY="your-public-key"
+    # Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Convex dashboard
+    ```
+
+4.  Generate VAPID keys for push notifications:
+    ```bash
+    npx web-push generate-vapid-keys
+    ```
+
+5.  Set up Convex backend:
+    *   For Docker: Ensure container is running (`docker-compose up -d`)
+    *   For Cloud: Follow Convex Cloud setup in [CONVEX-SETUP.md](./CONVEX-SETUP.md)
+
+6.  Initialize database (optional):
+    ```bash
+    npm run setup
     ```
 
 ### Running Locally
 
-1.  **Start your Convex Docker container**: Ensure it's running and accessible at the configured URL (e.g., `http://localhost:YOUR_CONVEX_DOCKER_PORT`).
-2.  **Start the development servers** for both frontend (Vite) and Convex CLI utilities (for schema/function updates):
+1.  **Start Convex backend**:
+    *   Docker: `docker-compose up -d`
+    *   Cloud: Already running
 
-```bash
-npm run dev
-```
+2.  **Start development servers**:
+    ```bash
+    npm run dev
+    ```
 
-This command typically performs the following:
-*   `convex dev --local --once`: Initializes or checks the connection with your Convex backend. With a self-hosted setup, this command (and `dev:backend`) should be configured to target your Dockerized Convex instance, often via the `CONVEX_DEPLOYMENT` environment variable or by having the CLI point to the local Convex data directory used by Docker.
-*   `node setup.mjs`: (Likely for initial configuration or checks).
-*   `npm-run-all --parallel dev:frontend dev:backend`:
-    *   `dev:frontend`: `vite --open` - Starts the Vite frontend development server.
-    *   `dev:backend`: `convex dev --local` - Watches for changes in your `convex/` directory and pushes them to your (Dockerized) Convex backend.
+    This command:
+    *   Initializes Convex connection
+    *   Runs setup scripts
+    *   Starts Vite dev server (frontend)
+    *   Watches Convex functions for changes (backend)
 
-Your application should open in your default browser, connecting to the self-hosted Convex backend.
+3.  **Access the application**:
+    *   Opens automatically in your default browser
+    *   Default URL: `http://localhost:5173`
+    *   Connects to configured Convex backend
+
+### Development Workflow
+
+*   **Frontend changes**: Hot module replacement (HMR) via Vite
+*   **Backend changes**: Automatic push to Convex on save
+*   **Schema changes**: Automatically applied to Convex database
+*   **Type safety**: Full TypeScript support across frontend and backend
 
 ### Linting and Type Checking
 
-To lint the code and check for TypeScript errors:
-
 ```bash
+# Type checking
 npm run lint
+
+# Format code (if configured)
+npm run format
 ```
 
-This script usually runs `tsc` for type checking on both frontend and Convex code. `convex dev --once` as part of this script will interact with your Dockerized Convex backend.
+### Version Management
 
-## Contributing
+```bash
+# Increment feature version
+npm run increment:feature
 
-(Optional: Add guidelines for contributing if this is an open project or has multiple collaborators.)
+# Increment major version
+npm run increment:major
+```
+
+## Documentation
+
+Additional documentation available in the `docs/` directory:
+
+*   **[CONVEX-SETUP.md](./CONVEX-SETUP.md)**: Detailed Convex deployment guide
+*   **[PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md)**: Performance best practices
+*   **[docs/creating-new-modules.md](./docs/creating-new-modules.md)**: Guide for adding new features
+*   **[docs/ADD_MODULE_TO_PERMISSIONS.md](./docs/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
+
+## Support and Maintenance
+
+This system is designed for the Wyndham Vale Fire Brigade and CFA volunteer operations. For issues, feature requests, or contributions, please contact the development team.
+
+## License
+
+(Add license information as appropriate)
 
 ---

@@ -105,7 +105,7 @@ export function DashboardPage() {
           </Link>
         )}
 
-        {/* Hose Inventory */}
+        {/* Hose Management */}
         {hoseAccess && (
           <Link to="/hoses" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
@@ -113,7 +113,7 @@ export function DashboardPage() {
                 <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
                   <ArchiveBoxIcon className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                 </div>
-                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Hose Inventory</h3>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Hose Management</h3>
               </CardContent>
             </Card>
           </Link>

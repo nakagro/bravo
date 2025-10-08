@@ -443,11 +443,11 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
             <div className={`p-4 border-l-4 rounded-r-md transition-colors ${statusConfig[fault.status].bgColor} ${statusConfig[fault.status].borderColor}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Badge className={`${statusConfig[fault.status].color} border text-sm px-2 py-1`}>
+                  <Badge className={`${statusConfig[fault.status].color} border text-sm px-2 py-1 hover:bg-transparent pointer-events-none`}>
                     <StatusIcon className="w-3 h-3 mr-1" />
                     {statusConfig[fault.status].label}
                   </Badge>
-                  <Badge className={`${priorityConfig[fault.priority].color} border text-sm px-2 py-1`}>
+                  <Badge className={`${priorityConfig[fault.priority].color} border text-sm px-2 py-1 hover:bg-transparent pointer-events-none`}>
                     {priorityConfig[fault.priority].label} Priority
                   </Badge>
                 </div>

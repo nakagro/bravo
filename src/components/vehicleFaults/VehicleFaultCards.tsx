@@ -111,7 +111,7 @@ export function VehicleFaultCards({ faults, onFaultClick }: VehicleFaultCardsPro
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{priorityInfo?.label}</span>
                   </div>
                 </div>
-                <Badge className={`${statusInfo?.color} border text-xs px-2 py-0.5 flex-shrink-0`}>
+                <Badge className={`${statusInfo?.color} border text-xs px-2 py-0.5 flex-shrink-0 hover:bg-transparent pointer-events-none`}>
                   <StatusIcon className="w-3 h-3 mr-1" />
                   {statusInfo?.label}
                 </Badge>

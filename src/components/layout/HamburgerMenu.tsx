@@ -122,7 +122,7 @@ export const HamburgerMenu = React.memo(() => {
               className={location.pathname === '/hoses' ? 'bg-accent text-accent-foreground' : ''}
             >
               <Archive className="mr-3 h-5 w-5" />
-              <span>Hose Inventory</span>
+              <span>Hose Management</span>
             </DropdownMenuItem>
           )}
 
