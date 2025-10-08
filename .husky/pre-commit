@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Increment version
+node scripts/increment-version.js
+
+# Stage the updated package.json
+git add package.json

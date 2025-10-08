@@ -1,7 +1,7 @@
 {
   "name": "flex-template",
   "private": true,
-  "version": "0.1.80",
+  "version": "0.1.81",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
@@ -37,7 +37,8 @@
     "dev:cloud": "npm-run-all --parallel dev:cloud:frontend dev:cloud:backend",
     "dev:cloud:frontend": "VITE_CONVEX_URL=https://whimsical-hamster-488.convex.cloud vite --open",
     "dev:cloud:backend": "CONVEX_DEPLOYMENT=whimsical-hamster-488 convex dev",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
+    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build",
+    "prepare": "husky"
   },
   "dependencies": {
     "@convex-dev/auth": "0.0.86",
@@ -101,6 +102,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "husky": "^9.1.7",
     "lucide-react": "^0.511.0",
     "npm-run-all": "^4.1.5",
     "postcss": "~8",
