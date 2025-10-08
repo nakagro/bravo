@@ -55,6 +55,7 @@ import type * as users_updateUserRank from "../users/updateUserRank.js";
 import type * as users_updateUserRoles from "../users/updateUserRoles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
+import type * as vehicleFaultAuditTrail from "../vehicleFaultAuditTrail.js";
 import type * as vehicleFaults from "../vehicleFaults.js";
 
 /**
@@ -108,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   "users/updateUserRoles": typeof users_updateUserRoles;
   users: typeof users;
   utils: typeof utils;
+  vehicleFaultAuditTrail: typeof vehicleFaultAuditTrail;
   vehicleFaults: typeof vehicleFaults;
 }>;
 export declare const api: FilterApi<

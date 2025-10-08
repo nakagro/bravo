@@ -216,6 +216,22 @@ export const createVehicleFault = mutation({
       notes: args.notes,
     });
 
+    // Log the creation in history
+    await ctx.db.insert("vehicleFaultHistory", {
+      faultId,
+      timestamp: now,
+      userId,
+      changeType: "fault_created",
+      field: "created",
+      oldValue: null,
+      newValue: {
+        vehicle: args.vehicle,
+        shortDescription: args.shortDescription,
+        priority: args.priority,
+        status: "pending_dmo",
+      },
+    });
+
     return faultId;
   },
 });
@@ -263,23 +279,68 @@ export const updateVehicleFault = mutation({
       throw new Error("Vehicle fault not found");
     }
 
+    const now = Date.now();
+
     // Build update object with only provided fields
     const updateData: any = {
-      updatedAt: Date.now(),
+      updatedAt: now,
       updatedBy: userId,
     };
 
-    if (args.dateReported !== undefined) updateData.dateReported = args.dateReported;
-    if (args.dateLogged !== undefined) updateData.dateLogged = args.dateLogged;
-    if (args.vehicle !== undefined) updateData.vehicle = args.vehicle;
-    if (args.shortDescription !== undefined) updateData.shortDescription = args.shortDescription;
-    if (args.longDescription !== undefined) updateData.longDescription = args.longDescription;
-    if (args.eamRequestNumber !== undefined) updateData.eamRequestNumber = args.eamRequestNumber;
-    if (args.priority !== undefined) updateData.priority = args.priority;
-    if (args.status !== undefined) updateData.status = args.status;
-    if (args.notes !== undefined) updateData.notes = args.notes;
+    // Track changes for history
+    const fieldChanges: Array<{field: string, oldValue: any, newValue: any}> = [];
+
+    if (args.dateReported !== undefined && args.dateReported !== fault.dateReported) {
+      updateData.dateReported = args.dateReported;
+      fieldChanges.push({ field: "dateReported", oldValue: fault.dateReported, newValue: args.dateReported });
+    }
+    if (args.dateLogged !== undefined && args.dateLogged !== fault.dateLogged) {
+      updateData.dateLogged = args.dateLogged;
+      fieldChanges.push({ field: "dateLogged", oldValue: fault.dateLogged, newValue: args.dateLogged });
+    }
+    if (args.vehicle !== undefined && args.vehicle !== fault.vehicle) {
+      updateData.vehicle = args.vehicle;
+      fieldChanges.push({ field: "vehicle", oldValue: fault.vehicle, newValue: args.vehicle });
+    }
+    if (args.shortDescription !== undefined && args.shortDescription !== fault.shortDescription) {
+      updateData.shortDescription = args.shortDescription;
+      fieldChanges.push({ field: "shortDescription", oldValue: fault.shortDescription, newValue: args.shortDescription });
+    }
+    if (args.longDescription !== undefined && args.longDescription !== fault.longDescription) {
+      updateData.longDescription = args.longDescription;
+      fieldChanges.push({ field: "longDescription", oldValue: fault.longDescription, newValue: args.longDescription });
+    }
+    if (args.eamRequestNumber !== undefined && args.eamRequestNumber !== fault.eamRequestNumber) {
+      updateData.eamRequestNumber = args.eamRequestNumber;
+      fieldChanges.push({ field: "eamRequestNumber", oldValue: fault.eamRequestNumber, newValue: args.eamRequestNumber });
+    }
+    if (args.priority !== undefined && args.priority !== fault.priority) {
+      updateData.priority = args.priority;
+      fieldChanges.push({ field: "priority", oldValue: fault.priority, newValue: args.priority });
+    }
+    if (args.status !== undefined && args.status !== fault.status) {
+      updateData.status = args.status;
+      fieldChanges.push({ field: "status", oldValue: fault.status, newValue: args.status });
+    }
+    if (args.notes !== undefined && args.notes !== fault.notes) {
+      updateData.notes = args.notes;
+      fieldChanges.push({ field: "notes", oldValue: fault.notes, newValue: args.notes });
+    }
 
     await ctx.db.patch(args.faultId, updateData);
+
+    // Log each field change in history
+    for (const change of fieldChanges) {
+      await ctx.db.insert("vehicleFaultHistory", {
+        faultId: args.faultId,
+        timestamp: now,
+        userId,
+        changeType: "field_change",
+        field: change.field,
+        oldValue: change.oldValue,
+        newValue: change.newValue,
+      });
+    }
   },
 });
 
@@ -308,6 +369,21 @@ export const deleteVehicleFault = mutation({
     if (!fault) {
       throw new Error("Vehicle fault not found");
     }
+
+    // Log the deletion in history before deleting
+    await ctx.db.insert("vehicleFaultHistory", {
+      faultId: args.faultId,
+      timestamp: Date.now(),
+      userId,
+      changeType: "fault_deleted",
+      field: "deleted",
+      oldValue: {
+        vehicle: fault.vehicle,
+        shortDescription: fault.shortDescription,
+        status: fault.status,
+      },
+      newValue: null,
+    });
 
     await ctx.db.delete(args.faultId);
   },

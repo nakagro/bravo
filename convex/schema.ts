@@ -619,6 +619,20 @@ const applicationTables = {
     .index("by_fault", ["faultId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
 
+  // Vehicle Fault History for audit trail of changes to vehicle faults
+  vehicleFaultHistory: defineTable({
+    faultId: v.id("vehicleFaults"),
+    timestamp: v.number(),
+    userId: v.id("users"),
+    changeType: v.string(), // e.g., "field_change", "fault_created", "fault_deleted"
+    field: v.string(), // The field that was changed
+    oldValue: v.any(), // The previous value
+    newValue: v.any(), // The new value
+    notes: v.optional(v.string()), // Optional notes
+  })
+    .index("by_fault", ["faultId"])
+    .index("by_timestamp", ["timestamp"]),
+
   // Appliance Checks - Template-driven structure (Appliance -> Sections -> Items)
   // Templates represent a specific appliance's checklist definition (e.g., Pumper v1)
   applianceTemplates: defineTable({

@@ -16,6 +16,7 @@ import { VehicleFaultsTable } from '../components/vehicleFaults/VehicleFaultsTab
 import { VehicleFaultCards } from '../components/vehicleFaults/VehicleFaultCards';
 import { VehicleFaultAddDialog } from '../components/vehicleFaults/VehicleFaultAddDialog';
 import { VehicleFaultFilters } from '../components/vehicleFaults/VehicleFaultFilters';
+import { VehicleFaultAuditTrail } from '../components/vehicleFaults/VehicleFaultAuditTrail';
 
 type VehicleType = 'Pumper' | 'Tanker' | 'FCV';
 type StatusType = 'pending_dmo' | 'pending_wydv' | 'resolved';
@@ -63,6 +64,7 @@ const vehicleLabels = {
 };
 
 export function VehicleFaultsPage() {
+  const [activeTab, setActiveTab] = useState<'faults' | 'audit'>('faults');
   const [selectedStatus, setSelectedStatus] = useState<StatusType | 'all'>('all');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | 'all'>('all');
   const [selectedPriority, setSelectedPriority] = useState<'low' | 'medium' | 'high' | 'all'>('all');
@@ -188,132 +190,171 @@ export function VehicleFaultsPage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Vehicle Faults</h1>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* View Toggle */}
-            <div className="flex items-center border rounded-lg p-1 bg-muted/30">
-              <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('cards')}
-                className="h-8 px-3 gap-1"
-              >
-                <Grid3X3 className="w-4 h-4" />
-                <span className="hidden lg:inline">Cards</span>
-              </Button>
-              <Button
-                variant={viewMode === 'table' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('table')}
-                className="h-8 px-3 gap-1"
-              >
-                <Table2 className="w-4 h-4" />
-                <span className="hidden lg:inline">Table</span>
-              </Button>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="gap-1">
-              <Plus className="w-4 h-4" />
-              <span className="hidden xs:inline">Report</span>
-            </Button>
-          </div>
-        </div>
-        <VehicleFaultFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedStatus={selectedStatus}
-          onStatusChange={(v) => setSelectedStatus(v as StatusType | 'all')}
-          selectedVehicle={selectedVehicle}
-          onVehicleChange={(v) => setSelectedVehicle(v as VehicleType | 'all')}
-          selectedPriority={selectedPriority}
-          onPriorityChange={(v) => setSelectedPriority(v as 'low' | 'medium' | 'high' | 'all')}
-          stats={stats}
-          totalCount={faults?.length || 0}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-          statusConfig={statusConfig as any}
-          vehicleLabels={vehicleLabels as any}
-          priorityConfig={priorityConfig as any}
-        />
-      </div>
-
-      {/* Mobile-optimized content */}
-      <div className="p-4">
-        {filteredFaults.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mb-6">
-              <Truck className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                {searchTerm ? 'No Matches' : 
-                 !hasActiveFilters ? 'No Faults' : 
-                 'No Results'}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 px-4">
-                {searchTerm ? `No faults match "${searchTerm}"` :
-                 !hasActiveFilters ? 
-                 'No faults reported yet.' :
-                 'Try different filters.'}
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              {hasActiveFilters && (
-                <Button 
-                  variant="outline" 
+          {activeTab === 'faults' && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* View Toggle */}
+              <div className="flex items-center border rounded-lg p-1 bg-muted/30">
+                <Button
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={clearFilters}
-                  className="w-full max-w-xs"
+                  onClick={() => setViewMode('cards')}
+                  className="h-8 px-3 gap-1"
                 >
-                  Clear Filters
+                  <Grid3X3 className="w-4 h-4" />
+                  <span className="hidden lg:inline">Cards</span>
                 </Button>
-              )}
-              <Button 
-                onClick={() => setIsAddDialogOpen(true)} 
-                className="gap-2 w-full max-w-xs"
-                size="sm"
-              >
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="h-8 px-3 gap-1"
+                >
+                  <Table2 className="w-4 h-4" />
+                  <span className="hidden lg:inline">Table</span>
+                </Button>
+              </div>
+              <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="gap-1">
                 <Plus className="w-4 h-4" />
-                {(faults?.length || 0) === 0 ? 'Report First Fault' : 'Report Fault'}
+                <span className="hidden xs:inline">Report</span>
               </Button>
             </div>
-          </div>
-        ) : (
-          <div>
-            {/* Compact results summary */}
-            {hasActiveFilters && (
-              <div className="mb-3 p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    <span className="font-medium">{filteredFaults.length}</span> of{' '}
-                    <span className="font-medium">{faults?.length || 0}</span> faults
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="p-1 h-auto text-xs"
-                    onClick={clearFilters}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {/* Content based on view mode */}
-            {viewMode === 'cards' ? (
-              <VehicleFaultCards 
-                faults={filteredFaults}
-                onFaultClick={(faultId) => setSelectedFault(faultId)}
-              />
-            ) : (
-              <VehicleFaultsTable 
-                faults={filteredFaults} 
-                onFaultClick={(faultId) => setSelectedFault(faultId)}
-              />
-            )}
+          )}
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex space-x-4 -mb-px">
+            <button
+              onClick={() => setActiveTab('faults')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'faults' 
+                  ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-400' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              Faults
+            </button>
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'audit' 
+                  ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-400' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              Audit
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === 'faults' && (
+          <div className="mt-4">
+            <VehicleFaultFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedStatus={selectedStatus}
+              onStatusChange={(v) => setSelectedStatus(v as StatusType | 'all')}
+              selectedVehicle={selectedVehicle}
+              onVehicleChange={(v) => setSelectedVehicle(v as VehicleType | 'all')}
+              selectedPriority={selectedPriority}
+              onPriorityChange={(v) => setSelectedPriority(v as 'low' | 'medium' | 'high' | 'all')}
+              stats={stats}
+              totalCount={faults?.length || 0}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters(!showFilters)}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearFilters}
+              statusConfig={statusConfig as any}
+              vehicleLabels={vehicleLabels as any}
+              priorityConfig={priorityConfig as any}
+            />
           </div>
         )}
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'faults' ? (
+        <div className="p-4">
+          {filteredFaults.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="mb-6">
+                <Truck className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {searchTerm ? 'No Matches' : 
+                   !hasActiveFilters ? 'No Faults' : 
+                   'No Results'}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 px-4">
+                  {searchTerm ? `No faults match "${searchTerm}"` :
+                   !hasActiveFilters ? 
+                   'No faults reported yet.' :
+                   'Try different filters.'}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                {hasActiveFilters && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={clearFilters}
+                    className="w-full max-w-xs"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => setIsAddDialogOpen(true)} 
+                  className="gap-2 w-full max-w-xs"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  {(faults?.length || 0) === 0 ? 'Report First Fault' : 'Report Fault'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* Compact results summary */}
+              {hasActiveFilters && (
+                <div className="mb-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      <span className="font-medium">{filteredFaults.length}</span> of{' '}
+                      <span className="font-medium">{faults?.length || 0}</span> faults
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="p-1 h-auto text-xs"
+                      onClick={clearFilters}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Content based on view mode */}
+              {viewMode === 'cards' ? (
+                <VehicleFaultCards 
+                  faults={filteredFaults}
+                  onFaultClick={(faultId) => setSelectedFault(faultId)}
+                />
+              ) : (
+                <VehicleFaultsTable 
+                  faults={filteredFaults} 
+                  onFaultClick={(faultId) => setSelectedFault(faultId)}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-4">
+          <VehicleFaultAuditTrail />
+        </div>
+      )}
 
       <VehicleFaultAddDialog 
         open={isAddDialogOpen}
