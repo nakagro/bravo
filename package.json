@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "0.1.97",
+  "version": "0.1.98",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
@@ -80,6 +80,7 @@
     "react-hook-form": "^7.56.4",
     "react-router-dom": "^7.5.2",
     "recharts": "^2.15.4",
+    "resend": "^6.1.2",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.1.0",
     "tsdav": "^2.1.5",

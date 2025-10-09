@@ -7,7 +7,8 @@ import {
   LoadingState,
   UnauthorizedState,
   PasswordChangeForm,
-  NotificationSettings
+  NotificationSettings,
+  TestEmailButton
 } from "../features/userSettings/components";
 
 export function UserSettingsPage() {
@@ -55,6 +56,16 @@ export function UserSettingsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <NotificationSettings />
         </div>
+        
+        {/* Test Email Section */}
+        {user.email && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+            <TestEmailButton 
+              userEmail={user.email}
+              userName={fullName}
+            />
+          </div>
+        )}
         
         {/* Password Change Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
