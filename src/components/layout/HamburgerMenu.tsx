@@ -239,7 +239,9 @@ export const HamburgerMenu = React.memo(() => {
         
         <DropdownMenuSeparator />
         <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
-          v{getVersionString()}
+          <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
+          {" · "}
+          <span>v{getVersionString()}</span>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
