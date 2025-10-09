@@ -18,6 +18,7 @@ This README serves as a guide for developers, contributors, and AI assistants (l
 *   **Icons**: [Lucide React](https://lucide.dev/)
 *   **Notifications**: [Sonner](https://sonner.emilkowal.ski/) for toasts/notifications
 *   **Authentication**: [Auth0](https://auth0.com/) via [@convex-dev/auth](https://auth.convex.dev/)
+*   **Analytics**: [PostHog](https://posthog.com/) for notification tracking and analytics
 *   **Monitoring**: Health check endpoints with external monitoring support (Healthcheck.io, Zabbix, Uptime Kuma)
 
 ## Development and Deployment
@@ -260,6 +261,7 @@ The precache list contains all static assets needed to render the application sh
 *   Scheduled via `convex/crons.ts` – runs at 04:00 AEST (18:00 UTC). Edit the UTC time to suit your region.
 *   Sends push notifications to all registered devices
 *   Critical for maintaining accurate availability data for emergency response
+*   Analytics tracked via PostHog (delivery rates, success/failure, performance)
 
 ### VAPID keys
 
@@ -330,6 +332,14 @@ See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed deployment instructions.
     # VAPID Keys (for push notifications)
     VITE_VAPID_PUBLIC_KEY="your-public-key"
     # Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Convex dashboard
+    
+    # PostHog Analytics (Backend - set in Convex dashboard)
+    # POSTHOG_API_KEY="phc_your_api_key"
+    # POSTHOG_HOST="https://us.i.posthog.com"
+    
+    # PostHog Analytics (Frontend)
+    VITE_PUBLIC_POSTHOG_KEY="phc_your_api_key"
+    VITE_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
     ```
 
 4.  Generate VAPID keys for push notifications:
@@ -403,6 +413,7 @@ Additional documentation available in the `docs/` directory:
 *   **[PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md)**: Performance best practices
 *   **[docs/creating-new-modules.md](./docs/creating-new-modules.md)**: Guide for adding new features
 *   **[docs/ADD_MODULE_TO_PERMISSIONS.md](./docs/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
+*   **[docs/POSTHOG_NOTIFICATION_ANALYTICS.md](./docs/POSTHOG_NOTIFICATION_ANALYTICS.md)**: PostHog analytics setup and usage
 
 ## Support and Maintenance
 

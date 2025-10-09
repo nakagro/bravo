@@ -4,6 +4,7 @@ import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
 import webpush from "web-push";
+import { trackNotificationDelivery } from "./posthogAnalytics";
 
 // Configure web-push with VAPID keys from environment variables
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY as string | undefined;
@@ -75,6 +76,23 @@ export const sendNotification = action({
         error: "no_subscriptions",
         sentAt: now,
       });
+      
+      // Track in PostHog
+      if (args.userId) {
+        await trackNotificationDelivery({
+          userId: args.userId,
+          notificationType: args.notificationType,
+          source: args.source,
+          title: args.title,
+          success: false,
+          error: "no_subscriptions",
+          hasSubscription: false,
+          deviceType: undefined,
+          platform: undefined,
+          browser: undefined,
+        });
+      }
+      
       return;
     }
 
@@ -93,6 +111,19 @@ export const sendNotification = action({
           success: true,
           sentAt: now,
         });
+        
+        // Track successful delivery in PostHog
+        await trackNotificationDelivery({
+          userId: sub.userId,
+          notificationType: args.notificationType,
+          source: args.source,
+          title: args.title,
+          success: true,
+          hasSubscription: true,
+          deviceType: sub.deviceType,
+          platform: sub.platform,
+          browser: sub.browser,
+        });
       } catch (err: any) {
         // Clean up stale subscriptions
         if (err.statusCode === 410 || err.statusCode === 404) {
@@ -100,6 +131,9 @@ export const sendNotification = action({
             id: sub._id,
           });
         }
+        
+        const errorMessage = typeof err?.message === "string" ? err.message : String(err);
+        
         // Audit failure
         await ctx.runMutation(api.notificationAudit.logAttempt, {
           userId: sub.userId,
@@ -110,8 +144,22 @@ export const sendNotification = action({
           title: args.title,
           body: args.body,
           success: false,
-          error: typeof err?.message === "string" ? err.message : String(err),
+          error: errorMessage,
           sentAt: now,
+        });
+        
+        // Track failed delivery in PostHog
+        await trackNotificationDelivery({
+          userId: sub.userId,
+          notificationType: args.notificationType,
+          source: args.source,
+          title: args.title,
+          success: false,
+          error: errorMessage,
+          hasSubscription: true,
+          deviceType: sub.deviceType,
+          platform: sub.platform,
+          browser: sub.browser,
         });
       }
     }

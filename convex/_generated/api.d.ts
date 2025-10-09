@@ -44,6 +44,7 @@ import type * as modules from "../modules.js";
 import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationHistory from "../notificationHistory.js";
 import type * as notificationSettings from "../notificationSettings.js";
+import type * as posthogAnalytics from "../posthogAnalytics.js";
 import type * as pushNotificationAction from "../pushNotificationAction.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as skills from "../skills.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   notificationAudit: typeof notificationAudit;
   notificationHistory: typeof notificationHistory;
   notificationSettings: typeof notificationSettings;
+  posthogAnalytics: typeof posthogAnalytics;
   pushNotificationAction: typeof pushNotificationAction;
   pushNotifications: typeof pushNotifications;
   skills: typeof skills;

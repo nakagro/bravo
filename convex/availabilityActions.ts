@@ -3,12 +3,15 @@
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { trackCronNotification } from "./posthogAnalytics";
 
 // Action triggered by daily cron to reset statuses and send push notifications
 export const nightlyReset = action({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
+    const startTime = Date.now();
+    
     // Check if notifications are enabled for this type
     const notificationsEnabled = await ctx.runQuery(api.notificationSettings.isNotificationEnabled, {
       notificationType: "nightlyReset"
@@ -16,7 +19,9 @@ export const nightlyReset = action({
 
     const users = await ctx.runQuery(api.availability.getAllUsersStatus, {});
 
-    let count = 0;
+    let successCount = 0;
+    let failureCount = 0;
+    let totalRecipients = 0;
 
     for (const user of users) {
       if (user.currentStatus) {
@@ -29,6 +34,7 @@ export const nightlyReset = action({
           
           // Only send notification if enabled
           if (notificationsEnabled) {
+            totalRecipients++;
             try {
               await ctx.runAction(api.pushNotificationAction.sendNotification, {
                 title: "Daily Availability Reset",
@@ -38,16 +44,27 @@ export const nightlyReset = action({
                 notificationType: "nightlyReset",
                 source: "cron:nightlyReset",
               });
-              count++;
+              successCount++;
             } catch (err) {
-              // ignore
+              failureCount++;
             }
           }
         }
       }
     }
 
-    return count;
+    // Track cron execution in PostHog
+    const duration = Date.now() - startTime;
+    await trackCronNotification({
+      cronName: "nightlyReset",
+      notificationType: "nightlyReset",
+      recipientCount: totalRecipients,
+      successCount,
+      failureCount,
+      duration,
+    });
+
+    return successCount;
   },
 });
 
@@ -56,20 +73,32 @@ export const morningReminder = action({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
+    const startTime = Date.now();
+    
     // Check if notifications are enabled for this type
     const notificationsEnabled = await ctx.runQuery(api.notificationSettings.isNotificationEnabled, {
       notificationType: "morningReminder"
     });
 
-    // If notifications are disabled, return early
+    // If notifications are disabled, track and return early
     if (!notificationsEnabled) {
+      await trackCronNotification({
+        cronName: "morningReminder",
+        notificationType: "morningReminder",
+        recipientCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        duration: Date.now() - startTime,
+      });
       return 0;
     }
 
     // Get all users to check their status (raw status fields)
     const users = await ctx.runQuery(api.availability.getAllUsersStatus, {});
     
-    let notificationCount = 0;
+    let successCount = 0;
+    let failureCount = 0;
+    let totalRecipients = 0;
 
     for (const user of users) {
       // Treat expired statuses as unset so users with lapsed durations still get reminders
@@ -77,6 +106,7 @@ export const morningReminder = action({
       const needsReminder = !hasActiveStatus;
       
       if (needsReminder) {
+        totalRecipients++;
         try {
           await ctx.runAction(api.pushNotificationAction.sendNotification, {
             title: "Availability Status Reminder",
@@ -86,14 +116,26 @@ export const morningReminder = action({
             notificationType: "morningReminder",
             source: "cron:morningReminder",
           });
-          notificationCount++;
+          successCount++;
         } catch (err) {
           // Log error but continue with other users
           console.error(`Failed to send reminder to user ${user._id}:`, err);
+          failureCount++;
         }
       }
     }
 
-    return notificationCount;
+    // Track cron execution in PostHog
+    const duration = Date.now() - startTime;
+    await trackCronNotification({
+      cronName: "morningReminder",
+      notificationType: "morningReminder",
+      recipientCount: totalRecipients,
+      successCount,
+      failureCount,
+      duration,
+    });
+
+    return successCount;
   },
 });

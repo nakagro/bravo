@@ -8,6 +8,10 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const register = mutation({
   args: {
     subscription: v.any(), // Raw PushSubscription JSON
+    deviceType: v.optional(v.union(v.literal("mobile"), v.literal("tablet"), v.literal("desktop"))),
+    platform: v.optional(v.string()),
+    browser: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -23,12 +27,20 @@ export const register = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         subscription: args.subscription,
+        deviceType: args.deviceType,
+        platform: args.platform,
+        browser: args.browser,
+        userAgent: args.userAgent,
         createdAt: Date.now(),
       });
     } else {
       await ctx.db.insert("pushSubscriptions", {
         userId,
         subscription: args.subscription,
+        deviceType: args.deviceType,
+        platform: args.platform,
+        browser: args.browser,
+        userAgent: args.userAgent,
         createdAt: Date.now(),
       });
     }

@@ -332,6 +332,11 @@ const applicationTables = {
   pushSubscriptions: defineTable({
     userId: v.id("users"),
     subscription: v.any(), // Raw PushSubscription JSON object
+    // Device information
+    deviceType: v.optional(v.union(v.literal("mobile"), v.literal("tablet"), v.literal("desktop"))),
+    platform: v.optional(v.string()), // iOS, Android, Windows, macOS, Linux
+    browser: v.optional(v.string()), // Chrome, Firefox, Safari, Edge
+    userAgent: v.optional(v.string()), // Full user agent string
     createdAt: v.number(),
   })
     .index("by_user", ["userId"]),
