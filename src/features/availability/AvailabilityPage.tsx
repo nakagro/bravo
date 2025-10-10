@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useConvexAuth } from "convex/react";
 import { useNavigate } from 'react-router-dom';
 import BrigadeTab from './components/BrigadeTab';
@@ -17,6 +17,10 @@ const AvailabilityPage: React.FC = () => {
   
   // State to track active tab
   const [activeTab, setActiveTab] = useState('you'); // Default to the You tab
+  
+  // Refs for tab animation
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   
   // State to track when user last viewed messages (loaded from localStorage)
   const [lastViewedMessagesAt, setLastViewedMessagesAt] = useState<number>(() => {
@@ -67,6 +71,17 @@ const AvailabilityPage: React.FC = () => {
       localStorage.setItem(MESSAGES_LAST_VIEWED_KEY, now.toString());
     }
   }, [activeTab]);
+  
+  // Update indicator position when active tab changes
+  useEffect(() => {
+    const activeTabElement = tabRefs.current[activeTab];
+    if (activeTabElement) {
+      setIndicatorStyle({
+        left: activeTabElement.offsetLeft,
+        width: activeTabElement.offsetWidth,
+      });
+    }
+  }, [activeTab, hasAdminTabAccess]);
   
   // Handle status change
   const handleStatusChange = async (status: string, durationHours?: number, nextStatus?: string) => {
@@ -140,34 +155,37 @@ const AvailabilityPage: React.FC = () => {
       </div>
       
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-4 -mb-px">
+      <div className="border-b border-gray-200 dark:border-gray-700 relative">
+        <nav className="flex space-x-4 -mb-px relative">
           <button
+            ref={(el) => { tabRefs.current['you'] = el; }}
             onClick={() => setActiveTab('you')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 px-1 font-medium text-sm transition-colors ${
               activeTab === 'you' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                ? 'text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
             You
           </button>
           <button
+            ref={(el) => { tabRefs.current['brigade'] = el; }}
             onClick={() => setActiveTab('brigade')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 px-1 font-medium text-sm transition-colors ${
               activeTab === 'brigade' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                ? 'text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
             Brigade
           </button>
           <button
+            ref={(el) => { tabRefs.current['messages'] = el; }}
             onClick={() => setActiveTab('messages')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm relative ${
+            className={`py-2 px-1 font-medium text-sm relative transition-colors ${
               activeTab === 'messages' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                ? 'text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
             Messages
@@ -178,28 +196,38 @@ const AvailabilityPage: React.FC = () => {
             )}
           </button>
           <button
+            ref={(el) => { tabRefs.current['deployment'] = el; }}
             onClick={() => setActiveTab('deployment')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-2 px-1 font-medium text-sm transition-colors ${
               activeTab === 'deployment' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                ? 'text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
             Deployment
           </button>
           {hasAdminTabAccess && (
             <button
+              ref={(el) => { tabRefs.current['admin'] = el; }}
               onClick={() => setActiveTab('admin')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 font-medium text-sm transition-colors ${
                 activeTab === 'admin' 
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               Admin
             </button>
           )}
         </nav>
+        {/* Animated indicator */}
+        <div
+          className="absolute bottom-0 h-0.5 bg-blue-500 dark:bg-blue-400 transition-all duration-300 ease-out"
+          style={{
+            left: `${indicatorStyle.left}px`,
+            width: `${indicatorStyle.width}px`,
+          }}
+        />
       </div>
       
       {/* Tab Content */}
