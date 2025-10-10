@@ -6,7 +6,7 @@ export function AuthPage() {
       {/* Header Section */}
       <div className="text-center mb-8">
         <div className="mb-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 dark:from-red-500 dark:to-red-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-red-700 to-orange-400 bg-clip-text text-transparent mb-2">
             BRAVO
           </h1>
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">

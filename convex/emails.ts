@@ -17,12 +17,11 @@ export const sendTestEmail = action({
         subject: "Test Email from BRAVO",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #dc2626;">BRAVO Test Email</h1>
+            <h1 style="color: #dc2626;">BRAVO</h1>
             <p>Hello ${args.userName},</p>
             <p>This is a test email from the <strong>BRAVO</strong> (BRigade AVailability and Operations) system.</p>
             <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
             <p style="color: #6b7280; font-size: 14px;">
-              Wyndham Vale Fire Brigade<br>
               Sent at ${new Date().toLocaleString()}
             </p>
           </div>
