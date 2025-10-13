@@ -1,4 +1,5 @@
 import { SignInForm } from "../features/auth/components/SignInForm";
+import { getVersionString } from "@/utils/version";
 
 export function AuthPage() {
   return (
@@ -24,6 +25,11 @@ export function AuthPage() {
 
       {/* Sign In Form */}
       <SignInForm />
+      
+      {/* Version Display */}
+      <div className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+        v{getVersionString()}
+      </div>
     </div>
   );
 }
