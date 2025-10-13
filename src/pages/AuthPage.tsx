@@ -11,9 +11,9 @@ export function AuthPage() {
             BRAVO
           </h1>
           <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-            <span className="text-red-600 dark:text-red-500 font-semibold">BR</span>igade{" "}
-            <span className="text-red-600 dark:text-red-500 font-semibold">AV</span>ailability and{" "}
-            <span className="text-red-600 dark:text-red-500 font-semibold">O</span>perations
+            <span className="text-orange-600 dark:text-orange-500 font-semibold">BR</span>igade{" "}
+            <span className="text-orange-600 dark:text-orange-500 font-semibold">AV</span>ailability and{" "}
+            <span className="text-orange-600 dark:text-orange-500 font-semibold">O</span>perations
           </p>
         </div>
         
