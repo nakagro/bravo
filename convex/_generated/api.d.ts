@@ -26,6 +26,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
 import type * as dutyCrew from "../dutyCrew.js";
 import type * as dutyCrewMembers from "../dutyCrewMembers.js";
+import type * as emailSettings from "../emailSettings.js";
 import type * as emails from "../emails.js";
 import type * as feedback from "../feedback.js";
 import type * as fireReports from "../fireReports.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   deploymentAvailability: typeof deploymentAvailability;
   dutyCrew: typeof dutyCrew;
   dutyCrewMembers: typeof dutyCrewMembers;
+  emailSettings: typeof emailSettings;
   emails: typeof emails;
   feedback: typeof feedback;
   fireReports: typeof fireReports;

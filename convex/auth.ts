@@ -1,8 +1,24 @@
 import { convexAuth, getAuthUserId, modifyAccountCredentials, retrieveAccount } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { query, mutation, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+
+/**
+ * DEFAULT SIGNUP RANK CONFIGURATION
+ * 
+ * Set the default rank for new user signups.
+ * Options: "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | null
+ * 
+ * - null = Member (no rank, limited permissions)
+ * - "Probationary" = Probationary firefighter
+ * - "Firefighter" = Full firefighter (recommended for most signups)
+ * - "Lieutenant" = Lieutenant rank
+ * - "Captain" = Captain rank
+ * 
+ * Change this value to set what rank new users receive on signup.
+ */
+const DEFAULT_SIGNUP_RANK: "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | null = "Firefighter";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
@@ -101,13 +117,46 @@ export const storeSignupData = mutation({
     
     const user = users[0];
     
-    // Update the user profile
+    // Update the user profile with default rank
     await ctx.db.patch(user._id, {
       firstName: args.firstName,
       lastName: args.lastName,
       memberNumber: args.memberNumber,
       name: `${args.firstName} ${args.lastName}`.trim(),
+      rank: DEFAULT_SIGNUP_RANK,
     });
+    
+    // Check if new user signup email is enabled
+    const emailSetting = await ctx.db
+      .query("emailSettings")
+      .withIndex("by_emailType", (q) => q.eq("emailType", "newUserSignup"))
+      .first();
+    
+    // Only send email if setting is enabled (or doesn't exist yet - default to enabled)
+    const shouldSendEmail = !emailSetting || emailSetting.enabled;
+    
+    if (shouldSendEmail) {
+      // Get all admin users to notify them
+      const adminUsers = await ctx.db
+        .query("users")
+        .collect()
+        .then(users => users.filter(u => u.isAdmin === true));
+      
+      // Collect admin emails (only those who have email addresses)
+      const adminEmails = adminUsers
+        .map(admin => admin.email)
+        .filter((email): email is string => !!email);
+      
+      // Schedule email notification to admins (don't await to avoid blocking)
+      if (adminEmails.length > 0) {
+        ctx.scheduler.runAfter(0, internal.emails.sendNewUserSignupNotification, {
+          adminEmails,
+          newUserName: `${args.firstName} ${args.lastName}`.trim(),
+          newUserEmail: args.email,
+          newUserMemberNumber: args.memberNumber,
+        });
+      }
+    }
     
     return { success: true };
   },

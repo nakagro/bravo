@@ -287,7 +287,7 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
                             {/* Role requirements */}
                             <div className="mb-4">
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Required Roles (users must have at least one of these roles)
+                                Roles
                               </label>
                               <div className="space-y-2 max-h-40 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md">
                                 {!roles || roles.length === 0 ? (

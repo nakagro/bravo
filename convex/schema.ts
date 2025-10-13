@@ -545,6 +545,18 @@ const applicationTables = {
   })
     .index("by_notificationType", ["notificationType"]),
 
+  // Email settings for automated emails
+  emailSettings: defineTable({
+    emailType: v.union(
+      v.literal("newUserSignup")
+    ),
+    enabled: v.boolean(),
+    description: v.string(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number()
+  })
+    .index("by_emailType", ["emailType"]),
+
   // Feedback submissions from users
   feedback: defineTable({
     subject: v.string(), // Subject/title of the feedback

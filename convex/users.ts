@@ -13,6 +13,17 @@ export const getUsers = query({
 });
 
 /**
+ * Get all admin users from the system
+ */
+export const getAdminUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers.filter(user => user.isAdmin === true);
+  },
+});
+
+/**
  * Get a user by ID
  */
 export const getUserById = query({

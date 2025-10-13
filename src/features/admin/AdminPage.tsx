@@ -2,6 +2,7 @@ import UserManagement from "./UserManagement";
 import ModuleSettings from "./ModuleSettings";
 import NotificationTester from "./NotificationTester";
 import NotificationSettings from "./NotificationSettings";
+import EmailSettings from "./EmailSettings";
 import AdminTasks from "./AdminTasks";
 import LinksManager from "./LinksManager";
 import {
@@ -48,6 +49,13 @@ export default function AdminPage() {
           <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Settings</AccordionTrigger>
           <AccordionContent>
             <NotificationSettings showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="emailSettings">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Email Settings</AccordionTrigger>
+          <AccordionContent>
+            <EmailSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
