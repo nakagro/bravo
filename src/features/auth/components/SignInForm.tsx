@@ -205,6 +205,8 @@ export function SignInForm() {
             type="email" 
             name="email" 
             placeholder="Enter your email address" 
+            autoComplete="email"
+            autoFocus={false}
             required 
           />
         </div>
