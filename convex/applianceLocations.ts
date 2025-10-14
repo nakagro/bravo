@@ -52,9 +52,19 @@ export const updateApplianceLocation = mutation({
       throw new Error("User not found");
     }
 
-    // Check if user is admin (you might want to adjust this based on your auth logic)
-    if (!user.isAdmin) {
-      throw new Error("Not authorized to update appliance locations");
+    // Check if user is admin or has Lieutenant rank or higher
+    const rankOrder = {
+      "Probationary": 1,
+      "Firefighter": 2,
+      "Lieutenant": 3,
+      "Captain": 4
+    };
+    
+    const userRank = user.rank;
+    const hasRequiredRank = userRank && rankOrder[userRank] >= rankOrder["Lieutenant"];
+    
+    if (!user.isAdmin && !hasRequiredRank) {
+      throw new Error("Not authorized to update appliance locations. Lieutenant rank or higher required.");
     }
 
     // Check if appliance location already exists
