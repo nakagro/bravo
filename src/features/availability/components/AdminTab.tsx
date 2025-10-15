@@ -10,8 +10,11 @@ interface AdminTabProps {
 
 const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [customLocation, setCustomLocation] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState<string | null>(null); // Track which appliance is showing custom input
 
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
+  const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
   const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
 
   // Create a map for easy lookup
@@ -21,7 +24,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   }, {} as Record<string, string>);
 
   const appliances = ['Pumper', 'Tanker', 'FCV'] as const;
-  const stations = ['Main Station', 'Satellite Station'] as const;
+  const primaryStations = ['Main Station', 'Satellite Station'] as const;
 
   // Format user display name
   const formatUserName = (user: any) => {
@@ -34,7 +37,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
     }
   };
 
-  const handleLocationUpdate = async (applianceName: typeof appliances[number], newLocation: typeof stations[number]) => {
+  const handleLocationUpdate = async (applianceName: typeof appliances[number], newLocation: string) => {
     setIsUpdating(true);
 
     try {
@@ -45,6 +48,8 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
       toast.success(`${applianceName} location updated to ${newLocation}`, {
         description: 'The appliance location has been successfully changed.',
       });
+      setShowCustomInput(null);
+      setCustomLocation('');
     } catch (error) {
       console.error('Error updating appliance location:', error);
       toast.error('Failed to update appliance location', {
@@ -53,6 +58,14 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleCustomLocationSubmit = async (applianceName: typeof appliances[number]) => {
+    if (!customLocation.trim()) {
+      toast.error('Please enter a location name');
+      return;
+    }
+    await handleLocationUpdate(applianceName, customLocation.trim());
   };
 
 
@@ -117,28 +130,100 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                     </div>
                     
                     {/* Buttons section - full width on mobile, compact on desktop */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:flex-shrink-0">
-                      {stations.map((station) => (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:flex-shrink-0">
+                        {/* Primary stations */}
+                        {primaryStations.map((station) => (
+                          <button
+                            key={station}
+                            onClick={() => handleLocationUpdate(appliance, station)}
+                            disabled={isUpdating || currentLocation === station}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
+                              currentLocation === station
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 cursor-default'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
+                            }`}
+                          >
+                            <span className="flex items-center justify-center">
+                              {station}
+                              {currentLocation === station && (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </span>
+                          </button>
+                        ))}
+                        
+                        {/* Custom locations */}
+                        {allLocations
+                          .filter(loc => !primaryStations.includes(loc as any))
+                          .map((location) => (
+                            <button
+                              key={location}
+                              onClick={() => handleLocationUpdate(appliance, location)}
+                              disabled={isUpdating || currentLocation === location}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
+                                currentLocation === location
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 cursor-default'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
+                              }`}
+                            >
+                              <span className="flex items-center justify-center">
+                                {location}
+                                {currentLocation === location && (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                      
+                      {/* Custom location input */}
+                      {showCustomInput === appliance ? (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={customLocation}
+                            onChange={(e) => setCustomLocation(e.target.value)}
+                            placeholder="Enter custom location..."
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleCustomLocationSubmit(appliance);
+                              }
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleCustomLocationSubmit(appliance)}
+                              disabled={isUpdating || !customLocation.trim()}
+                              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Set
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowCustomInput(null);
+                                setCustomLocation('');
+                              }}
+                              className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
                         <button
-                          key={station}
-                          onClick={() => handleLocationUpdate(appliance, station)}
-                          disabled={isUpdating || currentLocation === station}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
-                            currentLocation === station
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 cursor-default'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
-                          }`}
+                          onClick={() => setShowCustomInput(appliance)}
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-medium hover:bg-orange-200 dark:hover:bg-orange-800/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
                         >
-                          <span className="flex items-center justify-center">
-                            {station}
-                            {currentLocation === station && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </span>
+                          + Add Custom Location
                         </button>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>

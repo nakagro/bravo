@@ -13,15 +13,35 @@ export const getApplianceLocations = query({
       v.literal("Tanker"),
       v.literal("FCV")
     ),
-    stationLocation: v.union(
-      v.literal("Main Station"),
-      v.literal("Satellite Station")
-    ),
+    stationLocation: v.string(),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
     return await ctx.db.query("applianceLocations").collect();
+  },
+});
+
+// Query to get all unique locations (for populating location options)
+export const getAllLocations = query({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    const locations = await ctx.db.query("applianceLocations").collect();
+    const uniqueLocations = new Set<string>();
+    
+    // Always include the two main stations
+    uniqueLocations.add("Main Station");
+    uniqueLocations.add("Satellite Station");
+    
+    // Add any custom locations from the database
+    locations.forEach(loc => {
+      if (loc.stationLocation) {
+        uniqueLocations.add(loc.stationLocation);
+      }
+    });
+    
+    return Array.from(uniqueLocations).sort();
   },
 });
 
@@ -33,13 +53,14 @@ export const updateApplianceLocation = mutation({
       v.literal("Tanker"),
       v.literal("FCV")
     ),
-    stationLocation: v.union(
-      v.literal("Main Station"),
-      v.literal("Satellite Station")
-    ),
+    stationLocation: v.string(), // Now accepts any string including custom locations
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Validate that stationLocation is not empty
+    if (!args.stationLocation || args.stationLocation.trim() === "") {
+      throw new Error("Station location cannot be empty");
+    }
     // Get the authenticated user ID using the same pattern as other mutations
     const userId = await getAuthUserId(ctx);
     if (!userId) {
@@ -140,10 +161,7 @@ export const getApplianceLocationsWithUsers = query({
       v.literal("Tanker"),
       v.literal("FCV")
     ),
-    stationLocation: v.union(
-      v.literal("Main Station"),
-      v.literal("Satellite Station")
-    ),
+    stationLocation: v.string(),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
     updatedByUser: v.optional(v.object({

@@ -382,10 +382,7 @@ const applicationTables = {
       v.literal("Tanker"),
       v.literal("FCV")
     ),
-    stationLocation: v.union(
-      v.literal("Main Station"),
-      v.literal("Satellite Station")
-    ),
+    stationLocation: v.string(), // Can be "Main Station", "Satellite Station", or custom location
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   }),

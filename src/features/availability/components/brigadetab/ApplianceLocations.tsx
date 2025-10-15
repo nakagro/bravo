@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 
 const ApplianceLocations: React.FC = () => {
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
+  const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
 
   // Create a map for easy lookup
   const locationMap = applianceLocations.reduce((acc, location) => {
@@ -12,12 +13,17 @@ const ApplianceLocations: React.FC = () => {
   }, {} as Record<string, string>);
 
   const appliances = ['Pumper', 'Tanker', 'FCV'];
-  const stations = ['Main Station', 'Satellite Station'];
+  const primaryStations = ['Main Station', 'Satellite Station'];
 
   // Group appliances by their location
   const getAppliancesAtLocation = (station: string) => {
     return appliances.filter(appliance => locationMap[appliance] === station);
   };
+
+  // Get custom locations (excluding primary stations)
+  const customLocations = allLocations.filter(
+    loc => !primaryStations.includes(loc as any)
+  );
 
 
 
@@ -30,12 +36,13 @@ const ApplianceLocations: React.FC = () => {
         Appliance Locations
       </h2>
       
-      <div className="grid grid-cols-2 gap-3">
-        {stations.map((station) => {
+      <div className="flex flex-wrap gap-3">
+        {/* Primary stations */}
+        {primaryStations.map((station) => {
           const appliancesAtStation = getAppliancesAtLocation(station);
           
           return (
-            <div key={station} className="border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+            <div key={station} className="flex-1 min-w-[calc(50%-0.375rem)] border border-gray-200 dark:border-gray-700 rounded-lg p-2">
               <h3 className="font-semibold text-base leading-tight text-gray-800 dark:text-gray-200 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">{station}</h3>
               
               <div>
@@ -50,6 +57,30 @@ const ApplianceLocations: React.FC = () => {
                 ) : (
                   <span className="text-gray-500 dark:text-gray-400 italic whitespace-nowrap text-sm"></span>
                 )}
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Custom locations */}
+        {customLocations.map((location) => {
+          const appliancesAtLocation = getAppliancesAtLocation(location);
+          
+          // Only show custom locations that have appliances
+          if (appliancesAtLocation.length === 0) return null;
+          
+          return (
+            <div key={location} className="flex-1 min-w-[calc(50%-0.375rem)] border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+              <h3 className="font-semibold text-base leading-tight text-gray-800 dark:text-gray-200 mb-1 whitespace-nowrap overflow-hidden text-ellipsis">{location}</h3>
+              
+              <div>
+                <div className="whitespace-nowrap overflow-hidden text-ellipsis text-sm">
+                  {appliancesAtLocation.map((appliance, index) => (
+                    <span key={appliance} className="text-gray-700 dark:text-gray-300">
+                      {appliance}{index < appliancesAtLocation.length - 1 && <span className="text-gray-500 dark:text-gray-500">, </span>}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           );
