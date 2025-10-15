@@ -219,7 +219,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                         <button
                           onClick={() => setShowCustomInput(appliance)}
                           disabled={isUpdating}
-                          className="px-4 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-medium hover:bg-orange-200 dark:hover:bg-orange-800/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+                          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
                         >
                           + Add Custom Location
                         </button>
