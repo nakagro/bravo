@@ -137,10 +137,6 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                       <tr className={`${bgColorClass} transition-colors`}>
                         <td className={`px-3 py-2 ${borderClasses}`}>
                           <div className="font-medium text-[15px] leading-tight">{formatUserName(user)}</div>
-                          {/* Inline skills, compact */}
-                          <div className="mt-0.5">
-                            <UserSkillsInline userId={user._id} max={4} />
-                          </div>
                         </td>
                         <td className={`px-3 py-1`}>
                           <div className="flex items-center flex-wrap gap-x-2">
@@ -157,6 +153,12 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                                 </span>
                               )}
                           </div>
+                        </td>
+                      </tr>
+                      {/* Skills row spanning full width */}
+                      <tr className={`${bgColorClass} transition-colors`}>
+                        <td colSpan={2} className={`px-3 pb-2 pt-0 ${borderClasses}`}>
+                          <UserSkillsInline userId={user._id} />
                         </td>
                       </tr>
                     </React.Fragment>
@@ -180,39 +182,20 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
 // Compact inline skills renderer
 interface UserSkillsInlineProps {
   userId: Id<"users">;
-  max?: number; // max badges to show
 }
 
-const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, max = 4 }) => {
+const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId }) => {
   const userSkills = useQuery(api.skills.getUserSkills, { userId });
 
   // Hide the special NONE skill from badges
   const filtered = (userSkills || []).filter((s) => s.code !== "NONE");
   if (filtered.length === 0) return null;
 
-  const visible = filtered.slice(0, max);
-  const extra = Math.max(0, filtered.length - visible.length);
-  const extraTitle =
-    extra > 0
-      ? filtered
-          .slice(max)
-          .map((s) => `${s.code}: ${s.name}`)
-          .join(', ')
-      : undefined;
-
   return (
     <div className="flex flex-wrap items-center -mt-0.5">
-      {visible.map((skill) => (
+      {filtered.map((skill) => (
         <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
       ))}
-      {extra > 0 && (
-        <div
-          className="inline-flex items-center justify-center h-4 px-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600 mr-1 mb-1"
-          title={extraTitle}
-        >
-          +{extra}
-        </div>
-      )}
     </div>
   );
 };
