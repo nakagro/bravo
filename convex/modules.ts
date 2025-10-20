@@ -147,6 +147,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       { 
+        moduleId: "bookings", 
+        moduleName: "Bookings", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      { 
         moduleId: "settings", 
         moduleName: "User Settings", 
         isEnabled: true,
@@ -283,6 +291,14 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      { 
+        moduleId: "bookings", 
+        moduleName: "Bookings", 
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
       },
       { 
         moduleId: "settings", 
@@ -515,6 +531,7 @@ export const getAllModuleAccess = query({
     fireReports: v.boolean(),
     applianceChecks: v.boolean(),
     vehicleFaults: v.boolean(),
+    bookings: v.boolean(),
     feedback: v.boolean(),
     links: v.boolean(),
     settings: v.boolean(),
@@ -533,6 +550,7 @@ export const getAllModuleAccess = query({
         fireReports: false,
         applianceChecks: false,
         vehicleFaults: false,
+        bookings: false,
         feedback: false,
         links: false,
         settings: false,
@@ -551,6 +569,7 @@ export const getAllModuleAccess = query({
         fireReports: false,
         applianceChecks: false,
         vehicleFaults: false,
+        bookings: false,
         feedback: false,
         links: false,
         settings: false,
@@ -569,6 +588,7 @@ export const getAllModuleAccess = query({
         fireReports: true,
         applianceChecks: true,
         vehicleFaults: true,
+        bookings: true,
         feedback: true,
         links: true,
         settings: true,
@@ -625,6 +645,7 @@ export const getAllModuleAccess = query({
       fireReports: checkAccess("fireReports"),
       applianceChecks: checkAccess("applianceChecks"),
       vehicleFaults: checkAccess("vehicleFaults"),
+      bookings: checkAccess("bookings"),
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),
       settings: checkAccess("settings"),

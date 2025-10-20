@@ -21,6 +21,7 @@ import type * as availability_getStatuses from "../availability/getStatuses.js";
 import type * as availability_updateStatus from "../availability/updateStatus.js";
 import type * as availability from "../availability.js";
 import type * as availabilityActions from "../availabilityActions.js";
+import type * as bookings from "../bookings.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "availability/updateStatus": typeof availability_updateStatus;
   availability: typeof availability;
   availabilityActions: typeof availabilityActions;
+  bookings: typeof bookings;
   crons: typeof crons;
   dashboard: typeof dashboard;
   deploymentAvailability: typeof deploymentAvailability;

@@ -18,6 +18,7 @@ import {
   MessageSquare,
   AlertTriangle,
   Link2,
+  Calendar,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -188,6 +189,17 @@ export const HamburgerMenu = React.memo(() => {
             >
               <AlertTriangle className="mr-3 h-5 w-5" />
               <span>Vehicle Faults</span>
+              <Badge variant="outline" className="ml-auto">WIP</Badge>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("bookings") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/bookings")}
+              className={location.pathname === '/bookings' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Calendar className="mr-3 h-5 w-5" />
+              <span>Bookings</span>
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>
           )}

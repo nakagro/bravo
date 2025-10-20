@@ -751,6 +751,44 @@ const applicationTables = {
     .index("by_run", ["runId"]) 
     .index("by_run_sectionOrder", ["runId", "sectionOrder"]) 
     .index("by_run_itemOrder", ["runId", "itemOrder"]),
+
+  // Bookings - Resource booking system
+  // Resources that can be booked (appliances, meeting room, etc.)
+  bookingResources: defineTable({
+    name: v.string(), // Resource name (e.g., "Pumper", "Meeting Room")
+    category: v.string(), // Category for grouping (e.g., "Appliance", "Facility")
+    description: v.optional(v.string()), // Optional description
+    isActive: v.boolean(), // Whether this resource can be booked
+    approvers: v.array(v.id("users")), // Users who can approve bookings for this resource
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_category", ["category"]),
+
+  // Booking requests
+  bookings: defineTable({
+    resourceId: v.id("bookingResources"), // The resource being booked
+    requestedBy: v.id("users"), // User requesting the booking
+    status: v.union(
+      v.literal("pending"), // Awaiting approval
+      v.literal("approved"), // Approved by an approver
+      v.literal("rejected"), // Rejected by an approver
+      v.literal("cancelled") // Cancelled by the requester
+    ),
+    notes: v.optional(v.string()), // Optional notes from the requester
+    reviewedBy: v.optional(v.id("users")), // User who approved/rejected
+    reviewedAt: v.optional(v.number()), // When the booking was reviewed
+    reviewNotes: v.optional(v.string()), // Notes from the reviewer
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_resource", ["resourceId"])
+    .index("by_requestedBy", ["requestedBy"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 };
 
 export default defineSchema({
