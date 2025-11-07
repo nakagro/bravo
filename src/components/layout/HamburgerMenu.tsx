@@ -46,6 +46,7 @@ export const HamburgerMenu = React.memo(() => {
 
   // Use single optimized query instead of 12 separate queries
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const pendingActions = useQuery(api.dashboard.getPendingActions);
 
   const hasModuleAccess = (moduleId: string): boolean => {
     if (!moduleAccess) return false;
@@ -104,6 +105,11 @@ export const HamburgerMenu = React.memo(() => {
             >
               <Home className="mr-3 h-5 w-5" />
               <span>Dashboard</span>
+              {pendingActions && pendingActions.length > 0 && (
+                <Badge variant="destructive" className="ml-auto">
+                  {pendingActions.length}
+                </Badge>
+              )}
             </DropdownMenuItem>
           )}
 

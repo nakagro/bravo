@@ -756,7 +756,6 @@ const applicationTables = {
   // Resources that can be booked (appliances, meeting room, etc.)
   bookingResources: defineTable({
     name: v.string(), // Resource name (e.g., "Pumper", "Meeting Room")
-    category: v.string(), // Category for grouping (e.g., "Appliance", "Facility")
     description: v.optional(v.string()), // Optional description
     isActive: v.boolean(), // Whether this resource can be booked
     approvers: v.array(v.id("users")), // Users who can approve bookings for this resource
@@ -765,8 +764,7 @@ const applicationTables = {
     updatedAt: v.number(),
     updatedBy: v.id("users"),
   })
-    .index("by_isActive", ["isActive"])
-    .index("by_category", ["category"]),
+    .index("by_isActive", ["isActive"]),
 
   // Booking requests
   bookings: defineTable({

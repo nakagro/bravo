@@ -210,7 +210,7 @@ const BookingsTab: React.FC<BookingsTabProps> = ({ isAuthenticated }) => {
                 <option value="">-- Select a resource --</option>
                 {activeResources?.map((resource) => (
                   <option key={resource._id} value={resource._id}>
-                    {resource.name} ({resource.category})
+                    {resource.name}
                   </option>
                 ))}
               </select>
@@ -278,9 +278,6 @@ const BookingsTab: React.FC<BookingsTabProps> = ({ isAuthenticated }) => {
                         {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Category: {booking.resource?.category}
-                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       Requested {getRelativeTimeString(booking.createdAt)}
                     </p>

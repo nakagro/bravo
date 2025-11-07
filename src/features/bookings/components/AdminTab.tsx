@@ -13,7 +13,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [editingResource, setEditingResource] = useState<Id<"bookingResources"> | null>(null);
   const [resourceName, setResourceName] = useState('');
-  const [resourceCategory, setResourceCategory] = useState('');
   const [resourceDescription, setResourceDescription] = useState('');
   const [resourceApprovers, setResourceApprovers] = useState<Id<"users">[]>([]);
   const [isActive, setIsActive] = useState(true);
@@ -44,7 +43,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   const handleEditResource = (resource: any) => {
     setEditingResource(resource._id);
     setResourceName(resource.name);
-    setResourceCategory(resource.category);
     setResourceDescription(resource.description || '');
     setResourceApprovers(resource.approvers);
     setIsActive(resource.isActive);
@@ -55,14 +53,13 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
     setShowResourceForm(false);
     setEditingResource(null);
     setResourceName('');
-    setResourceCategory('');
     setResourceDescription('');
     setResourceApprovers([]);
     setIsActive(true);
   };
 
   const handleSubmitResource = async () => {
-    if (!resourceName.trim() || !resourceCategory.trim() || resourceApprovers.length === 0) {
+    if (!resourceName.trim() || resourceApprovers.length === 0) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -74,7 +71,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
         await updateResource({
           resourceId: editingResource,
           name: resourceName.trim(),
-          category: resourceCategory.trim(),
           description: resourceDescription.trim() || undefined,
           isActive,
           approvers: resourceApprovers,
@@ -83,7 +79,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
       } else {
         await createResource({
           name: resourceName.trim(),
-          category: resourceCategory.trim(),
           description: resourceDescription.trim() || undefined,
           approvers: resourceApprovers,
         });
@@ -260,19 +255,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Category *
-                </label>
-                <input
-                  type="text"
-                  value={resourceCategory}
-                  onChange={(e) => setResourceCategory(e.target.value)}
-                  placeholder="e.g., Appliance, Facility"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-white/5 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Description (Optional)
                 </label>
                 <textarea
@@ -363,9 +345,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Category: {resource.category}
-                    </p>
                     {resource.description && (
                       <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                         {resource.description}

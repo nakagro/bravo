@@ -12,7 +12,6 @@ export const getBookingResources = query({
       _id: v.id("bookingResources"),
       _creationTime: v.number(),
       name: v.string(),
-      category: v.string(),
       description: v.optional(v.string()),
       isActive: v.boolean(),
       approvers: v.array(v.id("users")),
@@ -84,7 +83,6 @@ export const getActiveBookingResources = query({
       _id: v.id("bookingResources"),
       _creationTime: v.number(),
       name: v.string(),
-      category: v.string(),
       description: v.optional(v.string()),
       isActive: v.boolean(),
       approvers: v.array(v.id("users")),
@@ -108,7 +106,6 @@ export const getActiveBookingResources = query({
 export const createBookingResource = mutation({
   args: {
     name: v.string(),
-    category: v.string(),
     description: v.optional(v.string()),
     approvers: v.array(v.id("users")),
   },
@@ -123,7 +120,6 @@ export const createBookingResource = mutation({
 
     const resourceId = await ctx.db.insert("bookingResources", {
       name: args.name,
-      category: args.category,
       description: args.description,
       isActive: true,
       approvers: args.approvers,
@@ -144,7 +140,6 @@ export const updateBookingResource = mutation({
   args: {
     resourceId: v.id("bookingResources"),
     name: v.string(),
-    category: v.string(),
     description: v.optional(v.string()),
     isActive: v.boolean(),
     approvers: v.array(v.id("users")),
@@ -158,7 +153,6 @@ export const updateBookingResource = mutation({
 
     await ctx.db.patch(args.resourceId, {
       name: args.name,
-      category: args.category,
       description: args.description,
       isActive: args.isActive,
       approvers: args.approvers,
@@ -228,7 +222,6 @@ export const getBookings = query({
         v.object({
           _id: v.id("bookingResources"),
           name: v.string(),
-          category: v.string(),
           description: v.optional(v.string()),
         })
       ),
@@ -267,7 +260,6 @@ export const getBookings = query({
             ? {
                 _id: resource._id,
                 name: resource.name,
-                category: resource.category,
                 description: resource.description,
               }
             : undefined,
@@ -322,7 +314,6 @@ export const getMyBookings = query({
         v.object({
           _id: v.id("bookingResources"),
           name: v.string(),
-          category: v.string(),
           description: v.optional(v.string()),
         })
       ),
@@ -349,7 +340,6 @@ export const getMyBookings = query({
             ? {
                 _id: resource._id,
                 name: resource.name,
-                category: resource.category,
                 description: resource.description,
               }
             : undefined,
@@ -388,7 +378,6 @@ export const getPendingApprovalsForMe = query({
         v.object({
           _id: v.id("bookingResources"),
           name: v.string(),
-          category: v.string(),
           description: v.optional(v.string()),
         })
       ),
@@ -439,7 +428,6 @@ export const getPendingApprovalsForMe = query({
             ? {
                 _id: resource._id,
                 name: resource.name,
-                category: resource.category,
                 description: resource.description,
               }
             : undefined,

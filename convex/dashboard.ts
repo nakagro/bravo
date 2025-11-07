@@ -73,6 +73,37 @@ export const getPendingActions = query({
       });
     }
     
+    // Check for pending booking approvals
+    // Get all resources where the current user is an approver
+    const resources = await ctx.db.query("bookingResources").collect();
+    const myResourceIds = resources
+      .filter((resource) => resource.approvers.includes(userId))
+      .map((resource) => resource._id);
+
+    if (myResourceIds.length > 0) {
+      // Get all pending bookings for those resources
+      const allPendingBookings = await ctx.db
+        .query("bookings")
+        .withIndex("by_status", (q) => q.eq("status", "pending"))
+        .collect();
+
+      const myPendingBookings = allPendingBookings.filter((booking) =>
+        myResourceIds.includes(booking.resourceId)
+      );
+
+      if (myPendingBookings.length > 0) {
+        pendingActions.push({
+          _id: "pending-booking-approvals",
+          title: "You have bookings awaiting approval",
+          description: `You have ${myPendingBookings.length} booking request${myPendingBookings.length > 1 ? 's' : ''} that need${myPendingBookings.length === 1 ? 's' : ''} your review.`,
+          actionUrl: "/bookings",
+          actionLabel: "Review Bookings",
+          priority: "high",
+          createdAt: Math.min(...myPendingBookings.map(b => b.createdAt)),
+        });
+      }
+    }
+    
     return pendingActions;
   },
 });
