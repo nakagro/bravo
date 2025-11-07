@@ -156,11 +156,11 @@ const AvailabilityPage: React.FC = () => {
       
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 relative">
-        <nav className="flex space-x-4 -mb-px relative">
+        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
           <button
             ref={(el) => { tabRefs.current['you'] = el; }}
             onClick={() => setActiveTab('you')}
-            className={`py-2 px-3 text-sm transition-colors ${
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'you' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
@@ -171,7 +171,7 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['brigade'] = el; }}
             onClick={() => setActiveTab('brigade')}
-            className={`py-2 px-1 text-sm transition-colors ${
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'brigade' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
@@ -182,7 +182,7 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['messages'] = el; }}
             onClick={() => setActiveTab('messages')}
-            className={`py-2 px-1 text-sm relative transition-colors ${
+            className={`py-2 px-2 sm:px-3 text-sm relative transition-colors whitespace-nowrap ${
               activeTab === 'messages' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
@@ -198,7 +198,7 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['deployment'] = el; }}
             onClick={() => setActiveTab('deployment')}
-            className={`py-2 px-1 text-sm transition-colors ${
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'deployment' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
@@ -210,7 +210,7 @@ const AvailabilityPage: React.FC = () => {
             <button
               ref={(el) => { tabRefs.current['admin'] = el; }}
               onClick={() => setActiveTab('admin')}
-              className={`py-2 px-1 text-sm transition-colors ${
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'admin' 
                   ? 'text-red-600 dark:text-red-400 font-bold' 
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
