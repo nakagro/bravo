@@ -12,6 +12,9 @@ interface YouTabProps {
   isAuthenticated: boolean;
 }
 
+// Maximum duration: 1 month (approximately 730 hours)
+const MAX_DURATION_HOURS = 730;
+
 const YouTab: React.FC<YouTabProps> = ({
   userStatus,
   handleStatusChange,
@@ -181,6 +184,12 @@ const YouTab: React.FC<YouTabProps> = ({
     }
     // Narrow type for TS: ensure hours is a number
     if (hours === null) return;
+
+    // Validate maximum duration (1 month)
+    if (hours > MAX_DURATION_HOURS) {
+      toast.error(`Duration cannot exceed ${MAX_DURATION_HOURS} hours (approximately 1 month)`);
+      return;
+    }
 
     // Stage duration only; do not apply until user clicks a status or the Set button below
     setSelectedDuration(hours);
@@ -598,6 +607,11 @@ const YouTab: React.FC<YouTabProps> = ({
                     <button
                       key={hours}
                       onClick={() => {
+                        // Validate maximum duration (though quick buttons are already under the limit)
+                        if (hours > MAX_DURATION_HOURS) {
+                          toast.error(`Duration cannot exceed ${MAX_DURATION_HOURS} hours (approximately 1 month)`);
+                          return;
+                        }
                         // Stage duration only; do not apply until user clicks a status or the Set button below
                         setSelectedDuration(hours);
                       }}

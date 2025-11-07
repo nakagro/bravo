@@ -160,10 +160,10 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['you'] = el; }}
             onClick={() => setActiveTab('you')}
-            className={`py-2 px-1 font-medium text-sm transition-colors ${
+            className={`py-2 px-3 text-sm transition-colors ${
               activeTab === 'you' 
-                ? 'text-blue-600 dark:text-blue-400' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
             }`}
           >
             You
@@ -171,10 +171,10 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['brigade'] = el; }}
             onClick={() => setActiveTab('brigade')}
-            className={`py-2 px-1 font-medium text-sm transition-colors ${
+            className={`py-2 px-1 text-sm transition-colors ${
               activeTab === 'brigade' 
-                ? 'text-blue-600 dark:text-blue-400' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
             }`}
           >
             Brigade
@@ -182,10 +182,10 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['messages'] = el; }}
             onClick={() => setActiveTab('messages')}
-            className={`py-2 px-1 font-medium text-sm relative transition-colors ${
+            className={`py-2 px-1 text-sm relative transition-colors ${
               activeTab === 'messages' 
-                ? 'text-blue-600 dark:text-blue-400' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
             }`}
           >
             Messages
@@ -198,10 +198,10 @@ const AvailabilityPage: React.FC = () => {
           <button
             ref={(el) => { tabRefs.current['deployment'] = el; }}
             onClick={() => setActiveTab('deployment')}
-            className={`py-2 px-1 font-medium text-sm transition-colors ${
+            className={`py-2 px-1 text-sm transition-colors ${
               activeTab === 'deployment' 
-                ? 'text-blue-600 dark:text-blue-400' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
             }`}
           >
             Deployment
@@ -210,10 +210,10 @@ const AvailabilityPage: React.FC = () => {
             <button
               ref={(el) => { tabRefs.current['admin'] = el; }}
               onClick={() => setActiveTab('admin')}
-              className={`py-2 px-1 font-medium text-sm transition-colors ${
+              className={`py-2 px-1 text-sm transition-colors ${
                 activeTab === 'admin' 
-                  ? 'text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'text-red-600 dark:text-red-400 font-bold' 
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
               }`}
             >
               Admin
@@ -222,7 +222,7 @@ const AvailabilityPage: React.FC = () => {
         </nav>
         {/* Animated indicator */}
         <div
-          className="absolute bottom-0 h-0.5 bg-blue-500 dark:bg-blue-400 transition-all duration-300 ease-out"
+          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
           style={{
             left: `${indicatorStyle.left}px`,
             width: `${indicatorStyle.width}px`,
