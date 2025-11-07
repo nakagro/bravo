@@ -409,11 +409,24 @@ npm run increment:major
 
 Additional documentation available in the `docs/` directory:
 
+### Setup & Configuration
 *   **[CONVEX-SETUP.md](./CONVEX-SETUP.md)**: Detailed Convex deployment guide
 *   **[PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md)**: Performance best practices
+
+### Development Guides
 *   **[docs/creating-new-modules.md](./docs/creating-new-modules.md)**: Guide for adding new features
 *   **[docs/ADD_MODULE_TO_PERMISSIONS.md](./docs/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
+
+### Analytics & Monitoring
 *   **[docs/POSTHOG_NOTIFICATION_ANALYTICS.md](./docs/POSTHOG_NOTIFICATION_ANALYTICS.md)**: PostHog analytics setup and usage
+*   **[docs/sentrysetup.md](./docs/sentrysetup.md)**: Sentry error tracking configuration
+
+### Multi-Brigade Architecture (Future)
+*   **[docs/MULTI_BRIGADE_SUMMARY.md](./docs/MULTI_BRIGADE_SUMMARY.md)**: Executive summary of multi-brigade support
+*   **[docs/MULTI_BRIGADE_MIGRATION.md](./docs/MULTI_BRIGADE_MIGRATION.md)**: Complete migration guide
+*   **[docs/multi-brigade/](./docs/multi-brigade/)**: Detailed phase-by-phase implementation guides
+
+> **Note**: BRAVO currently supports a single brigade (Wyndham Vale Fire Brigade). The multi-brigade documentation outlines the architecture and effort required to support multiple brigades in the future.
 
 ## Support and Maintenance
 
