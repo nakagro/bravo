@@ -86,24 +86,23 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                 <th className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedStatuses.length > 0 ? (
+            {sortedStatuses.length > 0 ? (
                 sortedStatuses.map((user) => {
                   // Get row background color based on status
                   const getRowColor = (status: string | undefined) => {
                     switch (status) {
                       case 'available - station':
-                        return 'bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/40 border-l-4 border-green-500 dark:border-green-600';
+                        return 'bg-green-100 dark:bg-green-900/40 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 border-l-4 border-green-600 dark:border-green-400';
                       case 'available - satellite':
-                        return 'bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/40 border-l-4 border-green-400 dark:border-green-500';
+                        return 'bg-green-50 dark:bg-green-900/20 group-hover:bg-green-100 dark:group-hover:bg-green-900/30 border-l-4 border-green-400 dark:border-green-700';
                       case 'delayed response':
-                        return 'bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 border-l-4 border-yellow-500 dark:border-yellow-600';
+                        return 'bg-yellow-50 dark:bg-yellow-900/30 group-hover:bg-yellow-100 dark:group-hover:bg-yellow-900/40 border-l-4 border-yellow-500 dark:border-yellow-600';
                       case 'WFH':
-                        return 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-l-4 border-blue-500 dark:border-blue-600';
+                        return 'bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 border-l-4 border-blue-500 dark:border-blue-600';
                       case 'not available':
-                        return 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/60 border-l-4 border-gray-400 dark:border-gray-600';
+                        return 'bg-gray-50 dark:bg-gray-800/50 group-hover:bg-gray-100 dark:group-hover:bg-gray-700/60 border-l-4 border-gray-400 dark:border-gray-600';
                       default:
-                        return 'hover:bg-gray-50 dark:hover:bg-gray-800/50';
+                        return 'group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50';
                     }
                   };
                   
@@ -127,16 +126,16 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   
                   // Extract the border classes from getRowColor for the first cell
                   const rowColorClasses = getRowColor(user.currentStatus);
-                  const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-')).join(' ');
+                  const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-') || cls.startsWith('group-hover:') || cls.startsWith('dark:group-hover:')).join(' ');
                   const borderClasses = rowColorClasses.split(' ').filter(cls => cls.startsWith('border-')).join(' ');
                   
                   return (
-                    <React.Fragment key={user._id}>
+                    <tbody key={user._id} className="group border-b border-gray-200 dark:border-gray-700">
                       <tr className={`${bgColorClass} transition-colors`}>
-                        <td className={`px-3 py-2 ${borderClasses}`}>
+                        <td className={`px-3 py-1 ${borderClasses}`}>
                           <div className="font-medium text-[15px] leading-tight">{formatUserName(user)}</div>
                         </td>
-                        <td className={`px-3 py-1`}>
+                        <td className={`px-3 py-0.5`}>
                           <div className="flex items-center flex-wrap gap-x-2">
                             <span className={`font-medium text-sm ${getTextColor(user.currentStatus)}`}>
                                 {user.currentStatus === 'available - station' && 'Available - Station'}
@@ -155,21 +154,22 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                       </tr>
                       {/* Skills row spanning full width */}
                       <tr className={`${bgColorClass} transition-colors`}>
-                        <td colSpan={2} className={`px-3 pb-2 pt-0 ${borderClasses}`}>
+                        <td colSpan={2} className={`px-3 pb-1 pt-0 ${borderClasses}`}>
                           <UserSkillsInline userId={user._id} />
                         </td>
                       </tr>
-                    </React.Fragment>
+                    </tbody>
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan={2} className="p-4 text-center text-gray-500 dark:text-gray-400">
-                    No members found
-                  </td>
-                </tr>
+                <tbody>
+                  <tr>
+                    <td colSpan={2} className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      No members found
+                    </td>
+                  </tr>
+                </tbody>
               )}
-            </tbody>
           </table>
         </div>
       </div>
@@ -187,10 +187,9 @@ const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId }) => {
 
   // Hide the special NONE skill from badges
   const filtered = (userSkills || []).filter((s) => s.code !== "NONE");
-  if (filtered.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center -mt-0.5">
+    <div className="flex flex-wrap items-center min-h-[18px] -mt-0.5">
       {filtered.map((skill) => (
         <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
       ))}
