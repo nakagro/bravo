@@ -28,23 +28,67 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
     }
   };
 
-  // Filter users who have set a status and sort by availability
-  const sortedStatuses = [...statuses]
-    .filter(user => user.currentStatus) // Only include users who have set a status
-    .sort((a, b) => {
-      const statusOrder: Record<string, number> = {
-        'available - station': 1,
-        'available - satellite': 2,
-        'delayed response': 3,
-        'WFH': 4,
-        'not available': 5
-      };
-      
-      const statusA = a.currentStatus || 'not available';
-      const statusB = b.currentStatus || 'not available';
-      
-      return (statusOrder[statusA] || 5) - (statusOrder[statusB] || 5);
+  // Filter users who have set a status and group by status
+  const usersWithStatus = statuses.filter(user => user.currentStatus);
+  
+  // Group users by their status
+  const groupedByStatus: Record<string, any[]> = {
+    'available - station': [],
+    'available - satellite': [],
+    'delayed response': [],
+    'WFH': [],
+    'not available': []
+  };
+  
+  usersWithStatus.forEach(user => {
+    const status = user.currentStatus || 'not available';
+    if (groupedByStatus[status]) {
+      groupedByStatus[status].push(user);
+    }
+  });
+  
+  // Sort users alphabetically by first name within each status group
+  Object.keys(groupedByStatus).forEach(status => {
+    groupedByStatus[status].sort((a, b) => {
+      const nameA = a.firstName || a.name || '';
+      const nameB = b.firstName || b.name || '';
+      return nameA.localeCompare(nameB);
     });
+  });
+  
+  // Define status display information
+  const statusInfo: Record<string, { label: string; bgColor: string; textColor: string; borderColor: string }> = {
+    'available - station': {
+      label: 'Available - Station',
+      bgColor: 'bg-green-100 dark:bg-green-900/40',
+      textColor: 'text-green-800 dark:text-green-300',
+      borderColor: 'border-green-600 dark:border-green-400'
+    },
+    'available - satellite': {
+      label: 'Available - Satellite',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+      textColor: 'text-green-700 dark:text-green-400',
+      borderColor: 'border-green-400 dark:border-green-700'
+    },
+    'delayed response': {
+      label: 'Delayed Response',
+      bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
+      textColor: 'text-yellow-800 dark:text-yellow-300',
+      borderColor: 'border-yellow-500 dark:border-yellow-600'
+    },
+    'WFH': {
+      label: 'Working From Home',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+      textColor: 'text-blue-800 dark:text-blue-300',
+      borderColor: 'border-blue-500 dark:border-blue-600'
+    },
+    'not available': {
+      label: 'Not Available',
+      bgColor: 'bg-gray-50 dark:bg-gray-800/50',
+      textColor: 'text-gray-800 dark:text-gray-300',
+      borderColor: 'border-gray-400 dark:border-gray-600'
+    }
+  };
 
   return (
     <>
@@ -73,104 +117,62 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
             </svg>
             Brigade Members
             <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
-              {sortedStatuses.length} {sortedStatuses.length === 1 ? 'member' : 'members'} with status set
+              {usersWithStatus.length} {usersWithStatus.length === 1 ? 'member' : 'members'} with status set
             </span>
           </h3>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-0 table-fixed">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Member</th>
-                <th className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Status</th>
-              </tr>
-            </thead>
-            {sortedStatuses.length > 0 ? (
-                sortedStatuses.map((user) => {
-                  // Get row background color based on status
-                  const getRowColor = (status: string | undefined) => {
-                    switch (status) {
-                      case 'available - station':
-                        return 'bg-green-100 dark:bg-green-900/40 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 border-l-4 border-green-600 dark:border-green-400';
-                      case 'available - satellite':
-                        return 'bg-green-50 dark:bg-green-900/20 group-hover:bg-green-100 dark:group-hover:bg-green-900/30 border-l-4 border-green-400 dark:border-green-700';
-                      case 'delayed response':
-                        return 'bg-yellow-50 dark:bg-yellow-900/30 group-hover:bg-yellow-100 dark:group-hover:bg-yellow-900/40 border-l-4 border-yellow-500 dark:border-yellow-600';
-                      case 'WFH':
-                        return 'bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 border-l-4 border-blue-500 dark:border-blue-600';
-                      case 'not available':
-                        return 'bg-gray-50 dark:bg-gray-800/50 group-hover:bg-gray-100 dark:group-hover:bg-gray-700/60 border-l-4 border-gray-400 dark:border-gray-600';
-                      default:
-                        return 'group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50';
-                    }
-                  };
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {usersWithStatus.length > 0 ? (
+            Object.entries(groupedByStatus).map(([status, users]) => {
+              if (users.length === 0) return null;
+              
+              const info = statusInfo[status];
+              
+              return (
+                <div key={status} className={`${info.bgColor}`}>
+                  {/* Status Header */}
+                  <div className={`px-3 py-1 border-l-4 ${info.borderColor}`}>
+                    <h4 className={`font-semibold text-base ${info.textColor}`}>
+                      {info.label}
+                      <span className="ml-2 text-sm font-normal opacity-75">
+                        ({users.length})
+                      </span>
+                    </h4>
+                    {/* Skill counters temporarily hidden - will be re-enabled later */}
+                    {/* {(status === 'available - station' || status === 'available - satellite') && (
+                      <SkillCounters userIds={users.map(u => u._id)} textColor={info.textColor} />
+                    )} */}
+                  </div>
                   
-                  // Get text color based on status
-                  const getTextColor = (status: string | undefined) => {
-                    switch (status) {
-                      case 'available - station':
-                        return 'text-green-800 dark:text-green-300 font-medium';
-                      case 'available - satellite':
-                        return 'text-green-700 dark:text-green-400 font-medium';
-                      case 'delayed response':
-                        return 'text-yellow-800 dark:text-yellow-300 font-medium';
-                      case 'WFH':
-                        return 'text-blue-800 dark:text-blue-300 font-medium';
-                      case 'not available':
-                        return 'text-gray-800 dark:text-gray-300 font-medium';
-                      default:
-                        return '';
-                    }
-                  };
-                  
-                  // Extract the border classes from getRowColor for the first cell
-                  const rowColorClasses = getRowColor(user.currentStatus);
-                  const bgColorClass = rowColorClasses.split(' ').filter(cls => cls.startsWith('bg-') || cls.startsWith('hover:bg-') || cls.startsWith('dark:bg-') || cls.startsWith('dark:hover:bg-') || cls.startsWith('group-hover:') || cls.startsWith('dark:group-hover:')).join(' ');
-                  const borderClasses = rowColorClasses.split(' ').filter(cls => cls.startsWith('border-')).join(' ');
-                  
-                  return (
-                    <tbody key={user._id} className="group border-b border-gray-200 dark:border-gray-700">
-                      <tr className={`${bgColorClass} transition-colors`}>
-                        <td className={`px-3 py-1 ${borderClasses}`}>
-                          <div className="font-medium text-[15px] leading-tight">{formatUserName(user)}</div>
-                        </td>
-                        <td className={`px-3 py-0.5`}>
-                          <div className="flex items-center flex-wrap gap-x-2">
-                            <span className={`font-medium text-sm ${getTextColor(user.currentStatus)}`}>
-                                {user.currentStatus === 'available - station' && 'Available - Station'}
-                                {user.currentStatus === 'available - satellite' && 'Available - Satellite'}
-                                {user.currentStatus === 'delayed response' && 'Delayed'}
-                                {user.currentStatus === 'WFH' && 'WFH'}
-                                {user.currentStatus === 'not available' && 'Unavailable'}
-                              </span>
-                              {user.statusUpdatedAt && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  ({getRelativeTimeCompact(user.statusUpdatedAt)})
-                                </span>
-                              )}
-                          </div>
-                        </td>
-                      </tr>
-                      {/* Skills row spanning full width */}
-                      <tr className={`${bgColorClass} transition-colors`}>
-                        <td colSpan={2} className={`px-3 pb-1 pt-0 ${borderClasses}`}>
+                  {/* Users in this status */}
+                  <div className="px-3 pb-1 space-y-0.5">
+                    {users.map((user) => (
+                      <div key={user._id} className="pl-2 border-l-4 border-transparent hover:border-gray-300 dark:hover:border-gray-600 transition-colors py-0.5">
+                        <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {formatUserName(user)}
+                          </span>
+                          {user.statusUpdatedAt && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {getRelativeTimeCompact(user.statusUpdatedAt)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5">
                           <UserSkillsInline userId={user._id} />
-                        </td>
-                      </tr>
-                    </tbody>
-                  );
-                })
-              ) : (
-                <tbody>
-                  <tr>
-                    <td colSpan={2} className="p-4 text-center text-gray-500 dark:text-gray-400">
-                      No members found
-                    </td>
-                  </tr>
-                </tbody>
-              )}
-          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              No members found
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -193,6 +195,46 @@ const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId }) => {
       {filtered.map((skill) => (
         <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
       ))}
+    </div>
+  );
+};
+
+// Skill counters for crew viability (DR and BAi)
+interface SkillCountersProps {
+  userIds: Id<"users">[];
+  textColor: string;
+}
+
+const SkillCounters: React.FC<SkillCountersProps> = ({ userIds, textColor }) => {
+  // Query skills for all users in this group
+  const allUserSkills = userIds.map(userId => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const skills = useQuery(api.skills.getUserSkills, { userId });
+    return { userId, skills };
+  });
+
+  // Count users with DR (Driver) skill
+  const drCount = allUserSkills.filter(({ skills }) => 
+    skills?.some(skill => skill.code === 'DR')
+  ).length;
+
+  // Count users with BAi (Breathing Apparatus Internal) skill
+  const baiCount = allUserSkills.filter(({ skills }) => 
+    skills?.some(skill => skill.code === 'BAi')
+  ).length;
+
+  // Determine if counts meet requirements (1 DR, 2 BAi)
+  const drMet = drCount >= 1;
+  const baiMet = baiCount >= 2;
+
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className={`font-medium ${drMet ? textColor : 'text-gray-500 dark:text-gray-400'}`}>
+        DR ({drCount}/1)
+      </span>
+      <span className={`font-medium ${baiMet ? textColor : 'text-gray-500 dark:text-gray-400'}`}>
+        BAi ({baiCount}/2)
+      </span>
     </div>
   );
 };
