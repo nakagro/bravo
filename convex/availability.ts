@@ -744,3 +744,67 @@ export const getUserInfoForYouTab = query({
     };
   },
 });
+
+// Get users with scheduled status changes (for admin monitoring)
+export const getUsersWithScheduledChanges = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      memberNumber: v.optional(v.string()),
+      currentStatus: v.optional(
+        v.union(
+          v.literal("available - station"),
+          v.literal("available - satellite"),
+          v.literal("not available"),
+          v.literal("delayed response"),
+          v.literal("WFH")
+        )
+      ),
+      statusUpdatedAt: v.optional(v.number()),
+      statusExpiresAt: v.number(),
+      statusDurationHours: v.number(),
+      nextStatus: v.union(
+        v.literal("available - station"),
+        v.literal("available - satellite"),
+        v.literal("not available"),
+        v.literal("delayed response"),
+        v.literal("WFH"),
+        v.literal("reset")
+      ),
+      nextStatusAt: v.number(),
+    })
+  ),
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Get all users
+    const users = await ctx.db.query("users").collect();
+    
+    // Filter users who have scheduled status changes (statusExpiresAt and nextStatus are set)
+    const usersWithScheduledChanges = users.filter(user => 
+      user.statusExpiresAt && 
+      user.nextStatus && 
+      user.nextStatusAt &&
+      user.statusExpiresAt > now // Only show future changes
+    );
+    
+    // Map to return format
+    return usersWithScheduledChanges.map(user => ({
+      _id: user._id,
+      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      memberNumber: user.memberNumber,
+      currentStatus: user.currentStatus,
+      statusUpdatedAt: user.statusUpdatedAt,
+      statusExpiresAt: user.statusExpiresAt!,
+      statusDurationHours: user.statusDurationHours!,
+      nextStatus: user.nextStatus!,
+      nextStatusAt: user.nextStatusAt!,
+    }));
+  },
+});
