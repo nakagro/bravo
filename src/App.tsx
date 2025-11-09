@@ -18,6 +18,7 @@ import { UserSettingsPage } from "./pages/UserSettingsPage";
 import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LinksPage } from "./pages/LinksPage";
+import AboutPage from "./pages/AboutPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
@@ -122,6 +123,7 @@ function AuthenticatedApp() {
             <AdminSettingsPage />
           </ProtectedRoute>
         } />
+        <Route path="/about" element={<AboutPage />} />
         
         {/* Catch all other routes and redirect to dashboard */}
         <Route path="*" element={<Navigate to="/" replace />} />
