@@ -59,7 +59,7 @@ export function LinksPage() {
                 className="block group"
               >
                 {/* Mobile: Compact list item */}
-                <div className="sm:hidden flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/40 transition-colors">
+                <div className="sm:hidden flex items-center gap-3 p-3 rounded-lg border border-white/10 dark:border-white/10 bg-card hover:bg-accent/40 transition-colors">
                   {link.icon && (
                     <span className="text-2xl flex-shrink-0" aria-hidden>
                       {link.icon}
@@ -73,7 +73,7 @@ export function LinksPage() {
                 </div>
 
                 {/* Desktop: Card view */}
-                <Card className="hidden sm:block hover:bg-accent/40 transition-colors h-full">
+                <Card className="hidden sm:block hover:bg-accent/40 transition-colors h-full border-white/10 dark:border-white/10">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base truncate flex items-center gap-2">
                       {link.icon && <span aria-hidden>{link.icon}</span>}

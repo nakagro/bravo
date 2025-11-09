@@ -137,6 +137,14 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [overPos, setOverPos] = useState<"above" | "below" | null>(null);
+  
+  // Local editing state to prevent live updates while typing
+  const [editingValues, setEditingValues] = useState<Record<string, {
+    title?: string;
+    url?: string;
+    icon?: string;
+    category?: string;
+  }>>({});
 
   const categories = useMemo(() => {
     const groups = new Map<string, LinkDoc[]>();
@@ -169,6 +177,43 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
     const [moved] = newIds.splice(fromIdx, 1);
     newIds.splice(toIdx, 0, moved);
     await handleReorderWithinCategory(categoryKey, newIds);
+  };
+
+  // Get current value from local state or fallback to link value
+  const getValue = (linkId: string, field: keyof typeof editingValues[string], fallback: any) => {
+    return editingValues[linkId]?.[field] ?? fallback;
+  };
+
+  // Handle field change - update local state only
+  const handleFieldChange = (linkId: string, field: keyof typeof editingValues[string], value: string) => {
+    setEditingValues(prev => ({
+      ...prev,
+      [linkId]: {
+        ...prev[linkId],
+        [field]: value,
+      },
+    }));
+  };
+
+  // Handle field blur - save to database
+  const handleFieldBlur = async (linkId: string, field: keyof typeof editingValues[string], originalValue: any) => {
+    const newValue = editingValues[linkId]?.[field];
+    if (newValue !== undefined && newValue !== originalValue) {
+      await onUpdate(linkId, { [field]: newValue });
+    }
+    // Clear local state for this field
+    setEditingValues(prev => {
+      const updated = { ...prev };
+      if (updated[linkId]) {
+        const { [field]: _, ...rest } = updated[linkId];
+        if (Object.keys(rest).length === 0) {
+          delete updated[linkId];
+        } else {
+          updated[linkId] = rest;
+        }
+      }
+      return updated;
+    });
   };
 
   return (
@@ -293,16 +338,33 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
                     </div>
                   </td>
                   <td className="py-2 pr-2 min-w-[180px]">
-                    <Input value={link.title} onChange={(e) => onUpdate(link._id as any, { title: e.target.value })} />
+                    <Input 
+                      value={getValue(link._id, 'title', link.title)} 
+                      onChange={(e) => handleFieldChange(link._id, 'title', e.target.value)}
+                      onBlur={() => handleFieldBlur(link._id, 'title', link.title)}
+                    />
                   </td>
                   <td className="py-2 pr-2 min-w-[220px]">
-                    <Input value={link.url} onChange={(e) => onUpdate(link._id as any, { url: e.target.value })} />
+                    <Input 
+                      value={getValue(link._id, 'url', link.url)} 
+                      onChange={(e) => handleFieldChange(link._id, 'url', e.target.value)}
+                      onBlur={() => handleFieldBlur(link._id, 'url', link.url)}
+                    />
                   </td>
                   <td className="py-2 pr-2 min-w-[120px]">
-                    <Input value={link.icon || ""} onChange={(e) => onUpdate(link._id as any, { icon: e.target.value })} placeholder="🔗" />
+                    <Input 
+                      value={getValue(link._id, 'icon', link.icon || "")} 
+                      onChange={(e) => handleFieldChange(link._id, 'icon', e.target.value)}
+                      onBlur={() => handleFieldBlur(link._id, 'icon', link.icon || "")}
+                      placeholder="🔗" 
+                    />
                   </td>
                   <td className="py-2 pr-2 min-w-[140px]">
-                    <Input value={link.category || ""} onChange={(e) => onUpdate(link._id as any, { category: e.target.value })} />
+                    <Input 
+                      value={getValue(link._id, 'category', link.category || "")} 
+                      onChange={(e) => handleFieldChange(link._id, 'category', e.target.value)}
+                      onBlur={() => handleFieldBlur(link._id, 'category', link.category || "")}
+                    />
                   </td>
                   <td className="py-2 pr-2 w-[90px]">
                     <div className="flex items-center gap-2">
