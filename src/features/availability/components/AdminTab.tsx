@@ -170,9 +170,9 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Appliance Location Management */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
         <Accordion type="single" collapsible defaultValue="appliance-locations">
           <AccordionItem value="appliance-locations" className="border-none">
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -195,13 +195,13 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {appliances.map((appliance) => {
               const currentLocation = locationMap[appliance] || 'Unknown';
               const locationData = applianceLocations.find(loc => loc.applianceName === appliance);
               
               return (
-                <div key={appliance} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <div key={appliance} className="py-4 first:pt-0">
                   {/* Mobile-first responsive layout */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     {/* Appliance info section */}
@@ -330,7 +330,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
       </div>
 
       {/* Scheduled Status Changes */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
         <Accordion type="single" collapsible defaultValue="scheduled-changes">
           <AccordionItem value="scheduled-changes" className="border-none">
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -354,9 +354,9 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {usersWithScheduledChanges.map((user) => (
-                    <div key={user._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div key={user._id} className="py-4 first:pt-0">
                       {/* User name */}
                       <div className="font-semibold text-lg mb-2">
                         {formatUserName(user)}
