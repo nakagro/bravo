@@ -1,7 +1,7 @@
 [
   {
-    "version": "1.0.22",
-    "message": "feat: Added new About page with changelog",
+    "version": "1.0.24",
+    "message": "feat: Added a new About page with changelog, multiple version bumps to align everything",
     "date": "2025-11-09T22:08:07.851Z",
     "timestamp": 1762726087851
   }
