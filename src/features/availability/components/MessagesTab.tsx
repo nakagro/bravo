@@ -2,13 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader
-} from "../../../components/ui/card";
-import { cn } from "../../../lib/utils";
 import { Pencil, Trash2, X, Check } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -96,13 +89,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-sm p-4 rounded">
-      <h3 className="text-lg font-medium mb-3">Messages</h3>
-      
+    <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
       {isAuthenticated ? (
         <>
           {/* Message Input Form */}
-          <form onSubmit={handleMessageSubmit} className="mb-4 flex gap-2">
+          <form onSubmit={handleMessageSubmit} className="p-3 border-b border-gray-200 dark:border-gray-700 flex gap-2">
             <div className="flex-grow">
               <Input
                 type="text"
@@ -110,7 +101,6 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
                 maxLength={150}
-                className="dark:bg-gray-700 dark:text-white"
               />
             </div>
             <Button
@@ -123,17 +113,15 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
           </form>
           
           {/* Messages List */}
-          <div className="space-y-3">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {messages.length > 0 ? (
               messages.map((message) => (
-                <Card 
+                <div 
                   key={message._id} 
-                  className={cn(
-                    "dark:bg-gray-800 border-gray-200 dark:border-gray-700 p-0 transition-colors duration-500",
-                    message._id === latestMessageId && "bg-blue-50 dark:bg-blue-900/20"
-                  )}
+                  className={`p-3 transition-colors duration-500 ${
+                    message._id === latestMessageId ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                  }`}
                 >
-                  <div className="p-3">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-gray-800 dark:text-gray-200">
                         {message.user.firstName && message.user.lastName
@@ -205,24 +193,23 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
                     ) : (
                       <p className="text-gray-700 dark:text-gray-300">{message.message}</p>
                     )}
-                  </div>
-                </Card>
+                </div>
               ))
             ) : (
-              <Card className="dark:bg-gray-800 border-gray-200 dark:border-gray-700 p-0">
-                <div className="p-3 text-center">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No messages yet.
-                  </p>
-                </div>
-              </Card>
+              <div className="p-3 text-center">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No messages yet.
+                </p>
+              </div>
             )}
           </div>
         </>
       ) : (
-        <p className="text-gray-600 dark:text-gray-400">
-          Please sign in to view and post messages.
-        </p>
+        <div className="p-3">
+          <p className="text-gray-600 dark:text-gray-400">
+            Please sign in to view and post messages.
+          </p>
+        </div>
       )}
     </div>
   );
