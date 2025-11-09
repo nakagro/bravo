@@ -30,6 +30,12 @@ try {
     process.exit(0);
   }
   
+  // Skip if commit message contains [skip] flag
+  if (firstLine.toLowerCase().includes('[skip]')) {
+    console.log('Skipping changelog update - [skip] flag detected');
+    process.exit(0);
+  }
+  
   // Read current version from package.json
   const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
   const version = packageData.version;

@@ -257,7 +257,7 @@ export const HamburgerMenu = React.memo(() => {
         
         <DropdownMenuSeparator />
         <div 
-          className="px-2 py-1.5 text-xs text-muted-foreground text-center cursor-pointer hover:bg-accent rounded-sm transition-colors"
+          className="px-2 py-1.5 text-xs text-muted-foreground text-center cursor-pointer rounded-sm transition-colors"
           onClick={() => handleNavigation("/about")}
           role="button"
           tabIndex={0}
