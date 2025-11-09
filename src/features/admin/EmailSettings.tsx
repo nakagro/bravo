@@ -18,7 +18,7 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
   const initializeEmailSettings = useMutation(api.emailSettings.initializeEmailSettings);
   const [isInitializing, setIsInitializing] = useState(false);
 
-  const handleToggle = async (emailType: "newUserSignup", enabled: boolean) => {
+  const handleToggle = async (emailType: "newUserSignup" | "feedbackSubmission", enabled: boolean) => {
     try {
       await updateEmailSetting({
         emailType,
@@ -101,10 +101,12 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
           {emailSettings.map((setting) => {
             const emailTypeLabels = {
               newUserSignup: "New User Signup Notification",
+              feedbackSubmission: "Feedback Submission Notification",
             };
 
             const emailTypeDescriptions = {
               newUserSignup: "Send email to all admins when a new user signs up for the system",
+              feedbackSubmission: "Send email to all admins when a user submits feedback",
             };
 
             return (
@@ -143,6 +145,35 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
               <strong>Note:</strong> Changes take effect immediately. Disabled emails will not be sent until re-enabled.
             </p>
           </div>
+
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="text-base">Reinitialize Email Settings</CardTitle>
+              <CardDescription>
+                Add any new email notification types that have been added to the system. This will not affect existing settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handleInitialize}
+                disabled={isInitializing}
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
+                {isInitializing ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Reinitializing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reinitialize Settings
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

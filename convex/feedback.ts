@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 /**
  * Submit feedback from a user
@@ -44,6 +45,33 @@ export const submitFeedback = mutation({
       appVersion: args.appVersion,
       createdAt: Date.now(),
     });
+    
+    // Check if feedback email notifications are enabled
+    const emailSetting = await ctx.db
+      .query("emailSettings")
+      .withIndex("by_emailType", (q) => q.eq("emailType", "feedbackSubmission"))
+      .first();
+    
+    if (emailSetting?.enabled) {
+      // Get all admin users with email addresses
+      const allUsers = await ctx.db.query("users").collect();
+      const adminEmails = allUsers
+        .filter(user => user.isAdmin && user.email)
+        .map(user => user.email as string);
+      
+      // Schedule email notification (don't await - let it run in background)
+      if (adminEmails.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.emails.sendFeedbackNotification, {
+          adminEmails,
+          subject: args.subject,
+          message: args.message,
+          category: args.category,
+          submitterName,
+          isAnonymous: args.isAnonymous,
+          appVersion: args.appVersion,
+        });
+      }
+    }
     
     return null;
   },

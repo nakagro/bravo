@@ -545,7 +545,8 @@ const applicationTables = {
   // Email settings for automated emails
   emailSettings: defineTable({
     emailType: v.union(
-      v.literal("newUserSignup")
+      v.literal("newUserSignup"),
+      v.literal("feedbackSubmission")
     ),
     enabled: v.boolean(),
     description: v.string(),

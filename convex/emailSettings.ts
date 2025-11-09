@@ -11,7 +11,7 @@ export const getEmailSettings = query({
     v.object({
       _id: v.id("emailSettings"),
       _creationTime: v.number(),
-      emailType: v.union(v.literal("newUserSignup")),
+      emailType: v.union(v.literal("newUserSignup"), v.literal("feedbackSubmission")),
       enabled: v.boolean(),
       description: v.string(),
       updatedBy: v.id("users"),
@@ -28,13 +28,13 @@ export const getEmailSettings = query({
  */
 export const getEmailSetting = query({
   args: {
-    emailType: v.union(v.literal("newUserSignup")),
+    emailType: v.union(v.literal("newUserSignup"), v.literal("feedbackSubmission")),
   },
   returns: v.union(
     v.object({
       _id: v.id("emailSettings"),
       _creationTime: v.number(),
-      emailType: v.union(v.literal("newUserSignup")),
+      emailType: v.union(v.literal("newUserSignup"), v.literal("feedbackSubmission")),
       enabled: v.boolean(),
       description: v.string(),
       updatedBy: v.id("users"),
@@ -55,7 +55,7 @@ export const getEmailSetting = query({
  */
 export const updateEmailSetting = mutation({
   args: {
-    emailType: v.union(v.literal("newUserSignup")),
+    emailType: v.union(v.literal("newUserSignup"), v.literal("feedbackSubmission")),
     enabled: v.boolean(),
   },
   returns: v.id("emailSettings"),
@@ -89,6 +89,7 @@ export const updateEmailSetting = mutation({
       // Create new setting if it doesn't exist
       const descriptions = {
         newUserSignup: "Send email notification to admins when a new user signs up",
+        feedbackSubmission: "Send email notification to admins when feedback is submitted",
       };
 
       return await ctx.db.insert("emailSettings", {
@@ -124,6 +125,11 @@ export const initializeEmailSettings = mutation({
       {
         emailType: "newUserSignup" as const,
         description: "Send email notification to admins when a new user signs up",
+        enabled: true,
+      },
+      {
+        emailType: "feedbackSubmission" as const,
+        description: "Send email notification to admins when feedback is submitted",
         enabled: true,
       },
     ];
