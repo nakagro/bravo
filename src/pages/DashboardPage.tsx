@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { ArchiveBoxIcon, KeyIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { FileText, Users, Wrench } from "lucide-react";
+import { FileText, Users, Wrench, Link2, AlertTriangle, Calendar } from "lucide-react";
 import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { Card, CardContent } from "../components/ui/card";
 import { RecentNotifications } from "../components/notifications/RecentNotifications";
@@ -18,6 +18,9 @@ export function DashboardPage() {
   const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
   const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
+  const linksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "links" });
+  const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
+  const bookingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "bookings" });
   
   // Fetch any pending actions or notifications
   const pendingActions = useQuery(api.dashboard.getPendingActions) || [];
@@ -170,6 +173,48 @@ export function DashboardPage() {
                   <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Appliance Checks</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* Links */}
+        {linksAccess && (
+          <Link to="/links" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/40 transition-colors">
+                  <Link2 className="h-5 w-5 sm:h-6 sm:w-6 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Links</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* Vehicle Faults */}
+        {vehicleFaultsAccess && (
+          <Link to="/vehicle-faults" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Vehicle Faults</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* Bookings */}
+        {bookingsAccess && (
+          <Link to="/bookings" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40 transition-colors">
+                  <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Bookings</h3>
               </CardContent>
             </Card>
           </Link>
