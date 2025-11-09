@@ -132,7 +132,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
               return (
                 <div key={status} className={`${info.bgColor}`}>
                   {/* Status Header */}
-                  <div className={`px-3 py-1 border-l-4 ${info.borderColor}`}>
+                  <div className={`px-3 py-1 border-l-4 border-b-2 ${info.borderColor}`}>
                     <h4 className={`font-semibold text-base ${info.textColor}`}>
                       {info.label}
                       <span className="ml-2 text-sm font-normal opacity-75">
@@ -148,7 +148,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                   {/* Users in this status */}
                   <div className="px-3 pb-1 space-y-0.5">
                     {users.map((user) => (
-                      <div key={user._id} className="pl-2 border-l-4 border-transparent hover:border-gray-300 dark:hover:border-gray-600 transition-colors py-0.5">
+                      <div key={user._id} className="border-l-4 border-transparent py-0.5">
                         <div className="flex items-baseline justify-between gap-2 flex-wrap">
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {formatUserName(user)}
