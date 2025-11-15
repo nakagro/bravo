@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceCheckRuns from "../applianceCheckRuns.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as applianceTemplates from "../applianceTemplates.js";
@@ -71,6 +72,7 @@ import type * as vehicleFaults from "../vehicleFaults.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  apiKeyAuth: typeof apiKeyAuth;
   applianceCheckRuns: typeof applianceCheckRuns;
   applianceLocations: typeof applianceLocations;
   applianceTemplates: typeof applianceTemplates;

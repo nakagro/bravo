@@ -1,6 +1,8 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
+import { api } from "./_generated/api";
+import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
 
 const http = httpRouter();
 
@@ -91,6 +93,166 @@ http.route({
           headers: { 
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
+          }
+        }
+      );
+    }
+  }),
+});
+
+// CORS preflight for member availability endpoint
+http.route({
+  path: "/api/member-availability",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    return new Response(null, {
+      status: 200,
+      headers: getCorsHeaders(),
+    });
+  }),
+});
+
+// Member availability endpoint for external SPA (API key protected)
+http.route({
+  path: "/api/member-availability",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    // Validate API key
+    const authResult = validateApiKey(request);
+    
+    if (!authResult.isValid) {
+      return authResult.errorResponse!;
+    }
+
+    try {
+      // Get all users
+      const users = await ctx.runQuery(api.users.getUsers);
+      
+      // Build response array
+      const memberAvailability = [];
+      
+      for (const user of users) {
+        // Skip users without required fields
+        if (!user.firstName || !user.lastName) {
+          continue;
+        }
+        
+        // Map internal status to API response format
+        // Return actual status values from the system:
+        // - "available - station"
+        // - "available - satellite" 
+        // - "delayed response"
+        // - "not available"
+        // - "WFH"
+        // - "Unavailable" (default for users with no status set)
+        const availability = user.currentStatus || "Unavailable";
+        
+        // Get user's skills
+        const skillsets: string[] = [];
+        if (user.skills && Array.isArray(user.skills)) {
+          const userSkills = await ctx.runQuery(api.skills.getUserSkills, { userId: user._id });
+          // Extract skill codes from the skills array
+          for (const skill of userSkills) {
+            if (skill.code && skill.code !== "NONE") {
+              skillsets.push(skill.code);
+            }
+          }
+        }
+        
+        memberAvailability.push({
+          firstname: user.firstName,
+          lastname: user.lastName,
+          availability,
+          skillsets,
+        });
+      }
+      
+      // Return the data with CORS headers
+      return new Response(JSON.stringify(memberAvailability), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...getCorsHeaders(),
+        },
+      });
+      
+    } catch (error) {
+      console.error("Error fetching member availability:", error);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to fetch member availability",
+          details: error instanceof Error ? error.message : "Unknown error"
+        }),
+        { 
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            ...getCorsHeaders(),
+          }
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// TEST ENDPOINT - API Key Authentication Demo
+// ============================================================================
+
+// CORS preflight for test endpoint
+http.route({
+  path: "/api/test-auth",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    return new Response(null, {
+      status: 200,
+      headers: getCorsHeaders(),
+    });
+  }),
+});
+
+// Test endpoint demonstrating API key authentication
+http.route({
+  path: "/api/test-auth",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    // Validate API key
+    const authResult = validateApiKey(request);
+    
+    // If validation failed, return the error response
+    if (!authResult.isValid) {
+      return authResult.errorResponse!;
+    }
+
+    // API key is valid - proceed with the request
+    try {
+      const testData = {
+        message: "API key authentication successful!",
+        timestamp: new Date().toISOString(),
+        endpoint: "/api/test-auth",
+        authenticated: true,
+      };
+
+      return new Response(JSON.stringify(testData), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...getCorsHeaders(),
+        },
+      });
+
+    } catch (error) {
+      console.error("Error in test endpoint:", error);
+      return new Response(
+        JSON.stringify({ 
+          error: "Internal server error",
+          details: error instanceof Error ? error.message : "Unknown error"
+        }),
+        { 
+          status: 500,
+          headers: { 
+            "Content-Type": "application/json",
+            ...getCorsHeaders(),
           }
         }
       );
