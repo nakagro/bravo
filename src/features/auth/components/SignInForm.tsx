@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
 export function SignInForm() {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [flow, setFlow] = useState<"signIn" | "signUp" | "forgotPassword">("signIn");
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const hCaptchaRef = useRef<HCaptcha>(null);
@@ -22,6 +23,11 @@ export function SignInForm() {
   
   // hCaptcha site key
   const hCaptchaSiteKey = "3130983c-4200-4120-98ae-46fe42be99f0";
+
+  // Show forgot password form if in that flow
+  if (flow === "forgotPassword") {
+    return <ForgotPasswordForm onBack={() => setFlow("signIn")} />;
+  }
 
   return (
     <div className="w-full">
@@ -213,9 +219,18 @@ export function SignInForm() {
         
         {flow === "signIn" && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => setFlow("forgotPassword")}
+                className="text-sm font-medium text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors duration-200"
+              >
+                Forgot password?
+              </button>
+            </div>
             <input 
               className="input-field" 
               type="password" 

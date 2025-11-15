@@ -256,22 +256,16 @@ export const HamburgerMenu = React.memo(() => {
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />
-        <div 
-          className="px-2 py-1.5 text-xs text-muted-foreground text-center cursor-pointer rounded-sm transition-colors"
+        <DropdownMenuItem 
           onClick={() => handleNavigation("/about")}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleNavigation("/about");
-            }
-          }}
+          className="justify-center"
         >
-          <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
-          {" · "}
-          <span>v{getVersionString()}</span>
-        </div>
+          <span className="text-xs text-muted-foreground">
+            <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
+            {" · "}
+            <span>v{getVersionString()}</span>
+          </span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

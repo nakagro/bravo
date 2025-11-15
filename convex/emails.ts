@@ -225,3 +225,99 @@ export const sendNewUserSignupNotification = internalAction({
     }
   },
 });
+
+/**
+ * Internal action to send password reset email
+ * This is called internally from the requestPasswordReset mutation
+ */
+export const sendPasswordResetEmail = internalAction({
+  args: {
+    email: v.string(),
+    token: v.string(),
+    userName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    // Construct the reset URL using the frontend URL
+    // Use FRONTEND_URL env var, fallback to CONVEX_SITE_URL for local dev
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CONVEX_SITE_URL;
+    const resetUrl = `${frontendUrl}/reset-password?token=${args.token}`;
+
+    try {
+      const result = await resend.emails.send({
+        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+        to: args.email,
+        subject: "Reset Your Password - BRAVO",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #dc2626; margin-bottom: 20px;">BRAVO</h1>
+            <h2 style="color: #374151; margin-bottom: 16px;">Password Reset Request</h2>
+            
+            <p style="color: #4b5563; margin-bottom: 16px;">
+              Hello ${args.userName},
+            </p>
+            
+            <p style="color: #4b5563; margin-bottom: 16px;">
+              We received a request to reset your password for your BRAVO (BRigade AVailability and Operations) account.
+            </p>
+            
+            <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+              <p style="color: #991b1b; margin: 0; font-weight: 600;">
+                Click the button below to reset your password:
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" 
+                 style="display: inline-block; background: linear-gradient(to right, #dc2626, #ea580c); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                Reset Password
+              </a>
+            </div>
+            
+            <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                <strong>Important:</strong> This link will expire in 30 minutes for security reasons.
+              </p>
+            </div>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 12px;">
+              If the button doesn't work, copy and paste this link into your browser:
+            </p>
+            <p style="color: #3b82f6; font-size: 13px; word-break: break-all; margin-bottom: 20px;">
+              ${resetUrl}
+            </p>
+            
+            <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+            
+            <p style="color: #6b7280; font-size: 13px; margin-bottom: 8px;">
+              <strong>Didn't request this?</strong> You can safely ignore this email. Your password will not be changed.
+            </p>
+            
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+              Sent at ${new Date().toLocaleString()}
+            </p>
+          </div>
+        `,
+      });
+
+      if (result.error) {
+        console.error("Email send error:", result.error);
+        throw new Error(`Failed to send email: ${result.error.message}`);
+      }
+
+      return { 
+        success: true, 
+        emailId: result.data?.id,
+        message: "Password reset email sent successfully"
+      };
+    } catch (error) {
+      console.error("Email action error:", error);
+      // Don't throw error - we don't want to fail the reset request if email fails
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to send email"
+      };
+    }
+  },
+});

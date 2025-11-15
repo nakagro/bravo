@@ -788,6 +788,18 @@ const applicationTables = {
     .index("by_requestedBy", ["requestedBy"])
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
+    
+  // Password reset tokens table
+  passwordResetTokens: defineTable({
+    email: v.string(), // Email address requesting the reset
+    token: v.string(), // Unique token for verification
+    expiresAt: v.number(), // Timestamp when token expires (30 minutes)
+    used: v.boolean(), // Whether this token has been used
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_token", ["token"])
+    .index("by_expiresAt", ["expiresAt"]),
 };
 
 export default defineSchema({

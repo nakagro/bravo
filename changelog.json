@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.29",
+    "message": "# Please enter the commit message for your changes. Lines starting",
+    "date": "2025-11-15T12:14:45.212Z",
+    "timestamp": 1763208885213
+  },
+  {
+    "version": "1.0.28",
+    "message": "# Please enter the commit message for your changes. Lines starting",
+    "date": "2025-11-15T12:14:03.120Z",
+    "timestamp": 1763208843120
+  },
+  {
+    "version": "1.0.27",
+    "message": "feat: reset my password workflow feature. User's can reset their own passwords now.",
+    "date": "2025-11-15T12:13:32.073Z",
+    "timestamp": 1763208812073
+  },
+  {
     "version": "1.0.26",
     "message": "feat: 'reset my password' workflow feature added.",
     "date": "2025-11-15T12:11:48.072Z",

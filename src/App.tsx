@@ -19,6 +19,7 @@ import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LinksPage } from "./pages/LinksPage";
 import AboutPage from "./pages/AboutPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
@@ -136,6 +137,7 @@ function UnauthenticatedApp() {
   return (
     <AuthLayout>
       <Routes>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<AuthPage />} />
       </Routes>
     </AuthLayout>
