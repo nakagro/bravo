@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.25",
+    "message": "# Please enter the commit message for your changes. Lines starting",
+    "date": "2025-11-15T10:54:24.467Z",
+    "timestamp": 1763204064468
+  },
+  {
+    "version": "1.0.25",
+    "message": "feat: Backend API development with key validation.",
+    "date": "2025-11-15T10:52:33.049Z",
+    "timestamp": 1763203953050
+  },
+  {
     "version": "1.0.24",
     "message": "feat: Added a new About page with changelog, multiple version bumps to align everything",
     "date": "2025-11-09T22:08:07.851Z",
