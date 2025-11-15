@@ -1,5 +1,11 @@
 [
   {
+    "version": "1.0.26",
+    "message": "feat: 'reset my password' workflow feature added.",
+    "date": "2025-11-15T12:11:48.072Z",
+    "timestamp": 1763208708072
+  },
+  {
     "version": "1.0.25",
     "message": "feat: Backend API development with key validation.",
     "date": "2025-11-15T11:14:34.546Z",
