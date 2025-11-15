@@ -240,8 +240,8 @@ export const sendPasswordResetEmail = internalAction({
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Construct the reset URL using the frontend URL
-    // Use FRONTEND_URL env var, fallback to CONVEX_SITE_URL for local dev
-    const frontendUrl = process.env.FRONTEND_URL || process.env.CONVEX_SITE_URL;
+    // Use FRONTEND_URL env var, fallback to production URL
+    const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
     const resetUrl = `${frontendUrl}/reset-password?token=${args.token}`;
 
     try {
@@ -270,8 +270,8 @@ export const sendPasswordResetEmail = internalAction({
             
             <div style="text-align: center; margin: 30px 0;">
               <a href="${resetUrl}" 
-                 style="display: inline-block; background: linear-gradient(to right, #dc2626, #ea580c); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Reset Password
+                 style="display: inline-block; background-color: #dc2626; color: #ffffff !important; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); border: 2px solid #dc2626;">
+                <span style="color: #ffffff !important;">Reset Password</span>
               </a>
             </div>
             

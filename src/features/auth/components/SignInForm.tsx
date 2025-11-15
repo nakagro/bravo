@@ -6,9 +6,13 @@ import { api } from "../../../../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
+import { useSearchParams } from "react-router-dom";
+import { usePostHog } from "posthog-js/react";
 
 export function SignInForm() {
   const { signIn } = useAuthActions();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const posthog = usePostHog();
   const [flow, setFlow] = useState<"signIn" | "signUp" | "forgotPassword">("signIn");
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -17,6 +21,18 @@ export function SignInForm() {
   
   // Track if we need to show a profile update message
   const [showProfileMessage, setShowProfileMessage] = useState(false);
+  
+  // Show success message if redirected from password reset
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      toast.success("Password reset successfully! You can now sign in with your new password.", {
+        duration: 5000,
+      });
+      // Clean up the URL parameter
+      searchParams.delete("reset");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   
   // Check if we're in production (not localhost)
   const isProduction = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
@@ -108,7 +124,15 @@ export function SignInForm() {
               }
             } else {
               // Regular sign in
+              const email = formData.get("email") as string;
               await signIn("password", formData);
+              
+              // Track successful login in PostHog
+              posthog?.capture("user_login_success", {
+                email: email,
+                timestamp: new Date().toISOString(),
+              });
+              
               // Reset CAPTCHA after successful signin
               if (isProduction) {
                 setCaptchaToken(null);
@@ -120,20 +144,36 @@ export function SignInForm() {
             const errorMessage = error?.message || error?.toString() || "";
             console.error("Authentication error:", error);
             let toastTitle = "";
+            let errorType = "unknown";
             
             if (flow === "signIn") {
               // Sign in errors
+              const email = formData.get("email") as string;
+              
               if (errorMessage.includes("InvalidSecret")) {
                 toastTitle = "Incorrect email or password";
+                errorType = "invalid_credentials";
               } else if (errorMessage.includes("InvalidAccountId") || errorMessage.includes("not found")) {
                 toastTitle = "No account found with this email. Please sign up first.";
+                errorType = "account_not_found";
               } else if (errorMessage.includes("TooManyFailedAttempts")) {
                 toastTitle = "Too many failed login attempts. Please try again later.";
+                errorType = "rate_limited";
               } else if (errorMessage.includes("disabled")) {
                 toastTitle = "This account has been disabled. Please contact an administrator.";
+                errorType = "account_disabled";
               } else {
                 toastTitle = "Could not sign in. Please check your credentials and try again.";
+                errorType = "generic_error";
               }
+              
+              // Track failed login attempt in PostHog
+              posthog?.capture("user_login_failed", {
+                email: email,
+                error_type: errorType,
+                error_message: toastTitle,
+                timestamp: new Date().toISOString(),
+              });
             } else {
               // Sign up errors
               if (errorMessage.includes("already exists")) {

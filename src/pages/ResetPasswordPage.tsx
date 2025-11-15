@@ -16,10 +16,10 @@ export function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
   
-  // Verify the token
+  // Verify the token - skip verification if reset is complete
   const tokenVerification = useQuery(
     api.passwordReset.verifyResetToken,
-    token ? { token } : "skip"
+    token && !resetComplete ? { token } : "skip"
   );
   
   const resetPassword = useAction(api.passwordReset.resetPasswordWithToken);
@@ -51,20 +51,18 @@ export function ResetPasswordPage() {
       });
       
       if (result.success) {
+        // Set reset complete to stop the token verification query
         setResetComplete(true);
-        toast.success("Password reset successfully!");
         
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          navigate("/");
-        }, 3000);
+        // Redirect immediately with success parameter - don't wait for reactive query to update
+        navigate("/?reset=success", { replace: true });
       } else {
         toast.error(result.message || "Failed to reset password");
+        setSubmitting(false);
       }
     } catch (error: any) {
       console.error("Password reset error:", error);
       toast.error("An error occurred. Please try again.");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -140,29 +138,7 @@ export function ResetPasswordPage() {
     );
   }
 
-  // Show success state after password reset
-  if (resetComplete) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-gray-700 max-w-md w-full">
-          <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Password Reset Complete
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Your password has been successfully reset. Redirecting to sign in...
-            </p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // No success screen needed - we redirect immediately after success
 
   // Show the reset password form
   return (
