@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "1.0.35",
+  "version": "1.0.37",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
