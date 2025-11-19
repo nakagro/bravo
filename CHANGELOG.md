@@ -4,6 +4,7 @@
 - AuthSessions should last 365 days and not 30, this should stop the recent monthly forced sign out
 - Refactored this About page to read from a markdown file instead of a JSON file for the change log
 - Removed automated versioning as part of the About page refactoring
+- Added an option to view feedback items in the Admin Settings page
 
 ## [1.0.32] - 2025-11-15
 - Started tracking failed log on attempts

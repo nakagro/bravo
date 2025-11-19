@@ -68,7 +68,7 @@ const applicationTables = {
     .index("by_name", ["name"])
     .index("by_code", ["code"])
     .index("by_isActive", ["isActive"]),
-    
+
   // Deployment availability table
   deploymentAvailability: defineTable({
     userId: v.id("users"),
@@ -85,7 +85,7 @@ const applicationTables = {
     .index("by_user", ["userId"])
     .index("by_date", ["date"])
     .index("by_user_date", ["userId", "date"]),
-    
+
   // Module settings table
   moduleSettings: defineTable({
     // Module identifier
@@ -112,7 +112,7 @@ const applicationTables = {
     // User who last updated the settings
     updatedBy: v.optional(v.id("users")),
   }).index("by_moduleId", ["moduleId"]),
-  
+
   // Roles table to store available roles in the system
   roles: defineTable({
     name: v.string(), // Role name (e.g., "Communications Officer", "Secretary")
@@ -123,7 +123,7 @@ const applicationTables = {
   })
     .index("by_name", ["name"])
     .index("by_isActive", ["isActive"]),
-    
+
   // Member status history table
   memberStatusHistory: defineTable({
     userId: v.id("users"),
@@ -138,7 +138,7 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_timestamp", ["timestamp"]),
-    
+
   // Duty officer history table
   dutyOfficerHistory: defineTable({
     userId: v.id("users"),
@@ -147,7 +147,7 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_startTimestamp", ["startTimestamp"]),
-    
+
   // Availability messages table
   availabilityMessages: defineTable({
     userId: v.id("users"),
@@ -156,8 +156,8 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_timestamp", ["timestamp"]),
-    
-    
+
+
   hoses: defineTable({
     hoseId: v.string(),
     length: v.number(),
@@ -187,7 +187,7 @@ const applicationTables = {
     .index("by_hoseId", ["hoseId"])
     .index("by_size", ["size"])
     .index("by_type", ["type"]),
-  
+
   hoseHistory: defineTable({
     hoseId: v.id("hoses"),
     timestamp: v.number(),
@@ -200,7 +200,7 @@ const applicationTables = {
   })
     .index("by_hose", ["hoseId"])
     .index("by_timestamp", ["timestamp"]),
-    
+
   hoseComments: defineTable({
     hoseId: v.id("hoses"),
     userId: v.id("users"),
@@ -223,7 +223,7 @@ const applicationTables = {
     updatedAt: v.number(),
   })
     .index("by_pegNumber", ["pegNumber"]),
-    
+
   // Key items table for individual keys/fobs/swipes/codes on a peg
   keyItems: defineTable({
     keyId: v.id("keys"), // Reference to the parent key (peg)
@@ -238,7 +238,7 @@ const applicationTables = {
     updatedAt: v.number(),
   })
     .index("by_keyId", ["keyId"]),
-    
+
   // Key comments for discussion about specific keys
   keyComments: defineTable({
     keyId: v.id("keys"),
@@ -248,7 +248,7 @@ const applicationTables = {
   })
     .index("by_key", ["keyId"])
     .index("by_timestamp", ["timestamp"]),
-    
+
   // Key history for audit trail of changes to keys
   keyHistory: defineTable({
     keyId: v.id("keys"),
@@ -262,7 +262,7 @@ const applicationTables = {
   })
     .index("by_key", ["keyId"])
     .index("by_timestamp", ["timestamp"]),
-    
+
   // Duty Crew table for tracking duty crew assignments
   dutyCrew: defineTable({
     name: v.string(), // Name of the duty crew (e.g., "Duty Crew 1")
@@ -273,7 +273,7 @@ const applicationTables = {
     updatedAt: v.number(),
   })
     .index("by_number", ["number"]),
-    
+
   // Duty Crew Schedule table for tracking which duty crew is assigned to which Sunday
   dutyCrewSchedule: defineTable({
     date: v.number(), // Timestamp for the Sunday date (midnight of the day)
@@ -285,7 +285,7 @@ const applicationTables = {
   })
     .index("by_date", ["date"])
     .index("by_dutyCrew", ["dutyCrewId"]),
-    
+
   // Station Checks table to store checklist items
   stationChecks: defineTable({
     name: v.string(), // Name of the check item (e.g., "Clean multipurpose room")
@@ -298,7 +298,7 @@ const applicationTables = {
   })
     .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
-    
+
   // Station Check Submissions table to record completed checklists
   stationCheckSubmissions: defineTable({
     date: v.number(), // Timestamp for the date of submission (usually a Sunday)
@@ -327,7 +327,7 @@ const applicationTables = {
     .index("by_dutyCrew", ["dutyCrewId"])
     .index("by_completedBy", ["completedBy"])
     .index("by_status", ["status"]),
-  
+
   // Push subscriptions for web push notifications
   pushSubscriptions: defineTable({
     userId: v.id("users"),
@@ -354,8 +354,8 @@ const applicationTables = {
     error: v.optional(v.string()),
     sentAt: v.number(),
   })
-    .index("by_user", ["userId"]) 
-    .index("by_type_time", ["notificationType", "sentAt"]) 
+    .index("by_user", ["userId"])
+    .index("by_type_time", ["notificationType", "sentAt"])
     .index("by_sentAt", ["sentAt"]),
 
   // Notification history table to store notifications for 24 hours for user retrieval
@@ -398,7 +398,7 @@ const applicationTables = {
       v.literal("approved"),
       v.literal("archived")
     ),
-    
+
     // Core Fire Call Details (required fields)
     incidentNumber: v.string(),
     brigadeAdvisedDate: v.string(), // ISO date string
@@ -413,7 +413,7 @@ const applicationTables = {
     ),
     incidentController: v.string(),
     propertyAddress: v.string(),
-    
+
     // Optional Fire Call Details
     brigadeCaller: v.optional(v.string()),
     firecomCaller: v.optional(v.string()),
@@ -422,7 +422,7 @@ const applicationTables = {
     propertyCoordinates: v.optional(v.string()),
     keysUsed: v.optional(v.boolean()),
     chargeRecommended: v.optional(v.boolean()),
-    
+
     // Property Information
     propertyInfo: v.optional(v.object({
       occupier: v.optional(v.object({
@@ -437,7 +437,7 @@ const applicationTables = {
         type: v.optional(v.union(v.literal("private"), v.literal("government")))
       }))
     })),
-    
+
     // Actions Taken (checkboxes)
     actionsTaken: v.optional(v.array(v.union(
       v.literal("calledOff"),
@@ -453,7 +453,7 @@ const applicationTables = {
       v.literal("service"),
       v.literal("other")
     ))),
-    
+
     // Fire Details
     fireDetails: v.optional(v.object({
       materialsFirstIgnited: v.optional(v.string()),
@@ -466,7 +466,7 @@ const applicationTables = {
       insurance: v.optional(v.boolean()),
       fireInvestigation: v.optional(v.boolean())
     })),
-    
+
     // Other Services
     otherServices: v.optional(v.object({
       electricity: v.optional(v.object({
@@ -489,7 +489,7 @@ const applicationTables = {
       other: v.optional(v.string()),
       firstOnScene: v.optional(v.string())
     })),
-    
+
     // Casualties (can have multiple)
     casualties: v.optional(v.array(v.object({
       name: v.optional(v.string()),
@@ -498,7 +498,7 @@ const applicationTables = {
       details: v.optional(v.string()),
       transportedByAV: v.optional(v.boolean())
     }))),
-    
+
     // Mobile Property
     mobileProperty: v.optional(v.object({
       registration: v.optional(v.string()),
@@ -508,7 +508,7 @@ const applicationTables = {
       year: v.optional(v.number()),
       details: v.optional(v.string())
     })),
-    
+
     // Photos/Attachments (store file storage IDs)
     attachments: v.optional(v.array(v.object({
       fileId: v.id("_storage"),
@@ -516,10 +516,10 @@ const applicationTables = {
       fileType: v.string(),
       uploadedAt: v.number()
     }))),
-    
+
     // Future extensibility - store any additional data that doesn't fit the current schema
     additionalData: v.optional(v.any()),
-    
+
     // Comments/Notes for internal use
     notes: v.optional(v.string())
   })
@@ -570,10 +570,21 @@ const applicationTables = {
     submitterName: v.optional(v.string()), // User's name if not anonymous
     appVersion: v.string(), // Version of the app when feedback was submitted
     createdAt: v.number(), // Timestamp when feedback was created
+    // Admin response fields
+    status: v.optional(v.union(
+      v.literal("pending"), // Default state - not yet reviewed
+      v.literal("implemented"), // Feedback has been implemented
+      v.literal("wont_implement"), // Decided not to implement
+      v.literal("under_review") // Currently being considered
+    )),
+    adminResponse: v.optional(v.string()), // Admin's comments/notes about the feedback
+    respondedBy: v.optional(v.id("users")), // Admin who responded
+    respondedAt: v.optional(v.number()), // When the response was made
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_submittedBy", ["submittedBy"])
-    .index("by_category", ["category"]),
+    .index("by_category", ["category"])
+    .index("by_status", ["status"]),
 
   // Links table for configurable quick links page
   links: defineTable({
@@ -587,7 +598,7 @@ const applicationTables = {
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_isActive", ["isActive"]) 
+    .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
 
   // Vehicle Faults table for tracking appliance issues
@@ -662,7 +673,7 @@ const applicationTables = {
     // For future extensibility without schema changes
     metadata: v.optional(v.any()),
   })
-    .index("by_name", ["name"]) 
+    .index("by_name", ["name"])
     .index("by_updatedAt", ["updatedAt"]),
 
   // Sections are logical areas within an appliance (e.g., Cabin, Locker 1)
@@ -676,7 +687,7 @@ const applicationTables = {
     updatedBy: v.id("users"),
     metadata: v.optional(v.any()), // flexible per-section config
   })
-    .index("by_template", ["templateId"]) 
+    .index("by_template", ["templateId"])
     .index("by_template_order", ["templateId", "order"]),
 
   // Items are checkable elements within a section
@@ -699,8 +710,8 @@ const applicationTables = {
     updatedBy: v.id("users"),
     metadata: v.optional(v.any()), // flexible per-item options in future
   })
-    .index("by_section", ["sectionId"]) 
-    .index("by_section_order", ["sectionId", "order"]) 
+    .index("by_section", ["sectionId"])
+    .index("by_section_order", ["sectionId", "order"])
     .index("by_template", ["templateId"]),
 
   // Runs: Instances of weekly checks based on a template
@@ -721,9 +732,9 @@ const applicationTables = {
     notes: v.optional(v.string()),
     metadata: v.optional(v.any()),
   })
-    .index("by_status", ["status"]) 
-    .index("by_startedAt", ["startedAt"]) 
-    .index("by_template", ["templateId"]) 
+    .index("by_status", ["status"])
+    .index("by_startedAt", ["startedAt"])
+    .index("by_template", ["templateId"])
     .index("by_scheduledDate", ["scheduledDate"]),
 
   // One document per item response in a run for efficient updates
@@ -749,8 +760,8 @@ const applicationTables = {
     updatedBy: v.optional(v.id("users")),
     updatedAt: v.optional(v.number()),
   })
-    .index("by_run", ["runId"]) 
-    .index("by_run_sectionOrder", ["runId", "sectionOrder"]) 
+    .index("by_run", ["runId"])
+    .index("by_run_sectionOrder", ["runId", "sectionOrder"])
     .index("by_run_itemOrder", ["runId", "itemOrder"]),
 
   // Bookings - Resource booking system
@@ -788,7 +799,7 @@ const applicationTables = {
     .index("by_requestedBy", ["requestedBy"])
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
-    
+
   // Password reset tokens table
   passwordResetTokens: defineTable({
     email: v.string(), // Email address requesting the reset

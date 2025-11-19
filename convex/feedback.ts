@@ -23,17 +23,17 @@ export const submitFeedback = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    
+
     let submittedBy: Id<"users"> | undefined = undefined;
     let submitterName: string | undefined = undefined;
-    
+
     // If not anonymous and user is authenticated, get user details
     if (!args.isAnonymous && userId) {
       const user = await ctx.db.get(userId);
       submittedBy = userId;
       submitterName = user?.firstName || user?.name || user?.email || "Unknown User";
     }
-    
+
     // Insert feedback into database
     await ctx.db.insert("feedback", {
       subject: args.subject,
@@ -45,20 +45,20 @@ export const submitFeedback = mutation({
       appVersion: args.appVersion,
       createdAt: Date.now(),
     });
-    
+
     // Check if feedback email notifications are enabled
     const emailSetting = await ctx.db
       .query("emailSettings")
       .withIndex("by_emailType", (q) => q.eq("emailType", "feedbackSubmission"))
       .first();
-    
+
     if (emailSetting?.enabled) {
       // Get all admin users with email addresses
       const allUsers = await ctx.db.query("users").collect();
       const adminEmails = allUsers
         .filter(user => user.isAdmin && user.email)
         .map(user => user.email as string);
-      
+
       // Schedule email notification (don't await - let it run in background)
       if (adminEmails.length > 0) {
         await ctx.scheduler.runAfter(0, internal.emails.sendFeedbackNotification, {
@@ -72,7 +72,7 @@ export const submitFeedback = mutation({
         });
       }
     }
-    
+
     return null;
   },
 });
@@ -84,6 +84,7 @@ export const getAllFeedback = query({
   args: {},
   returns: v.array(v.object({
     _id: v.id("feedback"),
+    _creationTime: v.number(),
     subject: v.string(),
     message: v.string(),
     category: v.union(
@@ -97,21 +98,68 @@ export const getAllFeedback = query({
     submitterName: v.optional(v.string()),
     appVersion: v.string(),
     createdAt: v.number(),
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("implemented"),
+      v.literal("wont_implement"),
+      v.literal("under_review")
+    )),
+    adminResponse: v.optional(v.string()),
+    respondedBy: v.optional(v.id("users")),
+    respondedAt: v.optional(v.number()),
   })),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) {
       throw new Error("Admin access required");
     }
-    
+
     return await ctx.db
       .query("feedback")
       .order("desc")
       .collect();
+  },
+});
+
+/**
+ * Update feedback status (admin only)
+ */
+export const updateFeedbackStatus = mutation({
+  args: {
+    feedbackId: v.id("feedback"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("implemented"),
+      v.literal("wont_implement"),
+      v.literal("under_review")
+    ),
+    adminResponse: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user?.isAdmin) {
+      throw new Error("Admin access required");
+    }
+
+    // Update the feedback with the new status
+    await ctx.db.patch(args.feedbackId, {
+      status: args.status,
+      adminResponse: args.adminResponse,
+      respondedBy: userId,
+      respondedAt: Date.now(),
+    });
+
+    return null;
   },
 });

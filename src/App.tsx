@@ -19,6 +19,7 @@ import { AdminSettingsPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LinksPage } from "./pages/LinksPage";
 import AboutPage from "./pages/AboutPage";
+import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
@@ -124,8 +125,13 @@ function AuthenticatedApp() {
             <AdminSettingsPage />
           </ProtectedRoute>
         } />
+        <Route path="/admin/feedback" element={
+          <ProtectedRoute moduleId="admin">
+            <FeedbackManagementPage />
+          </ProtectedRoute>
+        } />
         <Route path="/about" element={<AboutPage />} />
-        
+
         {/* Catch all other routes and redirect to dashboard */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
