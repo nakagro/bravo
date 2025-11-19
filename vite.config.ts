@@ -22,6 +22,7 @@ export default defineConfig({
         importScripts: ["./sw-push.js"], // include push handler
         skipWaiting: true, // immediately activate new SW
         clientsClaim: true, // take control of all clients immediately
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit (default is 2 MB)
       },
       devOptions: {
         enabled: true, // enable PWA in dev for easier testing
