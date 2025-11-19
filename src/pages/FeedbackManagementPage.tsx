@@ -124,7 +124,7 @@ export default function FeedbackManagementPage() {
             {/* Header */}
             <div className="flex justify-between items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback Management</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback</h1>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
