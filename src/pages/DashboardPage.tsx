@@ -10,26 +10,26 @@ import { RecentNotifications } from "../components/notifications/RecentNotificat
 export function DashboardPage() {
   // Fetch the current user's data
   const user = useQuery(api.auth.loggedInUser);
-  
+
   // Fetch module access status for the current user
   const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
   const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
   const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
   const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
   const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
-  const applianceChecksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "applianceChecks" });
+  const inventoryAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventory" });
   const linksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "links" });
   const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
   const bookingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "bookings" });
-  
+
   // Fetch any pending actions or notifications
   const pendingActions = useQuery(api.dashboard.getPendingActions) || [];
-  
+
   // Get the user's display name (prefer firstName if available)
-  const displayName = user ? 
-    (user.firstName) ? 
-      `${user.firstName}` : 
-      user.name || user.email || "User" : 
+  const displayName = user ?
+    (user.firstName) ?
+      `${user.firstName}` :
+      user.name || user.email || "User" :
     "User";
 
   return (
@@ -38,10 +38,10 @@ export function DashboardPage() {
       <div className="flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
       </div>
-      
 
 
-      
+
+
       {/* Pending Actions Section */}
       {pendingActions.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
@@ -50,8 +50,8 @@ export function DashboardPage() {
           </h2>
           <div className="space-y-4">
             {pendingActions.map((action) => (
-              <div 
-                key={action._id} 
+              <div
+                key={action._id}
                 className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 rounded-r-md"
               >
                 <div className="flex items-start">
@@ -82,15 +82,15 @@ export function DashboardPage() {
           </div>
         </div>
       )}
-      
+
       {/* Calendar Events Section */}
-      <CalDAVCalendar 
+      <CalDAVCalendar
         calendarUrl="https://cal.grayhux.io/wydv/f892ab6b-44db-4f7d-2a79-9d87036546a8/"
         maxEvents={5}
         username={import.meta.env.VITE_CALDAV_USERNAME}
         password={import.meta.env.VITE_CALDAV_PASSWORD}
       />
-      
+
       {/* Modules Section */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
 
@@ -121,7 +121,7 @@ export function DashboardPage() {
             </Card>
           </Link>
         )}
-        
+
         {/* Key Management */}
         {keysAccess && (
           <Link to="/keys" className="group">
@@ -165,14 +165,14 @@ export function DashboardPage() {
         )}
 
         {/* Appliance Checks */}
-        {applianceChecksAccess && (
-          <Link to="/appliances" className="group">
+        {inventoryAccess && (
+          <Link to="/inventory" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
               <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
                 <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg group-hover:bg-yellow-200 dark:group-hover:bg-yellow-900/40 transition-colors">
                   <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
-                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Appliance Checks</h3>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Inventory</h3>
               </CardContent>
             </Card>
           </Link>

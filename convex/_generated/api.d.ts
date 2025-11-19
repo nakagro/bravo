@@ -14,9 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
-import type * as applianceCheckRuns from "../applianceCheckRuns.js";
 import type * as applianceLocations from "../applianceLocations.js";
-import type * as applianceTemplates from "../applianceTemplates.js";
 import type * as auth from "../auth.js";
 import type * as availability_getStatuses from "../availability/getStatuses.js";
 import type * as availability_updateStatus from "../availability/updateStatus.js";
@@ -38,6 +36,8 @@ import type * as hoseDashboard from "../hoseDashboard.js";
 import type * as hoseStatusSync from "../hoseStatusSync.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
+import type * as inventoryCheckRuns from "../inventoryCheckRuns.js";
+import type * as inventoryTemplates from "../inventoryTemplates.js";
 import type * as keyAuditTrail from "../keyAuditTrail.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
@@ -74,9 +74,7 @@ import type * as vehicleFaults from "../vehicleFaults.js";
  */
 declare const fullApi: ApiFromModules<{
   apiKeyAuth: typeof apiKeyAuth;
-  applianceCheckRuns: typeof applianceCheckRuns;
   applianceLocations: typeof applianceLocations;
-  applianceTemplates: typeof applianceTemplates;
   auth: typeof auth;
   "availability/getStatuses": typeof availability_getStatuses;
   "availability/updateStatus": typeof availability_updateStatus;
@@ -98,6 +96,8 @@ declare const fullApi: ApiFromModules<{
   hoseStatusSync: typeof hoseStatusSync;
   hoses: typeof hoses;
   http: typeof http;
+  inventoryCheckRuns: typeof inventoryCheckRuns;
+  inventoryTemplates: typeof inventoryTemplates;
   keyAuditTrail: typeof keyAuditTrail;
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;

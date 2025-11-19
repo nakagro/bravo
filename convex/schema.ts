@@ -704,6 +704,8 @@ const applicationTables = {
     ),
     isRequired: v.optional(v.boolean()),
     defaultNotes: v.optional(v.string()),
+    description: v.optional(v.string()), // Help text for users
+    imageStorageId: v.optional(v.id("_storage")), // Reference image for the item
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -754,6 +756,8 @@ const applicationTables = {
       v.literal("boolean"),
       v.literal("text")
     ),
+    description: v.optional(v.string()), // Snapshot of item description
+    imageStorageId: v.optional(v.id("_storage")), // Snapshot of item image
     // User responses
     value: v.optional(v.union(v.literal("yes"), v.literal("no"))),
     notes: v.optional(v.string()),

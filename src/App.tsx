@@ -7,10 +7,10 @@ import { HosesPage } from "./pages/HosesPage";
 import { KeysPage } from "./pages/KeysPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DutyCrewPage } from "./pages/DutyCrewPage";
-import { AppliancesPage } from "./pages/AppliancesPage";
 import { VehicleFaultsPage } from "./pages/VehicleFaultsPage";
+import { InventoryPage } from "./pages/InventoryPage";
+import { InventoryChecksTab, InventoryTemplateTab } from "./features/inventory/pages";
 import { BookingsPage } from "./pages/BookingsPage";
-import { ApplianceChecksTab, ApplianceChecksTemplateTab } from "./features/applianceChecks/pages";
 import { AvailabilityPage } from "./pages/AvailabilityPage";
 import { FireReportsPage } from "./pages/FireReportsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -70,19 +70,19 @@ function AuthenticatedApp() {
             <DutyCrewPage />
           </ProtectedRoute>
         } />
-        <Route path="/appliances" element={
-          <ProtectedRoute moduleId="applianceChecks">
-            <AppliancesPage />
+        <Route path="/inventory" element={
+          <ProtectedRoute moduleId="inventory">
+            <InventoryPage />
           </ProtectedRoute>
         } />
-        <Route path="/appliances/templates/:templateId" element={
-          <ProtectedRoute moduleId="applianceChecks">
-            <ApplianceChecksTemplateTab />
+        <Route path="/inventory/templates/:templateId" element={
+          <ProtectedRoute moduleId="inventory">
+            <InventoryTemplateTab />
           </ProtectedRoute>
         } />
-        <Route path="/appliances/run/:runId" element={
-          <ProtectedRoute moduleId="applianceChecks">
-            <ApplianceChecksTab />
+        <Route path="/inventory/run/:runId" element={
+          <ProtectedRoute moduleId="inventory">
+            <InventoryChecksTab />
           </ProtectedRoute>
         } />
         <Route path="/vehicle-faults" element={

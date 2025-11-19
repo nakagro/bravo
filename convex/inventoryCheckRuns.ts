@@ -14,7 +14,7 @@ export const startRun = mutation({
     const template = await ctx.db.get(templateId);
     if (!template) throw new Error("Template not found");
     if (template.hasUnpublishedChanges) {
-      throw new Error("Template has unpublished changes. Please publish before starting a run.");
+      throw new Error("Template has unpublished changes. Please publish before starting an inventory check.");
     }
     // Enforce: only one in-progress run per template at a time (any user)
     const runsForTemplate = await ctx.db
@@ -23,7 +23,7 @@ export const startRun = mutation({
       .collect();
     const existingForThisTemplate = runsForTemplate.find((r) => r.status === "in_progress");
     if (existingForThisTemplate) {
-      throw new Error("A check is already in progress for this template. Please resume or complete it before starting a new one.");
+      throw new Error("An inventory check is already in progress for this template. Please resume or complete it before starting a new one.");
     }
 
     const now = Date.now();
@@ -66,6 +66,8 @@ export const startRun = mutation({
           itemName: item.name,
           itemOrder: item.order,
           itemType: item.itemType,
+          description: item.description, // Snapshot description
+          imageStorageId: item.imageStorageId, // Snapshot image
           value: undefined,
           notes: item.defaultNotes,
           updatedBy: undefined,
@@ -199,6 +201,18 @@ export const listRunSummaries = query({
       yes: number;
       no: number;
       unanswered: number;
+      completedByUser?: {
+        name?: string;
+        firstName?: string;
+        lastName?: string;
+        memberNumber?: string;
+      } | null;
+      startedByUser?: {
+        name?: string;
+        firstName?: string;
+        lastName?: string;
+        memberNumber?: string;
+      } | null;
     }>;
 
     for (const run of limited) {
@@ -213,7 +227,36 @@ export const listRunSummaries = query({
         else if (it.value === "no") no++;
         else unanswered++;
       }
-      results.push({ run, total, yes, no, unanswered });
+      
+      // Fetch user information
+      let completedByUser = null;
+      let startedByUser = null;
+      
+      if (run.completedBy) {
+        const user = await ctx.db.get(run.completedBy);
+        if (user) {
+          completedByUser = {
+            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            memberNumber: user.memberNumber,
+          };
+        }
+      }
+      
+      if (run.startedBy) {
+        const user = await ctx.db.get(run.startedBy);
+        if (user) {
+          startedByUser = {
+            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            memberNumber: user.memberNumber,
+          };
+        }
+      }
+      
+      results.push({ run, total, yes, no, unanswered, completedByUser, startedByUser });
     }
 
     return results;
@@ -248,11 +291,11 @@ export const getLastCompletedRunsByTemplate = query({
 
     // Group by template and find the most recent for each
     const lastCompletedByTemplate = new Map<string, any>();
-    
+
     for (const run of completedRuns) {
       const templateId = run.templateId;
       const existing = lastCompletedByTemplate.get(templateId);
-      
+
       if (!existing || (run.completedAt && (!existing.completedAt || run.completedAt > existing.completedAt))) {
         lastCompletedByTemplate.set(templateId, run);
       }

@@ -22,12 +22,12 @@ interface ApplianceTemplateDoc {
   updatedBy: Id<"users">;
 }
 
-export function ApplianceTemplateList() {
-  const templates = useQuery(api.applianceTemplates.getApplianceTemplates) as ApplianceTemplateDoc[] | undefined;
-  const createTemplate = useMutation(api.applianceTemplates.createApplianceTemplate);
-  const updateTemplate = useMutation(api.applianceTemplates.updateApplianceTemplate);
-  const deleteTemplate = useMutation(api.applianceTemplates.deleteApplianceTemplate);
-  const publishTemplate = useMutation(api.applianceTemplates.publishTemplate);
+export function InventoryTemplateList() {
+  const templates = useQuery(api.inventoryTemplates.getApplianceTemplates) as ApplianceTemplateDoc[] | undefined;
+  const createTemplate = useMutation(api.inventoryTemplates.createApplianceTemplate);
+  const updateTemplate = useMutation(api.inventoryTemplates.updateApplianceTemplate);
+  const deleteTemplate = useMutation(api.inventoryTemplates.deleteApplianceTemplate);
+  const publishTemplate = useMutation(api.inventoryTemplates.publishTemplate);
   const navigate = useNavigate();
 
   const [showCreate, setShowCreate] = useState(false);
@@ -41,7 +41,7 @@ export function ApplianceTemplateList() {
     setShowCreate(false);
     setNewName("");
     setNewDescription("");
-    navigate(`/appliances/templates/${id}` as string);
+    navigate(`/inventory/templates/${id}` as string);
   };
 
   const handleDelete = async (tpl: ApplianceTemplateDoc) => {
@@ -52,7 +52,7 @@ export function ApplianceTemplateList() {
 
 
   return (
-    <div className="space-y-6" data-component="ApplianceTemplateList">
+    <div className="space-y-6" data-component="InventoryTemplateList">
       <div className="flex justify-end">
         <Button onClick={() => setShowCreate((v) => !v)}>
           <PlusIcon className="h-4 w-4 mr-1" /> New Template
@@ -99,16 +99,16 @@ export function ApplianceTemplateList() {
               )}
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button 
-                variant="default" 
-                className="w-full" 
-                onClick={() => navigate(`/appliances/templates/${tpl._id}`)}
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={() => navigate(`/inventory/templates/${tpl._id}`)}
               >
                 <PencilIcon className="h-4 w-4 mr-2" /> Edit Template
               </Button>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
+              <Button
+                variant="destructive"
+                className="w-full"
                 onClick={() => handleDelete(tpl)}
               >
                 <TrashIcon className="h-4 w-4 mr-2" /> Delete
@@ -128,4 +128,4 @@ export function ApplianceTemplateList() {
   );
 }
 
-export default ApplianceTemplateList;
+export default InventoryTemplateList;

@@ -10,9 +10,10 @@ import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, PencilIcon, TrashIcon, InformationCircleIcon, PhotoIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Bars3Icon } from "@heroicons/react/24/solid";
 import { useToast } from "../../../hooks/use-toast";
+import { compressImage, validateImageFile } from "../../../lib/imageCompression";
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,8 @@ type ApplianceItem = {
   name: string;
   itemType: "boolean_with_notes" | "boolean" | "text";
   order: number;
+  description?: string;
+  imageStorageId?: Id<"_storage">;
 };
 
 type ApplianceSection = {
@@ -84,9 +87,9 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full sm:w-auto">
-          <PencilIcon className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Edit Template</span>
+        <Button variant="outline" size="default" className="w-full sm:w-auto min-h-[44px]">
+          <PencilIcon className="h-5 w-5 mr-2" />
+          <span>Edit Template</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -99,7 +102,7 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Pumper Weekly Check"
+              placeholder="e.g., Pumper Weekly Inventory"
               className="mt-1"
               disabled={isLoading}
             />
@@ -154,8 +157,8 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <PlusIcon className="h-4 w-4 mr-2" />
+        <Button variant="outline" className="w-full min-h-[48px] text-base">
+          <PlusIcon className="h-5 w-5 mr-2" />
           Add Section
         </Button>
       </DialogTrigger>
@@ -191,9 +194,8 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
 }
 
 // Component for adding new items to a section
-function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: string, type: string) => Promise<void> }) {
+function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: string) => Promise<void> }) {
   const [name, setName] = useState("");
-  const [itemType, setItemType] = useState("boolean_with_notes");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -202,10 +204,9 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
     if (!name.trim()) return;
     setIsLoading(true);
     try {
-      await onAdd(name.trim(), itemType);
+      await onAdd(name.trim());
       toast({ title: "Success", description: "Item added successfully" });
       setName("");
-      setItemType("boolean_with_notes");
       setOpen(false);
     } catch (error) {
       toast({ title: "Error", description: "Failed to add item", variant: "destructive" });
@@ -217,8 +218,8 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-muted-foreground w-full justify-start">
-          <PlusIcon className="h-4 w-4 mr-2" />
+        <Button variant="ghost" size="default" className="text-muted-foreground w-full justify-start min-h-[44px]">
+          <PlusIcon className="h-5 w-5 mr-2" />
           Add Item
         </Button>
       </DialogTrigger>
@@ -238,19 +239,9 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
               disabled={isLoading}
               autoFocus
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Item Type</label>
-            <Select value={itemType} onValueChange={setItemType} disabled={isLoading}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="boolean_with_notes">Checkbox with Notes</SelectItem>
-                <SelectItem value="boolean">Checkbox Only</SelectItem>
-                <SelectItem value="text">Text Input</SelectItem>
-              </SelectContent>
-            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              All items are Yes/No checks with optional notes
+            </p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading} className="w-full sm:w-auto">
@@ -267,17 +258,17 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
 }
 
 // Reusable edit dialog for sections and items
-function EditDialog({ 
-  title, 
-  label, 
-  defaultValue, 
-  onSave, 
-  trigger 
-}: { 
-  title: string; 
-  label: string; 
-  defaultValue: string; 
-  onSave: (value: string) => Promise<void>; 
+function EditDialog({
+  title,
+  label,
+  defaultValue,
+  onSave,
+  trigger
+}: {
+  title: string;
+  label: string;
+  defaultValue: string;
+  onSave: (value: string) => Promise<void>;
   trigger: React.ReactNode;
 }) {
   const [value, setValue] = useState(defaultValue);
@@ -336,11 +327,241 @@ function EditDialog({
   );
 }
 
+// Component for editing item details (description + image)
+function ItemDetailsDialog({ item, onSave }: {
+  item: ApplianceItem;
+  onSave: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
+}) {
+  const [description, setDescription] = useState(item.description || "");
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { toast } = useToast();
+  const generateUploadUrl = useMutation(api.inventoryTemplates.generateUploadUrl);
+  const imageUrl = useQuery(
+    api.inventoryTemplates.getImageUrl,
+    item.imageStorageId ? { storageId: item.imageStorageId } : "skip"
+  );
+
+  React.useEffect(() => {
+    if (open) {
+      setDescription(item.description || "");
+      setImageFile(null);
+      setImagePreview(null);
+    }
+  }, [open, item.description]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast({ title: "Error", description: validation.error, variant: "destructive" });
+      return;
+    }
+
+    setImageFile(file);
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setUploading(true);
+    try {
+      let newImageStorageId: Id<"_storage"> | undefined = undefined;
+
+      // Upload new image if selected
+      if (imageFile) {
+        const compressedFile = await compressImage(imageFile);
+        const uploadUrl = await generateUploadUrl();
+        
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": compressedFile.type },
+          body: compressedFile,
+        });
+
+        const { storageId } = await result.json();
+        newImageStorageId = storageId;
+      }
+
+      await onSave(
+        description.trim() || undefined,
+        newImageStorageId
+      );
+      
+      toast({ title: "Success", description: "Item details updated successfully" });
+      setOpen(false);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update item details", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    try {
+      await onSave(description.trim() || undefined, null);
+      toast({ title: "Success", description: "Image removed successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+    }
+  };
+
+  const hasInfo = item.description || item.imageStorageId;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="default" 
+          className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
+          title="Add description or image"
+        >
+          <InformationCircleIcon className="h-5 w-5" />
+          <span className="sr-only">Item details</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Item Details: {item.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Description */}
+          <div>
+            <label className="text-sm font-medium">Description</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Help text for users checking this item..."
+              className="mt-1"
+              rows={3}
+              disabled={uploading}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Explain what this item is and where to find it
+            </p>
+          </div>
+
+          {/* Current Image */}
+          {imageUrl && !imagePreview && (
+            <div>
+              <label className="text-sm font-medium">Current Image</label>
+              <div className="relative mt-1">
+                <img 
+                  src={imageUrl} 
+                  alt={item.name} 
+                  className="w-full rounded-lg border"
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={handleRemoveImage}
+                  disabled={uploading}
+                >
+                  <XMarkIcon className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Preview */}
+          {imagePreview && (
+            <div>
+              <label className="text-sm font-medium">New Image Preview</label>
+              <div className="relative mt-1">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="w-full rounded-lg border"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                >
+                  <XMarkIcon className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload */}
+          {!imagePreview && (
+            <div>
+              <label className="text-sm font-medium">
+                {imageUrl ? 'Replace Image' : 'Add Reference Image'}
+              </label>
+              <div className="mt-1">
+                <label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="text-center">
+                    <PhotoIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Tap to select image
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG or WebP (max 50MB)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageSelect}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Image will be compressed to ~300KB automatically
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setOpen(false)} 
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
+              {uploading ? "Saving..." : "Save Details"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Sortable item component
-function SortableItem({ item, onRename, onDelete }: { 
-  item: ApplianceItem; 
+function SortableItem({ item, onRename, onDelete, onUpdateDetails }: {
+  item: ApplianceItem;
   onRename: (name: string) => Promise<void>;
   onDelete: () => Promise<void>;
+  onUpdateDetails: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
 }) {
   const {
     attributes,
@@ -361,41 +582,41 @@ function SortableItem({ item, onRename, onDelete }: {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors gap-2"
+      className="flex items-center justify-between p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors gap-3 min-h-[60px]"
     >
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
-          className="cursor-grab active:cursor-grabbing touch-none p-1 hover:bg-muted rounded"
+          className="cursor-grab active:cursor-grabbing touch-none p-2 hover:bg-muted rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
           {...attributes}
           {...listeners}
         >
-          <Bars3Icon className="h-5 w-5 text-muted-foreground" />
+          <Bars3Icon className="h-6 w-6 text-muted-foreground" />
         </button>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-medium truncate">{item.name}</span>
-          <Badge variant="secondary" className="text-xs w-fit">
-            {item.itemType === "boolean_with_notes" ? "✓ + Notes" : 
-             item.itemType === "boolean" ? "✓ Only" : "Text"}
-          </Badge>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 flex-1 min-w-0">
+          <span className="text-base font-medium truncate">{item.name}</span>
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <ItemDetailsDialog
+          item={item}
+          onSave={onUpdateDetails}
+        />
         <EditDialog
           title="Rename Item"
           label="Item Name"
           defaultValue={item.name}
           onSave={onRename}
           trigger={
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <PencilIcon className="h-4 w-4" />
+            <Button variant="ghost" size="default" className="min-h-[44px] min-w-[44px] p-0">
+              <PencilIcon className="h-5 w-5" />
               <span className="sr-only">Edit item</span>
             </Button>
           }
         />
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8 w-8 p-0">
-              <TrashIcon className="h-4 w-4" />
+            <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
+              <TrashIcon className="h-5 w-5" />
               <span className="sr-only">Delete item</span>
             </Button>
           </AlertDialogTrigger>
@@ -423,16 +644,16 @@ function SortableItem({ item, onRename, onDelete }: {
 }
 
 export function TemplateEditor({ templateId }: TemplateEditorProps) {
-  const data = useQuery(api.applianceTemplates.getTemplateStructure, { templateId });
-  const updateTemplate = useMutation(api.applianceTemplates.updateApplianceTemplate);
-  const createSection = useMutation(api.applianceTemplates.createSection);
-  const updateSection = useMutation(api.applianceTemplates.updateSection);
-  const deleteSection = useMutation(api.applianceTemplates.deleteSection);
-  const createItem = useMutation(api.applianceTemplates.createItem);
-  const updateItem = useMutation(api.applianceTemplates.updateItem);
-  const deleteItem = useMutation(api.applianceTemplates.deleteItem);
-  const reorderItems = useMutation(api.applianceTemplates.reorderItems);
-  const publishTemplate = useMutation(api.applianceTemplates.publishTemplate);
+  const data = useQuery(api.inventoryTemplates.getTemplateStructure, { templateId });
+  const updateTemplate = useMutation(api.inventoryTemplates.updateApplianceTemplate);
+  const createSection = useMutation(api.inventoryTemplates.createSection);
+  const updateSection = useMutation(api.inventoryTemplates.updateSection);
+  const deleteSection = useMutation(api.inventoryTemplates.deleteSection);
+  const createItem = useMutation(api.inventoryTemplates.createItem);
+  const updateItem = useMutation(api.inventoryTemplates.updateItem);
+  const deleteItem = useMutation(api.inventoryTemplates.deleteItem);
+  const reorderItems = useMutation(api.inventoryTemplates.reorderItems);
+  const publishTemplate = useMutation(api.inventoryTemplates.publishTemplate);
   const { toast } = useToast();
 
   const template = data?.template;
@@ -482,12 +703,20 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
     }
   };
 
-  const handleAddItem = async (sectionId: Id<"applianceSections">, name: string, itemType: string) => {
-    await createItem({ templateId, sectionId, name, itemType: itemType as any });
+  const handleAddItem = async (sectionId: Id<"applianceSections">, name: string) => {
+    await createItem({ templateId, sectionId, name, itemType: "boolean_with_notes" });
   };
 
   const handleRenameItem = async (itemId: Id<"applianceItems">, name: string) => {
     await updateItem({ itemId, name });
+  };
+
+  const handleUpdateItemDetails = async (
+    itemId: Id<"applianceItems">,
+    description?: string,
+    imageStorageId?: Id<"_storage"> | null
+  ) => {
+    await updateItem({ itemId, description, imageStorageId });
   };
 
   const handleDeleteItem = async (itemId: Id<"applianceItems">) => {
@@ -568,29 +797,29 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
       {/* Template Header */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <div className="space-y-4">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">{template.name}</CardTitle>
+            <div className="space-y-2">
+              <CardTitle className="text-xl sm:text-2xl">{template.name}</CardTitle>
               {template.description && (
-                <p className="text-sm text-muted-foreground">{template.description}</p>
+                <p className="text-sm sm:text-base text-muted-foreground">{template.description}</p>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">Version {template.version}</Badge>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Badge variant="outline" className="text-sm">Version {template.version}</Badge>
                 {template.hasUnpublishedChanges && (
-                  <Badge variant="destructive">Unpublished Changes</Badge>
+                  <Badge variant="destructive" className="text-sm">Unpublished Changes</Badge>
                 )}
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col gap-3">
               <TemplateMetaEditor template={template} onSave={handleSaveTemplate} />
               {template.hasUnpublishedChanges && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="default" size="sm" className="w-full sm:w-auto">
+                    <Button variant="default" size="default" className="w-full min-h-[48px] text-base">
                       Publish Changes
                     </Button>
                   </AlertDialogTrigger>
@@ -598,7 +827,7 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Publish Template Changes</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will create a new version of the template and make all changes available for use in new appliance checks.
+                        This will create a new version of the template and make all changes available for use in new inventory checks.
                         Existing in-progress checks will continue to use the previous version.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -618,8 +847,8 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
 
       {/* Sections */}
       <div className="space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Template Sections</h2>
+        <div className="space-y-3 px-1">
+          <h2 className="text-lg sm:text-xl font-semibold">Template Sections</h2>
           <AddSectionDialog onAdd={handleAddSection} />
         </div>
 
@@ -642,26 +871,26 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
           <div className="space-y-4">
             {displaySections.map((section: ApplianceSection) => (
               <Card key={section._id} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base flex-1">{section.name}</CardTitle>
-                    <div className="flex items-center gap-1">
+                <CardHeader className="p-4 sm:p-6 pb-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-lg sm:text-xl flex-1 break-words">{section.name}</CardTitle>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <EditDialog
                         title="Rename Section"
                         label="Section Name"
                         defaultValue={section.name}
                         onSave={(name) => handleRenameSection(section._id, name)}
                         trigger={
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <PencilIcon className="h-4 w-4" />
+                          <Button variant="ghost" size="default" className="min-h-[44px] min-w-[44px] p-0">
+                            <PencilIcon className="h-5 w-5" />
                             <span className="sr-only">Edit section</span>
                           </Button>
                         }
                       />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8 w-8 p-0">
-                            <TrashIcon className="h-4 w-4" />
+                          <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
+                            <TrashIcon className="h-5 w-5" />
                             <span className="sr-only">Delete section</span>
                           </Button>
                         </AlertDialogTrigger>
@@ -686,8 +915,8 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
+                <CardContent className="pt-0 p-4 sm:p-6">
+                  <div className="space-y-3">
                     {section.items && section.items.length > 0 ? (
                       <DndContext
                         sensors={sensors}
@@ -704,19 +933,22 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                               item={item}
                               onRename={(name) => handleRenameItem(item._id, name)}
                               onDelete={() => handleDeleteItem(item._id)}
+                              onUpdateDetails={(description, imageStorageId) => 
+                                handleUpdateItemDetails(item._id, description, imageStorageId)
+                              }
                             />
                           ))}
                         </SortableContext>
                       </DndContext>
                     ) : null}
-                    
+
                     {/* Add Item to Section */}
                     {section.items && section.items.length > 0 && (
-                      <div className="pt-2 border-t border-dashed" />
+                      <div className="pt-1 border-t border-dashed" />
                     )}
-                    <AddItemDialog 
-                      sectionId={section._id} 
-                      onAdd={(name, type) => handleAddItem(section._id, name, type)} 
+                    <AddItemDialog
+                      sectionId={section._id}
+                      onAdd={(name) => handleAddItem(section._id, name)}
                     />
                   </div>
                 </CardContent>

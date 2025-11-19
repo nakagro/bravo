@@ -286,20 +286,44 @@ export const updateItem = mutation({
     ),
     isRequired: v.optional(v.boolean()),
     defaultNotes: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, { itemId, ...patch }) => {
+  handler: async (ctx, { itemId, imageStorageId, ...patch }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("You must be signed in");
 
     const existing = await ctx.db.get(itemId);
     if (!existing) throw new Error("Item not found");
 
-    await ctx.db.patch(itemId, {
+    // Handle image replacement/deletion
+    if (imageStorageId !== undefined) {
+      // Delete old image from storage if it exists and we're replacing/removing it
+      if (existing.imageStorageId && existing.imageStorageId !== imageStorageId) {
+        try {
+          await ctx.storage.delete(existing.imageStorageId);
+        } catch (error) {
+          console.error("Failed to delete old image:", error);
+          // Continue anyway - don't fail the update
+        }
+      }
+    }
+
+    const updateData: any = {
       ...patch,
       updatedAt: Date.now(),
       updatedBy: userId,
-    });
+    };
+    
+    // Handle imageStorageId: null means remove, undefined means don't change
+    if (imageStorageId === null) {
+      updateData.imageStorageId = undefined; // Remove the field (schema doesn't allow null)
+    } else if (imageStorageId !== undefined) {
+      updateData.imageStorageId = imageStorageId;
+    }
+
+    await ctx.db.patch(itemId, updateData);
     // Mark template as having unpublished changes
     await ctx.db.patch(existing.templateId, {
       hasUnpublishedChanges: true,
@@ -307,6 +331,23 @@ export const updateItem = mutation({
       updatedBy: userId,
     });
     return true;
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("You must be signed in");
+    
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const getImageUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
   },
 });
 

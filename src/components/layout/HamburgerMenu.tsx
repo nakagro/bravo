@@ -53,10 +53,10 @@ export const HamburgerMenu = React.memo(() => {
     return moduleAccess[moduleId as keyof typeof moduleAccess] === true;
   };
 
-  const displayName = user ? 
-    (user.firstName) ? 
-      `${user.firstName}` : 
-      user.name || user.email || "User" : 
+  const displayName = user ?
+    (user.firstName) ?
+      `${user.firstName}` :
+      user.name || user.email || "User" :
     "User";
 
   if (!isAuthenticated) {
@@ -70,13 +70,12 @@ export const HamburgerMenu = React.memo(() => {
   return (
     <DropdownMenu onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
-          className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent ${
-            isOpen 
-              ? 'bg-accent text-accent-foreground shadow-sm' 
+        <Button
+          variant="ghost"
+          className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent ${isOpen
+              ? 'bg-accent text-accent-foreground shadow-sm'
               : ''
-          }`}
+            }`}
           aria-label="Menu"
         >
           <AnimatedHamburger isOpen={isOpen} />
@@ -177,13 +176,13 @@ export const HamburgerMenu = React.memo(() => {
 
 
 
-          {hasModuleAccess("applianceChecks") && (
+          {hasModuleAccess("inventory") && (
             <DropdownMenuItem
-              onClick={() => handleNavigation("/appliances")}
-              className={location.pathname === '/appliances' ? 'bg-accent text-accent-foreground' : ''}
+              onClick={() => handleNavigation("/inventory")}
+              className={location.pathname === '/inventory' ? 'bg-accent text-accent-foreground' : ''}
             >
               <Wrench className="mr-3 h-5 w-5" />
-              <span>Appliance Checks</span>
+              <span>Inventory</span>
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>
           )}
@@ -254,9 +253,9 @@ export const HamburgerMenu = React.memo(() => {
           <LogOut className="mr-3 h-5 w-5" />
           <span>Sign out</span>
         </DropdownMenuItem>
-        
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={() => handleNavigation("/about")}
           className="justify-center"
         >
