@@ -40,6 +40,12 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
     }),
   ],
+  session: {
+    // 1 year absolute limit (prevents "time bomb" forced logout)
+    totalDurationMs: 1000 * 60 * 60 * 24 * 365, 
+    // 30 days inactivity limit (logs out if they stop using the app)
+    inactiveDurationMs: 1000 * 60 * 60 * 24 * 30,
+  },
 });
 
 export const loggedInUser = query({

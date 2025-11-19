@@ -1,8 +1,0 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Update changelog with commit message
-node scripts/update-changelog.js "$1"
-
-# Stage the updated changelog
-git add changelog.json
