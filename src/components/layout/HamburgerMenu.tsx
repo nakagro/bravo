@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useQuery, useConvexConnectionState } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -36,13 +36,14 @@ import { getVersionString } from "@/utils/version";
 import { AnimatedHamburger } from "@/components/common/AnimatedHamburger";
 import { DarkModeToggle } from "@/components/common/DarkModeToggle";
 
-export const HamburgerMenu = React.memo(() => {
+export const HamburgerMenu = () => {
   const { isAuthenticated } = useConvexAuth();
   const { signOut } = useAuthActions();
   const user = useQuery(api.auth.loggedInUser);
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
+  const connectionState = useConvexConnectionState();
 
   // Use single optimized query instead of 12 separate queries
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
@@ -73,8 +74,8 @@ export const HamburgerMenu = React.memo(() => {
         <Button
           variant="ghost"
           className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent ${isOpen
-              ? 'bg-accent text-accent-foreground shadow-sm'
-              : ''
+            ? 'bg-accent text-accent-foreground shadow-sm'
+            : ''
             }`}
           aria-label="Menu"
         >
@@ -259,15 +260,26 @@ export const HamburgerMenu = React.memo(() => {
           onClick={() => handleNavigation("/about")}
           className="justify-center"
         >
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground flex items-center gap-2">
             <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
             {" · "}
             <span>v{getVersionString()}</span>
+            <span className={`inline-block h-2 w-2 rounded-full ${
+              connectionState.isWebSocketConnected 
+                ? 'bg-green-600 dark:bg-green-500' 
+                : 'bg-amber-600 dark:bg-amber-500'
+            }`} title={
+              connectionState.isWebSocketConnected 
+                ? 'Connected' 
+                : connectionState.connectionRetries > 0 
+                  ? 'Reconnecting...' 
+                  : 'Disconnected'
+            } />
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
-});
+};
 
 HamburgerMenu.displayName = 'HamburgerMenu';

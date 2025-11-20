@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.43] - 2025-11-21
+- Added a connection status indicator next to the version number in the menu: green = connected, amber = disconnected/reconnecting
+
 ## [1.0.41] - 2025-11-19
 - AuthSessions should last 365 days and not 30, this should stop the recent monthly forced sign out
 - Refactored this About page to read from a markdown file instead of a JSON file for the change log
