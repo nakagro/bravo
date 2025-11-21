@@ -42,7 +42,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   ],
   session: {
     // 1 year absolute limit (prevents "time bomb" forced logout)
-    totalDurationMs: 1000 * 60 * 60 * 24 * 365, 
+    totalDurationMs: 1000 * 60 * 60 * 24 * 365,
     // 30 days inactivity limit (logs out if they stop using the app)
     inactiveDurationMs: 1000 * 60 * 60 * 24 * 30,
   },
@@ -77,13 +77,13 @@ export const updateUserProfile = mutation({
     if (!userId) {
       throw new Error("You must be signed in to update your profile");
     }
-    
+
     // Get the current user data
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Update the user with new information
     await ctx.db.patch(userId, {
       ...(args.firstName !== undefined && { firstName: args.firstName }),
@@ -92,7 +92,7 @@ export const updateUserProfile = mutation({
       ...(args.name !== undefined && { name: args.name }),
       ...(args.email !== undefined && { email: args.email }),
     });
-    
+
     return { success: true };
   },
 });
@@ -109,20 +109,23 @@ export const storeSignupData = mutation({
   handler: async (ctx, args) => {
     // Store the signup data in a temporary table or session
     // We'll use this to update the user profile once they're authenticated
-    
+
+    // Normalize email to lowercase for consistency
+    const email = args.email.toLowerCase().trim();
+
     // Find the user by email (should be created by the auth system)
     const users = await ctx.db
       .query("users")
-      .filter(q => q.eq(q.field("email"), args.email))
+      .filter(q => q.eq(q.field("email"), email))
       .collect();
-    
+
     if (users.length === 0) {
       // User not found yet, might be a timing issue
       return { success: false, message: "User not found. Try again after signing in." };
     }
-    
+
     const user = users[0];
-    
+
     // Update the user profile with default rank
     await ctx.db.patch(user._id, {
       firstName: args.firstName,
@@ -131,39 +134,39 @@ export const storeSignupData = mutation({
       name: `${args.firstName} ${args.lastName}`.trim(),
       rank: DEFAULT_SIGNUP_RANK,
     });
-    
+
     // Check if new user signup email is enabled
     const emailSetting = await ctx.db
       .query("emailSettings")
       .withIndex("by_emailType", (q) => q.eq("emailType", "newUserSignup"))
       .first();
-    
+
     // Only send email if setting is enabled (or doesn't exist yet - default to enabled)
     const shouldSendEmail = !emailSetting || emailSetting.enabled;
-    
+
     if (shouldSendEmail) {
       // Get all admin users to notify them
       const adminUsers = await ctx.db
         .query("users")
         .collect()
         .then(users => users.filter(u => u.isAdmin === true));
-      
+
       // Collect admin emails (only those who have email addresses)
       const adminEmails = adminUsers
         .map(admin => admin.email)
         .filter((email): email is string => !!email);
-      
+
       // Schedule email notification to admins (don't await to avoid blocking)
       if (adminEmails.length > 0) {
         ctx.scheduler.runAfter(0, internal.emails.sendNewUserSignupNotification, {
           adminEmails,
           newUserName: `${args.firstName} ${args.lastName}`.trim(),
-          newUserEmail: args.email,
+          newUserEmail: email,
           newUserMemberNumber: args.memberNumber,
         });
       }
     }
-    
+
     return { success: true };
   },
 });
@@ -179,35 +182,35 @@ export const changePassword = action({
     if (!userId) {
       throw new Error("You must be signed in to change your password");
     }
-    
+
     // Get user information using the existing query
     const user = await ctx.runQuery(api.auth.loggedInUser);
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Get the user's email for verification
     const userEmail = user.email;
     if (!userEmail) {
       throw new Error("User email not found");
     }
-    
+
     // Password strength validation
     if (args.newPassword.length < 8) {
       throw new Error("Password must be at least 8 characters long");
     }
-    
+
     try {
       // Verify current password by attempting to retrieve the account with credentials
       const account = await retrieveAccount(ctx, {
         provider: "password",
         account: { id: userEmail, secret: args.currentPassword }
       });
-      
+
       if (!account) {
         throw new Error("Invalid current password");
       }
-      
+
       // Update the password using the proper auth library function
       await modifyAccountCredentials(ctx, {
         provider: "password",
@@ -216,9 +219,9 @@ export const changePassword = action({
           secret: args.newPassword
         }
       });
-      
+
       return { success: true };
-      
+
     } catch (error: any) {
       // Handle specific auth errors
       if (error.message.includes("InvalidSecret") || error.message.includes("Invalid current password")) {
@@ -240,35 +243,35 @@ export const adminResetPassword = action({
     if (!userId) {
       throw new Error("You must be signed in to reset passwords");
     }
-    
+
     // Get current user to check admin status
     const currentUser = await ctx.runQuery(api.auth.loggedInUser);
     if (!currentUser) {
       throw new Error("User not found");
     }
-    
+
     // Check if current user is admin
     if (!currentUser.isAdmin) {
       throw new Error("Only administrators can reset passwords");
     }
-    
+
     // Get target user information
     const targetUser = await ctx.runQuery(api.users.getUserById, { userId: args.targetUserId });
     if (!targetUser) {
       throw new Error("Target user not found");
     }
-    
+
     // Get the target user's email
     const targetEmail = targetUser.email;
     if (!targetEmail) {
       throw new Error("Target user email not found");
     }
-    
+
     // Password strength validation
     if (args.newPassword.length < 8) {
       throw new Error("Password must be at least 8 characters long");
     }
-    
+
     try {
       // Update the target user's password
       await modifyAccountCredentials(ctx, {
@@ -278,9 +281,9 @@ export const adminResetPassword = action({
           secret: args.newPassword
         }
       });
-      
+
       return { success: true };
-      
+
     } catch (error: any) {
       throw new Error("Failed to reset password");
     }

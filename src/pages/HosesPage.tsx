@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { HoseDashboard } from "../features/hoses/components/HoseDashboard";
 import { HoseInventory } from "../features/hoses/components/HoseInventory";
 import { HoseStatusSync } from "../features/hoses/components/HoseStatusSync";
@@ -12,6 +12,21 @@ type FilterType = Status | UpcomingTestFilter | null;
 export function HosesPage() {
   const [activeTab, setActiveTab] = useState('dashboard'); // Default to dashboard tab
   const [inventoryFilter, setInventoryFilter] = useState<FilterType>(null);
+
+  // Refs for tab animation
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  // Update indicator position when active tab changes
+  useEffect(() => {
+    const activeTabElement = tabRefs.current[activeTab];
+    if (activeTabElement) {
+      setIndicatorStyle({
+        left: activeTabElement.offsetLeft,
+        width: activeTabElement.offsetWidth,
+      });
+    }
+  }, [activeTab]);
 
   // Function to handle status card clicks from dashboard
   const handleStatusCardClick = (status: Status) => {
@@ -32,75 +47,80 @@ export function HosesPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Hose Management</h1>
         </div>
       </div>
-      
+
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-4 -mb-px">
+
+      <div className="border-b border-gray-200 dark:border-gray-700 relative">
+        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
           <button
+            ref={(el) => { tabRefs.current['dashboard'] = el; }}
             onClick={() => setActiveTab('dashboard')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'dashboard' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'dashboard'
+              ? 'text-red-600 dark:text-red-400 font-bold'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
           >
-            {/* <ChartBarIcon className="h-4 w-4" /> */}
             Dashboard
           </button>
           <button
+            ref={(el) => { tabRefs.current['inventory'] = el; }}
             onClick={() => setActiveTab('inventory')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'inventory' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'inventory'
+              ? 'text-red-600 dark:text-red-400 font-bold'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
           >
-            {/* <TableCellsIcon className="h-4 w-4" /> */}
             Inventory
           </button>
 
           <button
+            ref={(el) => { tabRefs.current['audit'] = el; }}
             onClick={() => setActiveTab('audit')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'audit' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'audit'
+              ? 'text-red-600 dark:text-red-400 font-bold'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
           >
-            {/* <ClockIcon className="h-4 w-4" /> */}
             Audit
           </button>
           <button
+            ref={(el) => { tabRefs.current['status'] = el; }}
             onClick={() => setActiveTab('status')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'status' 
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'status'
+              ? 'text-red-600 dark:text-red-400 font-bold'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
           >
-            {/* <ArrowPathIcon className="h-4 w-4" /> */}
             Sync
           </button>
         </nav>
+        {/* Animated indicator */}
+        <div
+          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
+          style={{
+            left: `${indicatorStyle.left}px`,
+            width: `${indicatorStyle.width}px`,
+          }}
+        />
       </div>
-      
+
       {/* Tab Content */}
       <div className="mt-4">
         {activeTab === 'dashboard' && (
-          <HoseDashboard 
-            onStatusCardClick={handleStatusCardClick} 
+          <HoseDashboard
+            onStatusCardClick={handleStatusCardClick}
             onUpcomingTestClick={handleUpcomingTestClick}
           />
         )}
-        
+
         {activeTab === 'inventory' && (
           <HoseInventory initialStatusFilter={inventoryFilter} onFilterApplied={() => setInventoryFilter(null)} />
         )}
-        
+
         {activeTab === 'status' && (
           <HoseStatusSync />
         )}
-        
+
         {activeTab === 'audit' && (
           <HoseAuditTrail />
         )}

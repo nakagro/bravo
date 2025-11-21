@@ -18,10 +18,10 @@ export function SignInForm() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const hCaptchaRef = useRef<HCaptcha>(null);
   const storeSignupData = useMutation(api.auth.storeSignupData);
-  
+
   // Track if we need to show a profile update message
   const [showProfileMessage, setShowProfileMessage] = useState(false);
-  
+
   // Show success message if redirected from password reset
   useEffect(() => {
     if (searchParams.get("reset") === "success") {
@@ -33,10 +33,10 @@ export function SignInForm() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  
+
   // Check if we're in production (not localhost)
   const isProduction = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
-  
+
   // hCaptcha site key
   const hCaptchaSiteKey = "3130983c-4200-4120-98ae-46fe42be99f0";
 
@@ -55,10 +55,10 @@ export function SignInForm() {
             onClick={() => setFlow("signIn")}
             className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 group"
           >
-            <svg 
-              className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -67,7 +67,7 @@ export function SignInForm() {
           </button>
         </div>
       )}
-      
+
       <form
         className="flex flex-col gap-6"
         onSubmit={async (e) => {
@@ -75,7 +75,7 @@ export function SignInForm() {
           setSubmitting(true);
           const formData = new FormData(e.target as HTMLFormElement);
           formData.set("flow", flow);
-          
+
           try {
             // Check CAPTCHA in production
             if (isProduction && !captchaToken) {
@@ -83,20 +83,23 @@ export function SignInForm() {
               setSubmitting(false);
               return;
             }
-            
+
             // If signing up, collect the additional information
             if (flow === "signUp") {
               const firstName = formData.get("firstName") as string;
               const lastName = formData.get("lastName") as string;
               const memberNumber = formData.get("memberNumber") as string;
-              const email = formData.get("email") as string;
-              
+              const email = (formData.get("email") as string).toLowerCase().trim();
+
+              // Update the form data with normalized email
+              formData.set("email", email);
+
               // Set the CFA member number as the password
               formData.set("password", memberNumber);
-              
+
               // First, create the account with the auth system
               const signInResult = await signIn("password", formData);
-              
+
               if (signInResult) {
                 // Then store the profile data
                 // We'll do this in a separate step to avoid timing issues
@@ -114,7 +117,7 @@ export function SignInForm() {
                     toast.error("Your account was created, but we couldn't save your profile information. Please update your profile later.");
                   }
                 }, 1000); // Give the auth system time to create the user
-                
+
                 toast.success("Account created successfully!");
                 // Reset CAPTCHA after successful signup
                 if (isProduction) {
@@ -124,15 +127,17 @@ export function SignInForm() {
               }
             } else {
               // Regular sign in
-              const email = formData.get("email") as string;
+              const email = (formData.get("email") as string).toLowerCase().trim();
+              // Update the form data with normalized email
+              formData.set("email", email);
               await signIn("password", formData);
-              
+
               // Track successful login in PostHog
               posthog?.capture("user_login_success", {
                 email: email,
                 timestamp: new Date().toISOString(),
               });
-              
+
               // Reset CAPTCHA after successful signin
               if (isProduction) {
                 setCaptchaToken(null);
@@ -145,11 +150,11 @@ export function SignInForm() {
             console.error("Authentication error:", error);
             let toastTitle = "";
             let errorType = "unknown";
-            
+
             if (flow === "signIn") {
               // Sign in errors
-              const email = formData.get("email") as string;
-              
+              const email = (formData.get("email") as string).toLowerCase().trim();
+
               if (errorMessage.includes("InvalidSecret")) {
                 toastTitle = "Incorrect email or password";
                 errorType = "invalid_credentials";
@@ -166,7 +171,7 @@ export function SignInForm() {
                 toastTitle = "Could not sign in. Please check your credentials and try again.";
                 errorType = "generic_error";
               }
-              
+
               // Track failed login attempt in PostHog
               posthog?.capture("user_login_failed", {
                 email: email,
@@ -188,7 +193,7 @@ export function SignInForm() {
                 toastTitle = "Could not create account. Unknown/Uncaught error.";
               }
             }
-            
+
             toast.error(toastTitle);
             setSubmitting(false);
             // Reset CAPTCHA on error
@@ -206,24 +211,24 @@ export function SignInForm() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   First Name
                 </label>
-                <input 
-                  className="input-field" 
-                  type="text" 
-                  name="firstName" 
-                  placeholder="Enter your first name" 
-                  required 
+                <input
+                  className="input-field"
+                  type="text"
+                  name="firstName"
+                  placeholder="Enter your first name"
+                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Last Name
                 </label>
-                <input 
-                  className="input-field" 
-                  type="text" 
-                  name="lastName" 
-                  placeholder="Enter your last name" 
-                  required 
+                <input
+                  className="input-field"
+                  type="text"
+                  name="lastName"
+                  placeholder="Enter your last name"
+                  required
                 />
               </div>
             </div>
@@ -231,32 +236,32 @@ export function SignInForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 CFA Member Number
               </label>
-              <input 
-                className="input-field" 
-                type="text" 
-                name="memberNumber" 
-                placeholder="e.g. 7000001" 
-                required 
+              <input
+                className="input-field"
+                type="text"
+                name="memberNumber"
+                placeholder="e.g. 7000001"
+                required
               />
             </div>
           </div>
         )}
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
-          <input 
-            className="input-field" 
-            type="email" 
-            name="email" 
-            placeholder="Enter your email address" 
+          <input
+            className="input-field"
+            type="email"
+            name="email"
+            placeholder="Enter your email address"
             autoComplete="email"
             autoFocus={false}
-            required 
+            required
           />
         </div>
-        
+
         {flow === "signIn" && (
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -271,12 +276,12 @@ export function SignInForm() {
                 Forgot password?
               </button>
             </div>
-            <input 
-              className="input-field" 
-              type="password" 
-              name="password" 
-              placeholder="Enter your password" 
-              required 
+            <input
+              className="input-field"
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              required
             />
           </div>
         )}
@@ -297,7 +302,7 @@ export function SignInForm() {
             </div>
           </div>
         )}
-        
+
         {/* hCaptcha - only show in production */}
         {isProduction && (
           <div className="flex justify-center my-4">
@@ -318,10 +323,10 @@ export function SignInForm() {
             />
           </div>
         )}
-        
-        <button 
-          className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg" 
-          type="submit" 
+
+        <button
+          className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+          type="submit"
           disabled={submitting || (isProduction && !captchaToken)}
         >
           {submitting ? (
@@ -333,7 +338,7 @@ export function SignInForm() {
             flow === "signIn" ? "Sign In" : "Create Account"
           )}
         </button>
-        
+
         <div className="text-center">
           <span className="text-sm text-gray-600 dark:text-gray-400">
             {flow === "signIn" ? "Don't have an account? " : "Already have an account? "}

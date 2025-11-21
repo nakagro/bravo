@@ -11,7 +11,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  
+
   const requestReset = useMutation(api.passwordReset.requestPasswordReset);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,8 +19,8 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
     setSubmitting(true);
 
     try {
-      const result = await requestReset({ email: email.trim() });
-      
+      const result = await requestReset({ email: email.toLowerCase().trim() });
+
       if (result.success) {
         setEmailSent(true);
         toast.success("Password reset email sent!");
@@ -90,10 +90,10 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
           onClick={onBack}
           className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 group"
         >
-          <svg 
-            className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -118,21 +118,21 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
-          <input 
-            className="input-field" 
-            type="email" 
+          <input
+            className="input-field"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email address" 
+            placeholder="Enter your email address"
             autoComplete="email"
             autoFocus
-            required 
+            required
           />
         </div>
 
-        <button 
-          className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg" 
-          type="submit" 
+        <button
+          className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+          type="submit"
           disabled={submitting}
         >
           {submitting ? (

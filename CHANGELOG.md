@@ -3,6 +3,8 @@
 ## [1.0.43] - 2025-11-21
 - Added a connection status indicator next to the version number in the menu; green = connected, amber = disconnected/reconnecting
 - Enhanced User Management in Admin Settings; users email is now displayed, the "Reset Password" section is now an accordian and the modal is scrollable when the content display is too long
+- Email Address field on the sign in page is no longer case sensitive
+- Visual changes to the Tab navigation of every module so they are consistent - red, bolded and underline animation on the active tab
 
 ## [1.0.41] - 2025-11-19
 - AuthSessions should last 365 days and not 30, this should stop the recent monthly forced sign out
