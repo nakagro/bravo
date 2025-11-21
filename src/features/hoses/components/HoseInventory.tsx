@@ -31,7 +31,8 @@ type ViewMode = 'cards' | 'table';
 type SortField = 'hoseId' | 'status' | 'size' | 'length' | 'type' | 'testDate';
 type SortDirection = 'asc' | 'desc';
 type UpcomingTestFilter = "1month" | "3months" | "6months";
-type FilterType = Status | UpcomingTestFilter | null;
+type OverdueFilter = "overdue3months" | "overdue6months" | "overdue12months" | "overdue12plus";
+type FilterType = Status | UpcomingTestFilter | OverdueFilter | null;
 
 interface HoseInventoryProps {
   initialStatusFilter?: FilterType;
@@ -57,19 +58,23 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     location: "" as Location | "",
     search: "",
     upcomingTest: "" as UpcomingTestFilter | "",
+    overdueFilter: "" as OverdueFilter | "",
   });
 
-  // Handle initial filter changes (status or upcoming test)
+  // Handle initial filter changes (status, upcoming test, or overdue)
   useEffect(() => {
     if (initialStatusFilter) {
-      // Check if it's a status filter or upcoming test filter
+      // Check if it's a status filter, upcoming test filter, or overdue filter
       const statusOptions: Status[] = ["In date", "Due for testing", "With district for repair", "Condemned"];
       const upcomingTestOptions: UpcomingTestFilter[] = ["1month", "3months", "6months"];
-      
+      const overdueOptions: OverdueFilter[] = ["overdue3months", "overdue6months", "overdue12months", "overdue12plus"];
+
       if (statusOptions.includes(initialStatusFilter as Status)) {
-        setFilters(prev => ({ ...prev, status: initialStatusFilter as Status, upcomingTest: "" }));
+        setFilters(prev => ({ ...prev, status: initialStatusFilter as Status, upcomingTest: "", overdueFilter: "" }));
       } else if (upcomingTestOptions.includes(initialStatusFilter as UpcomingTestFilter)) {
-        setFilters(prev => ({ ...prev, upcomingTest: initialStatusFilter as UpcomingTestFilter, status: "" }));
+        setFilters(prev => ({ ...prev, upcomingTest: initialStatusFilter as UpcomingTestFilter, status: "", overdueFilter: "" }));
+      } else if (overdueOptions.includes(initialStatusFilter as OverdueFilter)) {
+        setFilters(prev => ({ ...prev, overdueFilter: initialStatusFilter as OverdueFilter, status: "", upcomingTest: "" }));
       }
       onFilterApplied?.();
     }
@@ -96,21 +101,21 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
       if (savedViewMode) {
         return (savedViewMode === 'table' ? 'table' : 'cards') as ViewMode;
       }
-      
+
       // If no saved preference, set default based on device type
       return isMobileDevice() ? 'cards' : 'table';
     }
     return 'cards'; // Server-side rendering default
   });
-  const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection }>({ 
-    field: 'hoseId', 
-    direction: 'asc' 
+  const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection }>({
+    field: 'hoseId',
+    direction: 'asc'
   });
-  
+
   const handleSearch = () => {
     setFilters(f => ({ ...f, search: searchTerm }));
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -125,6 +130,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
       location: "",
       search: "",
       upcomingTest: "",
+      overdueFilter: "",
     });
     setSearchTerm("");
   };
@@ -157,42 +163,102 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
   };
 
   // Function to filter hoses by upcoming test dates
+  // Using non-overlapping ranges to match dashboard logic
   const filterHosesByUpcomingTest = (hoses: any[], timeframe: UpcomingTestFilter) => {
     const now = Date.now();
     const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
-    const timeframeMs = {
-      "1month": 30 * 24 * 60 * 60 * 1000,
-      "3months": 3 * 30 * 24 * 60 * 60 * 1000,
-      "6months": 6 * 30 * 24 * 60 * 60 * 1000,
-    };
-    
+    const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000;
+    const fourMonthsMs = 4 * 30 * 24 * 60 * 60 * 1000;
+    const threeMonthsMs = 3 * 30 * 24 * 60 * 60 * 1000;
+    const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
+
     return hoses.filter(hose => {
       // Only consider "In date" hoses for upcoming test filtering
       if (hose.status !== "In date") return false;
-      
+
       const testExpiryDate = hose.testDate + oneYearMs;
-      const timeframeFromNow = now + timeframeMs[timeframe];
-      
-      // Return hoses that will expire within the specified timeframe
-      return testExpiryDate <= timeframeFromNow && testExpiryDate > now;
+
+      // Non-overlapping ranges
+      if (timeframe === "6months") {
+        // Hoses expiring between 4-6 months from now
+        const sixMonthsFromNow = now + sixMonthsMs;
+        const fourMonthsFromNow = now + fourMonthsMs;
+        return testExpiryDate <= sixMonthsFromNow && testExpiryDate > fourMonthsFromNow;
+      } else if (timeframe === "3months") {
+        // Hoses expiring between 1-3 months from now
+        const threeMonthsFromNow = now + threeMonthsMs;
+        const oneMonthFromNow = now + oneMonthMs;
+        return testExpiryDate <= threeMonthsFromNow && testExpiryDate > oneMonthFromNow;
+      } else if (timeframe === "1month") {
+        // Hoses expiring within the next month
+        const oneMonthFromNow = now + oneMonthMs;
+        return testExpiryDate <= oneMonthFromNow && testExpiryDate > now;
+      }
+
+      return false;
+    });
+  };
+
+  // Function to filter hoses by overdue status
+  // Using non-overlapping ranges to match dashboard logic: 0-3, 3-6, 6-12, 12+ months
+  const filterHosesByOverdue = (hoses: any[], timeframe: OverdueFilter) => {
+    const now = Date.now();
+    const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+    const twelveMonthsMs = 12 * 30 * 24 * 60 * 60 * 1000;
+    const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000;
+    const threeMonthsMs = 3 * 30 * 24 * 60 * 60 * 1000;
+
+    return hoses.filter(hose => {
+      // Only consider "Due for testing" hoses for overdue filtering
+      if (hose.status !== "Due for testing") return false;
+
+      const testExpiryDate = hose.testDate + oneYearMs;
+
+      // Non-overlapping ranges
+      if (timeframe === "overdue3months") {
+        // Hoses that expired 0-3 months ago
+        const threeMonthsAgo = now - threeMonthsMs;
+        return testExpiryDate >= threeMonthsAgo && testExpiryDate < now;
+      } else if (timeframe === "overdue6months") {
+        // Hoses that expired 3-6 months ago
+        const sixMonthsAgo = now - sixMonthsMs;
+        const threeMonthsAgo = now - threeMonthsMs;
+        return testExpiryDate >= sixMonthsAgo && testExpiryDate < threeMonthsAgo;
+      } else if (timeframe === "overdue12months") {
+        // Hoses that expired 6-12 months ago
+        const twelveMonthsAgo = now - twelveMonthsMs;
+        const sixMonthsAgo = now - sixMonthsMs;
+        return testExpiryDate >= twelveMonthsAgo && testExpiryDate < sixMonthsAgo;
+      } else if (timeframe === "overdue12plus") {
+        // Hoses that expired more than 12 months ago
+        const twelveMonthsAgo = now - twelveMonthsMs;
+        return testExpiryDate < twelveMonthsAgo;
+      }
+
+      return false;
     });
   };
 
   // Function to sort and filter the hoses array
   const sortedHoses = useMemo(() => {
     if (!hoses) return [];
-    
+
     let filteredHoses = [...hoses];
-    
+
     // Apply upcoming test filter if set
     if (filters.upcomingTest) {
       filteredHoses = filterHosesByUpcomingTest(filteredHoses, filters.upcomingTest);
     }
-    
+
+    // Apply overdue filter if set
+    if (filters.overdueFilter) {
+      filteredHoses = filterHosesByOverdue(filteredHoses, filters.overdueFilter);
+    }
+
     return filteredHoses.sort((a, b) => {
       const { field, direction } = sortConfig;
       let comparison = 0;
-      
+
       switch (field) {
         case 'hoseId':
           comparison = a.hoseId.localeCompare(b.hoseId);
@@ -215,10 +281,10 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         default:
           break;
       }
-      
+
       return direction === 'asc' ? comparison : -comparison;
     });
-  }, [hoses, sortConfig]);
+  }, [hoses, sortConfig, filters]);
 
   if (hoses === undefined) {
     return (
@@ -242,18 +308,18 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
             }}
             className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
           >
-            <ToggleGroupItem 
-              value="cards" 
-              aria-label="Card View" 
+            <ToggleGroupItem
+              value="cards"
+              aria-label="Card View"
               title="Card View"
               className="px-3 py-2 text-sm data-[state=on]:bg-red-700 data-[state=on]:dark:bg-red-600 data-[state=on]:text-white bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 data-[state=on]:hover:bg-red-800 data-[state=on]:dark:hover:bg-red-700 rounded-none border-r border-gray-300 dark:border-gray-700 last:border-r-0"
             >
               <Squares2X2Icon className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Cards</span>
             </ToggleGroupItem>
-            <ToggleGroupItem 
-              value="table" 
-              aria-label="Table View" 
+            <ToggleGroupItem
+              value="table"
+              aria-label="Table View"
               title="Table View"
               className="px-3 py-2 text-sm data-[state=on]:bg-red-700 data-[state=on]:dark:bg-red-600 data-[state=on]:text-white bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 data-[state=on]:hover:bg-red-800 data-[state=on]:dark:hover:bg-red-700 rounded-none"
             >
@@ -317,7 +383,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
             </Button>
           </div>
         </div>
-        
+
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
             <Select
@@ -438,7 +504,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('hoseId')}
                 >
@@ -449,7 +515,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   )}
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('status')}
                 >
@@ -460,7 +526,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   )}
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('size')}
                 >
@@ -471,7 +537,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   )}
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('length')}
                 >
@@ -482,7 +548,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   )}
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('type')}
                 >
@@ -493,7 +559,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   )}
                 </TableHead>
-                <TableHead 
+                <TableHead
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => handleSort('testDate')}
                 >
@@ -509,8 +575,8 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
             </TableHeader>
             <TableBody>
               {sortedHoses.map((hose) => (
-                <TableRow 
-                  key={hose._id} 
+                <TableRow
+                  key={hose._id}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => setEditingHose(hose._id)}
                 >
@@ -568,7 +634,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
           }}
         />
       )}
-      
+
       {viewingHistory && (
         <HoseHistoryModal
           hoseId={viewingHistory}

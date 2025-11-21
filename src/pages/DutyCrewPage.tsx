@@ -1,134 +1,136 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DutyCrewSchedule } from "../components/dutyCrew/DutyCrewSchedule";
 import { DutyCrewAdmin } from "../components/dutyCrew/DutyCrewAdmin";
 import { StationChecksTab } from "../components/dutyCrew/StationChecksTab";
 import { StationChecksAdmin } from "../components/dutyCrew/StationChecksAdmin";
 import { StationChecksHistory } from "../components/dutyCrew/StationChecksHistory";
-import { CalendarIcon, UserGroupIcon, Cog6ToothIcon, ClipboardDocumentListIcon, ClipboardDocumentCheckIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Tab } from "@headlessui/react";
+
+type TabType = "schedule" | "stationChecks" | "administration" | "stationChecksAdmin" | "checksHistory";
 
 export function DutyCrewPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("schedule");
   const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
-  
-  // Define the tabs based on admin access
-  const tabs = [
-    { name: "Schedule", icon: CalendarIcon },
-    { name: "Station Checks", icon: ClipboardDocumentCheckIcon },
-    ...(adminAccess === true ? [
-      { name: "Administration", icon: Cog6ToothIcon },
-      { name: "Station Checks Admin", icon: ClipboardDocumentListIcon },
-      { name: "Checks History", icon: ClockIcon }
-    ] : [])
-  ];
-  
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Duty Crew</h1>
-        <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
-          <span className="font-medium">Current Month: </span>
-          {new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
-        </div>
-      </div>
-      
-      <Tab.Group>
-        <Tab.List className="flex space-x-1 rounded-xl bg-gray-100 dark:bg-gray-700 p-1 mb-6 overflow-x-auto">
-          {tabs.map((tab) => (
-            <Tab
-              key={tab.name}
-              className={({ selected }) =>
-                `flex-1 min-w-max rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center
-                 ${selected
-                  ? 'bg-white dark:bg-gray-800 shadow text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-white/[0.12] hover:text-gray-800 dark:hover:text-white'}`
-              }
-            >
-              <tab.icon className="h-5 w-5 mr-2" />
-              {tab.name}
-            </Tab>
-          ))}
-        </Tab.List>
-        <Tab.Panels>
-          <Tab.Panel>
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-              {/* Duty Crew Schedule */}
-              <div>
-                <DutyCrewSchedule />
-              </div>
-              
 
-              {/* <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    Duty Crew Information
-                  </h3>
-                  <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                    How duty crews are assigned
-                  </p>
-                </div>
-                <div className="px-4 py-5 sm:p-6">
-                  <ul className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
-                    <li className="flex items-start">
-                      <CalendarIcon className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Duty Crew 1:</strong> First Sunday of each month
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <CalendarIcon className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Duty Crew 2:</strong> Second Sunday of each month
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <CalendarIcon className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Duty Crew 3:</strong> Third Sunday of each month
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <CalendarIcon className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Duty Crew 4:</strong> Fourth Sunday of each month
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <UserGroupIcon className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span>
-                        <strong>All Duty Crews:</strong> Fifth Sunday (when applicable)
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </div> */}
-            </div>
-          </Tab.Panel>
-          <Tab.Panel>
-            <StationChecksTab />
-          </Tab.Panel>
-          {adminAccess === true && (
+  // Refs for tab animation
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  // Ensure we don't render a tab the user cannot access
+  useEffect(() => {
+    if ((activeTab === "administration" || activeTab === "stationChecksAdmin" || activeTab === "checksHistory") && adminAccess === false) {
+      setActiveTab("schedule");
+    }
+  }, [activeTab, adminAccess]);
+
+  // Update indicator position when active tab changes
+  useEffect(() => {
+    const activeTabElement = tabRefs.current[activeTab];
+    if (activeTabElement) {
+      setIndicatorStyle({
+        left: activeTabElement.offsetLeft,
+        width: activeTabElement.offsetWidth,
+      });
+    }
+  }, [activeTab, adminAccess]);
+
+  return (
+    <div className="space-y-4" data-component="DutyCrewPage">
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Duty Crew</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700 relative">
+        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
+          <button
+            ref={(el) => { tabRefs.current['schedule'] = el; }}
+            onClick={() => setActiveTab("schedule")}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "schedule"
+                ? 'text-red-600 dark:text-red-400 font-bold'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
+          >
+            Schedule
+          </button>
+          <button
+            ref={(el) => { tabRefs.current['stationChecks'] = el; }}
+            onClick={() => setActiveTab("stationChecks")}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "stationChecks"
+                ? 'text-red-600 dark:text-red-400 font-bold'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
+          >
+            Station Checks
+          </button>
+          {adminAccess && (
             <>
-              <Tab.Panel>
-                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                  <div className="flex items-center mb-4">
-                    <ClipboardDocumentListIcon className="h-6 w-6 text-indigo-500 mr-2" />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Duty Crew Administration</h2>
-                  </div>
-                  <DutyCrewAdmin />
-                </div>
-              </Tab.Panel>
-              <Tab.Panel>
-                <StationChecksAdmin />
-              </Tab.Panel>
-              <Tab.Panel>
-                <StationChecksHistory />
-              </Tab.Panel>
+              <button
+                ref={(el) => { tabRefs.current['administration'] = el; }}
+                onClick={() => setActiveTab("administration")}
+                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "administration"
+                    ? 'text-red-600 dark:text-red-400 font-bold'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+                  }`}
+              >
+                Administration
+              </button>
+              <button
+                ref={(el) => { tabRefs.current['stationChecksAdmin'] = el; }}
+                onClick={() => setActiveTab("stationChecksAdmin")}
+                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "stationChecksAdmin"
+                    ? 'text-red-600 dark:text-red-400 font-bold'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+                  }`}
+              >
+                Station Checks Admin
+              </button>
+              <button
+                ref={(el) => { tabRefs.current['checksHistory'] = el; }}
+                onClick={() => setActiveTab("checksHistory")}
+                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "checksHistory"
+                    ? 'text-red-600 dark:text-red-400 font-bold'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+                  }`}
+              >
+                Checks History
+              </button>
             </>
           )}
-        </Tab.Panels>
-      </Tab.Group>
+        </nav>
+        {/* Animated indicator */}
+        <div
+          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
+          style={{
+            left: `${indicatorStyle.left}px`,
+            width: `${indicatorStyle.width}px`,
+          }}
+        />
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-4">
+        {activeTab === "schedule" && (
+          <DutyCrewSchedule />
+        )}
+
+        {activeTab === "stationChecks" && (
+          <StationChecksTab />
+        )}
+
+        {activeTab === "administration" && adminAccess && (
+          <DutyCrewAdmin />
+        )}
+
+        {activeTab === "stationChecksAdmin" && adminAccess && (
+          <StationChecksAdmin />
+        )}
+
+        {activeTab === "checksHistory" && adminAccess && (
+          <StationChecksHistory />
+        )}
+      </div>
     </div>
   );
 }

@@ -42,9 +42,9 @@ export const getDashboardStats = query({
       oneMonth: v.number(),
     }),
     overdueBreakdown: v.object({
-      oneMonth: v.number(),
       threeMonths: v.number(),
       sixMonths: v.number(),
+      twelveMonths: v.number(),
       twelvePlusMonths: v.number(),
     }),
   }),
@@ -65,7 +65,7 @@ export const getDashboardStats = query({
         lengthDistribution: [],
         testingStatus: { inDate: 0, dueForTesting: 0, overdue: 0 },
         upcomingTestDates: { sixMonths: 0, threeMonths: 0, oneMonth: 0 },
-        overdueBreakdown: { oneMonth: 0, threeMonths: 0, sixMonths: 0, twelvePlusMonths: 0 },
+        overdueBreakdown: { threeMonths: 0, sixMonths: 0, twelveMonths: 0, twelvePlusMonths: 0 },
       };
     }
 
@@ -143,25 +143,32 @@ export const getDashboardStats = query({
     };
 
     // Calculate upcoming test dates (hoses that will need testing in future timeframes)
+    // Using non-overlapping ranges: 4-6 months, 1-3 months, 0-1 month
     const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
     const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000; // ~6 months
+    const fourMonthsMs = 4 * 30 * 24 * 60 * 60 * 1000; // ~4 months
     const threeMonthsMs = 3 * 30 * 24 * 60 * 60 * 1000; // ~3 months
     const oneMonthMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
 
     // Only consider "In date" hoses for upcoming test dates
     const inDateHoses = hoses.filter(h => h.status === "In date");
-    
+
     const upcomingTestDates = {
+      // Hoses expiring between 4-6 months from now
       sixMonths: inDateHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
         const sixMonthsFromNow = now + sixMonthsMs;
-        return testExpiryDate <= sixMonthsFromNow && testExpiryDate > now;
+        const fourMonthsFromNow = now + fourMonthsMs;
+        return testExpiryDate <= sixMonthsFromNow && testExpiryDate > fourMonthsFromNow;
       }).length,
+      // Hoses expiring between 1-3 months from now
       threeMonths: inDateHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
         const threeMonthsFromNow = now + threeMonthsMs;
-        return testExpiryDate <= threeMonthsFromNow && testExpiryDate > now;
+        const oneMonthFromNow = now + oneMonthMs;
+        return testExpiryDate <= threeMonthsFromNow && testExpiryDate > oneMonthFromNow;
       }).length,
+      // Hoses expiring within the next month
       oneMonth: inDateHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
         const oneMonthFromNow = now + oneMonthMs;
@@ -170,29 +177,35 @@ export const getDashboardStats = query({
     };
 
     // Calculate overdue breakdown (hoses that are already past their test date)
+    // Using ranges: 0-3 months, 3-6 months, 6-12 months, 12+ months
     const dueForTestingHoses = hoses.filter(h => h.status === "Due for testing");
-    
+    const twelveMonthsMs = 12 * 30 * 24 * 60 * 60 * 1000;
+
     const overdueBreakdown = {
-      oneMonth: dueForTestingHoses.filter(h => {
-        const testExpiryDate = h.testDate + oneYearMs;
-        const oneMonthAgo = now - oneMonthMs;
-        return testExpiryDate >= oneMonthAgo && testExpiryDate < now;
-      }).length,
+      // Hoses that expired 0-3 months ago
       threeMonths: dueForTestingHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
         const threeMonthsAgo = now - threeMonthsMs;
-        const oneMonthAgo = now - oneMonthMs;
-        return testExpiryDate >= threeMonthsAgo && testExpiryDate < oneMonthAgo;
+        return testExpiryDate >= threeMonthsAgo && testExpiryDate < now;
       }).length,
+      // Hoses that expired 3-6 months ago
       sixMonths: dueForTestingHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
         const sixMonthsAgo = now - sixMonthsMs;
         const threeMonthsAgo = now - threeMonthsMs;
         return testExpiryDate >= sixMonthsAgo && testExpiryDate < threeMonthsAgo;
       }).length,
+      // Hoses that expired 6-12 months ago
+      twelveMonths: dueForTestingHoses.filter(h => {
+        const testExpiryDate = h.testDate + oneYearMs;
+        const twelveMonthsAgo = now - twelveMonthsMs;
+        const sixMonthsAgo = now - sixMonthsMs;
+        return testExpiryDate >= twelveMonthsAgo && testExpiryDate < sixMonthsAgo;
+      }).length,
+      // Hoses that expired more than 12 months ago
       twelvePlusMonths: dueForTestingHoses.filter(h => {
         const testExpiryDate = h.testDate + oneYearMs;
-        const twelveMonthsAgo = now - (12 * 30 * 24 * 60 * 60 * 1000);
+        const twelveMonthsAgo = now - twelveMonthsMs;
         return testExpiryDate < twelveMonthsAgo;
       }).length,
     };

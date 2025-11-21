@@ -4,7 +4,7 @@ import { api } from '../../../convex/_generated/api';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -20,16 +20,16 @@ import {
   AlertDialogHeader as ConfirmDialogHeader,
   AlertDialogTitle as ConfirmDialogTitle,
 } from '../ui/alert-dialog';
-import { 
-  ArrowLeft, 
-  Edit, 
-  Calendar, 
-  User, 
-  FileText, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Wrench, 
+import {
+  ArrowLeft,
+  Edit,
+  Calendar,
+  User,
+  FileText,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Wrench,
   X,
   Save,
   Trash2,
@@ -154,12 +154,12 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
       }
 
       await updateFault(updatePayload);
-      
+
       toast({
         title: "Fault Updated",
         description: "Vehicle fault has been successfully updated.",
       });
-      
+
       setIsEditing(false);
       onUpdate?.();
     } catch (error) {
@@ -194,6 +194,10 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loading...</DialogTitle>
+            <DialogDescription>Loading vehicle fault details</DialogDescription>
+          </DialogHeader>
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
             <div className="space-y-3">
@@ -230,11 +234,11 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-bold">{fault.vehicle}</DialogTitle>
-                  <p className="text-sm text-muted-foreground">Vehicle Fault Report</p>
+                  <DialogDescription className="text-sm text-muted-foreground">Vehicle Fault Report</DialogDescription>
                 </div>
               </div>
             </div>
-            
+
             {/* Action buttons */}
             <div className="flex items-center gap-2">
               {!isEditing && (
@@ -278,9 +282,9 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="edit-vehicle" className="text-sm">Vehicle</Label>
-                    <Select 
-                      value={editData.vehicle} 
-                      onValueChange={(value) => setEditData({...editData, vehicle: value as VehicleType})}
+                    <Select
+                      value={editData.vehicle}
+                      onValueChange={(value) => setEditData({ ...editData, vehicle: value as VehicleType })}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
@@ -295,9 +299,9 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
 
                   <div className="space-y-1">
                     <Label htmlFor="edit-status" className="text-sm">Status</Label>
-                    <Select 
-                      value={editData.status} 
-                      onValueChange={(value) => setEditData({...editData, status: value as StatusType})}
+                    <Select
+                      value={editData.status}
+                      onValueChange={(value) => setEditData({ ...editData, status: value as StatusType })}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
@@ -317,9 +321,9 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
 
                   <div className="space-y-1">
                     <Label htmlFor="edit-priority" className="text-sm">Priority</Label>
-                    <Select 
-                      value={editData.priority} 
-                      onValueChange={(value) => setEditData({...editData, priority: value as PriorityType})}
+                    <Select
+                      value={editData.priority}
+                      onValueChange={(value) => setEditData({ ...editData, priority: value as PriorityType })}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
@@ -343,7 +347,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                       id="edit-eam"
                       className="h-9"
                       value={editData.eamRequestNumber}
-                      onChange={(e) => setEditData({...editData, eamRequestNumber: e.target.value})}
+                      onChange={(e) => setEditData({ ...editData, eamRequestNumber: e.target.value })}
                       placeholder="Optional"
                     />
                   </div>
@@ -367,7 +371,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                       id="edit-short"
                       className="h-9"
                       value={editData.shortDescription}
-                      onChange={(e) => setEditData({...editData, shortDescription: e.target.value})}
+                      onChange={(e) => setEditData({ ...editData, shortDescription: e.target.value })}
                       placeholder="Brief summary"
                     />
                   </div>
@@ -377,7 +381,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                     <Textarea
                       id="edit-long"
                       value={editData.longDescription}
-                      onChange={(e) => setEditData({...editData, longDescription: e.target.value})}
+                      onChange={(e) => setEditData({ ...editData, longDescription: e.target.value })}
                       rows={4}
                       placeholder="Detailed information about the fault..."
                       className="resize-none"
@@ -399,7 +403,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                     <Textarea
                       id="edit-notes"
                       value={editData.notes}
-                      onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                      onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
                       rows={6}
                       placeholder="Additional notes, updates, or maintenance history..."
                       className="resize-none"
@@ -415,8 +419,8 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                 <Save className="h-3 w-3" />
                 Save Changes
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsEditing(false);
                   setEditData({
@@ -452,8 +456,8 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                   </Badge>
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Reported {new Date(fault.dateReported).toLocaleDateString('en-AU', { 
-                    month: 'short', 
+                  Reported {new Date(fault.dateReported).toLocaleDateString('en-AU', {
+                    month: 'short',
                     day: 'numeric',
                     year: '2-digit'
                   })}
@@ -479,14 +483,14 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                       {fault.reportedByUser?.firstName} {fault.reportedByUser?.lastName}
                     </span>
                   </div>
-                  
+
                   {fault.dateLogged && (
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                       <span className="font-medium">Logged:</span>
                       <span className="text-muted-foreground">
-                        {new Date(fault.dateLogged).toLocaleDateString('en-AU', { 
-                          month: 'short', 
+                        {new Date(fault.dateLogged).toLocaleDateString('en-AU', {
+                          month: 'short',
                           day: 'numeric',
                           year: '2-digit'
                         })}
@@ -499,8 +503,8 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
                       <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
                       <span className="font-medium">Updated:</span>
                       <span className="text-muted-foreground">
-                        {new Date(fault.updatedAt).toLocaleDateString('en-AU', { 
-                          month: 'short', 
+                        {new Date(fault.updatedAt).toLocaleDateString('en-AU', {
+                          month: 'short',
                           day: 'numeric',
                           year: '2-digit'
                         })}

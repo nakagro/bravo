@@ -153,17 +153,6 @@ export const HamburgerMenu = () => {
             </DropdownMenuItem>
           )}
 
-          {hasModuleAccess("fireReports") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/fire-reports")}
-              className={location.pathname === '/fire-reports' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <FileText className="mr-3 h-5 w-5" />
-              <span>Fire Reports</span>
-              <Badge variant="outline" className="ml-auto">Preview</Badge>
-            </DropdownMenuItem>
-          )}
-
           {hasModuleAccess("dutyCrew") && (
             <DropdownMenuItem
               onClick={() => handleNavigation("/dutycrew")}
@@ -209,6 +198,19 @@ export const HamburgerMenu = () => {
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>
           )}
+
+
+          {hasModuleAccess("fireReports") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/fire-reports")}
+              className={location.pathname === '/fire-reports' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <FileText className="mr-3 h-5 w-5" />
+              <span>Fire Reports</span>
+              <Badge variant="outline" className="ml-auto">WIP</Badge>
+            </DropdownMenuItem>
+          )}
+
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
 
@@ -264,17 +266,16 @@ export const HamburgerMenu = () => {
             <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
             {" · "}
             <span>v{getVersionString()}</span>
-            <span className={`inline-block h-2 w-2 rounded-full ${
-              connectionState.isWebSocketConnected 
-                ? 'bg-green-600 dark:bg-green-500' 
-                : 'bg-amber-600 dark:bg-amber-500'
-            }`} title={
-              connectionState.isWebSocketConnected 
-                ? 'Connected' 
-                : connectionState.connectionRetries > 0 
-                  ? 'Reconnecting...' 
-                  : 'Disconnected'
-            } />
+            <span className={`inline-block h-2 w-2 rounded-full ${connectionState.isWebSocketConnected
+              ? 'bg-green-600 dark:bg-green-500'
+              : 'bg-amber-600 dark:bg-amber-500'
+              }`} title={
+                connectionState.isWebSocketConnected
+                  ? 'Connected'
+                  : connectionState.connectionRetries > 0
+                    ? 'Reconnecting...'
+                    : 'Disconnected'
+              } />
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>

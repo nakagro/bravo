@@ -7,7 +7,8 @@ import { ChartBarIcon, TableCellsIcon, ArrowPathIcon, ClockIcon } from "@heroico
 
 type Status = "With district for repair" | "Condemned" | "Due for testing" | "In date";
 type UpcomingTestFilter = "1month" | "3months" | "6months";
-type FilterType = Status | UpcomingTestFilter | null;
+type OverdueFilter = "overdue3months" | "overdue6months" | "overdue12months" | "overdue12plus";
+type FilterType = Status | UpcomingTestFilter | OverdueFilter | null;
 
 export function HosesPage() {
   const [activeTab, setActiveTab] = useState('dashboard'); // Default to dashboard tab
@@ -36,6 +37,12 @@ export function HosesPage() {
 
   // Function to handle upcoming test date card clicks
   const handleUpcomingTestClick = (timeframe: UpcomingTestFilter) => {
+    setInventoryFilter(timeframe);
+    setActiveTab('inventory');
+  };
+
+  // Function to handle overdue card clicks
+  const handleOverdueClick = (timeframe: OverdueFilter) => {
     setInventoryFilter(timeframe);
     setActiveTab('inventory');
   };
@@ -110,6 +117,7 @@ export function HosesPage() {
           <HoseDashboard
             onStatusCardClick={handleStatusCardClick}
             onUpcomingTestClick={handleUpcomingTestClick}
+            onOverdueClick={handleOverdueClick}
           />
         )}
 

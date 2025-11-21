@@ -73,12 +73,12 @@ export function VehicleFaultsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-
+  const faults = useQuery(api.vehicleFaults.getVehicleFaults);
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
-  // Update indicator position when active tab changes
+  // Update indicator position when active tab changes or component mounts
   useEffect(() => {
     const activeTabElement = tabRefs.current[activeTab];
     if (activeTabElement) {
@@ -87,9 +87,9 @@ export function VehicleFaultsPage() {
         width: activeTabElement.offsetWidth,
       });
     }
-  }, [activeTab]);
+  }, [activeTab, faults]);
 
-  const faults = useQuery(api.vehicleFaults.getVehicleFaults);
+
   const createFault = useMutation(api.vehicleFaults.createVehicleFault);
   const updateFault = useMutation(api.vehicleFaults.updateVehicleFault);
 
