@@ -28,6 +28,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Format user display name
 const formatUserName = (user: {
@@ -122,7 +128,7 @@ const UserManagement: React.FC = () => {
       setIsAdmin(false);
       setIsDutyOfficer(false);
     }
-    
+
     // Reset password fields when user changes
     setNewPassword("");
     setConfirmPassword("");
@@ -134,9 +140,9 @@ const UserManagement: React.FC = () => {
   const filteredUsers = query === ""
     ? users
     : users?.filter((user) => {
-        const displayName = formatUserName(user).toLowerCase();
-        return displayName.includes(query.toLowerCase());
-      });
+      const displayName = formatUserName(user).toLowerCase();
+      return displayName.includes(query.toLowerCase());
+    });
 
   // Handle user selection
   const handleUserChange = (userId: Id<"users"> | null) => {
@@ -356,10 +362,9 @@ const UserManagement: React.FC = () => {
                       <Combobox.Option
                         key={user._id}
                         className={({ active }) =>
-                          `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                            active
-                              ? "bg-indigo-600 text-white"
-                              : "text-gray-900 dark:text-gray-200"
+                          `relative cursor-default select-none py-2 pl-10 pr-4 ${active
+                            ? "bg-indigo-600 text-white"
+                            : "text-gray-900 dark:text-gray-200"
                           }`
                         }
                         value={user._id}
@@ -367,17 +372,15 @@ const UserManagement: React.FC = () => {
                         {({ selected, active }) => (
                           <>
                             <span
-                              className={`block truncate ${
-                                selected ? "font-medium" : "font-normal"
-                              }`}
+                              className={`block truncate ${selected ? "font-medium" : "font-normal"
+                                }`}
                             >
                               {formatUserName(user)}
                             </span>
                             {selected ? (
                               <span
-                                className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
-                                  active ? "text-white" : "text-indigo-600"
-                                }`}
+                                className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-indigo-600"
+                                  }`}
                               >
                                 <CheckIcon className="h-5 w-5" aria-hidden="true" />
                               </span>
@@ -403,11 +406,16 @@ const UserManagement: React.FC = () => {
           }
         }}
       >
-        <DialogContent className="max-w-lg bg-white dark:bg-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle>
               {selectedUser ? formatUserName(selectedUser) : "User Settings"}
             </DialogTitle>
+            {selectedUser?.email && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {selectedUser.email}
+              </p>
+            )}
           </DialogHeader>
 
           {selectedUser && (
@@ -498,114 +506,116 @@ const UserManagement: React.FC = () => {
               <Separator />
 
               {/* Password Reset Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium dark:text-gray-200">Reset Password</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  {/* New Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password" className="text-sm font-medium dark:text-gray-200">
-                      New Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="new-password"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        disabled={isResettingPassword}
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        disabled={isResettingPassword}
-                      >
-                        {showNewPassword ? (
-                          <EyeSlashIcon className="h-4 w-4" />
-                        ) : (
-                          <EyeIcon className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                    {/* Password Strength Indicator */}
-                    {newPassword && (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(passwordStrength(newPassword))}`}
-                              style={{ width: `${(passwordStrength(newPassword) / 5) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
-                            {getStrengthText(passwordStrength(newPassword))}
-                          </span>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="reset-password" className="border-none">
+                  <AccordionTrigger className="text-lg font-medium dark:text-gray-200 hover:no-underline py-2">
+                    Reset Password
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-4">
+                      {/* New Password */}
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="text-sm font-medium dark:text-gray-200">
+                          New Password
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="new-password"
+                            type={showNewPassword ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Enter new password"
+                            disabled={isResettingPassword}
+                            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            disabled={isResettingPassword}
+                          >
+                            {showNewPassword ? (
+                              <EyeSlashIcon className="h-4 w-4" />
+                            ) : (
+                              <EyeIcon className="h-4 w-4" />
+                            )}
+                          </button>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Use 8+ characters with a mix of letters, numbers & symbols
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Confirm Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password" className="text-sm font-medium dark:text-gray-200">
-                      Confirm New Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        disabled={isResettingPassword}
-                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        disabled={isResettingPassword}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeSlashIcon className="h-4 w-4" />
-                        ) : (
-                          <EyeIcon className="h-4 w-4" />
+                        {/* Password Strength Indicator */}
+                        {newPassword && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(passwordStrength(newPassword))}`}
+                                  style={{ width: `${(passwordStrength(newPassword) / 5) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {getStrengthText(passwordStrength(newPassword))}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Use 8+ characters with a mix of letters, numbers & symbols
+                            </p>
+                          </div>
                         )}
-                      </button>
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="text-sm font-medium dark:text-gray-200">
+                          Confirm New Password
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="confirm-password"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirm new password"
+                            disabled={isResettingPassword}
+                            className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            disabled={isResettingPassword}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeSlashIcon className="h-4 w-4" />
+                            ) : (
+                              <EyeIcon className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        {confirmPassword && newPassword !== confirmPassword && (
+                          <p className="text-sm text-red-500">Passwords do not match</p>
+                        )}
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handlePasswordReset}
+                        disabled={isResettingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                        className="w-full"
+                        variant="destructive"
+                      >
+                        {isResettingPassword ? "Resetting Password..." : "Reset Password"}
+                      </Button>
                     </div>
-                    {confirmPassword && newPassword !== confirmPassword && (
-                      <p className="text-sm text-red-500">Passwords do not match</p>
-                    )}
-                  </div>
-                  
-                  <Button
-                    type="button"
-                    onClick={handlePasswordReset}
-                    disabled={isResettingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                    className="w-full"
-                    variant="destructive"
-                  >
-                    {isResettingPassword ? "Resetting Password..." : "Reset Password"}
-                  </Button>
-                </div>
-              </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Status message */}
               {statusMessage && (
                 <div
-                  className={`p-2 rounded text-sm ${
-                    statusMessage.type === "success"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                      : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                  }`}
+                  className={`p-2 rounded text-sm ${statusMessage.type === "success"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                    }`}
                 >
                   {statusMessage.message}
                 </div>
