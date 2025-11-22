@@ -43,6 +43,7 @@ type ApplianceItem = {
   order: number;
   description?: string;
   imageStorageId?: Id<"_storage">;
+  expectedQuantity?: number;
 };
 
 type ApplianceSection = {
@@ -380,7 +381,7 @@ function ItemDetailsDialog({ item, onSave }: {
       if (imageFile) {
         const compressedFile = await compressImage(imageFile);
         const uploadUrl = await generateUploadUrl();
-        
+
         const result = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": compressedFile.type },
@@ -395,7 +396,7 @@ function ItemDetailsDialog({ item, onSave }: {
         description.trim() || undefined,
         newImageStorageId
       );
-      
+
       toast({ title: "Success", description: "Item details updated successfully" });
       setOpen(false);
     } catch (error) {
@@ -419,9 +420,9 @@ function ItemDetailsDialog({ item, onSave }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="default" 
+        <Button
+          variant="ghost"
+          size="default"
           className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
           title="Add description or image"
         >
@@ -455,9 +456,9 @@ function ItemDetailsDialog({ item, onSave }: {
             <div>
               <label className="text-sm font-medium">Current Image</label>
               <div className="relative mt-1">
-                <img 
-                  src={imageUrl} 
-                  alt={item.name} 
+                <img
+                  src={imageUrl}
+                  alt={item.name}
                   className="w-full rounded-lg border"
                 />
                 <Button
@@ -479,9 +480,9 @@ function ItemDetailsDialog({ item, onSave }: {
             <div>
               <label className="text-sm font-medium">New Image Preview</label>
               <div className="relative mt-1">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
+                <img
+                  src={imagePreview}
+                  alt="Preview"
                   className="w-full rounded-lg border"
                 />
                 <Button
@@ -534,16 +535,16 @@ function ItemDetailsDialog({ item, onSave }: {
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setOpen(false)} 
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
               disabled={uploading}
               className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={uploading}
               className="w-full sm:w-auto"
             >
@@ -557,12 +558,20 @@ function ItemDetailsDialog({ item, onSave }: {
 }
 
 // Sortable item component
-function SortableItem({ item, onRename, onDelete, onUpdateDetails }: {
+function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuantity }: {
   item: ApplianceItem;
   onRename: (name: string) => Promise<void>;
   onDelete: () => Promise<void>;
   onUpdateDetails: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
+  onUpdateQuantity: (quantity?: number) => Promise<void>;
 }) {
+  const [quantity, setQuantity] = useState<string>(item.expectedQuantity?.toString() || "");
+
+  // Sync quantity state when item changes
+  React.useEffect(() => {
+    setQuantity(item.expectedQuantity?.toString() || "");
+  }, [item.expectedQuantity]);
+
   const {
     attributes,
     listeners,
@@ -592,8 +601,33 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails }: {
         >
           <Bars3Icon className="h-6 w-6 text-muted-foreground" />
         </button>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 flex-1 min-w-0">
-          <span className="text-base font-medium truncate">{item.name}</span>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <div className="text-base font-medium truncate">
+              {quantity ? `${quantity}x ` : ''}{item.name}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {quantity ? "Quantity item" : "Yes/No item"}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Input
+              type="number"
+              min="0"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              onBlur={() => {
+                const num = quantity.trim() ? parseInt(quantity.trim(), 10) : undefined;
+                if (num && !isNaN(num) && num >= 0) {
+                  onUpdateQuantity(num);
+                } else if (!quantity.trim()) {
+                  onUpdateQuantity(undefined);
+                }
+              }}
+              placeholder="Qty"
+              className="w-16 h-9 text-sm text-center"
+            />
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -717,6 +751,10 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
     imageStorageId?: Id<"_storage"> | null
   ) => {
     await updateItem({ itemId, description, imageStorageId });
+  };
+
+  const handleUpdateQuantity = async (itemId: Id<"applianceItems">, expectedQuantity?: number) => {
+    await updateItem({ itemId, expectedQuantity });
   };
 
   const handleDeleteItem = async (itemId: Id<"applianceItems">) => {
@@ -933,9 +971,10 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                               item={item}
                               onRename={(name) => handleRenameItem(item._id, name)}
                               onDelete={() => handleDeleteItem(item._id)}
-                              onUpdateDetails={(description, imageStorageId) => 
+                              onUpdateDetails={(description, imageStorageId) =>
                                 handleUpdateItemDetails(item._id, description, imageStorageId)
                               }
+                              onUpdateQuantity={(quantity) => handleUpdateQuantity(item._id, quantity)}
                             />
                           ))}
                         </SortableContext>

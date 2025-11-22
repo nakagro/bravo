@@ -288,6 +288,7 @@ export const updateItem = mutation({
     defaultNotes: v.optional(v.string()),
     description: v.optional(v.string()),
     imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    expectedQuantity: v.optional(v.number()),
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, { itemId, imageStorageId, ...patch }) => {
@@ -315,7 +316,7 @@ export const updateItem = mutation({
       updatedAt: Date.now(),
       updatedBy: userId,
     };
-    
+
     // Handle imageStorageId: null means remove, undefined means don't change
     if (imageStorageId === null) {
       updateData.imageStorageId = undefined; // Remove the field (schema doesn't allow null)
@@ -339,7 +340,7 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("You must be signed in");
-    
+
     return await ctx.storage.generateUploadUrl();
   },
 });

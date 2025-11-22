@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
@@ -26,6 +27,8 @@ interface RunItemDoc {
   notes?: string;
   description?: string;
   imageStorageId?: Id<"_storage">;
+  expectedQuantity?: number;
+  actualQuantity?: number;
 }
 
 // Component to display item info (description + image)
@@ -44,9 +47,9 @@ function ItemInfoButton({ item }: { item: RunItemDoc }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 shrink-0 min-h-[44px] min-w-[44px] p-2"
           title="View item details"
         >
@@ -69,9 +72,9 @@ function ItemInfoButton({ item }: { item: RunItemDoc }) {
           {imageUrl && (
             <div>
               <h4 className="text-sm font-medium mb-2">Reference Image</h4>
-              <img 
-                src={imageUrl} 
-                alt={item.itemName} 
+              <img
+                src={imageUrl}
+                alt={item.itemName}
                 className="w-full rounded-lg border"
               />
             </div>
@@ -93,10 +96,11 @@ export function InventoryChecksTab() {
   const completeRun = useMutation(api.inventoryCheckRuns.completeRun);
 
   const [completing, setCompleting] = useState(false);
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [showQuantityInput, setShowQuantityInput] = useState<Set<string>>(new Set());
+  const [showNotesModal, setShowNotesModal] = useState<Set<string>>(new Set());
 
-  const toggleNotes = (itemId: string) => {
-    setExpandedNotes(prev => {
+  const toggleQuantityInput = (itemId: string) => {
+    setShowQuantityInput(prev => {
       const next = new Set(prev);
       if (next.has(itemId)) {
         next.delete(itemId);
@@ -133,14 +137,27 @@ export function InventoryChecksTab() {
   // Calculate progress
   const progress = useMemo(() => {
     const items = (runData?.items as RunItemDoc[]) ?? [];
-    const answered = items.filter(i => typeof i.value !== "undefined").length;
+    const answered = items.filter(i => {
+      // For quantity items, check if actualQuantity is set
+      if (i.expectedQuantity !== undefined) {
+        return i.actualQuantity !== undefined;
+      }
+      // For boolean items, check if value is set
+      return typeof i.value !== "undefined";
+    }).length;
     const total = items.length;
     return { answered, total, percentage: total > 0 ? Math.round((answered / total) * 100) : 0 };
   }, [runData]);
 
-  const handleSetValue = async (runItemId: Id<"applianceCheckRunItems">, value: "yes" | "no") => {
+  const handleSetValue = async (runItemId: Id<"applianceCheckRunItems">, value: "yes" | "no", expectedQuantity?: number) => {
     if (isReadOnly) return;
-    await updateItem({ runItemId, value });
+    // For quantity items, "yes" means all present, "no" means none found
+    if (expectedQuantity !== undefined) {
+      const actualQuantity = value === "yes" ? expectedQuantity : 0;
+      await updateItem({ runItemId, value, actualQuantity });
+    } else {
+      await updateItem({ runItemId, value });
+    }
   };
 
   const handleSaveNotes = async (runItemId: Id<"applianceCheckRunItems">, notes: string) => {
@@ -150,11 +167,37 @@ export function InventoryChecksTab() {
 
   const handleComplete = async () => {
     if (!run) return;
-    const unanswered = (runData?.items as RunItemDoc[] | undefined)?.filter(i => typeof i.value === "undefined");
-    if (unanswered && unanswered.length > 0) {
+    const items = (runData?.items as RunItemDoc[] | undefined) ?? [];
+    
+    // Check for unanswered items (both boolean and quantity)
+    const unanswered = items.filter(i => {
+      if (i.expectedQuantity !== undefined) {
+        return i.actualQuantity === undefined;
+      }
+      return typeof i.value === "undefined";
+    });
+    
+    if (unanswered.length > 0) {
       const proceed = confirm(`There are ${unanswered.length} unchecked items. Complete anyway?`);
       if (!proceed) return;
     }
+    
+    // Check for quantity mismatches
+    const mismatches = items.filter(i => 
+      i.expectedQuantity !== undefined && 
+      i.actualQuantity !== undefined && 
+      i.actualQuantity !== i.expectedQuantity
+    );
+    
+    if (mismatches.length > 0) {
+      const mismatchNames = mismatches.map(i => i.itemName).join(", ");
+      const proceed = confirm(
+        `Warning: ${mismatches.length} item(s) have quantity mismatches (${mismatchNames}). ` +
+        `Consider adding notes to explain the discrepancy. Complete anyway?`
+      );
+      if (!proceed) return;
+    }
+    
     setCompleting(true);
     try {
       await completeRun({ runId: run._id });
@@ -244,7 +287,14 @@ export function InventoryChecksTab() {
       {/* Sections and Items */}
       <Accordion type="multiple" defaultValue={grouped.map(s => `section-${s.order}`)} className="space-y-4">
         {grouped.map((section) => {
-          const sectionAnswered = section.items.filter(i => typeof i.value !== "undefined").length;
+          const sectionAnswered = section.items.filter(i => {
+            // For quantity items, check if actualQuantity is set
+            if (i.expectedQuantity !== undefined) {
+              return i.actualQuantity !== undefined;
+            }
+            // For boolean items, check if value is set
+            return typeof i.value !== "undefined";
+          }).length;
           const sectionTotal = section.items.length;
           const sectionPercentage = sectionTotal > 0 ? Math.round((sectionAnswered / sectionTotal) * 100) : 0;
 
@@ -265,32 +315,243 @@ export function InventoryChecksTab() {
                   <CardContent className="p-4 pt-4 space-y-3">
                     {section.items.map((item) => {
                       const hasNotes = item.notes && item.notes.trim().length > 0;
-                      const showNotes = expandedNotes.has(item._id) || hasNotes;
 
                       return (
                         <Card key={item._id}>
                           <CardContent className="p-4">
-                            {/* Item Name and Buttons */}
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                              <div className="flex items-center justify-between flex-1 gap-2">
-                                <div className="flex items-center gap-2 flex-1">
-                                  <div className="font-medium text-sm sm:text-base pt-1">
-                                    {item.itemName}
-                                  </div>
-                                  <ItemInfoButton item={item} />
+                            {/* Item Name */}
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <div className="flex items-center gap-2 flex-1 flex-wrap">
+                                <div className="font-medium text-sm sm:text-base">
+                                  {item.expectedQuantity 
+                                    ? `${item.actualQuantity !== undefined ? item.actualQuantity : item.expectedQuantity}x ${item.itemName}` 
+                                    : item.itemName}
                                 </div>
-                                {!showNotes && !isReadOnly && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleNotes(item._id)}
-                                    className="text-muted-foreground hover:text-foreground shrink-0"
+                                <ItemInfoButton item={item} />
+                                {/* Show badge if quantity mismatch */}
+                                {item.expectedQuantity && item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs font-semibold ${
+                                      item.actualQuantity > item.expectedQuantity
+                                        ? "border-green-500 text-green-600 dark:text-green-500"
+                                        : "border-red-500 text-red-600 dark:text-red-500"
+                                    }`}
                                   >
-                                    <MessageSquarePlus className="w-4 h-4" />
-                                  </Button>
+                                    {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
+                                  </Badge>
                                 )}
                               </div>
-                              <div className="flex gap-2 sm:flex-shrink-0">
+                              {!isReadOnly && (
+                                <Dialog open={showNotesModal.has(item._id)} onOpenChange={(open) => {
+                                  setShowNotesModal(prev => {
+                                    const next = new Set(prev);
+                                    if (open) {
+                                      next.add(item._id);
+                                    } else {
+                                      next.delete(item._id);
+                                    }
+                                    return next;
+                                  });
+                                }}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-muted-foreground hover:text-foreground shrink-0"
+                                    >
+                                      <MessageSquarePlus className="w-4 h-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>Notes: {item.itemName}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <Textarea
+                                        id={`notes-${item._id}`}
+                                        defaultValue={item.notes ?? ""}
+                                        placeholder="Add notes (optional)..."
+                                        className="min-h-[120px]"
+                                        autoFocus
+                                      />
+                                      <div className="flex gap-2 justify-end">
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => {
+                                            setShowNotesModal(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(item._id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          onClick={() => {
+                                            const textarea = document.getElementById(`notes-${item._id}`) as HTMLTextAreaElement;
+                                            if (textarea) {
+                                              handleSaveNotes(item._id, textarea.value);
+                                            }
+                                            setShowNotesModal(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(item._id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          Save Notes
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
+
+                            {/* Quantity Check or Yes/No Check */}
+                            {item.expectedQuantity ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant={
+                                    item.actualQuantity !== undefined && 
+                                    (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                                      ? "default" 
+                                      : "outline"
+                                  }
+                                  size="lg"
+                                  onClick={() => handleSetValue(item._id, "yes", item.expectedQuantity)}
+                                  disabled={isReadOnly}
+                                  className={`flex-1 min-w-[100px] ${
+                                    item.actualQuantity !== undefined && 
+                                    (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                                      ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+                                      : ""
+                                  }`}
+                                >
+                                  <CheckCircle2 className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  variant={item.value === "no" && item.actualQuantity === 0 ? "destructive" : "outline"}
+                                  size="lg"
+                                  onClick={() => handleSetValue(item._id, "no", item.expectedQuantity)}
+                                  disabled={isReadOnly}
+                                  className="flex-1 min-w-[100px]"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </Button>
+                                <Dialog open={showQuantityInput.has(item._id)} onOpenChange={(open) => {
+                                  if (!open) {
+                                    setShowQuantityInput(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(item._id);
+                                      return next;
+                                    });
+                                  }
+                                }}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant={
+                                        item.actualQuantity !== undefined && 
+                                        item.actualQuantity !== item.expectedQuantity && 
+                                        item.actualQuantity !== 0
+                                          ? "default"
+                                          : "outline"
+                                      }
+                                      size="lg"
+                                      onClick={() => toggleQuantityInput(item._id)}
+                                      disabled={isReadOnly}
+                                      className={`min-w-[60px] ${
+                                        item.actualQuantity !== undefined && 
+                                        item.actualQuantity !== item.expectedQuantity && 
+                                        item.actualQuantity !== 0
+                                          ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
+                                          : ""
+                                      }`}
+                                      title="Adjust quantity"
+                                    >
+                                      <span className="text-lg">±</span>
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>Adjust Quantity: {item.itemName}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-muted-foreground">Expected:</span>
+                                        <span className="font-semibold text-base">{item.expectedQuantity}</span>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="text-sm font-medium">Actual Count:</label>
+                                        <Input
+                                          id={`quantity-${item._id}`}
+                                          type="number"
+                                          min="0"
+                                          step="1"
+                                          defaultValue={item.actualQuantity ?? ""}
+                                          onKeyDown={(e) => {
+                                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                              e.preventDefault();
+                                            }
+                                          }}
+                                          placeholder="Enter count..."
+                                          className="text-lg"
+                                          autoFocus
+                                        />
+                                      </div>
+                                      {item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
+                                        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                                          <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                                          <span className="text-sm font-medium text-amber-600 dark:text-amber-500">
+                                            Current Difference: {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="flex gap-2 justify-end">
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => {
+                                            setShowQuantityInput(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(item._id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          onClick={() => {
+                                            const input = document.getElementById(`quantity-${item._id}`) as HTMLInputElement;
+                                            if (input) {
+                                              const inputValue = input.value;
+                                              if (inputValue === "") {
+                                                updateItem({ runItemId: item._id, actualQuantity: undefined, value: undefined });
+                                              } else {
+                                                const value = parseInt(inputValue, 10);
+                                                if (!isNaN(value) && value >= 0 && Number.isInteger(value)) {
+                                                  updateItem({ runItemId: item._id, actualQuantity: value, value: "yes" });
+                                                }
+                                              }
+                                            }
+                                            setShowQuantityInput(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(item._id);
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          Save Quantity
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
                                 <Button
                                   variant={item.value === "yes" ? "default" : "outline"}
                                   size="lg"
@@ -315,28 +576,13 @@ export function InventoryChecksTab() {
                                   No
                                 </Button>
                               </div>
-                            </div>
+                            )}
 
-                            {/* Notes Field - Always available for all items */}
-                            {showNotes && (
-                              <div className="mt-3 space-y-2">
-                                <Textarea
-                                  defaultValue={item.notes ?? ""}
-                                  placeholder="Add notes (optional)..."
-                                  onBlur={(e) => handleSaveNotes(item._id, e.target.value)}
-                                  disabled={isReadOnly}
-                                  className="min-h-[80px] text-sm"
-                                />
-                                {!isReadOnly && !hasNotes && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleNotes(item._id)}
-                                    className="text-muted-foreground hover:text-foreground"
-                                  >
-                                    Cancel
-                                  </Button>
-                                )}
+                            {/* Show note content below buttons if exists */}
+                            {hasNotes && (
+                              <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                                <MessageSquarePlus className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span className="whitespace-pre-wrap">{item.notes}</span>
                               </div>
                             )}
                           </CardContent>

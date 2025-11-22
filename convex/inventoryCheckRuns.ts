@@ -68,6 +68,8 @@ export const startRun = mutation({
           itemType: item.itemType,
           description: item.description, // Snapshot description
           imageStorageId: item.imageStorageId, // Snapshot image
+          expectedQuantity: item.expectedQuantity, // Snapshot expected quantity
+          actualQuantity: undefined,
           value: undefined,
           notes: item.defaultNotes,
           updatedBy: undefined,
@@ -112,9 +114,10 @@ export const updateRunItem = mutation({
   args: {
     runItemId: v.id("applianceCheckRunItems"),
     value: v.optional(v.union(v.literal("yes"), v.literal("no"))),
+    actualQuantity: v.optional(v.number()),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { runItemId, value, notes }) => {
+  handler: async (ctx, { runItemId, value, actualQuantity, notes }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("You must be signed in");
 
@@ -127,8 +130,19 @@ export const updateRunItem = mutation({
       throw new Error("Run is not editable");
     }
 
+    // Validate actualQuantity if provided
+    if (typeof actualQuantity !== "undefined") {
+      if (actualQuantity < 0) {
+        throw new Error("Quantity cannot be negative");
+      }
+      if (!Number.isInteger(actualQuantity)) {
+        throw new Error("Quantity must be a whole number");
+      }
+    }
+
     const patch: any = { updatedAt: Date.now(), updatedBy: userId };
     if (typeof value !== "undefined") patch.value = value;
+    if (typeof actualQuantity !== "undefined") patch.actualQuantity = actualQuantity;
     if (typeof notes !== "undefined") patch.notes = notes;
 
     await ctx.db.patch(runItemId, patch);
@@ -223,15 +237,25 @@ export const listRunSummaries = query({
       const total = items.length;
       let yes = 0, no = 0, unanswered = 0;
       for (const it of items) {
-        if (it.value === "yes") yes++;
-        else if (it.value === "no") no++;
-        else unanswered++;
+        // For quantity items, check if actualQuantity is set
+        if (it.expectedQuantity !== undefined) {
+          if (it.actualQuantity !== undefined) {
+            yes++; // Count as answered
+          } else {
+            unanswered++;
+          }
+        } else {
+          // For boolean items, check value
+          if (it.value === "yes") yes++;
+          else if (it.value === "no") no++;
+          else unanswered++;
+        }
       }
-      
+
       // Fetch user information
       let completedByUser = null;
       let startedByUser = null;
-      
+
       if (run.completedBy) {
         const user = await ctx.db.get(run.completedBy);
         if (user) {
@@ -243,7 +267,7 @@ export const listRunSummaries = query({
           };
         }
       }
-      
+
       if (run.startedBy) {
         const user = await ctx.db.get(run.startedBy);
         if (user) {
@@ -255,7 +279,7 @@ export const listRunSummaries = query({
           };
         }
       }
-      
+
       results.push({ run, total, yes, no, unanswered, completedByUser, startedByUser });
     }
 

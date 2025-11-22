@@ -706,6 +706,7 @@ const applicationTables = {
     defaultNotes: v.optional(v.string()),
     description: v.optional(v.string()), // Help text for users
     imageStorageId: v.optional(v.id("_storage")), // Reference image for the item
+    expectedQuantity: v.optional(v.number()), // If set, this item requires quantity counting instead of yes/no
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -758,7 +759,10 @@ const applicationTables = {
     ),
     description: v.optional(v.string()), // Snapshot of item description
     imageStorageId: v.optional(v.id("_storage")), // Snapshot of item image
-    // User responses
+    // Quantity fields (for items with expectedQuantity set)
+    expectedQuantity: v.optional(v.number()), // Snapshot from template
+    actualQuantity: v.optional(v.number()), // User's counted quantity
+    // User responses (for boolean items)
     value: v.optional(v.union(v.literal("yes"), v.literal("no"))),
     notes: v.optional(v.string()),
     updatedBy: v.optional(v.id("users")),
