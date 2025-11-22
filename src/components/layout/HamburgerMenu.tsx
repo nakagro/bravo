@@ -66,6 +66,7 @@ export const HamburgerMenu = () => {
 
   const handleNavigation = (path: string) => {
     navigate(path);
+    window.scrollTo(0, 0);
   };
 
   return (

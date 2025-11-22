@@ -52,7 +52,7 @@ export function InventoryTemplateList() {
 
 
   return (
-    <div className="space-y-6" data-component="InventoryTemplateList">
+    <div className="space-y-4" data-component="InventoryTemplateList">
       <div className="flex justify-end">
         <Button onClick={() => setShowCreate((v) => !v)}>
           <PlusIcon className="h-4 w-4 mr-1" /> New Template
@@ -60,67 +60,79 @@ export function InventoryTemplateList() {
       </div>
 
       {showCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Template</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+          <div className="p-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Create New Template</h3>
+          </div>
+          <div className="p-4 space-y-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Name</label>
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Pumper" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
               <Textarea
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Weekly appliance checklist for the Pumper"
               />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleCreate}>Create</Button>
-              <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 flex gap-2">
+            <Button onClick={handleCreate}>Create</Button>
+            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+          </div>
+        </div>
       )}
 
       {/* Template grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {templates?.map((tpl) => (
-          <Card key={tpl._id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <CardTitle className="text-lg">{tpl.name}</CardTitle>
+          <div
+            key={tpl._id}
+            className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+          >
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{tpl.name}</h3>
                 <Badge variant="outline">v{tpl.version}</Badge>
               </div>
               {tpl.description && (
-                <p className="text-sm text-muted-foreground">{tpl.description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{tpl.description}</p>
               )}
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
+            </div>
+
+            {/* Footer with Actions */}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-2">
               <Button
                 variant="default"
-                className="w-full"
+                size="sm"
+                className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                 onClick={() => navigate(`/inventory/templates/${tpl._id}`)}
               >
                 <PencilIcon className="h-4 w-4 mr-2" /> Edit Template
               </Button>
               <Button
                 variant="destructive"
+                size="sm"
                 className="w-full"
                 onClick={() => handleDelete(tpl)}
               >
                 <TrashIcon className="h-4 w-4 mr-2" /> Delete
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       {(!templates || templates.length === 0) && !showCreate && (
-        <div className="text-sm text-muted-foreground">
-          No templates yet. Create your first one for the Pumper.
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+          <div className="p-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              No templates yet. Create your first one for the Pumper.
+            </p>
+          </div>
         </div>
       )}
       {/* Editor moved to dedicated route */}

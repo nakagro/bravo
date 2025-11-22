@@ -99,6 +99,20 @@ export function InventoryTemplateSelector() {
       alert("This template has unpublished changes. Please publish before starting a check.");
       return;
     }
+
+    // Check if this template was already completed this week
+    const lastCompleted = lastCompletedRuns?.find((lc) => lc.templateId === tpl._id);
+    const completedThisWeek = isCompletedThisWeek(lastCompleted?.lastCompletedAt);
+
+    if (completedThisWeek) {
+      const confirmed = confirm(
+        `The ${tpl.name} inventory has already been completed this week. Are you sure you want to start another one?`
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     try {
@@ -119,16 +133,16 @@ export function InventoryTemplateSelector() {
           </div>
         </div>
       )}
-      
+
       {templates?.map((tpl) => {
         const run = inProgressRuns?.find((r) => r.templateId === tpl._id);
         const lastCompleted = lastCompletedRuns?.find((lc) => lc.templateId === tpl._id);
         const completedThisWeek = isCompletedThisWeek(lastCompleted?.lastCompletedAt);
         const hasUnpublished = !!tpl.hasUnpublishedChanges;
-        
+
         return (
-          <div 
-            key={tpl._id} 
+          <div
+            key={tpl._id}
             className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 transition-all"
           >
             {/* Header with Template Name and Status */}
@@ -140,13 +154,13 @@ export function InventoryTemplateSelector() {
                       {tpl.name}
                     </h3>
                   </div>
-                  
+
                   {tpl.description && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {tpl.description}
                     </p>
                   )}
-                  
+
                   {/* Date Information */}
                   <div className="flex flex-col gap-1 mt-2">
                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
@@ -154,7 +168,7 @@ export function InventoryTemplateSelector() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>
-                        Last completed: {lastCompleted?.lastCompletedAt 
+                        Last completed: {lastCompleted?.lastCompletedAt
                           ? formatRelativeTime(lastCompleted.lastCompletedAt)
                           : 'Never'
                         }
@@ -168,7 +182,7 @@ export function InventoryTemplateSelector() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Status Badge */}
                 <div className="flex-shrink-0">
                   {run ? (
@@ -191,13 +205,13 @@ export function InventoryTemplateSelector() {
                 </div>
               </div>
             </div>
-            
+
             {/* Footer with Action Button */}
             <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-end gap-3">
               <div>
                 {run ? (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="secondary"
                     onClick={() => navigate(`/inventory/run/${run._id}`)}
                   >

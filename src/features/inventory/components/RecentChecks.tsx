@@ -41,13 +41,13 @@ function formatRelativeDate(ts?: number) {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor(diff / (1000 * 60));
-  
+
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days}d ago`;
-  
+
   const d = new Date(ts);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -83,11 +83,10 @@ export function InventoryRecentChecks() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedTemplate("all")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  selectedTemplate === "all"
-                    ? "bg-red-600 text-white dark:bg-red-600"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                }`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedTemplate === "all"
+                  ? "bg-red-600 text-white dark:bg-red-600"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  }`}
               >
                 All ({summaries?.length || 0})
               </button>
@@ -97,11 +96,10 @@ export function InventoryRecentChecks() {
                   <button
                     key={name}
                     onClick={() => setSelectedTemplate(name)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      selectedTemplate === name
-                        ? "bg-red-600 text-white dark:bg-red-600"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedTemplate === name
+                      ? "bg-red-600 text-white dark:bg-red-600"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                      }`}
                   >
                     {name} ({count})
                   </button>
@@ -123,26 +121,26 @@ export function InventoryRecentChecks() {
             </div>
           </div>
         )}
-        
+
         {filteredSummaries?.map((s) => {
-          const successRate = s.total > 0 ? Math.round((s.yes / s.total) * 100) : 0;
+          const completionRate = s.total > 0 ? Math.round(((s.yes + s.no) / s.total) * 100) : 0;
           const hasIssues = s.no > 0;
-          
+
           // Get user display name
           const getUserName = (user: RunSummary['completedByUser']) => {
             if (!user) return null;
-            return user.name || 
-                   (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
-                   user.memberNumber ||
-                   'Unknown';
+            return user.name ||
+              (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+              user.memberNumber ||
+              'Unknown';
           };
-          
+
           const completedByName = s.run.status === "completed" ? getUserName(s.completedByUser) : null;
           const startedByName = getUserName(s.startedByUser);
-          
+
           return (
-            <div 
-              key={s.run._id} 
+            <div
+              key={s.run._id}
               className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
             >
               {/* Header */}
@@ -167,7 +165,7 @@ export function InventoryRecentChecks() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Status Badge */}
                   <div className="flex-shrink-0">
                     {s.run.status === "completed" ? (
@@ -186,7 +184,7 @@ export function InventoryRecentChecks() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Footer with Stats and Action */}
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -194,10 +192,10 @@ export function InventoryRecentChecks() {
                   <div className="flex items-center gap-1.5">
                     <div className={`w-2 h-2 rounded-full ${hasIssues ? 'bg-amber-500' : 'bg-green-500'}`} />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {successRate}%
+                      {completionRate}%
                     </span>
                   </div>
-                  
+
                   {/* Quick Stats */}
                   <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
                     <div className="flex items-center gap-1">
@@ -212,9 +210,9 @@ export function InventoryRecentChecks() {
                     )}
                   </div>
                 </div>
-                
-                <Button 
-                  size="sm" 
+
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => navigate(`/inventory/run/${s.run._id}`)}
                 >
