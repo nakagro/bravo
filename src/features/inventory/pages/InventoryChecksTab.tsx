@@ -168,7 +168,7 @@ export function InventoryChecksTab() {
   const handleComplete = async () => {
     if (!run) return;
     const items = (runData?.items as RunItemDoc[] | undefined) ?? [];
-    
+
     // Check for unanswered items (both boolean and quantity)
     const unanswered = items.filter(i => {
       if (i.expectedQuantity !== undefined) {
@@ -176,19 +176,19 @@ export function InventoryChecksTab() {
       }
       return typeof i.value === "undefined";
     });
-    
+
     if (unanswered.length > 0) {
       const proceed = confirm(`There are ${unanswered.length} unchecked items. Complete anyway?`);
       if (!proceed) return;
     }
-    
+
     // Check for quantity mismatches
-    const mismatches = items.filter(i => 
-      i.expectedQuantity !== undefined && 
-      i.actualQuantity !== undefined && 
+    const mismatches = items.filter(i =>
+      i.expectedQuantity !== undefined &&
+      i.actualQuantity !== undefined &&
       i.actualQuantity !== i.expectedQuantity
     );
-    
+
     if (mismatches.length > 0) {
       const mismatchNames = mismatches.map(i => i.itemName).join(", ");
       const proceed = confirm(
@@ -197,7 +197,7 @@ export function InventoryChecksTab() {
       );
       if (!proceed) return;
     }
-    
+
     setCompleting(true);
     try {
       await completeRun({ runId: run._id });
@@ -318,269 +318,348 @@ export function InventoryChecksTab() {
 
                       return (
                         <Card key={item._id}>
-                          <CardContent className="p-4">
+                          <CardContent className="p-4 space-y-3">
                             {/* Item Name */}
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                              <div className="flex items-center gap-2 flex-1 flex-wrap">
-                                <div className="font-medium text-sm sm:text-base">
-                                  {item.expectedQuantity 
-                                    ? `${item.actualQuantity !== undefined ? item.actualQuantity : item.expectedQuantity}x ${item.itemName}` 
-                                    : item.itemName}
-                                </div>
-                                <ItemInfoButton item={item} />
-                                {/* Show badge if quantity mismatch */}
-                                {item.expectedQuantity && item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs font-semibold ${
-                                      item.actualQuantity > item.expectedQuantity
-                                        ? "border-green-500 text-green-600 dark:text-green-500"
-                                        : "border-red-500 text-red-600 dark:text-red-500"
-                                    }`}
-                                  >
-                                    {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
-                                  </Badge>
-                                )}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-medium text-sm sm:text-base">
+                                {item.expectedQuantity
+                                  ? `${item.actualQuantity !== undefined ? item.actualQuantity : item.expectedQuantity}x ${item.itemName}`
+                                  : item.itemName}
                               </div>
-                              {!isReadOnly && (
-                                <Dialog open={showNotesModal.has(item._id)} onOpenChange={(open) => {
-                                  setShowNotesModal(prev => {
-                                    const next = new Set(prev);
-                                    if (open) {
-                                      next.add(item._id);
-                                    } else {
-                                      next.delete(item._id);
-                                    }
-                                    return next;
-                                  });
-                                }}>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-muted-foreground hover:text-foreground shrink-0"
-                                    >
-                                      <MessageSquarePlus className="w-4 h-4" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                      <DialogTitle>Notes: {item.itemName}</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <Textarea
-                                        id={`notes-${item._id}`}
-                                        defaultValue={item.notes ?? ""}
-                                        placeholder="Add notes (optional)..."
-                                        className="min-h-[120px]"
-                                        autoFocus
-                                      />
-                                      <div className="flex gap-2 justify-end">
-                                        <Button
-                                          variant="outline"
-                                          onClick={() => {
-                                            setShowNotesModal(prev => {
-                                              const next = new Set(prev);
-                                              next.delete(item._id);
-                                              return next;
-                                            });
-                                          }}
-                                        >
-                                          Cancel
-                                        </Button>
-                                        <Button
-                                          onClick={() => {
-                                            const textarea = document.getElementById(`notes-${item._id}`) as HTMLTextAreaElement;
-                                            if (textarea) {
-                                              handleSaveNotes(item._id, textarea.value);
-                                            }
-                                            setShowNotesModal(prev => {
-                                              const next = new Set(prev);
-                                              next.delete(item._id);
-                                              return next;
-                                            });
-                                          }}
-                                        >
-                                          Save Notes
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
+                              <ItemInfoButton item={item} />
+                              {/* Show badge if quantity mismatch */}
+                              {item.expectedQuantity && item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs font-semibold ${item.actualQuantity > item.expectedQuantity
+                                    ? "border-green-500 text-green-600 dark:text-green-500"
+                                    : "border-red-500 text-red-600 dark:text-red-500"
+                                    }`}
+                                >
+                                  {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
+                                </Badge>
                               )}
                             </div>
 
-                            {/* Quantity Check or Yes/No Check */}
+                            {/* Yes/No Response Buttons */}
                             {item.expectedQuantity ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant={
-                                    item.actualQuantity !== undefined && 
-                                    (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
-                                      ? "default" 
-                                      : "outline"
-                                  }
-                                  size="lg"
-                                  onClick={() => handleSetValue(item._id, "yes", item.expectedQuantity)}
-                                  disabled={isReadOnly}
-                                  className={`flex-1 min-w-[100px] ${
-                                    item.actualQuantity !== undefined && 
-                                    (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                              <>
+                                {/* Quantity Check - Yes/No Buttons */}
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <Button
+                                    variant={
+                                      item.actualQuantity !== undefined &&
+                                        (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="lg"
+                                    onClick={() => handleSetValue(item._id, "yes", item.expectedQuantity)}
+                                    disabled={isReadOnly}
+                                    className={`flex-1 min-h-[44px] ${item.actualQuantity !== undefined &&
+                                      (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
                                       ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
-                                      : ""
-                                  }`}
-                                >
-                                  <CheckCircle2 className="w-5 h-5" />
-                                </Button>
-                                <Button
-                                  variant={item.value === "no" && item.actualQuantity === 0 ? "destructive" : "outline"}
-                                  size="lg"
-                                  onClick={() => handleSetValue(item._id, "no", item.expectedQuantity)}
-                                  disabled={isReadOnly}
-                                  className="flex-1 min-w-[100px]"
-                                >
-                                  <XCircle className="w-5 h-5" />
-                                </Button>
-                                <Dialog open={showQuantityInput.has(item._id)} onOpenChange={(open) => {
-                                  if (!open) {
-                                    setShowQuantityInput(prev => {
-                                      const next = new Set(prev);
-                                      next.delete(item._id);
-                                      return next;
-                                    });
-                                  }
-                                }}>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant={
-                                        item.actualQuantity !== undefined && 
-                                        item.actualQuantity !== item.expectedQuantity && 
-                                        item.actualQuantity !== 0
-                                          ? "default"
-                                          : "outline"
-                                      }
-                                      size="lg"
-                                      onClick={() => toggleQuantityInput(item._id)}
-                                      disabled={isReadOnly}
-                                      className={`min-w-[60px] ${
-                                        item.actualQuantity !== undefined && 
-                                        item.actualQuantity !== item.expectedQuantity && 
-                                        item.actualQuantity !== 0
-                                          ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
-                                          : ""
+                                      : "hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/20 hover:text-green-700 dark:hover:text-green-400"
                                       }`}
-                                      title="Adjust quantity"
-                                    >
-                                      <span className="text-lg">±</span>
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                      <DialogTitle>Adjust Quantity: {item.itemName}</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <div className="flex items-center gap-2 text-sm">
-                                        <span className="text-muted-foreground">Expected:</span>
-                                        <span className="font-semibold text-base">{item.expectedQuantity}</span>
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-sm font-medium">Actual Count:</label>
-                                        <Input
-                                          id={`quantity-${item._id}`}
-                                          type="number"
-                                          min="0"
-                                          step="1"
-                                          defaultValue={item.actualQuantity ?? ""}
-                                          onKeyDown={(e) => {
-                                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
-                                              e.preventDefault();
-                                            }
-                                          }}
-                                          placeholder="Enter count..."
-                                          className="text-lg"
-                                          autoFocus
-                                        />
-                                      </div>
-                                      {item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
-                                        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
-                                          <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
-                                          <span className="text-sm font-medium text-amber-600 dark:text-amber-500">
-                                            Current Difference: {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
-                                          </span>
+                                  >
+                                    <span className="font-medium">Yes</span>
+                                  </Button>
+                                  <Button
+                                    variant={item.value === "no" && item.actualQuantity === 0 ? "destructive" : "outline"}
+                                    size="lg"
+                                    onClick={() => handleSetValue(item._id, "no", item.expectedQuantity)}
+                                    disabled={isReadOnly}
+                                    className={`flex-1 min-h-[44px] ${item.value === "no" && item.actualQuantity === 0
+                                      ? ""
+                                      : "hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-400"
+                                      }`}
+                                  >
+                                    <span className="font-medium">No</span>
+                                  </Button>
+                                </div>
+
+                                {/* Action Buttons Row - Aligned Right */}
+                                {!isReadOnly && (
+                                  <div className="flex gap-2 justify-end">
+                                    <Dialog open={showQuantityInput.has(item._id)} onOpenChange={(open) => {
+                                      if (!open) {
+                                        setShowQuantityInput(prev => {
+                                          const next = new Set(prev);
+                                          next.delete(item._id);
+                                          return next;
+                                        });
+                                      }
+                                    }}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant={
+                                            item.actualQuantity !== undefined &&
+                                              item.actualQuantity !== item.expectedQuantity &&
+                                              item.actualQuantity !== 0
+                                              ? "default"
+                                              : "outline"
+                                          }
+                                          size="sm"
+                                          onClick={() => toggleQuantityInput(item._id)}
+                                          className={`gap-1.5 ${item.actualQuantity !== undefined &&
+                                            item.actualQuantity !== item.expectedQuantity &&
+                                            item.actualQuantity !== 0
+                                            ? "bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
+                                            : "hover:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 dark:hover:text-amber-400"
+                                            }`}
+                                          title="Adjust quantity"
+                                        >
+                                          <span className="text-lg leading-none">±</span>
+                                          <span className="text-sm">Adjust</span>
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Adjust Quantity: {item.itemName}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                          <div className="flex items-center gap-2 text-sm">
+                                            <span className="text-muted-foreground">Expected:</span>
+                                            <span className="font-semibold text-base">{item.expectedQuantity}</span>
+                                          </div>
+                                          <div className="space-y-2">
+                                            <label className="text-sm font-medium">Actual Count:</label>
+                                            <Input
+                                              id={`quantity-${item._id}`}
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              defaultValue={item.actualQuantity ?? ""}
+                                              onKeyDown={(e) => {
+                                                if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                                  e.preventDefault();
+                                                }
+                                              }}
+                                              placeholder="Enter count..."
+                                              className="text-lg"
+                                            />
+                                          </div>
+                                          {item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity && (
+                                            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                                              <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                                              <span className="text-sm font-medium text-amber-600 dark:text-amber-500">
+                                                Current Difference: {item.actualQuantity > item.expectedQuantity ? "+" : ""}{item.actualQuantity - item.expectedQuantity}
+                                              </span>
+                                            </div>
+                                          )}
+                                          <div className="flex gap-2 justify-end">
+                                            <Button
+                                              variant="outline"
+                                              onClick={() => {
+                                                setShowQuantityInput(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              onClick={() => {
+                                                const input = document.getElementById(`quantity-${item._id}`) as HTMLInputElement;
+                                                if (input) {
+                                                  const inputValue = input.value;
+                                                  if (inputValue === "") {
+                                                    updateItem({ runItemId: item._id, actualQuantity: undefined, value: undefined });
+                                                  } else {
+                                                    const value = parseInt(inputValue, 10);
+                                                    if (!isNaN(value) && value >= 0 && Number.isInteger(value)) {
+                                                      updateItem({ runItemId: item._id, actualQuantity: value, value: "yes" });
+                                                    }
+                                                  }
+                                                }
+                                                setShowQuantityInput(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Save Quantity
+                                            </Button>
+                                          </div>
                                         </div>
-                                      )}
-                                      <div className="flex gap-2 justify-end">
+                                      </DialogContent>
+                                    </Dialog>
+
+                                    <Dialog open={showNotesModal.has(item._id)} onOpenChange={(open) => {
+                                      setShowNotesModal(prev => {
+                                        const next = new Set(prev);
+                                        if (open) {
+                                          next.add(item._id);
+                                        } else {
+                                          next.delete(item._id);
+                                        }
+                                        return next;
+                                      });
+                                    }}>
+                                      <DialogTrigger asChild>
                                         <Button
                                           variant="outline"
-                                          onClick={() => {
-                                            setShowQuantityInput(prev => {
-                                              const next = new Set(prev);
-                                              next.delete(item._id);
-                                              return next;
-                                            });
-                                          }}
+                                          size="sm"
+                                          className="gap-1.5 hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-400"
                                         >
-                                          Cancel
+                                          <MessageSquarePlus className="w-4 h-4" />
+                                          <span className="text-sm">Note</span>
                                         </Button>
-                                        <Button
-                                          onClick={() => {
-                                            const input = document.getElementById(`quantity-${item._id}`) as HTMLInputElement;
-                                            if (input) {
-                                              const inputValue = input.value;
-                                              if (inputValue === "") {
-                                                updateItem({ runItemId: item._id, actualQuantity: undefined, value: undefined });
-                                              } else {
-                                                const value = parseInt(inputValue, 10);
-                                                if (!isNaN(value) && value >= 0 && Number.isInteger(value)) {
-                                                  updateItem({ runItemId: item._id, actualQuantity: value, value: "yes" });
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Notes: {item.itemName}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                          <Textarea
+                                            id={`notes-${item._id}`}
+                                            defaultValue={item.notes ?? ""}
+                                            placeholder="Add notes (optional)..."
+                                            className="min-h-[120px]"
+                                          />
+                                          <div className="flex gap-2 justify-end">
+                                            <Button
+                                              variant="outline"
+                                              onClick={() => {
+                                                setShowNotesModal(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              onClick={() => {
+                                                const textarea = document.getElementById(`notes-${item._id}`) as HTMLTextAreaElement;
+                                                if (textarea) {
+                                                  handleSaveNotes(item._id, textarea.value);
                                                 }
-                                              }
-                                            }
-                                            setShowQuantityInput(prev => {
-                                              const next = new Set(prev);
-                                              next.delete(item._id);
-                                              return next;
-                                            });
-                                          }}
-                                        >
-                                          Save Quantity
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              </div>
+                                                setShowNotesModal(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Save Notes
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  </div>
+                                )}
+                              </>
                             ) : (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant={item.value === "yes" ? "default" : "outline"}
-                                  size="lg"
-                                  onClick={() => handleSetValue(item._id, "yes")}
-                                  disabled={isReadOnly}
-                                  className={`flex-1 sm:flex-none min-w-[100px] ${item.value === "yes"
-                                    ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
-                                    : ""
-                                    }`}
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                                  Yes
-                                </Button>
-                                <Button
-                                  variant={item.value === "no" ? "destructive" : "outline"}
-                                  size="lg"
-                                  onClick={() => handleSetValue(item._id, "no")}
-                                  disabled={isReadOnly}
-                                  className="flex-1 sm:flex-none min-w-[100px]"
-                                >
-                                  <XCircle className="w-4 h-4 mr-1.5" />
-                                  No
-                                </Button>
-                              </div>
+                              <>
+                                {/* Boolean Check - Yes/No Buttons */}
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                  <Button
+                                    variant={item.value === "yes" ? "default" : "outline"}
+                                    size="lg"
+                                    onClick={() => handleSetValue(item._id, "yes")}
+                                    disabled={isReadOnly}
+                                    className={`flex-1 min-h-[44px] ${item.value === "yes"
+                                      ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+                                      : "hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/20 hover:text-green-700 dark:hover:text-green-400"
+                                      }`}
+                                  >
+                                    <span className="font-medium">Yes</span>
+                                  </Button>
+                                  <Button
+                                    variant={item.value === "no" ? "destructive" : "outline"}
+                                    size="lg"
+                                    onClick={() => handleSetValue(item._id, "no")}
+                                    disabled={isReadOnly}
+                                    className={`flex-1 min-h-[44px] ${item.value === "no"
+                                      ? ""
+                                      : "hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-400"
+                                      }`}
+                                  >
+                                    <span className="font-medium">No</span>
+                                  </Button>
+                                </div>
+
+                                {/* Action Buttons Row - Aligned Right */}
+                                {!isReadOnly && (
+                                  <div className="flex gap-2 justify-end">
+                                    <Dialog open={showNotesModal.has(item._id)} onOpenChange={(open) => {
+                                      setShowNotesModal(prev => {
+                                        const next = new Set(prev);
+                                        if (open) {
+                                          next.add(item._id);
+                                        } else {
+                                          next.delete(item._id);
+                                        }
+                                        return next;
+                                      });
+                                    }}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="gap-1.5 hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 dark:hover:text-blue-400"
+                                        >
+                                          <MessageSquarePlus className="w-4 h-4" />
+                                          <span className="text-sm">Note</span>
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Notes: {item.itemName}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4">
+                                          <Textarea
+                                            id={`notes-${item._id}`}
+                                            defaultValue={item.notes ?? ""}
+                                            placeholder="Add notes (optional)..."
+                                            className="min-h-[120px]"
+                                          />
+                                          <div className="flex gap-2 justify-end">
+                                            <Button
+                                              variant="outline"
+                                              onClick={() => {
+                                                setShowNotesModal(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Cancel
+                                            </Button>
+                                            <Button
+                                              onClick={() => {
+                                                const textarea = document.getElementById(`notes-${item._id}`) as HTMLTextAreaElement;
+                                                if (textarea) {
+                                                  handleSaveNotes(item._id, textarea.value);
+                                                }
+                                                setShowNotesModal(prev => {
+                                                  const next = new Set(prev);
+                                                  next.delete(item._id);
+                                                  return next;
+                                                });
+                                              }}
+                                            >
+                                              Save Notes
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             {/* Show note content below buttons if exists */}
                             {hasNotes && (
-                              <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                              <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                                 <MessageSquarePlus className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                 <span className="whitespace-pre-wrap">{item.notes}</span>
                               </div>
