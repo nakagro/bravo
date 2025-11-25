@@ -1,10 +1,9 @@
-import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
-import { PlayIcon } from "@heroicons/react/24/outline";
+import { Play, ClipboardList } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface ApplianceTemplateDoc {
@@ -124,15 +123,23 @@ export function InventoryTemplateSelector() {
     }
   };
 
+  // Empty state when no templates exist
+  if (!templates || templates.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
+          <ClipboardList className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No checklists available</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
+          Contact an admin to create inventory check templates.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {(!templates || templates.length === 0) && (
-        <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-          <div className="p-4 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">No templates available. Contact an admin to create one.</p>
-          </div>
-        </div>
-      )}
 
       {templates?.map((tpl) => {
         const run = inProgressRuns?.find((r) => r.templateId === tpl._id);
@@ -215,7 +222,7 @@ export function InventoryTemplateSelector() {
                     variant="secondary"
                     onClick={() => navigate(`/inventory/run/${run._id}`)}
                   >
-                    <PlayIcon className="h-4 w-4 mr-1.5" />
+                    <Play className="h-4 w-4 mr-1.5" />
                     Resume
                   </Button>
                 ) : (
@@ -225,7 +232,7 @@ export function InventoryTemplateSelector() {
                     disabled={hasUnpublished}
                     className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                   >
-                    <PlayIcon className="h-4 w-4 mr-1.5" />
+                    <Play className="h-4 w-4 mr-1.5" />
                     {hasUnpublished ? 'Unavailable' : 'Start Check'}
                   </Button>
                 )}

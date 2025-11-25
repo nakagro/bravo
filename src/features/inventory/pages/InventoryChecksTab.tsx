@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";

@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
-import { PlusIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { Plus, Trash2, Pencil, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface ApplianceTemplateDoc {
@@ -54,8 +53,11 @@ export function InventoryTemplateList() {
   return (
     <div className="space-y-4" data-component="InventoryTemplateList">
       <div className="flex justify-end">
-        <Button onClick={() => setShowCreate((v) => !v)}>
-          <PlusIcon className="h-4 w-4 mr-1" /> New Template
+        <Button 
+          onClick={() => setShowCreate((v) => !v)}
+          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+        >
+          <Plus className="h-4 w-4 mr-1" /> New Template
         </Button>
       </div>
 
@@ -111,7 +113,7 @@ export function InventoryTemplateList() {
                 className="w-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                 onClick={() => navigate(`/inventory/templates/${tpl._id}`)}
               >
-                <PencilIcon className="h-4 w-4 mr-2" /> Edit Template
+                <Pencil className="h-4 w-4 mr-2" /> Edit Template
               </Button>
               <Button
                 variant="destructive"
@@ -119,7 +121,7 @@ export function InventoryTemplateList() {
                 className="w-full"
                 onClick={() => handleDelete(tpl)}
               >
-                <TrashIcon className="h-4 w-4 mr-2" /> Delete
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
               </Button>
             </div>
           </div>
@@ -127,12 +129,21 @@ export function InventoryTemplateList() {
       </div>
 
       {(!templates || templates.length === 0) && !showCreate && (
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div className="p-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              No templates yet. Create your first one for the Pumper.
-            </p>
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
+            <FileText className="h-10 w-10 text-gray-400 dark:text-gray-500" />
           </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No templates yet</h3>
+          <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
+            Create your first inventory check template to get started.
+          </p>
+          <Button
+            onClick={() => setShowCreate(true)}
+            className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create First Template
+          </Button>
         </div>
       )}
       {/* Editor moved to dedicated route */}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect, type ReactNode, type ChangeEvent } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -10,8 +10,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { PlusIcon, PencilIcon, TrashIcon, InformationCircleIcon, PhotoIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Bars3Icon } from "@heroicons/react/24/solid";
+import { Plus, Pencil, Trash2, Info, Image, X, GripVertical } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { compressImage, validateImageFile } from "../../../lib/imageCompression";
 import {
@@ -61,7 +60,7 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (template && open) {
       setName(template.name ?? "");
       setDescription(template.description ?? "");
@@ -89,7 +88,7 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="default" className="w-full sm:w-auto min-h-[44px]">
-          <PencilIcon className="h-5 w-5 mr-2" />
+          <Pencil className="h-5 w-5 mr-2" />
           <span>Edit Template</span>
         </Button>
       </DialogTrigger>
@@ -159,7 +158,7 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full min-h-[48px] text-base">
-          <PlusIcon className="h-5 w-5 mr-2" />
+          <Plus className="h-5 w-5 mr-2" />
           Add Section
         </Button>
       </DialogTrigger>
@@ -220,7 +219,7 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="default" className="text-muted-foreground w-full justify-start min-h-[44px]">
-          <PlusIcon className="h-5 w-5 mr-2" />
+          <Plus className="h-5 w-5 mr-2" />
           Add Item
         </Button>
       </DialogTrigger>
@@ -270,14 +269,14 @@ function EditDialog({
   label: string;
   defaultValue: string;
   onSave: (value: string) => Promise<void>;
-  trigger: React.ReactNode;
+  trigger: ReactNode;
 }) {
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) setValue(defaultValue);
   }, [open, defaultValue]);
 
@@ -345,7 +344,7 @@ function ItemDetailsDialog({ item, onSave }: {
     item.imageStorageId ? { storageId: item.imageStorageId } : "skip"
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setDescription(item.description || "");
       setImageFile(null);
@@ -353,7 +352,7 @@ function ItemDetailsDialog({ item, onSave }: {
     }
   }, [open, item.description]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -426,7 +425,7 @@ function ItemDetailsDialog({ item, onSave }: {
           className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
           title="Add description or image"
         >
-          <InformationCircleIcon className="h-5 w-5" />
+          <Info className="h-5 w-5" />
           <span className="sr-only">Item details</span>
         </Button>
       </DialogTrigger>
@@ -468,7 +467,7 @@ function ItemDetailsDialog({ item, onSave }: {
                   onClick={handleRemoveImage}
                   disabled={uploading}
                 >
-                  <XMarkIcon className="h-4 w-4 mr-1" />
+                  <X className="h-4 w-4 mr-1" />
                   Remove
                 </Button>
               </div>
@@ -494,7 +493,7 @@ function ItemDetailsDialog({ item, onSave }: {
                     setImagePreview(null);
                   }}
                 >
-                  <XMarkIcon className="h-4 w-4 mr-1" />
+                  <X className="h-4 w-4 mr-1" />
                   Cancel
                 </Button>
               </div>
@@ -510,7 +509,7 @@ function ItemDetailsDialog({ item, onSave }: {
               <div className="mt-1">
                 <label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                   <div className="text-center">
-                    <PhotoIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground">
                       Tap to select image
                     </p>
@@ -568,7 +567,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
   const [quantity, setQuantity] = useState<string>(item.expectedQuantity?.toString() || "");
 
   // Sync quantity state when item changes
-  React.useEffect(() => {
+  useEffect(() => {
     setQuantity(item.expectedQuantity?.toString() || "");
   }, [item.expectedQuantity]);
 
@@ -599,7 +598,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
           {...attributes}
           {...listeners}
         >
-          <Bars3Icon className="h-6 w-6 text-muted-foreground" />
+          <GripVertical className="h-6 w-6 text-muted-foreground" />
         </button>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex-1 min-w-0">
@@ -642,7 +641,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
           onSave={onRename}
           trigger={
             <Button variant="ghost" size="default" className="min-h-[44px] min-w-[44px] p-0">
-              <PencilIcon className="h-5 w-5" />
+              <Pencil className="h-5 w-5" />
               <span className="sr-only">Edit item</span>
             </Button>
           }
@@ -650,7 +649,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
-              <TrashIcon className="h-5 w-5" />
+              <Trash2 className="h-5 w-5" />
               <span className="sr-only">Delete item</span>
             </Button>
           </AlertDialogTrigger>
@@ -677,7 +676,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
   );
 }
 
-export function TemplateEditor({ templateId }: TemplateEditorProps) {
+export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
   const data = useQuery(api.inventoryTemplates.getTemplateStructure, { templateId });
   const updateTemplate = useMutation(api.inventoryTemplates.updateApplianceTemplate);
   const createSection = useMutation(api.inventoryTemplates.createSection);
@@ -895,7 +894,7 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
             <CardContent className="py-12">
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <PlusIcon className="h-6 w-6 text-muted-foreground" />
+                  <Plus className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">No sections yet</h3>
                 <p className="text-muted-foreground mb-4">
@@ -920,7 +919,7 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                         onSave={(name) => handleRenameSection(section._id, name)}
                         trigger={
                           <Button variant="ghost" size="default" className="min-h-[44px] min-w-[44px] p-0">
-                            <PencilIcon className="h-5 w-5" />
+                            <Pencil className="h-5 w-5" />
                             <span className="sr-only">Edit section</span>
                           </Button>
                         }
@@ -928,7 +927,7 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
-                            <TrashIcon className="h-5 w-5" />
+                            <Trash2 className="h-5 w-5" />
                             <span className="sr-only">Delete section</span>
                           </Button>
                         </AlertDialogTrigger>
@@ -1000,4 +999,4 @@ export function TemplateEditor({ templateId }: TemplateEditorProps) {
   );
 }
 
-export default TemplateEditor;
+export default InventoryTemplateEditor;

@@ -1,20 +1,13 @@
-import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ClockIcon,
-  UserIcon,
-  PencilSquareIcon,
-  PlusIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { Clock, User, Pencil, Plus, Trash2 } from "lucide-react";
 
 const actionIcons = {
-  "key_created": PlusIcon,
-  "field_change": PencilSquareIcon,
-  "key_deleted": TrashIcon,
+  "key_created": Plus,
+  "field_change": Pencil,
+  "key_deleted": Trash2,
 };
 
 const actionColors = {
@@ -29,10 +22,6 @@ export function KeyAuditTrail() {
   if (!recentChanges) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-6">
-          <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
-        </div>
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
             <Card key={i}>
@@ -51,17 +40,14 @@ export function KeyAuditTrail() {
 
   if (recentChanges.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-6">
-          <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
+          <Clock className="h-10 w-10 text-gray-400 dark:text-gray-500" />
         </div>
-        <Card>
-          <CardContent className="p-8 text-center">
-            <ClockIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">No recent changes found</p>
-          </CardContent>
-        </Card>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No changes yet</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
+          Changes to keys will appear here as they happen.
+        </p>
       </div>
     );
   }
@@ -103,17 +89,15 @@ export function KeyAuditTrail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-6">
-        <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
-        <Badge variant="secondary" className="ml-2">
+      <div className="flex items-center justify-between mb-2">
+        <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
           Last {recentChanges.length} changes
         </Badge>
       </div>
 
       <div className="space-y-2">
         {recentChanges.map((entry) => {
-          const ActionIcon = actionIcons[entry.changeType as keyof typeof actionIcons] || PencilSquareIcon;
+          const ActionIcon = actionIcons[entry.changeType as keyof typeof actionIcons] || Pencil;
           const actionColorClass = actionColors[entry.changeType as keyof typeof actionColors] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
           
           return (
@@ -158,7 +142,7 @@ export function KeyAuditTrail() {
               {/* User and Notes Row (if present) */}
               <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-1">
-                  <UserIcon className="h-3 w-3" />
+                  <User className="h-3 w-3" />
                   <span className="truncate">{entry.userName || entry.userEmail || 'Unknown User'}</span>
                 </div>
                 {entry.notes && (

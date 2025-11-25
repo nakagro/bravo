@@ -1,9 +1,19 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { useNavigate } from "react-router-dom";
 import { KeyInventory } from "../features/keys/components/KeyInventory";
 import { KeyAuditTrail } from "../features/keys/components/KeyAuditTrail";
+import { api } from "../../convex/_generated/api";
+import { Badge } from "@/components/ui/badge";
 
 export function KeysPage() {
+  const { isAuthenticated } = useConvexAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('inventory'); // Default to inventory tab
+
+  // Get key count for header summary
+  const keys = useQuery(api.keys.list, {});
+  const keyCount = keys?.length ?? 0;
 
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -20,11 +30,31 @@ export function KeysPage() {
     }
   }, [activeTab]);
 
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-4">Please login to view this page</h2>
+        <button 
+          onClick={() => navigate('/login')}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-component="KeysPage">
       <div className="flex justify-between items-center gap-4">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Key Management</h1>
+          {keys !== undefined && (
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              {keyCount} {keyCount === 1 ? 'key' : 'keys'}
+            </Badge>
+          )}
         </div>
       </div>
 

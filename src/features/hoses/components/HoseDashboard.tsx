@@ -1,4 +1,3 @@
-import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,11 +10,7 @@ import {
   ChartBarIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
-
-type Status = "With district for repair" | "Condemned" | "Due for testing" | "In date";
-
-type UpcomingTestFilter = "1month" | "3months" | "6months";
-type OverdueFilter = "overdue3months" | "overdue6months" | "overdue12months" | "overdue12plus";
+import { Status, UpcomingTestFilter, OverdueFilter } from "../types";
 
 interface HoseDashboardProps {
   onStatusCardClick?: (status: Status) => void;

@@ -1,13 +1,20 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { toast } from "sonner";
-import { HoseComments } from "./HoseComments";
 import { HoseForm } from "./HoseForm";
-import { HoseHistory } from "./HoseHistory";
 import { HoseHistoryModal } from "./HoseHistoryModal";
-import { Status, Size, Type, statusColors, Location, locationOptions } from "../types";
+import {
+  Status,
+  Size,
+  Type,
+  statusColors,
+  statusBorderColors,
+  Location,
+  UpcomingTestFilter,
+  OverdueFilter,
+  HoseFilterType,
+} from "../types";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Input } from "@/components/ui/input";
@@ -24,33 +31,54 @@ import {
   XMarkIcon,
   ClockIcon,
   PencilSquareIcon,
+  ChevronUpIcon,
+  MapPinIcon,
+  InboxIcon,
 } from "@heroicons/react/24/outline";
 
 type ViewMode = 'cards' | 'table';
 
-type SortField = 'hoseId' | 'status' | 'size' | 'length' | 'type' | 'testDate';
+type SortField = 'hoseId' | 'status' | 'size' | 'length' | 'type' | 'testDate' | 'location';
 type SortDirection = 'asc' | 'desc';
-type UpcomingTestFilter = "1month" | "3months" | "6months";
-type OverdueFilter = "overdue3months" | "overdue6months" | "overdue12months" | "overdue12plus";
-type FilterType = Status | UpcomingTestFilter | OverdueFilter | null;
+
+// Sortable table header component
+interface SortableHeaderProps {
+  field: SortField;
+  label: string;
+  currentField: SortField;
+  direction: SortDirection;
+  onSort: (field: SortField) => void;
+}
+
+function SortableHeader({ field, label, currentField, direction, onSort }: SortableHeaderProps) {
+  const isActive = currentField === field;
+  return (
+    <TableHead
+      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {isActive ? (
+          direction === 'asc' ? (
+            <ChevronUpIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+          )
+        ) : (
+          <div className="h-4 w-4" /> // Spacer for alignment
+        )}
+      </div>
+    </TableHead>
+  );
+}
 
 interface HoseInventoryProps {
-  initialStatusFilter?: FilterType;
+  initialStatusFilter?: HoseFilterType;
   onFilterApplied?: () => void;
 }
 
 export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInventoryProps = {}) {
-  // Make setViewingHistory accessible to other components
-  // @ts-ignore - Adding a property to the component for external access
-  if (typeof document !== 'undefined') {
-    const componentElement = document.querySelector("[data-component='HoseInventory']");
-    if (componentElement) {
-      // @ts-ignore
-      componentElement.setViewingHistory = (hoseId: Id<"hoses">) => {
-        setViewingHistory(hoseId);
-      };
-    }
-  }
   const [filters, setFilters] = useState({
     status: "" as Status | "",
     size: "" as Size | "",
@@ -278,6 +306,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         case 'testDate':
           comparison = new Date(a.testDate).getTime() - new Date(b.testDate).getTime();
           break;
+        case 'location':
+          comparison = (a.location || '').localeCompare(b.location || '');
+          break;
         default:
           break;
       }
@@ -448,158 +479,137 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         )}
       </div>
 
-      {viewMode === 'cards' ? (
+      {/* Results count */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {sortedHoses.length} {sortedHoses.length === 1 ? 'hose' : 'hoses'}
+          {(filters.status || filters.size || filters.type || filters.location || filters.search || filters.upcomingTest || filters.overdueFilter) && (
+            <span className="ml-1 text-red-600 dark:text-red-400">(filtered)</span>
+          )}
+        </p>
+      </div>
+
+      {/* Empty state */}
+      {sortedHoses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <InboxIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No hoses found</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            {filters.status || filters.size || filters.type || filters.location || filters.search
+              ? "Try adjusting your filters or search term"
+              : "Add your first hose to get started"}
+          </p>
+          {(filters.status || filters.size || filters.type || filters.location || filters.search) && (
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {sortedHoses.map((hose) => (
             <Card
               key={hose._id}
-              className="cursor-pointer hover:border-red-500 dark:hover:border-red-400 transition-colors"
+              className={`cursor-pointer hover:shadow-md transition-all rounded-none border-l-4 ${statusBorderColors[hose.status]}`}
               onClick={() => setEditingHose(hose._id)}
             >
-              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-                <CardTitle className="text-base font-semibold">{hose.hoseId}</CardTitle>
-                <div className="flex items-center space-x-1">
+              <CardContent className="p-4">
+                {/* Header: ID and status */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{hose.hoseId}</h3>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs mt-1 ${statusColors[hose.status]}`}>
+                      {hose.status}
+                    </span>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent card click from triggering
+                      e.stopPropagation();
                       setViewingHistory(hose._id);
                     }}
-                    className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 h-7 w-7"
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 h-8 w-8 -mt-1 -mr-1"
                     title="View History"
                   >
                     <ClockIcon className="h-4 w-4" />
                   </Button>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[hose.status]}`}>
-                    {hose.status}
-                  </span>
                 </div>
-              </CardHeader>
-              <CardContent className="text-sm text-gray-600 dark:text-gray-400 px-4 pb-2">
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                  <p>Size: {hose.size}mm</p>
-                  <p>Length: {hose.length}m</p>
-                  <p>Type: {hose.type}</p>
-                  <p>Tested: {new Date(hose.testDate).toLocaleDateString()}</p>
+
+                {/* Key specs - large and prominent */}
+                <div className="flex items-baseline gap-3 mb-3">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">{hose.size}<span className="text-sm font-normal text-muted-foreground">mm</span></span>
+                  <span className="text-xl font-semibold text-gray-700 dark:text-gray-300">{hose.length}<span className="text-sm font-normal text-muted-foreground">m</span></span>
+                </div>
+
+                {/* Secondary info */}
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between">
+                    <span>{hose.type}</span>
+                    <span className="flex items-center gap-1">
+                      <MapPinIcon className="h-3.5 w-3.5" />
+                      {hose.location || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs">
+                    <ClockIcon className="h-3.5 w-3.5" />
+                    Tested {new Date(hose.testDate).toLocaleDateString()}
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="px-4 pb-3 pt-1">
-                <Button
-                  variant="link"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click from triggering
-                    setEditingHose(hose._id);
-                  }}
-                  className="text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-0 h-auto font-medium"
-                >
-                  Edit
-                </Button>
-              </CardFooter>
             </Card>
           ))}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10">
               <TableRow>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('hoseId')}
-                >
-                  Hose ID
-                  {sortConfig.field === 'hoseId' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('status')}
-                >
-                  Status
-                  {sortConfig.field === 'status' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('size')}
-                >
-                  Size
-                  {sortConfig.field === 'size' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('length')}
-                >
-                  Length
-                  {sortConfig.field === 'length' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('type')}
-                >
-                  Type
-                  {sortConfig.field === 'type' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => handleSort('testDate')}
-                >
-                  Test Date
-                  {sortConfig.field === 'testDate' && (
-                    <span className="ml-1">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </TableHead>
-                <TableHead>Actions</TableHead>
+                <SortableHeader field="hoseId" label="Hose ID" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="status" label="Status" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="size" label="Size" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="length" label="Length" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="type" label="Type" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="location" label="Location" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableHeader field="testDate" label="Test Date" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedHoses.map((hose) => (
+              {sortedHoses.map((hose, index) => (
                 <TableRow
                   key={hose._id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  className={`cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                    index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'
+                  }`}
                   onClick={() => setEditingHose(hose._id)}
                 >
-                  <TableCell className="font-medium">{hose.hoseId}</TableCell>
+                  <TableCell className="font-semibold">{hose.hoseId}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${statusColors[hose.status]}`}>
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[hose.status]}`}>
                       {hose.status}
                     </span>
                   </TableCell>
                   <TableCell>{hose.size}mm</TableCell>
                   <TableCell>{hose.length}m</TableCell>
                   <TableCell>{hose.type}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <MapPinIcon className="h-3.5 w-3.5" />
+                      {hose.location || '—'}
+                    </span>
+                  </TableCell>
                   <TableCell>{new Date(hose.testDate).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <div className="flex space-x-1">
+                    <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent row click
+                          e.stopPropagation();
                           setViewingHistory(hose._id);
                         }}
-                        className="h-8 w-8 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                        className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                         title="View History"
                       >
                         <ClockIcon className="h-4 w-4" />
@@ -608,10 +618,10 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent row click
+                          e.stopPropagation();
                           setEditingHose(hose._id);
                         }}
-                        className="h-8 w-8 text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         title="Edit Hose"
                       >
                         <PencilSquareIcon className="h-4 w-4" />

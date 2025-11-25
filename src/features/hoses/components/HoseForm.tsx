@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id, Doc } from "../../../../convex/_generated/dataModel";
@@ -10,22 +10,29 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  // DialogFooter, // Will be used later
-  // DialogClose, // May not be needed if using default DialogContent close button
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { XMarkIcon, ArrowPathIcon, TrashIcon, CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowPathIcon, TrashIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Status, Size, Type, Location } from "../types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Types are imported from ../types
 
 export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onClose: () => void }) {
+  const isMobile = useIsMobile();
   const hoses = useQuery(api.hoses.list, {});
   const moduleSettings = useQuery(api.modules.getModuleSettings, {});
   const hose = hoses?.find((h: Doc<"hoses">) => h._id === hoseId);
@@ -238,370 +245,375 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
   };
   
   // useEffect for Escape key removed as shadcn/ui Dialog handles this.
-  
+
+  // Form content - shared between mobile drawer and desktop dialog
+  const formContent = (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'comments' | 'history')} className="flex flex-col flex-1 min-h-0">
+      {/* Custom tab bar with proper mobile sizing */}
+      <div className={`grid w-full ${hoseId ? 'grid-cols-3' : 'grid-cols-1'} gap-1 p-1 bg-muted rounded-lg flex-shrink-0`}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('details')}
+          className={`h-11 rounded-md text-base font-medium transition-all ${
+            activeTab === 'details'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Details
+        </button>
+        {hoseId && (
+          <>
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={`h-11 rounded-md text-base font-medium transition-all ${
+                activeTab === 'history'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              History
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('comments')}
+              className={`h-11 rounded-md text-base font-medium transition-all ${
+                activeTab === 'comments'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Comments
+            </button>
+          </>
+        )}
+      </div>
+
+      <TabsContent value="details" className="flex-1 overflow-y-auto mt-4 pb-20">
+        <form id="hose-form" onSubmit={handleSubmit} className="space-y-6">
+          {/* Hose Identification Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Identification</h3>
+            
+            <div>
+              <Label htmlFor="hoseId" className="text-base font-medium">Hose ID</Label>
+              <Input
+                id="hoseId"
+                type="text"
+                value={formData.hoseId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setFormData((f) => ({ ...f, hoseId: next }));
+                  if (!hoseId) {
+                    const match = next.trim().toUpperCase().match(/^WV\s*(25|38|65)/i);
+                    if (match) {
+                      setFormData((f) => ({ ...f, size: match[1] as Size }));
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  if (!hoseId && e.target.value.trim() === "") {
+                    setFormData((f) => ({ ...f, hoseId: "WV" }));
+                  }
+                }}
+                className="mt-2 h-12 text-base"
+                placeholder="WV0001"
+                required
+                disabled={!!hoseId}
+              />
+            </div>
+
+            {/* Type and Size - stacked on mobile */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="hoseType" className="text-base font-medium">Type</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => setFormData(f => ({ ...f, type: value as Type }))}
+                >
+                  <SelectTrigger id="hoseType" className="mt-2 h-12 text-base">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Canvas" className="h-12 text-base">Canvas</SelectItem>
+                    <SelectItem value="Duraline" className="h-12 text-base">Duraline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="hoseSize" className="text-base font-medium">Size</Label>
+                <Select
+                  value={formData.size}
+                  onValueChange={(value) => setFormData(f => ({ ...f, size: value as Size }))}
+                >
+                  <SelectTrigger id="hoseSize" className="mt-2 h-12 text-base">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25" className="h-12 text-base">25mm</SelectItem>
+                    <SelectItem value="38" className="h-12 text-base">38mm</SelectItem>
+                    <SelectItem value="65" className="h-12 text-base">65mm</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="hoseLocation" className="text-base font-medium">Location</Label>
+              <Select
+                value={formData.location ?? undefined}
+                onValueChange={(value) => setFormData((f) => ({ ...f, location: value as Location }))}
+              >
+                <SelectTrigger id="hoseLocation" className="mt-2 h-12 text-base">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Station" className="h-12 text-base">Station</SelectItem>
+                  <SelectItem value="Pumper" className="h-12 text-base">Pumper</SelectItem>
+                  <SelectItem value="Tanker" className="h-12 text-base">Tanker</SelectItem>
+                  <SelectItem value="FCV" className="h-12 text-base">FCV</SelectItem>
+                  <SelectItem value="Other" className="h-12 text-base">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="lengthOption" className="text-base font-medium">Length</Label>
+              <Select
+                value={lengthOption}
+                onValueChange={(value) => {
+                  const val = value as '1.5' | '3' | '5' | '15' | '30' | 'other';
+                  setLengthOption(val);
+                  const lengths: Record<string, number> = { '1.5': 1.5, '3': 3, '5': 5, '15': 15, '30': 30 };
+                  if (lengths[val]) {
+                    setFormData((f) => ({ ...f, length: lengths[val] }));
+                  } else if (val === 'other') {
+                    setFormData((f) => ({ ...f, length: customLength }));
+                  }
+                }}
+              >
+                <SelectTrigger id="lengthOption" className="mt-2 h-12 text-base">
+                  <SelectValue placeholder="Select length" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1.5" className="h-12 text-base">1.5m</SelectItem>
+                  <SelectItem value="3" className="h-12 text-base">3m</SelectItem>
+                  <SelectItem value="5" className="h-12 text-base">5m</SelectItem>
+                  <SelectItem value="15" className="h-12 text-base">15m</SelectItem>
+                  <SelectItem value="30" className="h-12 text-base">30m</SelectItem>
+                  <SelectItem value="other" className="h-12 text-base">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {lengthOption === 'other' && (
+                <Input
+                  id="customLength"
+                  type="number"
+                  value={customLength}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setCustomLength(value);
+                    setFormData(f => ({ ...f, length: value }));
+                  }}
+                  className="mt-2 h-12 text-base"
+                  placeholder="Custom length (m)"
+                  required
+                  min="1"
+                  step="0.1"
+                />
+              )}
+            </div>
+          </div>
+          
+          {/* Status & Testing Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Status & Testing</h3>
+            
+            <div>
+              <Label htmlFor="status" className="text-base font-medium">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData(f => ({ ...f, status: value as Status }))}
+              >
+                <SelectTrigger id="status" className="mt-2 h-12 text-base">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="In date" className="h-12 text-base">In date</SelectItem>
+                  <SelectItem value="Due for testing" className="h-12 text-base">Due for testing</SelectItem>
+                  <SelectItem value="With district for repair" className="h-12 text-base">With district for repair</SelectItem>
+                  <SelectItem value="Condemned" className="h-12 text-base">Condemned</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="testDate" className="text-base font-medium">Test Date</Label>
+              <Input
+                id="testDate"
+                type="date"
+                value={formData.testDate}
+                onChange={(e) => setFormData(f => ({ ...f, testDate: e.target.value }))}
+                className="mt-2 h-12 text-base"
+                required
+              />
+              {statusWarning && (
+                <div className={`mt-3 p-3 rounded-lg border ${
+                  statusWarning.isImprovement 
+                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
+                    : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    {statusWarning.isImprovement ? (
+                      <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                    ) : (
+                      <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    )}
+                    <p className={`text-sm ${statusWarning.isImprovement ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                      Status will change to <span className="font-medium">"{statusWarning.suggestedStatus}"</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions Section - only for existing hoses */}
+          {hoseId && (
+            <div className="space-y-3 pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Actions</h3>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="outline" className="w-full h-12 text-base justify-start">
+                    <ArrowPathIcon className="h-5 w-5 mr-3" />
+                    Mark as Replaced
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Mark Hose as Replaced</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Record that hose {hose?.hoseId} has been replaced.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea
+                    value={replacementNotes}
+                    onChange={(e) => setReplacementNotes(e.target.value)}
+                    placeholder="Notes (optional)"
+                    className="min-h-[100px]"
+                  />
+                  <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                    <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setReplacementNotes('')}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="w-full sm:w-auto" onClick={handleMarkAsReplaced}>Confirm</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full h-12 text-base justify-start border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <TrashIcon className="h-5 w-5 mr-3" />
+                    Delete Hose
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this hose?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete {hose?.hoseId} and all history. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea
+                    value={deletionReason}
+                    onChange={(e) => setDeletionReason(e.target.value)}
+                    placeholder="Reason for deletion (optional)"
+                    className="min-h-[100px]"
+                  />
+                  <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                    <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setDeletionReason('')}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteHose}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </form>
+      </TabsContent>
+
+      {hoseId && (
+        <>
+          <TabsContent value="history" className="flex-1 overflow-y-auto mt-4">
+            <HoseHistory hoseId={hoseId} />
+          </TabsContent>
+          <TabsContent value="comments" className="flex-1 overflow-y-auto mt-4">
+            <HoseComments hoseId={hoseId} />
+          </TabsContent>
+        </>
+      )}
+    </Tabs>
+  );
+
+  // Sticky footer with action buttons
+  const formFooter = (
+    <div className="flex gap-3 p-4 border-t border-gray-700 dark:border-gray-700 bg-background">
+      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+        Cancel
+      </Button>
+      <Button type="submit" form="hose-form" className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
+        {hoseId ? "Update" : "Add"} Hose
+      </Button>
+    </div>
+  );
+
+  // Mobile: Full-screen drawer sliding up from bottom
+  if (isMobile) {
+    return (
+      <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DrawerContent className="h-[95vh] flex flex-col border-gray-700">
+          <DrawerHeader className="flex-shrink-0 border-b border-gray-700 pb-4">
+            <div className="flex items-center justify-between">
+              <DrawerTitle className="text-xl font-bold">
+                {hoseId ? `Edit ${hose?.hoseId || 'Hose'}` : 'Add New Hose'}
+              </DrawerTitle>
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
+                <XMarkIcon className="h-6 w-6" />
+              </Button>
+            </div>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 pt-4">
+            {formContent}
+          </div>
+          <DrawerFooter className="flex-shrink-0 p-0">
+            {formFooter}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Traditional dialog
   return (
-    <Dialog open onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-6 w-full max-w-md h-[80vh] shadow-xl flex flex-col" style={{ minHeight: '600px' }}>
-        {/* Original close button SVG is removed, relying on DialogContent's default close button */}
-        <DialogHeader className="mb-6 text-left flex-shrink-0">
-          <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 dark:border-gray-700">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-700 dark:border-gray-700">
+          <DialogTitle className="text-xl font-bold">
             {hoseId ? `Edit Hose - ${hose?.hoseId}` : 'Add New Hose'}
           </DialogTitle>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'comments' | 'history')} className="w-full flex flex-col flex-grow min-h-0">
-          <TabsList className={`grid w-full ${hoseId ? 'grid-cols-3' : 'grid-cols-1'} mb-4 flex-shrink-0`}>
-            <TabsTrigger value="details">Hose Details</TabsTrigger>
-            {hoseId && (
-              <>
-                <TabsTrigger value="history">History</TabsTrigger>
-                <TabsTrigger value="comments">Comments</TabsTrigger>
-              </>
-            )}
-          </TabsList>
-
-          <TabsContent value="details" className="flex-grow overflow-y-auto">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Hose Identification</h3>
-            <div className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="hoseId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Hose ID</Label>
-                <Input
-                  id="hoseId"
-                  type="text"
-                  value={formData.hoseId}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    // Always update the hoseId field
-                    setFormData((f) => ({ ...f, hoseId: next }));
-                    // When adding a new hose (no existing hoseId prop), auto-select size from ID
-                    if (!hoseId) {
-                      const match = next.trim().toUpperCase().match(/^WV\s*(25|38|65)/i);
-                      if (match) {
-                        const inferred = match[1] as Size;
-                        setFormData((f) => ({ ...f, size: inferred }));
-                      }
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (!hoseId) {
-                      const val = e.target.value.trim();
-                      if (val === "") {
-                        setFormData((f) => ({ ...f, hoseId: "WV" }));
-                      }
-                    }
-                  }}
-                  className="mt-1 block w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  placeholder="WV0001"
-                  required
-                  disabled={!!hoseId}
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <Label htmlFor="hoseType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData(f => ({ ...f, type: value as Type }))}
-                    required
-                  >
-                    <SelectTrigger id="hoseType" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Canvas">Canvas</SelectItem>
-                      <SelectItem value="Duraline">Duraline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="hoseSize" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Size</Label>
-                  <Select
-                    value={formData.size}
-                    onValueChange={(value) => setFormData(f => ({ ...f, size: value as Size }))}
-                    required
-                  >
-                    <SelectTrigger id="hoseSize" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25mm</SelectItem>
-                      <SelectItem value="38">38mm</SelectItem>
-                      <SelectItem value="65">65mm</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="hoseLocation" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</Label>
-                <Select
-                  value={formData.location ?? undefined}
-                  onValueChange={(value) => setFormData((f) => ({ ...f, location: value as Location }))}
-                >
-                  <SelectTrigger id="hoseLocation" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Station">Station</SelectItem>
-                    <SelectItem value="Pumper">Pumper</SelectItem>
-                    <SelectItem value="Tanker">Tanker</SelectItem>
-                    <SelectItem value="FCV">FCV</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="lengthOption" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Length (m)</Label>
-                <Select
-                  value={lengthOption}
-                  onValueChange={(value) => {
-                    const val = value as '1.5' | '3' | '5' | '15' | '30' | 'other';
-                    setLengthOption(val);
-                    if (val === '1.5') {
-                      setFormData((f) => ({ ...f, length: 1.5 }));
-                    } else if (val === '3') {
-                      setFormData((f) => ({ ...f, length: 3 }));
-                    } else if (val === '5') {
-                      setFormData((f) => ({ ...f, length: 5 }));
-                    } else if (val === '15') {
-                      setFormData((f) => ({ ...f, length: 15 }));
-                    } else if (val === '30') {
-                      setFormData((f) => ({ ...f, length: 30 }));
-                    } else if (val === 'other') {
-                      setFormData((f) => ({ ...f, length: customLength }));
-                    }
-                  }}
-                  required
-                >
-                  <SelectTrigger id="lengthOption" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <SelectValue placeholder="Select length" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1.5">1.5m</SelectItem>
-                    <SelectItem value="3">3m</SelectItem>
-                    <SelectItem value="5">5m</SelectItem>
-                    <SelectItem value="15">15m</SelectItem>
-                    <SelectItem value="30">30m</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {lengthOption === 'other' && (
-                  <div className="mt-2">
-                    <Label htmlFor="customLength" className="sr-only">Custom Length</Label> {/* sr-only if not visually needed but good for a11y */}
-                    <Input
-                      id="customLength"
-                      type="number"
-                      value={customLength}
-                      onChange={(e) => {
-                        const value = Number(e.target.value);
-                        setCustomLength(value);
-                        setFormData(f => ({ ...f, length: value }));
-                      }}
-                      className="block w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder="Custom length (m)"
-                      required={lengthOption === 'other'}
-                      min="1"
-                      step="0.1"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Status & Testing</h3>
-            <div className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData(f => ({ ...f, status: value as Status }))}
-                  required
-                >
-                  <SelectTrigger id="status" className="mt-1 w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="In date">In date</SelectItem>
-                    <SelectItem value="Due for testing">Due for testing</SelectItem>
-                    <SelectItem value="With district for repair">With district for repair</SelectItem>
-                    <SelectItem value="Condemned">Condemned</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="testDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Test Date</Label>
-                <Input
-                  id="testDate"
-                  type="date"
-                  value={formData.testDate}
-                  onChange={(e) => setFormData(f => ({ ...f, testDate: e.target.value }))}
-                  className="mt-1 block w-full dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  required
-                />
-                
-                {/* Status Change Warning */}
-                {statusWarning && (
-                  <div className={`mt-3 p-3 rounded-lg border ${
-                    statusWarning.isImprovement 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
-                      : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
-                  }`}>
-                    <div className="flex items-start gap-2">
-                      {statusWarning.isImprovement ? (
-                        <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                      ) : (
-                        <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${
-                          statusWarning.isImprovement 
-                            ? 'text-green-800 dark:text-green-200' 
-                            : 'text-amber-800 dark:text-amber-200'
-                        }`}>
-                          Automatic Status Change
-                        </p>
-                        <p className={`text-sm mt-1 ${
-                          statusWarning.isImprovement 
-                            ? 'text-green-700 dark:text-green-300' 
-                            : 'text-amber-700 dark:text-amber-300'
-                        }`}>
-                          Changing the test date will automatically update the status from 
-                          <span className="font-medium">"{statusWarning.currentStatus}"</span> to 
-                          <span className="font-medium">"{statusWarning.suggestedStatus}"</span>
-                          {statusWarning.isImprovement 
-                            ? ' because the test date is within the last year.' 
-                            : ' because the test date is more than a year old.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          {hoseId && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Hose Actions</h3>
-              <div className="space-y-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 justify-start w-full p-2"
-                    >
-                      <ArrowPathIcon className="h-5 w-5 mr-2" />
-                      Mark as Replaced
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Mark Hose as Replaced</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will record that hose {hose?.hoseId} has been replaced with a new hose. This action is for historical tracking purposes only.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="mb-4">
-                      <Label htmlFor="replacementNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes (optional)</Label>
-                      <Textarea
-                        id="replacementNotes"
-                        value={replacementNotes}
-                        onChange={(e) => setReplacementNotes(e.target.value)}
-                        placeholder="Enter any notes about the replacement..."
-                        className="mt-1 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setReplacementNotes('')}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleMarkAsReplaced}>Confirm Replace</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 justify-start w-full p-2"
-                    >
-                      <TrashIcon className="h-5 w-5 mr-2" />
-                      Delete Hose
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure you want to delete this hose?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete hose {hose?.hoseId} and all its associated history and comments. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="my-4">
-                      <Label htmlFor="deletionReason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for deletion (optional)</Label>
-                      <Textarea
-                        id="deletionReason"
-                        value={deletionReason}
-                        onChange={(e) => setDeletionReason(e.target.value)}
-                        placeholder="Enter reason for deletion..."
-                        className="mt-1 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setDeletionReason('')}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteHose} // Changed from handleDelete to handleDeleteHose
-                        className="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white dark:text-gray-900"
-                      >
-                        Confirm Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          )}
-          
-          <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              // className="px-4 py-2 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="px-6 py-2 bg-red-700 dark:bg-red-600 text-white hover:bg-red-800 dark:hover:bg-red-700 font-medium"
-            >
-              {hoseId ? "Update" : "Add"} Hose
-            </Button>
-          </div>
-        </form>
-          </TabsContent>
-          {hoseId && (
-            <>
-              <TabsContent value="comments" className="flex-grow overflow-y-auto">
-          <HoseComments hoseId={hoseId!} />
-              </TabsContent>
-              <TabsContent value="history" className="flex-grow overflow-y-auto">
-          <div className="mt-4">
-            <HoseHistory hoseId={hoseId!} />
-          </div>
-              </TabsContent>
-            </>
-          )}
-        </Tabs>
+        <div className="flex-1 overflow-y-auto px-6 pt-4">
+          {formContent}
+        </div>
+        <div className="flex-shrink-0">
+          {formFooter}
+        </div>
       </DialogContent>
-      
-
     </Dialog>
   );
 }

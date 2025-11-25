@@ -1,8 +1,7 @@
-import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
-import { TemplateEditor } from "../components/TemplateEditor";
+import { InventoryTemplateEditor } from "../components/InventoryTemplateEditor";
 
 export function InventoryTemplateTab() {
   const { templateId } = useParams<{ templateId: string }>();
@@ -27,7 +26,7 @@ export function InventoryTemplateTab() {
         </div>
       </div>
 
-      <TemplateEditor templateId={templateId as Id<"applianceTemplates">} />
+      <InventoryTemplateEditor templateId={templateId as Id<"applianceTemplates">} />
     </div>
   );
 }

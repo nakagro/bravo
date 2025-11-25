@@ -12,7 +12,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "../../../components/u
 import { Badge } from "../../../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { cn } from "../../../lib/utils";
-import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, Edit, Mail, Phone, User } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, Edit, Mail, Phone, User, KeyRound } from "lucide-react";
 
 type ViewMode = 'cards' | 'table';
 type SortField = 'pegNumber' | 'siteName' | 'address' | 'itemCount';
@@ -136,6 +136,34 @@ export function KeyInventory() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
+      </div>
+    );
+  }
+
+  // Empty state when no keys exist
+  if (keys.length === 0 && !filters.search) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
+          <KeyRound className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No keys yet</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
+          Get started by adding your first key to the inventory.
+        </p>
+        <Button
+          onClick={() => setShowAddForm(true)}
+          className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add First Key
+        </Button>
+        {showAddForm && (
+          <KeyForm
+            keyId={null}
+            onClose={() => setShowAddForm(false)}
+          />
+        )}
       </div>
     );
   }

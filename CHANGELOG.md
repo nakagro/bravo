@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.44] - 2025-11-24
+- Improved the Inventory module; added expected quantity field to inventory templates, improved layout on mobile.
+- Hose and Key Inventory modules given some visual improvements to the pop up modal when Adding/Editing a hose or key.
+
 ## [1.0.43] - 2025-11-21
 - Added a connection status indicator next to the version number in the menu; green = connected, amber = disconnected/reconnecting
 - Enhanced User Management in Admin Settings; users email is now displayed, the "Reset Password" section is now an accordian and the modal is scrollable when the content display is too long

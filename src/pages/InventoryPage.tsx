@@ -1,13 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useConvexAuth, useQuery } from "convex/react";
+import { useNavigate } from "react-router-dom";
 import { InventoryTemplateList } from "../features/inventory/components/InventoryTemplateList";
-import { InventoryRecentChecks } from "../features/inventory/components/RecentChecks";
-import { InventoryTemplateSelector } from "../features/inventory/components/TemplateSelector";
-import { useQuery } from "convex/react";
+import { InventoryRecentChecks } from "../features/inventory/components/InventoryRecentChecks";
+import { InventoryTemplateSelector } from "../features/inventory/components/InventoryTemplateSelector";
 import { api } from "../../convex/_generated/api";
+import { Badge } from "@/components/ui/badge";
 
 export function InventoryPage() {
+  const { isAuthenticated } = useConvexAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"checks" | "history" | "templates">("checks");
   const hasTemplatesAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventoryAdmin" });
+  
+  // Get in-progress runs count for header context
+  const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns);
+  const activeCount = inProgressRuns?.length ?? 0;
   
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -31,10 +39,32 @@ export function InventoryPage() {
     }
   }, [activeTab, hasTemplatesAccess]);
 
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-4">Please login to view this page</h2>
+        <button 
+          onClick={() => navigate('/login')}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4" data-component="InventoryPage">
       <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
+          {activeCount > 0 && (
+            <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+              {activeCount} in progress
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

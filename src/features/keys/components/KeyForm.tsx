@@ -1,10 +1,41 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { KeyItems } from "./KeyItems";
 import { KeyHistory } from "./KeyHistory";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function KeyForm({ 
   keyId, 
@@ -13,7 +44,9 @@ export function KeyForm({
   keyId: Id<"keys"> | null, 
   onClose: () => void 
 }) {
+  const isMobile = useIsMobile();
   const existingKey = useQuery(api.keys.get, keyId ? { id: keyId } : "skip");
+  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'history'>('details');
   
   const [formData, setFormData] = useState({
     pegNumber: "",
@@ -111,212 +144,281 @@ export function KeyForm({
     }
   };
   
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {keyId ? "Edit Key" : "Add New Key"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex-shrink-0"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 scrollbar-custom">
-          <form onSubmit={handleSubmit} className="p-4">
+  // Form content - shared between mobile drawer and desktop dialog
+  const formContent = (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'items' | 'history')} className="flex flex-col flex-1 min-h-0">
+      {/* Custom tab bar with proper mobile sizing */}
+      <div className={`grid w-full ${keyId ? 'grid-cols-3' : 'grid-cols-1'} gap-1 p-1 bg-muted rounded-lg flex-shrink-0`}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('details')}
+          className={`h-11 rounded-md text-base font-medium transition-all ${
+            activeTab === 'details'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Details
+        </button>
+        {keyId && (
+          <>
+            <button
+              type="button"
+              onClick={() => setActiveTab('items')}
+              className={`h-11 rounded-md text-base font-medium transition-all ${
+                activeTab === 'items'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Items
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={`h-11 rounded-md text-base font-medium transition-all ${
+                activeTab === 'history'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              History
+            </button>
+          </>
+        )}
+      </div>
+
+      <TabsContent value="details" className="flex-1 overflow-y-auto mt-4 pb-20">
+        <form id="key-form" onSubmit={handleSubmit} className="space-y-6">
+          {/* Site Information */}
           <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Site Information</h3>
+            
             <div>
-              <label htmlFor="pegNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Peg Number *
-              </label>
-              <input
-                type="text"
+              <Label htmlFor="pegNumber" className="text-base font-medium">Peg Number *</Label>
+              <Input
                 id="pegNumber"
                 name="pegNumber"
                 value={formData.pegNumber}
                 onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.pegNumber ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'
-                } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white`}
+                className={`mt-2 h-12 text-base ${errors.pegNumber ? 'border-red-500' : ''}`}
+                placeholder="e.g., A1"
               />
               {errors.pegNumber && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.pegNumber}</p>
               )}
             </div>
-            
+
             <div>
-              <label htmlFor="siteName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Site Name *
-              </label>
-              <input
-                type="text"
+              <Label htmlFor="siteName" className="text-base font-medium">Site Name *</Label>
+              <Input
                 id="siteName"
                 name="siteName"
                 value={formData.siteName}
                 onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.siteName ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'
-                } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white`}
+                className={`mt-2 h-12 text-base ${errors.siteName ? 'border-red-500' : ''}`}
+                placeholder="e.g., Community Hall"
               />
               {errors.siteName && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.siteName}</p>
               )}
             </div>
-            
+
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Address *
-              </label>
-              <input
-                type="text"
+              <Label htmlFor="address" className="text-base font-medium">Address *</Label>
+              <Input
                 id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 border ${
-                  errors.address ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'
-                } rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white`}
+                className={`mt-2 h-12 text-base ${errors.address ? 'border-red-500' : ''}`}
+                placeholder="e.g., 123 Main Street"
               />
               {errors.address && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
               )}
             </div>
-            
-            <h3 className="text-md font-medium text-gray-900 dark:text-white mt-6 mb-3">Contact Information</h3>
+          </div>
+
+          {/* Contact Information */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contact Information</h3>
             
             <div>
-              <label htmlFor="contactName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Contact Name
-              </label>
-              <input
-                type="text"
+              <Label htmlFor="contactName" className="text-base font-medium">Contact Name</Label>
+              <Input
                 id="contactName"
                 name="contactName"
                 value={formData.contactName}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white"
+                className="mt-2 h-12 text-base"
+                placeholder="Optional"
               />
             </div>
-            
+
             <div>
-              <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Contact Email
-              </label>
-              <input
-                type="email"
+              <Label htmlFor="contactEmail" className="text-base font-medium">Contact Email</Label>
+              <Input
                 id="contactEmail"
                 name="contactEmail"
+                type="email"
                 value={formData.contactEmail}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white"
+                className="mt-2 h-12 text-base"
+                placeholder="Optional"
               />
             </div>
-            
+
             <div>
-              <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Contact Phone
-              </label>
-              <input
-                type="tel"
+              <Label htmlFor="contactPhone" className="text-base font-medium">Contact Phone</Label>
+              <Input
                 id="contactPhone"
                 name="contactPhone"
+                type="tel"
                 value={formData.contactPhone}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white"
+                className="mt-2 h-12 text-base"
+                placeholder="Optional"
               />
             </div>
-            
-            <h3 className="text-md font-medium text-gray-900 dark:text-white mt-6 mb-3">Notes</h3>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notes</h3>
             
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                General Notes
-              </label>
-              <textarea
+              <Label htmlFor="notes" className="text-base font-medium">General Notes</Label>
+              <Textarea
                 id="notes"
                 name="notes"
-                rows={4}
                 value={formData.notes}
                 onChange={handleChange}
-                placeholder="Add any notes about this key here..."
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white"
+                className="mt-2 min-h-[100px] text-base"
+                placeholder="Add any notes about this key..."
               />
             </div>
-            
-
           </div>
-          
-          <div className="mt-6 flex justify-between items-center">
-            {keyId && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (window.confirm("Are you sure you want to delete this key? This will also delete all associated key items.")) {
-                    try {
-                      await removeKey({ id: keyId });
-                      toast.success("Key deleted successfully");
-                      onClose();
-                    } catch (error: any) {
-                      toast.error(error.message || "Failed to delete key");
-                      console.error(error);
-                    }
-                  }
-                }}
-                className="px-4 py-2 border border-red-300 dark:border-red-600 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Delete Key
-              </button>
-            )}
-            <div className="flex space-x-3 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                "Save"
-              )}
-            </button>
+
+          {/* Delete Action - only for existing keys */}
+          {keyId && (
+            <div className="space-y-3 pt-4 border-t">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Actions</h3>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full h-12 text-base justify-start border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <TrashIcon className="h-5 w-5 mr-3" />
+                    Delete Key
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this key?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete "{existingKey?.siteName}" and all associated key items. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                    <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        try {
+                          await removeKey({ id: keyId });
+                          toast.success("Key deleted successfully");
+                          onClose();
+                        } catch (error: any) {
+                          toast.error(error.message || "Failed to delete key");
+                        }
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-          </div>
+          )}
         </form>
-        
-        {/* Key Items section - only show when editing an existing key */}
-        {keyId && (
-          <div className="px-4 pb-4">
-            <KeyItems keyId={keyId} />
-          </div>
-        )}
-        
-        {/* Key History section - only show when editing an existing key */}
-        {keyId && (
-          <div className="px-4 pb-4">
-            <KeyHistory keyId={keyId} />
-          </div>
-        )}
+      </TabsContent>
 
-      </div>
+      {keyId && (
+        <>
+          <TabsContent value="items" className="flex-1 overflow-y-auto mt-4">
+            <KeyItems keyId={keyId} />
+          </TabsContent>
+          <TabsContent value="history" className="flex-1 overflow-y-auto mt-4">
+            <KeyHistory keyId={keyId} />
+          </TabsContent>
+        </>
+      )}
+    </Tabs>
+  );
+
+  // Sticky footer with action buttons
+  const formFooter = (
+    <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+        Cancel
+      </Button>
+      <Button 
+        type="submit" 
+        form="key-form" 
+        disabled={isSubmitting}
+        className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800"
+      >
+        {isSubmitting ? "Saving..." : (keyId ? "Update" : "Add")} Key
+      </Button>
     </div>
-    </div>
+  );
+
+  // Mobile: Full-screen drawer sliding up from bottom
+  if (isMobile) {
+    return (
+      <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DrawerContent className="h-[95vh] flex flex-col border-gray-700">
+          <DrawerHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4">
+            <div className="flex items-center justify-between">
+              <DrawerTitle className="text-xl font-bold">
+                {keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
+              </DrawerTitle>
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
+                <XMarkIcon className="h-6 w-6" />
+              </Button>
+            </div>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 pt-4">
+            {formContent}
+          </div>
+          <DrawerFooter className="flex-shrink-0 p-0">
+            {formFooter}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Traditional dialog
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 dark:border-gray-700">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <DialogTitle className="text-xl font-bold">
+            {keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto px-6 pt-4">
+          {formContent}
+        </div>
+        <div className="flex-shrink-0">
+          {formFooter}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
