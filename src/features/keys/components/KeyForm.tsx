@@ -360,9 +360,9 @@ export function KeyForm({
     </Tabs>
   );
 
-  // Sticky footer with action buttons
+  // Sticky footer with action buttons (pb-8 on mobile for iPhone home indicator)
   const formFooter = (
-    <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
       <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
         Cancel
       </Button>
