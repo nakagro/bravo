@@ -1,64 +1,130 @@
-import React, { useState } from "react";
-import { useQuery } from "convex/react";
+import React, { useState, useRef, useEffect } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import BookingsTab from "../features/bookings/components/BookingsTab";
 import AdminTab from "../features/bookings/components/AdminTab";
+import ScheduleTab from "../features/bookings/components/ScheduleTab";
+import { Badge } from "@/components/ui/badge";
 
 export function BookingsPage() {
+  const { isAuthenticated } = useConvexAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('bookings');
-  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  
+  // Refs for tab animation
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  
   const currentUser = useQuery(api.auth.loggedInUser);
-
-  const isAuthenticated = !!currentUser;
+  const myBookings = useQuery(api.bookings.getMyBookings);
+  const pendingApprovals = useQuery(api.bookings.getPendingApprovalsForMe);
+  
   const isAdmin = currentUser?.isAdmin || false;
+  const bookingCount = myBookings?.length ?? 0;
+  const pendingCount = pendingApprovals?.length ?? 0;
+  
+  // Update indicator position when active tab changes
+  useEffect(() => {
+    const activeTabElement = tabRefs.current[activeTab];
+    if (activeTabElement) {
+      setIndicatorStyle({
+        left: activeTabElement.offsetLeft,
+        width: activeTabElement.offsetWidth,
+      });
+    }
+  }, [activeTab, isAdmin]);
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-4">Please login to view this page</h2>
+        <button 
+          onClick={() => navigate('/login')}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Go to Login
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-component="BookingsPage">
       <div className="flex justify-between items-center gap-4">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bookings</h1>
+          {myBookings !== undefined && (
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
+            </Badge>
+          )}
+          {pendingCount > 0 && (
+            <Badge variant="destructive" className="bg-red-600 dark:bg-red-500 text-white">
+              {pendingCount} pending
+            </Badge>
+          )}
         </div>
       </div>
       
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex space-x-4 -mb-px">
+      <div className="border-b border-gray-200 dark:border-gray-700 relative">
+        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
           <button
+            ref={(el) => { tabRefs.current['bookings'] = el; }}
             onClick={() => setActiveTab('bookings')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'bookings' 
-                ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Bookings
+            My Bookings
+          </button>
+          <button
+            ref={(el) => { tabRefs.current['schedule'] = el; }}
+            onClick={() => setActiveTab('schedule')}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+              activeTab === 'schedule' 
+                ? 'text-red-600 dark:text-red-400 font-bold' 
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+            }`}
+          >
+            Schedule
           </button>
           {isAdmin && (
             <button
+              ref={(el) => { tabRefs.current['admin'] = el; }}
               onClick={() => setActiveTab('admin')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'admin' 
-                  ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-400' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                  ? 'text-red-600 dark:text-red-400 font-bold' 
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
               }`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
               Admin
             </button>
           )}
         </nav>
+        {/* Animated indicator */}
+        <div
+          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
+          style={{
+            left: `${indicatorStyle.left}px`,
+            width: `${indicatorStyle.width}px`,
+          }}
+        />
       </div>
       
       {/* Tab Content */}
       <div className="mt-4">
         {activeTab === 'bookings' && (
           <BookingsTab isAuthenticated={isAuthenticated} />
+        )}
+        
+        {activeTab === 'schedule' && (
+          <ScheduleTab isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
         )}
         
         {activeTab === 'admin' && isAdmin && (

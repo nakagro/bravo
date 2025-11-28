@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.45] - 2025-11-28
+- Created a Booking module, this module is still being tested and only certain users can access it. This system allows for users to book a resource, such as the FCV, with an approval chain attached to persons responsible for said resource. 
+
 ## [1.0.44] - 2025-11-24
 - Improved the Inventory module; added expected quantity field to inventory templates, improved layout on mobile.
 - Hose and Key Inventory modules given some visual improvements to the pop up modal when Adding/Editing a hose or key.

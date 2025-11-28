@@ -796,6 +796,12 @@ const applicationTables = {
       v.literal("rejected"), // Rejected by an approver
       v.literal("cancelled") // Cancelled by the requester
     ),
+    // Date/time fields for the booking
+    startDate: v.string(), // ISO date string (YYYY-MM-DD)
+    endDate: v.optional(v.string()), // ISO date string, optional for single-day bookings
+    startTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day bookings
+    endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day bookings
+    isAllDay: v.boolean(), // Whether this is an all-day booking
     notes: v.optional(v.string()), // Optional notes from the requester
     reviewedBy: v.optional(v.id("users")), // User who approved/rejected
     reviewedAt: v.optional(v.number()), // When the booking was reviewed
@@ -806,7 +812,9 @@ const applicationTables = {
     .index("by_resource", ["resourceId"])
     .index("by_requestedBy", ["requestedBy"])
     .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_startDate", ["startDate"])
+    .index("by_resource_startDate", ["resourceId", "startDate"]),
 
   // Password reset tokens table
   passwordResetTokens: defineTable({
