@@ -55,7 +55,7 @@ export function BookingsPage() {
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bookings</h1>
-          {myBookings !== undefined && (
+          {/* {myBookings !== undefined && (
             <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
               {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'}
             </Badge>
@@ -64,7 +64,7 @@ export function BookingsPage() {
             <Badge variant="destructive" className="bg-red-600 dark:bg-red-500 text-white">
               {pendingCount} pending
             </Badge>
-          )}
+          )} */}
         </div>
       </div>
       

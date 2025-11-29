@@ -327,9 +327,10 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
       </div>
 
       {/* Time Selection - only if not all day */}
+      {/* Stacked on mobile, side-by-side on desktop */}
       {!isAllDay && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="min-w-0">
+        <div className={isMobile ? "space-y-4" : "grid grid-cols-2 gap-4"}>
+          <div>
             <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {isMultiDay ? 'Start Time' : 'From'}
             </label>
@@ -339,18 +340,18 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className={`w-full px-3 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!startTime ? 'text-transparent' : ''}`}
+                className={`w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!startTime ? 'text-transparent' : ''}`}
                 style={{ colorScheme: 'light dark' }}
               />
               {/* iOS placeholder overlay */}
               {!startTime && (
-                <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
-                  Select time
+                <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                  Select start time
                 </span>
               )}
             </div>
           </div>
-          <div className="min-w-0">
+          <div>
             <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {isMultiDay ? 'End Time' : 'To'}
             </label>
@@ -360,13 +361,13 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className={`w-full px-3 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!endTime ? 'text-transparent' : ''}`}
+                className={`w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!endTime ? 'text-transparent' : ''}`}
                 style={{ colorScheme: 'light dark' }}
               />
               {/* iOS placeholder overlay */}
               {!endTime && (
-                <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
-                  Select time
+                <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                  Select end time
                 </span>
               )}
             </div>
