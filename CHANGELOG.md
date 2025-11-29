@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.46] - 2025-11-30
+- Fixed some bugs and added some features to the Booking module:
+    - Multi-day bookings with a time frame were not displaying the correct dates (yay Timezones)
+    - Added an option for a resource approver to book on behalf of another user.
+    - Added an option to block out a resource for a time frame (such as blocking the FCV out while on Strike Team roster)
+
+
 ## [1.0.45] - 2025-11-28
 - Created a Booking module, this module is still being tested and only certain users can access it. This system allows for users to book a resource, such as the FCV, with an approval chain attached to persons responsible for said resource. 
 

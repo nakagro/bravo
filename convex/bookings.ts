@@ -205,7 +205,8 @@ export const getBookings = query({
       _id: v.id("bookings"),
       _creationTime: v.number(),
       resourceId: v.id("bookingResources"),
-      requestedBy: v.id("users"),
+      requestedBy: v.optional(v.id("users")),
+      isBlocked: v.optional(v.boolean()),
       status: v.union(
         v.literal("pending"),
         v.literal("approved"),
@@ -254,7 +255,7 @@ export const getBookings = query({
     const bookingsWithDetails = await Promise.all(
       bookings.map(async (booking) => {
         const resource = await ctx.db.get(booking.resourceId);
-        const requestedByUser = await ctx.db.get(booking.requestedBy);
+        const requestedByUser = booking.requestedBy ? await ctx.db.get(booking.requestedBy) : null;
         const reviewedByUser = booking.reviewedBy
           ? await ctx.db.get(booking.reviewedBy)
           : null;
@@ -302,7 +303,8 @@ export const getMyBookings = query({
       _id: v.id("bookings"),
       _creationTime: v.number(),
       resourceId: v.id("bookingResources"),
-      requestedBy: v.id("users"),
+      requestedBy: v.optional(v.id("users")),
+      isBlocked: v.optional(v.boolean()),
       status: v.union(
         v.literal("pending"),
         v.literal("approved"),
@@ -371,7 +373,8 @@ export const getPendingApprovalsForMe = query({
       _id: v.id("bookings"),
       _creationTime: v.number(),
       resourceId: v.id("bookingResources"),
-      requestedBy: v.id("users"),
+      requestedBy: v.optional(v.id("users")),
+      isBlocked: v.optional(v.boolean()),
       status: v.union(
         v.literal("pending"),
         v.literal("approved"),
@@ -435,7 +438,7 @@ export const getPendingApprovalsForMe = query({
     const bookingsWithDetails = await Promise.all(
       myPendingBookings.map(async (booking) => {
         const resource = await ctx.db.get(booking.resourceId);
-        const requestedByUser = await ctx.db.get(booking.requestedBy);
+        const requestedByUser = booking.requestedBy ? await ctx.db.get(booking.requestedBy) : null;
 
         return {
           ...booking,
@@ -464,6 +467,8 @@ export const getPendingApprovalsForMe = query({
 
 /**
  * Create a new booking request
+ * Approvers can optionally create bookings on behalf of other users
+ * or block a resource without assigning a user
  */
 export const createBooking = mutation({
   args: {
@@ -474,6 +479,8 @@ export const createBooking = mutation({
     endTime: v.optional(v.string()), // Time string (HH:MM)
     isAllDay: v.boolean(),
     notes: v.optional(v.string()),
+    onBehalfOf: v.optional(v.id("users")), // Optional: approvers can book on behalf of another user
+    isBlocked: v.optional(v.boolean()), // Optional: block resource without a user (e.g., strike team deployment)
   },
   returns: v.id("bookings"),
   handler: async (ctx, args) => {
@@ -491,6 +498,43 @@ export const createBooking = mutation({
       throw new Error("This resource is not available for booking");
     }
 
+    // Determine who the booking is for
+    let requestedBy: typeof userId | null = userId;
+    let autoApprove = false;
+    
+    // Handle blocked bookings (no user assigned)
+    if (args.isBlocked) {
+      // Check if current user is an approver for this resource or an admin
+      const currentUser = await ctx.db.get(userId);
+      const isApprover = resource.approvers.includes(userId);
+      const isAdmin = currentUser?.isAdmin === true;
+      
+      if (!isApprover && !isAdmin) {
+        throw new Error("Only approvers or admins can block resources");
+      }
+      
+      requestedBy = null; // No user assigned for blocked bookings
+      autoApprove = true;
+    } else if (args.onBehalfOf) {
+      // Check if current user is an approver for this resource or an admin
+      const currentUser = await ctx.db.get(userId);
+      const isApprover = resource.approvers.includes(userId);
+      const isAdmin = currentUser?.isAdmin === true;
+      
+      if (!isApprover && !isAdmin) {
+        throw new Error("Only approvers or admins can create bookings on behalf of other users");
+      }
+      
+      // Verify the target user exists
+      const targetUser = await ctx.db.get(args.onBehalfOf);
+      if (!targetUser) {
+        throw new Error("Target user not found");
+      }
+      
+      requestedBy = args.onBehalfOf;
+      autoApprove = true; // Auto-approve bookings made by approvers on behalf of others
+    }
+
     // Validate time fields if not all-day
     if (!args.isAllDay && (!args.startTime || !args.endTime)) {
       throw new Error("Start time and end time are required for non-all-day bookings");
@@ -498,44 +542,80 @@ export const createBooking = mutation({
 
     // Check for conflicting bookings (only approved or pending ones)
     const effectiveEndDate = args.endDate || args.startDate;
+    
+    // Get all active bookings for this resource - we'll filter for overlap in code
+    // because Convex filters can't express the full overlap logic
     const existingBookings = await ctx.db
       .query("bookings")
       .withIndex("by_resource", (q) => q.eq("resourceId", args.resourceId))
       .filter((q) =>
-        q.and(
-          q.or(
-            q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "approved")
-          ),
-          // Check for date overlap
-          q.and(
-            q.lte(q.field("startDate"), effectiveEndDate),
-            q.gte(q.field("startDate"), args.startDate)
-          )
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "approved")
         )
       )
       .collect();
 
-    // More thorough conflict check including time overlap
+    // Check each existing booking for date/time overlap
     for (const existing of existingBookings) {
       const existingEndDate = existing.endDate || existing.startDate;
       
-      // Check if dates overlap
-      if (args.startDate <= existingEndDate && effectiveEndDate >= existing.startDate) {
-        // If either booking is all-day, there's a conflict
-        if (args.isAllDay || existing.isAllDay) {
-          throw new Error(
-            `This resource is already booked on ${existing.startDate}. Please choose a different date or time.`
-          );
+      // Two date ranges overlap if: start1 <= end2 AND end1 >= start2
+      const datesOverlap = args.startDate <= existingEndDate && effectiveEndDate >= existing.startDate;
+      
+      if (!datesOverlap) {
+        continue; // No date overlap, skip this booking
+      }
+      
+      // Dates overlap - now check if there's an actual conflict
+      
+      // Case 1: Either booking is all-day = automatic conflict
+      if (args.isAllDay || existing.isAllDay) {
+        const conflictDates = existing.endDate 
+          ? `${existing.startDate} to ${existing.endDate}`
+          : existing.startDate;
+        throw new Error(
+          `This resource is already booked on ${conflictDates}. Please choose different dates.`
+        );
+      }
+      
+      // Case 2: Both bookings have specific times - check time overlap
+      // For multi-day bookings with times, we need to check if any day overlaps
+      if (args.startTime && args.endTime && existing.startTime && existing.endTime) {
+        // For single-day or same-day overlap, check time ranges
+        // For multi-day bookings, the time applies to start day (startTime) and end day (endTime)
+        // Middle days are effectively "all day"
+        
+        // Determine if there's a time conflict
+        let hasTimeConflict = false;
+        
+        // If the new booking's start date equals existing's end date
+        if (args.startDate === existingEndDate) {
+          // New booking starts on the day existing ends
+          // Conflict if new start time < existing end time
+          hasTimeConflict = args.startTime < existing.endTime;
+        }
+        // If the new booking's end date equals existing's start date
+        else if (effectiveEndDate === existing.startDate) {
+          // New booking ends on the day existing starts
+          // Conflict if new end time > existing start time
+          hasTimeConflict = args.endTime > existing.startTime;
+        }
+        // If there's overlap in the middle (not just touching at edges)
+        else if (args.startDate < existingEndDate && effectiveEndDate > existing.startDate) {
+          // There are overlapping "middle" days - definite conflict
+          hasTimeConflict = true;
+        }
+        // Same single day
+        else if (args.startDate === existing.startDate && !args.endDate && !existing.endDate) {
+          // Both are single-day bookings on the same day
+          hasTimeConflict = args.startTime < existing.endTime && args.endTime > existing.startTime;
         }
         
-        // Check time overlap for same-day bookings
-        if (args.startTime && args.endTime && existing.startTime && existing.endTime) {
-          if (args.startTime < existing.endTime && args.endTime > existing.startTime) {
-            throw new Error(
-              `This resource is already booked from ${existing.startTime} to ${existing.endTime} on ${existing.startDate}. Please choose a different time.`
-            );
-          }
+        if (hasTimeConflict) {
+          throw new Error(
+            `This resource is already booked from ${existing.startTime} to ${existing.endTime} on ${existing.startDate}${existing.endDate ? ` to ${existing.endDate}` : ''}. Please choose a different time.`
+          );
         }
       }
     }
@@ -544,8 +624,9 @@ export const createBooking = mutation({
 
     const bookingId = await ctx.db.insert("bookings", {
       resourceId: args.resourceId,
-      requestedBy: userId,
-      status: "pending",
+      requestedBy: requestedBy ?? undefined,
+      isBlocked: args.isBlocked || undefined,
+      status: autoApprove ? "approved" : "pending",
       startDate: args.startDate,
       endDate: args.endDate,
       startTime: args.startTime,
@@ -554,6 +635,8 @@ export const createBooking = mutation({
       notes: args.notes,
       createdAt: now,
       updatedAt: now,
+      // If auto-approved, record who approved it
+      ...(autoApprove ? { reviewedBy: userId, reviewedAt: now } : {}),
     });
 
     return bookingId;
@@ -787,7 +870,8 @@ export const getBookingsForDateRange = query({
       _id: v.id("bookings"),
       _creationTime: v.number(),
       resourceId: v.id("bookingResources"),
-      requestedBy: v.id("users"),
+      requestedBy: v.optional(v.id("users")),
+      isBlocked: v.optional(v.boolean()),
       status: v.union(
         v.literal("pending"),
         v.literal("approved"),
@@ -854,7 +938,7 @@ export const getBookingsForDateRange = query({
     const bookingsWithDetails = await Promise.all(
       activeBookings.map(async (booking) => {
         const resource = await ctx.db.get(booking.resourceId);
-        const requestedByUser = await ctx.db.get(booking.requestedBy);
+        const requestedByUser = booking.requestedBy ? await ctx.db.get(booking.requestedBy) : null;
 
         return {
           ...booking,

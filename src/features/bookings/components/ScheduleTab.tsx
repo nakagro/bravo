@@ -38,9 +38,16 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
     const start = new Date(currentWeekStart);
     const end = new Date(currentWeekStart);
     end.setDate(end.getDate() + 6);
+    // Format as YYYY-MM-DD in local time (not UTC)
+    const formatLocalDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate: formatLocalDate(start),
+      endDate: formatLocalDate(end),
     };
   }, [currentWeekStart]);
 
@@ -59,9 +66,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
     for (let i = 0; i < 7; i++) {
       const date = new Date(currentWeekStart);
       date.setDate(date.getDate() + i);
+      // Format as YYYY-MM-DD in local time (not UTC) to match booking date strings
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       days.push({
         date,
-        dateStr: date.toISOString().split('T')[0],
+        dateStr: `${year}-${month}-${day}`,
         dayName: date.toLocaleDateString('en-AU', { weekday: 'short' }),
         dayNum: date.getDate(),
         monthName: date.toLocaleDateString('en-AU', { month: 'short' }),
@@ -77,13 +88,18 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
     if (!bookings) return grouped;
     
     for (const booking of bookings) {
-      const endDate = booking.endDate || booking.startDate;
+      const endDateStr = booking.endDate || booking.startDate;
       // For multi-day bookings, add to each day
-      const start = new Date(booking.startDate);
-      const end = new Date(endDate);
+      // Parse dates as local time by appending T00:00:00 to avoid timezone issues
+      const start = new Date(booking.startDate + 'T00:00:00');
+      const end = new Date(endDateStr + 'T00:00:00');
       
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
+        // Format as YYYY-MM-DD in local time
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         if (!grouped[dateStr]) {
           grouped[dateStr] = [];
         }
@@ -131,7 +147,18 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
     }
   };
 
-  const getStatusClasses = (status: string) => {
+  // Format booking display info (user or reason for blocked)
+  const formatBookingInfo = (booking: any) => {
+    if (booking.isBlocked) {
+      return booking.notes || 'Blocked';
+    }
+    return formatUserName(booking.requestedByUser);
+  };
+
+  const getStatusClasses = (status: string, isBlocked?: boolean) => {
+    if (isBlocked) {
+      return 'bg-red-50 dark:bg-red-900/30 border-red-400 dark:border-red-600';
+    }
     switch (status) {
       case 'pending':
         return 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600';
@@ -274,7 +301,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                           <div
                             key={`${booking._id}-${day.dateStr}`}
                             onClick={() => isAdmin && setEditingBookingId(booking._id)}
-                            className={`p-1.5 rounded text-xs border-l-2 ${getStatusClasses(booking.status)} ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-red-300 dark:hover:ring-red-700 transition-all' : ''}`}
+                            className={`p-1.5 rounded text-xs border-l-2 ${getStatusClasses(booking.status, booking.isBlocked)} ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-red-300 dark:hover:ring-red-700 transition-all' : ''}`}
                           >
                             <div className={`font-medium truncate ${getStatusTextClasses(booking.status)}`}>
                               {booking.resource?.name}
@@ -288,8 +315,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                               </div>
                             ) : null}
                             <div className="text-[10px] opacity-75 truncate">
-                              {formatUserName(booking.requestedByUser)}
+                              {formatBookingInfo(booking)}
                             </div>
+                            {!booking.isBlocked && booking.notes && (
+                              <div className="text-[10px] opacity-60 truncate italic">
+                                {booking.notes}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -353,7 +385,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                             <div
                               key={`${booking._id}-${day.dateStr}`}
                               onClick={() => isAdmin && setEditingBookingId(booking._id)}
-                              className={`p-3 rounded border-l-4 ${getStatusClasses(booking.status)} ${isAdmin ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
+                              className={`p-3 rounded border-l-4 ${getStatusClasses(booking.status, booking.isBlocked)} ${isAdmin ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
@@ -371,13 +403,23 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                                     )}
                                   </div>
                                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {formatUserName(booking.requestedByUser)}
+                                    {formatBookingInfo(booking)}
                                   </div>
+                                  {!booking.isBlocked && booking.notes && (
+                                    <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 italic">
+                                      {booking.notes}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                   {booking.status === 'pending' && (
                                     <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
                                       Pending
+                                    </span>
+                                  )}
+                                  {booking.isBlocked && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                      Blocked
                                     </span>
                                   )}
                                   {isAdmin && (
@@ -409,6 +451,10 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-900/30 border-l-2 border-yellow-400 dark:border-yellow-600"></div>
             <span className="text-gray-600 dark:text-gray-400">Pending</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-red-50 dark:bg-red-900/30 border-l-2 border-red-400 dark:border-red-600"></div>
+            <span className="text-gray-600 dark:text-gray-400">Blocked</span>
           </div>
         </div>
       </div>
@@ -460,16 +506,23 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                             )}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Booked by {formatUserName(booking.requestedByUser)}
+                            {booking.isBlocked ? (booking.notes || 'Blocked') : `Booked by ${formatUserName(booking.requestedByUser)}`}
                           </div>
+                          {!booking.isBlocked && booking.notes && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500 italic mt-0.5">
+                              {booking.notes}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        booking.status === 'approved' 
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                          : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                        booking.isBlocked
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                          : booking.status === 'approved' 
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
                       }`}>
-                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                        {booking.isBlocked ? 'Blocked' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                       </span>
                     </div>
                   </div>

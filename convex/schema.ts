@@ -789,7 +789,8 @@ const applicationTables = {
   // Booking requests
   bookings: defineTable({
     resourceId: v.id("bookingResources"), // The resource being booked
-    requestedBy: v.id("users"), // User requesting the booking
+    requestedBy: v.optional(v.id("users")), // User requesting the booking (null for blocked/unavailable)
+    isBlocked: v.optional(v.boolean()), // True if resource is blocked without a user (e.g., strike team)
     status: v.union(
       v.literal("pending"), // Awaiting approval
       v.literal("approved"), // Approved by an approver
