@@ -212,7 +212,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
               />
               {/* iOS placeholder overlay */}
               {!startDate && (
-                <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                <span className="absolute inset-0 flex items-center px-4 py-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base border border-transparent">
                   Select date
                 </span>
               )}
@@ -251,7 +251,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
                 />
                 {/* iOS placeholder overlay */}
                 {!endDate && (
-                  <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                  <span className="absolute inset-0 flex items-center px-4 py-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base border border-transparent">
                     Select end date
                   </span>
                 )}
@@ -295,7 +295,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
                   />
                   {/* iOS placeholder overlay */}
                   {!startTime && (
-                    <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                    <span className="absolute inset-0 flex items-center px-3 py-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base border border-transparent">
                       Select time
                     </span>
                   )}
@@ -316,7 +316,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
                   />
                   {/* iOS placeholder overlay */}
                   {!endTime && (
-                    <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                    <span className="absolute inset-0 flex items-center px-3 py-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base border border-transparent">
                       Select time
                     </span>
                   )}
