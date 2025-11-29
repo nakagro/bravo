@@ -16,6 +16,8 @@ import {
   PencilSquareIcon,
   TrashIcon,
   UsersIcon,
+  LockClosedIcon,
+  LockOpenIcon,
 } from "@heroicons/react/24/outline";
 
 interface AdminTabProps {
@@ -262,8 +264,19 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
               <div key={resource._id} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-semibold">{resource.name}</h4>
+                      {resource.approverOnly ? (
+                        <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                          <LockClosedIcon className="h-3 w-3" />
+                          Approver Only
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
+                          <LockOpenIcon className="h-3 w-3" />
+                          Open
+                        </span>
+                      )}
                       {!resource.isActive && (
                         <span className="px-1.5 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
                           Inactive

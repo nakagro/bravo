@@ -15,6 +15,7 @@ export const getBookingResources = query({
       description: v.optional(v.string()),
       isActive: v.boolean(),
       approvers: v.array(v.id("users")),
+      approverOnly: v.optional(v.boolean()),
       createdBy: v.id("users"),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -86,6 +87,7 @@ export const getActiveBookingResources = query({
       description: v.optional(v.string()),
       isActive: v.boolean(),
       approvers: v.array(v.id("users")),
+      approverOnly: v.optional(v.boolean()),
       createdBy: v.id("users"),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -108,6 +110,7 @@ export const createBookingResource = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     approvers: v.array(v.id("users")),
+    approverOnly: v.optional(v.boolean()), // If true, only approvers can create bookings
   },
   returns: v.id("bookingResources"),
   handler: async (ctx, args) => {
@@ -123,6 +126,7 @@ export const createBookingResource = mutation({
       description: args.description,
       isActive: true,
       approvers: args.approvers,
+      approverOnly: args.approverOnly || false,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -143,6 +147,7 @@ export const updateBookingResource = mutation({
     description: v.optional(v.string()),
     isActive: v.boolean(),
     approvers: v.array(v.id("users")),
+    approverOnly: v.optional(v.boolean()), // If true, only approvers can create bookings
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -156,6 +161,7 @@ export const updateBookingResource = mutation({
       description: args.description,
       isActive: args.isActive,
       approvers: args.approvers,
+      approverOnly: args.approverOnly || false,
       updatedAt: Date.now(),
       updatedBy: userId,
     });
@@ -502,13 +508,18 @@ export const createBooking = mutation({
     let requestedBy: typeof userId | null = userId;
     let autoApprove = false;
     
+    // Get current user info for permission checks
+    const currentUser = await ctx.db.get(userId);
+    const isApprover = resource.approvers.includes(userId);
+    const isAdmin = currentUser?.isAdmin === true;
+    
+    // Check if resource is approver-only
+    if (resource.approverOnly && !isApprover && !isAdmin) {
+      throw new Error("This resource can only be booked by its designated approvers");
+    }
+    
     // Handle blocked bookings (no user assigned)
     if (args.isBlocked) {
-      // Check if current user is an approver for this resource or an admin
-      const currentUser = await ctx.db.get(userId);
-      const isApprover = resource.approvers.includes(userId);
-      const isAdmin = currentUser?.isAdmin === true;
-      
       if (!isApprover && !isAdmin) {
         throw new Error("Only approvers or admins can block resources");
       }
@@ -516,11 +527,6 @@ export const createBooking = mutation({
       requestedBy = null; // No user assigned for blocked bookings
       autoApprove = true;
     } else if (args.onBehalfOf) {
-      // Check if current user is an approver for this resource or an admin
-      const currentUser = await ctx.db.get(userId);
-      const isApprover = resource.approvers.includes(userId);
-      const isAdmin = currentUser?.isAdmin === true;
-      
       if (!isApprover && !isAdmin) {
         throw new Error("Only approvers or admins can create bookings on behalf of other users");
       }
@@ -533,6 +539,9 @@ export const createBooking = mutation({
       
       requestedBy = args.onBehalfOf;
       autoApprove = true; // Auto-approve bookings made by approvers on behalf of others
+    } else if (isApprover || isAdmin) {
+      // Approvers/admins booking for themselves get auto-approved
+      autoApprove = true;
     }
 
     // Validate time fields if not all-day

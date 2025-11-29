@@ -17,7 +17,7 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { XMarkIcon, CalendarDaysIcon, ClockIcon, UserIcon, MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, CalendarDaysIcon, ClockIcon, UserIcon, MagnifyingGlassIcon, XCircleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Combobox, Transition } from "@headlessui/react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -48,6 +48,18 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
+  // Filter resources based on permissions (approver-only resources hidden from non-approvers)
+  const bookableResources = useMemo(() => {
+    if (!activeResources || !currentUser) return [];
+    const isAdmin = currentUser.isAdmin === true;
+    
+    return activeResources.map(resource => {
+      const isApprover = resource.approvers.includes(currentUser._id);
+      const canBook = !resource.approverOnly || isApprover || isAdmin;
+      return { ...resource, canBook, isApprover, isAdmin };
+    });
+  }, [activeResources, currentUser]);
+
   // Check if current user can book on behalf of others for the selected resource
   const canBookOnBehalf = useMemo(() => {
     if (!selectedResource || !currentUser || !activeResources) return false;
@@ -57,6 +69,12 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
     const isAdmin = currentUser.isAdmin === true;
     return isApprover || isAdmin;
   }, [selectedResource, currentUser, activeResources]);
+  
+  // Check if selected resource is approver-only (for showing info message)
+  const selectedResourceInfo = useMemo(() => {
+    if (!selectedResource) return null;
+    return bookableResources.find(r => r._id === selectedResource);
+  }, [selectedResource, bookableResources]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,12 +174,22 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
           className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="">Select a resource...</option>
-          {activeResources?.map((resource) => (
+          {bookableResources?.filter(r => r.canBook).map((resource) => (
             <option key={resource._id} value={resource._id}>
-              {resource.name}
+              {resource.name}{resource.approverOnly ? ' 🔒' : ''}
             </option>
           ))}
         </select>
+        
+        {/* Info message for approver-only resource */}
+        {selectedResourceInfo?.approverOnly && (
+          <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+              <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
+              <span>This is an approver-only resource. Your booking will be auto-approved.</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Step 2: When? - Only show after resource selected */}

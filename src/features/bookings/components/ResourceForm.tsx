@@ -17,7 +17,7 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { XMarkIcon, UsersIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, UsersIcon, CheckIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ResourceFormProps {
@@ -39,6 +39,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
     name: "",
     description: "",
     isActive: true,
+    approverOnly: false,
   });
   const [selectedApprovers, setSelectedApprovers] = useState<Id<"users">[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +54,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
         name: existingResource.name,
         description: existingResource.description || "",
         isActive: existingResource.isActive,
+        approverOnly: existingResource.approverOnly || false,
       });
       setSelectedApprovers(existingResource.approvers);
     }
@@ -92,6 +94,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
           description: formData.description.trim() || undefined,
           isActive: formData.isActive,
           approvers: selectedApprovers,
+          approverOnly: formData.approverOnly,
         });
         toast.success("Resource updated successfully");
       } else {
@@ -99,6 +102,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
           name: formData.name.trim(),
           description: formData.description.trim() || undefined,
           approvers: selectedApprovers,
+          approverOnly: formData.approverOnly,
         });
         toast.success("Resource created successfully");
       }
@@ -189,6 +193,76 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Booking Permissions */}
+      <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          {formData.approverOnly ? (
+            <LockClosedIcon className="h-4 w-4 text-amber-500" />
+          ) : (
+            <LockOpenIcon className="h-4 w-4 text-green-500" />
+          )}
+          Booking Permissions
+        </label>
+        
+        <div className="space-y-2">
+          <label 
+            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              !formData.approverOnly 
+                ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
+                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            <input
+              type="radio"
+              name="approverOnly"
+              checked={!formData.approverOnly}
+              onChange={() => setFormData(prev => ({ ...prev, approverOnly: false }))}
+              className="sr-only"
+            />
+            <div className="flex-1">
+              <div className="font-medium text-sm flex items-center gap-2">
+                <LockOpenIcon className="h-4 w-4" />
+                Open Booking
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Anyone can request a booking. Approvers will review and approve/reject requests.
+              </p>
+            </div>
+            {!formData.approverOnly && (
+              <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            )}
+          </label>
+          
+          <label 
+            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              formData.approverOnly 
+                ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20' 
+                : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            <input
+              type="radio"
+              name="approverOnly"
+              checked={formData.approverOnly}
+              onChange={() => setFormData(prev => ({ ...prev, approverOnly: true }))}
+              className="sr-only"
+            />
+            <div className="flex-1">
+              <div className="font-medium text-sm flex items-center gap-2">
+                <LockClosedIcon className="h-4 w-4" />
+                Approver Only
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Only designated approvers can create bookings. No approval process needed.
+              </p>
+            </div>
+            {formData.approverOnly && (
+              <CheckIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            )}
+          </label>
         </div>
       </div>
 

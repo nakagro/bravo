@@ -779,6 +779,7 @@ const applicationTables = {
     description: v.optional(v.string()), // Optional description
     isActive: v.boolean(), // Whether this resource can be booked
     approvers: v.array(v.id("users")), // Users who can approve bookings for this resource
+    approverOnly: v.optional(v.boolean()), // If true, only approvers can create bookings (no approval needed)
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -5,6 +5,7 @@
     - Multi-day bookings with a time frame were not displaying the correct dates (yay Timezones)
     - Added an option for a resource approver to book on behalf of another user.
     - Added an option to block out a resource for a time frame (such as blocking the FCV out while on Strike Team roster)
+    - Added the option for a resource to be approver only bookable or open bookable by anyone
 
 
 ## [1.0.45] - 2025-11-28
