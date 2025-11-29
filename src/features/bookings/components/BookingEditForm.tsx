@@ -250,14 +250,22 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
         <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {isMultiDay ? 'Start Date' : 'Date'}
         </label>
-        <input
-          id="startDate"
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
-          style={{ colorScheme: 'light dark' }}
-        />
+        <div className="relative">
+          <input
+            id="startDate"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className={`w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none ${!startDate ? 'text-transparent' : ''}`}
+            style={{ colorScheme: 'light dark' }}
+          />
+          {/* iOS placeholder overlay */}
+          {!startDate && (
+            <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+              Select date
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Multi-day checkbox */}
@@ -280,15 +288,23 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
           <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             End Date
           </label>
-          <input
-            id="endDate"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            min={startDate}
-            className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
-            style={{ colorScheme: 'light dark' }}
-          />
+          <div className="relative">
+            <input
+              id="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate}
+              className={`w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none ${!endDate ? 'text-transparent' : ''}`}
+              style={{ colorScheme: 'light dark' }}
+            />
+            {/* iOS placeholder overlay */}
+            {!endDate && (
+              <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                Select end date
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -312,32 +328,48 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
 
       {/* Time Selection - only if not all day */}
       {!isAllDay && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="min-w-0">
             <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {isMultiDay ? 'Start Time' : 'From'}
             </label>
-            <input
-              id="startTime"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              style={{ colorScheme: 'light dark' }}
-            />
+            <div className="relative">
+              <input
+                id="startTime"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={`w-full px-3 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!startTime ? 'text-transparent' : ''}`}
+                style={{ colorScheme: 'light dark' }}
+              />
+              {/* iOS placeholder overlay */}
+              {!startTime && (
+                <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                  Select time
+                </span>
+              )}
+            </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {isMultiDay ? 'End Time' : 'To'}
             </label>
-            <input
-              id="endTime"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              style={{ colorScheme: 'light dark' }}
-            />
+            <div className="relative">
+              <input
+                id="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={`w-full px-3 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${!endTime ? 'text-transparent' : ''}`}
+                style={{ colorScheme: 'light dark' }}
+              />
+              {/* iOS placeholder overlay */}
+              {!endTime && (
+                <span className="absolute inset-0 flex items-center px-3 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
+                  Select time
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
