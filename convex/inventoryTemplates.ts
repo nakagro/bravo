@@ -167,20 +167,44 @@ export const updateSection = mutation({
     sectionId: v.id("applianceSections"),
     name: v.optional(v.string()),
     order: v.optional(v.number()),
+    description: v.optional(v.string()),
+    imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
     metadata: v.optional(v.any()),
   },
-  handler: async (ctx, { sectionId, ...patch }) => {
+  handler: async (ctx, { sectionId, imageStorageId, ...patch }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("You must be signed in");
 
     const existing = await ctx.db.get(sectionId);
     if (!existing) throw new Error("Section not found");
 
-    await ctx.db.patch(sectionId, {
+    // Handle image replacement/deletion
+    if (imageStorageId !== undefined) {
+      // Delete old image from storage if it exists and we're replacing/removing it
+      if (existing.imageStorageId && existing.imageStorageId !== imageStorageId) {
+        try {
+          await ctx.storage.delete(existing.imageStorageId);
+        } catch (error) {
+          console.error("Failed to delete old section image:", error);
+          // Continue anyway - don't fail the update
+        }
+      }
+    }
+
+    const updateData: any = {
       ...patch,
       updatedAt: Date.now(),
       updatedBy: userId,
-    });
+    };
+
+    // Handle imageStorageId: null means remove, undefined means don't change
+    if (imageStorageId === null) {
+      updateData.imageStorageId = undefined; // Remove the field (schema doesn't allow null)
+    } else if (imageStorageId !== undefined) {
+      updateData.imageStorageId = imageStorageId;
+    }
+
+    await ctx.db.patch(sectionId, updateData);
     // Mark template as having unpublished changes
     await ctx.db.patch(existing.templateId, {
       hasUnpublishedChanges: true,

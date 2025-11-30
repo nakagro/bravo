@@ -49,6 +49,8 @@ type ApplianceSection = {
   _id: Id<"applianceSections">;
   name: string;
   order: number;
+  description?: string;
+  imageStorageId?: Id<"_storage">;
   items?: ApplianceItem[];
 };
 
@@ -319,6 +321,235 @@ function EditDialog({
             </Button>
             <Button onClick={handleSave} disabled={!value.trim() || isLoading} className="w-full sm:w-auto">
               {isLoading ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Component for editing section details (description + image)
+function SectionDetailsDialog({ section, onSave }: {
+  section: ApplianceSection;
+  onSave: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
+}) {
+  const [description, setDescription] = useState(section.description || "");
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { toast } = useToast();
+  const generateUploadUrl = useMutation(api.inventoryTemplates.generateUploadUrl);
+  const imageUrl = useQuery(
+    api.inventoryTemplates.getImageUrl,
+    section.imageStorageId ? { storageId: section.imageStorageId } : "skip"
+  );
+
+  useEffect(() => {
+    if (open) {
+      setDescription(section.description || "");
+      setImageFile(null);
+      setImagePreview(null);
+    }
+  }, [open, section.description]);
+
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast({ title: "Error", description: validation.error, variant: "destructive" });
+      return;
+    }
+
+    setImageFile(file);
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setUploading(true);
+    try {
+      let newImageStorageId: Id<"_storage"> | undefined = undefined;
+
+      // Upload new image if selected
+      if (imageFile) {
+        const compressedFile = await compressImage(imageFile);
+        const uploadUrl = await generateUploadUrl();
+
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": compressedFile.type },
+          body: compressedFile,
+        });
+
+        const { storageId } = await result.json();
+        newImageStorageId = storageId;
+      }
+
+      await onSave(
+        description.trim() || undefined,
+        newImageStorageId
+      );
+
+      toast({ title: "Success", description: "Section details updated successfully" });
+      setOpen(false);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update section details", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    try {
+      await onSave(description.trim() || undefined, null);
+      toast({ title: "Success", description: "Section image removed successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
+    }
+  };
+
+  const hasInfo = section.description || section.imageStorageId;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="default"
+          className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
+          title="Add section description or image"
+        >
+          <Image className="h-5 w-5" />
+          <span className="sr-only">Section details</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Section Details: {section.name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Description */}
+          <div>
+            <label className="text-sm font-medium">Description</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe this section (e.g., 'Left side locker when facing the truck')..."
+              className="mt-1"
+              rows={3}
+              disabled={uploading}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Help users identify this section of the appliance
+            </p>
+          </div>
+
+          {/* Current Image */}
+          {imageUrl && !imagePreview && (
+            <div>
+              <label className="text-sm font-medium">Current Image</label>
+              <div className="relative mt-1">
+                <img
+                  src={imageUrl}
+                  alt={section.name}
+                  className="w-full rounded-lg border"
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={handleRemoveImage}
+                  disabled={uploading}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Preview */}
+          {imagePreview && (
+            <div>
+              <label className="text-sm font-medium">New Image Preview</label>
+              <div className="relative mt-1">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full rounded-lg border"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload */}
+          {!imagePreview && (
+            <div>
+              <label className="text-sm font-medium">
+                {imageUrl ? 'Replace Image' : 'Add Reference Image'}
+              </label>
+              <div className="mt-1">
+                <label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="text-center">
+                    <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Tap to select image
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG or WebP (max 50MB)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageSelect}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Take a photo of the section (e.g., locker door open) to help users identify it
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
+              {uploading ? "Saving..." : "Save Details"}
             </Button>
           </div>
         </div>
@@ -736,6 +967,14 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     }
   };
 
+  const handleUpdateSectionDetails = async (
+    sectionId: Id<"applianceSections">,
+    description?: string,
+    imageStorageId?: Id<"_storage"> | null
+  ) => {
+    await updateSection({ sectionId, description, imageStorageId });
+  };
+
   const handleAddItem = async (sectionId: Id<"applianceSections">, name: string) => {
     await createItem({ templateId, sectionId, name, itemType: "boolean_with_notes" });
   };
@@ -912,6 +1151,12 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
                   <div className="flex items-center justify-between gap-3">
                     <CardTitle className="text-lg sm:text-xl flex-1 break-words">{section.name}</CardTitle>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <SectionDetailsDialog
+                        section={section}
+                        onSave={(description, imageStorageId) =>
+                          handleUpdateSectionDetails(section._id, description, imageStorageId)
+                        }
+                      />
                       <EditDialog
                         title="Rename Section"
                         label="Section Name"

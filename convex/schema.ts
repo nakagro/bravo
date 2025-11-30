@@ -681,6 +681,8 @@ const applicationTables = {
     templateId: v.id("applianceTemplates"),
     name: v.string(),
     order: v.number(), // for display ordering
+    description: v.optional(v.string()), // Help text for users about this section
+    imageStorageId: v.optional(v.id("_storage")), // Reference image for the section (e.g., photo of locker)
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -750,6 +752,8 @@ const applicationTables = {
     // Snapshot fields to be resilient to template changes
     sectionName: v.string(),
     sectionOrder: v.number(),
+    sectionDescription: v.optional(v.string()), // Snapshot of section description
+    sectionImageStorageId: v.optional(v.id("_storage")), // Snapshot of section image
     itemName: v.string(),
     itemOrder: v.number(),
     itemType: v.union(

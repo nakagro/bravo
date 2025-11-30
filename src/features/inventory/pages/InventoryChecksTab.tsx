@@ -9,7 +9,8 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../components/ui/accordion";
-import { CheckCircle2, XCircle, ArrowLeft, CheckCheck, MessageSquarePlus, Info } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, CheckCheck, MessageSquarePlus, Info, Ban } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 
 interface RunItemDoc {
@@ -94,8 +95,10 @@ export function InventoryChecksTab() {
   );
   const updateItem = useMutation(api.inventoryCheckRuns.updateRunItem);
   const completeRun = useMutation(api.inventoryCheckRuns.completeRun);
+  const cancelRun = useMutation(api.inventoryCheckRuns.cancelRun);
 
   const [completing, setCompleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [showQuantityInput, setShowQuantityInput] = useState<Set<string>>(new Set());
   const [showNotesModal, setShowNotesModal] = useState<Set<string>>(new Set());
 
@@ -207,6 +210,17 @@ export function InventoryChecksTab() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!run) return;
+    setCancelling(true);
+    try {
+      await cancelRun({ runId: run._id });
+      navigate("/inventory");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (!run) {
     return (
       <Card>
@@ -260,7 +274,7 @@ export function InventoryChecksTab() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
                 onClick={() => navigate(-1)}
@@ -270,14 +284,45 @@ export function InventoryChecksTab() {
                 Back
               </Button>
               {!isReadOnly && (
-                <Button
-                  onClick={handleComplete}
-                  disabled={completing}
-                  className="flex-1 sm:flex-none"
-                >
-                  <CheckCheck className="w-4 h-4 mr-2" />
-                  {completing ? "Completing..." : "Complete Check"}
-                </Button>
+                <>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={cancelling}
+                        className="flex-1 sm:flex-none text-destructive hover:text-destructive border-destructive/50 hover:border-destructive hover:bg-destructive/10"
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        {cancelling ? "Cancelling..." : "Cancel"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Inventory Check?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel this inventory check? All progress will be lost and this action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto">Keep Checking</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
+                        >
+                          Yes, Cancel Check
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button
+                    onClick={handleComplete}
+                    disabled={completing}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <CheckCheck className="w-4 h-4 mr-2" />
+                    {completing ? "Completing..." : "Complete Check"}
+                  </Button>
+                </>
               )}
             </div>
           </div>

@@ -63,11 +63,13 @@ export const startRun = mutation({
           itemId: item._id,
           sectionName: section.name,
           sectionOrder: section.order,
+          sectionDescription: section.description, // Snapshot section description
+          sectionImageStorageId: section.imageStorageId, // Snapshot section image
           itemName: item.name,
           itemOrder: item.order,
           itemType: item.itemType,
-          description: item.description, // Snapshot description
-          imageStorageId: item.imageStorageId, // Snapshot image
+          description: item.description, // Snapshot item description
+          imageStorageId: item.imageStorageId, // Snapshot item image
           expectedQuantity: item.expectedQuantity, // Snapshot expected quantity
           actualQuantity: undefined,
           value: undefined,
@@ -164,6 +166,29 @@ export const completeRun = mutation({
       completedBy: userId,
       completedAt: Date.now(),
       notes: notes ?? run.notes,
+    });
+    return true;
+  },
+});
+
+export const cancelRun = mutation({
+  args: { runId: v.id("applianceCheckRuns") },
+  returns: v.boolean(),
+  handler: async (ctx, { runId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("You must be signed in");
+
+    const run = await ctx.db.get(runId);
+    if (!run) throw new Error("Run not found");
+
+    if (run.status !== "in_progress") {
+      throw new Error("Only in-progress runs can be cancelled");
+    }
+
+    await ctx.db.patch(runId, {
+      status: "cancelled",
+      completedBy: userId,
+      completedAt: Date.now(),
     });
     return true;
   },
