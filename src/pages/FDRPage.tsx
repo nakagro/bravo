@@ -37,6 +37,11 @@ export function FDRPage() {
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -253,9 +258,9 @@ export function FDRPage() {
                       <p className="text-xs font-semibold leading-tight">
                         {forecast.rating.toUpperCase() === "NO RATING" 
                           ? "No Rating" 
-                          : capitalizeRating(forecast.rating)}
+                          : capitalizeRating(forecast.rating)}{" "}
+                        <span className="font-normal opacity-80">{forecast.index}</span>
                       </p>
-                      <p className="text-[9px] opacity-70">{forecast.index}</p>
                     </div>
                   ))}
                 </div>
