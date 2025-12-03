@@ -16,50 +16,86 @@ interface FDRResponse {
   }>;
 }
 
+interface TFBData {
+  today: boolean;
+  tomorrow: boolean;
+  dayAfter: boolean;
+}
+
+interface EMVConditionsResponse {
+  current: {
+    tfb: Record<string, string>;
+  };
+  forecasts: Array<{
+    tfb: Record<string, string>;
+    date: string;
+  }>;
+}
+
+const REGION = "Central";
+const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
+
+// Toggle this to true to simulate a Total Fire Ban day for testing
+const DEBUG_FORCE_TFB = false;
+
 export function FireDangerRating() {
   const [currentFDR, setCurrentFDR] = useState<FDRData | null>(null);
   const [tomorrowFDR, setTomorrowFDR] = useState<FDRData | null>(null);
   const [dayAfterFDR, setDayAfterFDR] = useState<FDRData | null>(null);
+  const [tfbStatus, setTfbStatus] = useState<TFBData>({ today: false, tomorrow: false, dayAfter: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const fetchFDR = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("https://api2.grayhux.io/fdr");
-        const data: FDRResponse = await response.json();
+        // Fetch FDR data
+        const fdrResponse = await fetch("https://api2.grayhux.io/fdr");
+        const fdrData: FDRResponse = await fdrResponse.json();
 
-        if (data.forecasts && data.forecasts.length > 0) {
+        if (fdrData.forecasts && fdrData.forecasts.length > 0) {
           setCurrentFDR({
-            category: data.forecasts[0].rating.category,
-            index: data.forecasts[0].rating.index,
+            category: fdrData.forecasts[0].rating.category,
+            index: fdrData.forecasts[0].rating.index,
           });
-          if (data.forecasts.length > 1) {
+          if (fdrData.forecasts.length > 1) {
             setTomorrowFDR({
-              category: data.forecasts[1].rating.category,
-              index: data.forecasts[1].rating.index,
+              category: fdrData.forecasts[1].rating.category,
+              index: fdrData.forecasts[1].rating.index,
             });
           }
-          if (data.forecasts.length > 2) {
+          if (fdrData.forecasts.length > 2) {
             setDayAfterFDR({
-              category: data.forecasts[2].rating.category,
-              index: data.forecasts[2].rating.index,
+              category: fdrData.forecasts[2].rating.category,
+              index: fdrData.forecasts[2].rating.index,
             });
           }
-          setError(false);
         }
+
+        // Fetch TFB data
+        const tfbResponse = await fetch("https://api2.grayhux.io/emv-conditions");
+        const tfbData: EMVConditionsResponse = await tfbResponse.json();
+
+        const tfb: TFBData = {
+          today: DEBUG_FORCE_TFB || tfbData.current?.tfb?.[REGION] === TFB_ACTIVE,
+          tomorrow: DEBUG_FORCE_TFB || tfbData.forecasts?.[0]?.tfb?.[REGION] === TFB_ACTIVE,
+          dayAfter: DEBUG_FORCE_TFB || tfbData.forecasts?.[1]?.tfb?.[REGION] === TFB_ACTIVE,
+        };
+        setTfbStatus(tfb);
+
+        setError(false);
       } catch (err) {
-        console.error("Error fetching FDR:", err);
+        console.error("Error fetching FDR/TFB:", err);
         setError(true);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFDR();
+    fetchData();
 
     // Refresh every hour
-    const interval = setInterval(fetchFDR, 3600000);
+    const interval = setInterval(fetchData, 3600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,8 +166,21 @@ export function FireDangerRating() {
         className="flex-1 rounded-lg shadow-sm px-4 py-2.5"
         style={getFDRStyles(currentFDR.category)}
       >
-        <p className="text-xs font-medium opacity-80">Fire Danger (Central)</p>
-        <p className="text-base font-semibold">{capitalizeCategory(currentFDR.category)}</p>
+        <div className="flex items-center gap-2">
+          {tfbStatus.today && (
+            <img
+              src="/icons/tfb_icon_big.png"
+              alt="Total Fire Ban"
+              className="h-8 w-8"
+            />
+          )}
+          <div>
+            <p className="text-xs font-medium opacity-80">
+              {tfbStatus.today ? "Total Fire Ban (Central)" : "Fire Danger (Central)"}
+            </p>
+            <p className="text-base font-semibold">{capitalizeCategory(currentFDR.category)}</p>
+          </div>
+        </div>
       </div>
 
       {/* Future forecasts - compact badges */}
@@ -141,7 +190,12 @@ export function FireDangerRating() {
           style={getFDRStyles(tomorrowFDR.category)}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">Tomorrow</p>
-          <p className="text-sm font-semibold leading-tight">{capitalizeCategory(tomorrowFDR.category)}</p>
+          <div className="flex items-center justify-center gap-1">
+            {tfbStatus.tomorrow && (
+              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+            )}
+            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(tomorrowFDR.category)}</p>
+          </div>
         </div>
       )}
       {dayAfterFDR && (
@@ -150,7 +204,12 @@ export function FireDangerRating() {
           style={getFDRStyles(dayAfterFDR.category)}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">{getFutureDayName(2)}</p>
-          <p className="text-sm font-semibold leading-tight">{capitalizeCategory(dayAfterFDR.category)}</p>
+          <div className="flex items-center justify-center gap-1">
+            {tfbStatus.dayAfter && (
+              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+            )}
+            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(dayAfterFDR.category)}</p>
+          </div>
         </div>
       )}
     </div>

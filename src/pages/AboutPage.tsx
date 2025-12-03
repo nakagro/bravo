@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import changelogMd from '../../CHANGELOG.md?raw';
+import { Link } from "react-router-dom";
 
 export default function AboutPage() {
   return (
@@ -99,6 +100,16 @@ export default function AboutPage() {
           {changelogMd}
         </ReactMarkdown>
         {/* </div> */}
+      </div>
+
+      {/* Sneaky footer */}
+      <div className="text-center pb-8">
+        <Link 
+          to="/fdr" 
+          className="text-2xl opacity-50 hover:opacity-100 transition-opacity"
+        >
+          🔥
+        </Link>
       </div>
     </div>
   );
