@@ -6,6 +6,7 @@ import { FileText, Users, Wrench, Link2, AlertTriangle, Calendar } from "lucide-
 import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { Card, CardContent } from "../components/ui/card";
 import { RecentNotifications } from "../components/notifications/RecentNotifications";
+import { FireDangerRating } from "../components/dashboard/FireDangerRating";
 
 export function DashboardPage() {
   // Fetch the current user's data
@@ -33,26 +34,23 @@ export function DashboardPage() {
     "User";
 
   return (
-    <div className="space-y-8" data-component="DashboardPage">
+    <div className="space-y-4" data-component="DashboardPage">
       {/* Welcome Section */}
-      <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
       </div>
-
-
-
 
       {/* Pending Actions Section */}
       {pendingActions.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 transition-colors duration-200">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
             Actions requiring attention
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {pendingActions.map((action) => (
               <div
                 key={action._id}
-                className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 rounded-r-md"
+                className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 rounded-r-md"
               >
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -83,6 +81,9 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* Fire Danger Rating */}
+      <FireDangerRating />
+
       {/* Calendar Events Section */}
       <CalDAVCalendar
         calendarUrl="https://cal.grayhux.io/wydv/f892ab6b-44db-4f7d-2a79-9d87036546a8/"
@@ -92,13 +93,13 @@ export function DashboardPage() {
       />
 
       {/* Modules Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
 
         {/* Availability */}
         {availabilityAccess && (
           <Link to="/availability" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg group-hover:bg-green-200 dark:group-hover:bg-green-900/40 transition-colors">
                   <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                 </div>
@@ -112,7 +113,7 @@ export function DashboardPage() {
         {hoseAccess && (
           <Link to="/hoses" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
                   <ArchiveBoxIcon className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                 </div>
@@ -126,7 +127,7 @@ export function DashboardPage() {
         {keysAccess && (
           <Link to="/keys" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/40 transition-colors">
                   <KeyIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -140,7 +141,7 @@ export function DashboardPage() {
         {fireReportsAccess && (
           <Link to="/fire-reports" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg group-hover:bg-orange-200 dark:group-hover:bg-orange-900/40 transition-colors">
                   <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
                 </div>
@@ -154,7 +155,7 @@ export function DashboardPage() {
         {dutyCrewAccess && (
           <Link to="/dutycrew" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40 transition-colors">
                   <Users className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -168,7 +169,7 @@ export function DashboardPage() {
         {inventoryAccess && (
           <Link to="/inventory" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg group-hover:bg-yellow-200 dark:group-hover:bg-yellow-900/40 transition-colors">
                   <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
@@ -182,7 +183,7 @@ export function DashboardPage() {
         {linksAccess && (
           <Link to="/links" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/40 transition-colors">
                   <Link2 className="h-5 w-5 sm:h-6 sm:w-6 text-cyan-600 dark:text-cyan-400" />
                 </div>
@@ -196,7 +197,7 @@ export function DashboardPage() {
         {vehicleFaultsAccess && (
           <Link to="/vehicle-faults" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
                   <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                 </div>
@@ -210,7 +211,7 @@ export function DashboardPage() {
         {bookingsAccess && (
           <Link to="/bookings" className="group">
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40 transition-colors">
                   <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
                 </div>

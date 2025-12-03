@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.47] - 2025-12-04
+- Added Fire Danger Ratings for today, tomorrow and the day after on the Dashboard page
+
 ## [1.0.46] - 2025-11-30
 - Fixed some bugs and added some features to the Booking module:
     - Multi-day bookings with a time frame were not displaying the correct dates (yay Timezones)
