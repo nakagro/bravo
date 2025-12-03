@@ -211,21 +211,23 @@ export function FDRPage() {
         </p>
       )}
 
-      {/* Legend */}
+      {/* Legend with FBI thresholds */}
       <div className="flex flex-wrap gap-1.5 text-xs">
         {[
-          { rating: "Moderate", style: getFDRStyles("Moderate") },
-          { rating: "High", style: getFDRStyles("High") },
-          { rating: "Extreme", style: getFDRStyles("Extreme") },
-          { rating: "Catastrophic", style: getFDRStyles("Catastrophic") },
-        ].map(({ rating, style }) => (
-          <span
+          { rating: "No Rating", fbi: "< 12", style: getFDRStyles("No Rating") },
+          { rating: "Moderate", fbi: "12-23", style: getFDRStyles("Moderate") },
+          { rating: "High", fbi: "24-49", style: getFDRStyles("High") },
+          { rating: "Extreme", fbi: "50-99", style: getFDRStyles("Extreme") },
+          { rating: "Catastrophic", fbi: "≥ 100", style: getFDRStyles("Catastrophic") },
+        ].map(({ rating, fbi, style }) => (
+          <div
             key={rating}
-            className="px-2 py-0.5 rounded font-medium"
+            className="flex flex-col items-center px-2 py-1 rounded"
             style={style}
           >
-            {rating}
-          </span>
+            <span className="font-semibold">{rating}</span>
+            <span className="text-[10px] opacity-80">({fbi})</span>
+          </div>
         ))}
       </div>
 
@@ -315,7 +317,7 @@ export function FDRPage() {
 
       {/* Footer info */}
       <p className="text-[10px] text-muted-foreground leading-relaxed">
-        Data sourced from Bureau of Meteorology. FBI thresholds: Moderate (12-24), High (24-50), Extreme (50-100), Catastrophic (100+).
+        Data sourced from Bureau of Meteorology.
       </p>
     </div>
   );
