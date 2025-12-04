@@ -281,6 +281,9 @@ export function FDRPage() {
                     <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
                   )}
                   {region.description}
+                  {hasTFB(region.description, 0) && (
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400">TOTAL FIRE BAN</span>
+                  )}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
                   {region.forecasts.map((forecast, idx) => (
@@ -340,6 +343,9 @@ export function FDRPage() {
                           <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
                         )}
                         {region.description}
+                        {hasTFB(region.description, 0) && (
+                          <span className="text-xs font-bold text-red-600 dark:text-red-400">TOTAL FIRE BAN</span>
+                        )}
                       </span>
                     </td>
                     {region.forecasts.map((forecast, idx) => (
