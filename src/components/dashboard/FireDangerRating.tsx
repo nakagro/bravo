@@ -163,82 +163,59 @@ export function FireDangerRating() {
     return null;
   }
 
-  // Compact FDR display matching YouTab style
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-      {/* Header row with title */}
-      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <span className="text-lg font-medium">
-          Fire Danger Rating - Central
-        </span>
-      </div>
-
-      {/* Ratings row - all 3 days inline */}
-      <div className="grid grid-cols-3">
-        {/* Today */}
-        <div
-          className="px-3 py-2 border-r border-gray-200 dark:border-gray-700"
-          style={getFDRStyles(currentFDR.category)}
-        >
-          <div className="flex items-center gap-1.5">
-            {tfbStatus.today && (
-              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-5 w-5 flex-shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium opacity-70">
-                {tfbStatus.today ? "TFB Today" : "Today"}
-              </p>
-              <p className="text-sm font-semibold leading-tight truncate">
-                {capitalizeCategory(currentFDR.category)}
-              </p>
-            </div>
+    <div className="flex items-center gap-2">
+      {/* Today's FDR - colored and prominent */}
+      <div
+        className="flex-1 rounded-lg shadow-sm px-4 py-2.5"
+        style={getFDRStyles(currentFDR.category)}
+      >
+        <div className="flex items-center gap-2">
+          {tfbStatus.today && (
+            <img
+              src="/icons/tfb_icon_big.png"
+              alt="Total Fire Ban"
+              className="h-8 w-8"
+            />
+          )}
+          <div>
+            <p className="text-xs font-medium opacity-80">
+              {tfbStatus.today ? "Total Fire Ban" : "Fire Danger"}
+            </p>
+            <p className="text-base font-semibold">{capitalizeCategory(currentFDR.category)}</p>
           </div>
         </div>
-
-        {/* Tomorrow */}
-        {tomorrowFDR && (
-          <div
-            className="px-3 py-2 border-r border-gray-200 dark:border-gray-700"
-            style={getFDRStyles(tomorrowFDR.category)}
-          >
-            <div className="flex items-center gap-1.5">
-              {tfbStatus.tomorrow && (
-                <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4 flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium opacity-70">
-                  {tfbStatus.tomorrow ? "TFB" : "Tomorrow"}
-                </p>
-                <p className="text-sm font-semibold leading-tight truncate">
-                  {capitalizeCategory(tomorrowFDR.category)}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Day After */}
-        {dayAfterFDR && (
-          <div
-            className="px-3 py-2"
-            style={getFDRStyles(dayAfterFDR.category)}
-          >
-            <div className="flex items-center gap-1.5">
-              {tfbStatus.dayAfter && (
-                <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4 flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium opacity-70">
-                  {tfbStatus.dayAfter ? "TFB" : getFutureDayName(2)}
-                </p>
-                <p className="text-sm font-semibold leading-tight truncate">
-                  {capitalizeCategory(dayAfterFDR.category)}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Future forecasts - compact badges */}
+      {tomorrowFDR && (
+        <div
+          className="rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px]"
+          style={getFDRStyles(tomorrowFDR.category)}
+        >
+          <p className="text-[10px] font-medium opacity-80 leading-tight">Tomorrow</p>
+          <div className="flex items-center justify-center gap-1">
+            {tfbStatus.tomorrow && (
+              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+            )}
+            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(tomorrowFDR.category)}</p>
+          </div>
+        </div>
+      )}
+      {dayAfterFDR && (
+        <div
+          className="rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px]"
+          style={getFDRStyles(dayAfterFDR.category)}
+        >
+          <p className="text-[10px] font-medium opacity-80 leading-tight">{getFutureDayName(2)}</p>
+          <div className="flex items-center justify-center gap-1">
+            {tfbStatus.dayAfter && (
+              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+            )}
+            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(dayAfterFDR.category)}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

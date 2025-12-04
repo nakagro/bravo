@@ -10,7 +10,6 @@
     - Added an option to block out a resource for a time frame (such as blocking the FCV out while on Strike Team roster)
     - Added the option for a resource to be approver only bookable or open bookable by anyone
 
-
 ## [1.0.45] - 2025-11-28
 - Created a Booking module, this module is still being tested and only certain users can access it. This system allows for users to book a resource, such as the FCV, with an approval chain attached to persons responsible for said resource. 
 

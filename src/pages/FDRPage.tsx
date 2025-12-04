@@ -18,6 +18,14 @@ interface ParsedFDRData {
   regions: RegionForecast[];
 }
 
+// TFB data structure from EMV conditions API
+interface TFBData {
+  current: Record<string, string>;
+  forecasts: Array<Record<string, string>>;
+}
+
+const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
+
 // Region display order (Central first, then alphabetical)
 const REGION_ORDER = [
   "Central",
@@ -33,6 +41,7 @@ const REGION_ORDER = [
 
 export function FDRPage() {
   const [data, setData] = useState<ParsedFDRData | null>(null);
+  const [tfbData, setTfbData] = useState<TFBData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -92,6 +101,20 @@ export function FDRPage() {
       });
 
       setData({ issueTime, regions });
+
+      // Fetch TFB data from EMV conditions API
+      try {
+        const tfbResponse = await fetch("https://api2.grayhux.io/emv-conditions");
+        const tfbJson = await tfbResponse.json();
+        setTfbData({
+          current: tfbJson.current?.tfb || {},
+          forecasts: tfbJson.forecasts?.map((f: any) => f.tfb || {}) || [],
+        });
+      } catch (tfbErr) {
+        console.error("Error fetching TFB data:", tfbErr);
+        // Non-critical, continue without TFB data
+      }
+
       setError(null);
     } catch (err) {
       console.error("Error fetching FDR data:", err);
@@ -194,6 +217,17 @@ export function FDRPage() {
     return formatDate(dateStr);
   };
 
+  // Check if a region has TFB for a specific forecast day
+  const hasTFB = (regionName: string, dayIndex: number): boolean => {
+    if (!tfbData) return false;
+    if (dayIndex === 0) {
+      return tfbData.current[regionName] === TFB_ACTIVE;
+    }
+    // forecasts[0] is tomorrow, forecasts[1] is day after, etc.
+    const forecastIdx = dayIndex - 1;
+    return tfbData.forecasts[forecastIdx]?.[regionName] === TFB_ACTIVE;
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -242,7 +276,10 @@ export function FDRPage() {
           {data?.regions.map((region) => (
             <Card key={region.description}>
               <CardContent className="p-3">
-                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">
+                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-1.5">
+                  {hasTFB(region.description, 0) && (
+                    <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+                  )}
                   {region.description}
                 </h3>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -252,7 +289,10 @@ export function FDRPage() {
                       className="rounded p-1.5 text-center"
                       style={getFDRStyles(forecast.rating)}
                     >
-                      <p className="text-[10px] opacity-80 leading-tight">
+                      <p className="text-[10px] opacity-80 leading-tight flex items-center justify-center gap-0.5">
+                        {hasTFB(region.description, idx) && (
+                          <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-3 w-3" />
+                        )}
                         {getDayLabel(idx, forecast.startDate)}
                       </p>
                       <p className="text-xs font-semibold leading-tight">
@@ -295,7 +335,12 @@ export function FDRPage() {
                     className="border-b border-gray-100 dark:border-gray-800 last:border-0"
                   >
                     <td className="p-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-card z-10">
-                      {region.description}
+                      <span className="flex items-center gap-1.5">
+                        {hasTFB(region.description, 0) && (
+                          <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
+                        )}
+                        {region.description}
+                      </span>
                     </td>
                     {region.forecasts.map((forecast, idx) => (
                       <td key={idx} className="p-2 text-center">
@@ -303,7 +348,10 @@ export function FDRPage() {
                           className="inline-flex flex-col items-center justify-center rounded px-2 py-1.5 min-w-[80px]"
                           style={getFDRStyles(forecast.rating)}
                         >
-                          <span className="font-semibold text-xs">
+                          <span className="font-semibold text-xs flex items-center gap-1">
+                            {hasTFB(region.description, idx) && (
+                              <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-3.5 w-3.5" />
+                            )}
                             {capitalizeRating(forecast.rating)}
                           </span>
                           <span className="text-[10px] opacity-80">
