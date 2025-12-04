@@ -20,6 +20,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LinksPage } from "./pages/LinksPage";
 import AboutPage from "./pages/AboutPage";
 import { FDRPage } from "./pages/FDRPage";
+import ExtrasPage from "./pages/ExtrasPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
@@ -132,6 +133,7 @@ function AuthenticatedApp() {
           </ProtectedRoute>
         } />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/extras" element={<ExtrasPage />} />
         <Route path="/fdr" element={<FDRPage />} />
 
         {/* Catch all other routes and redirect to dashboard */}

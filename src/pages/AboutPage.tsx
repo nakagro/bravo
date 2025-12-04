@@ -105,7 +105,7 @@ export default function AboutPage() {
       {/* Sneaky footer */}
       <div className="text-center pb-8">
         <Link 
-          to="/fdr" 
+          to="/extras" 
           className="text-2xl opacity-50 hover:opacity-100 transition-opacity"
         >
           🔥

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.48] - 2025-12-05
+- 🔥 Extras 🔥
+
 ## [1.0.47] - 2025-12-04
 - Added Fire Danger Ratings for today, tomorrow and the day after on the Dashboard page
 
