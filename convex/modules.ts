@@ -134,7 +134,7 @@ export const syncModuleSettings = mutation({
         moduleId: "inventoryAdmin",
         moduleName: "Inventory - Templates",
         isEnabled: true,
-        adminOnly: true,
+        adminOnly: false,
         requiredRoles: [],
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
@@ -288,7 +288,7 @@ export const initializeModuleSettings = mutation({
         moduleId: "inventoryAdmin",
         moduleName: "Inventory - Templates",
         isEnabled: true,
-        adminOnly: true,
+        adminOnly: false,
         requiredRoles: [],
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
@@ -492,16 +492,17 @@ export const checkModuleAccess = query({
     }
 
     // Check role requirements
-    if (moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0) {
+    const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
+    const hasRankReq = !!moduleSetting.minimumRank;
+
+    let roleOk = true;
+    if (hasRoleReq) {
       const userRoles = user.roles || [];
-      const hasRequiredRole = moduleSetting.requiredRoles.some(role => userRoles.includes(role));
-      if (!hasRequiredRole) {
-        return false; // User doesn't have any of the required roles
-      }
+      roleOk = moduleSetting.requiredRoles!.some(role => userRoles.includes(role));
     }
 
-    // Check rank requirements
-    if (moduleSetting.minimumRank) {
+    let rankOk = true;
+    if (hasRankReq) {
       const rankOrder = {
         "Probationary": 1,
         "Firefighter": 2,
@@ -511,12 +512,16 @@ export const checkModuleAccess = query({
 
       const userRank = user.rank;
       if (!userRank) {
-        return false; // User has no rank
+        rankOk = false;
+      } else {
+        rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank as keyof typeof rankOrder];
       }
+    }
 
-      if (rankOrder[userRank] < rankOrder[moduleSetting.minimumRank]) {
-        return false; // User's rank is too low
-      }
+    if (hasRoleReq && hasRankReq) {
+      if (!(roleOk || rankOk)) return false;
+    } else {
+      if (!(roleOk && rankOk)) return false;
     }
 
     // If all checks pass, the user has access
@@ -619,15 +624,17 @@ export const getAllModuleAccess = query({
         return false;
       }
 
-      if (moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0) {
+      const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
+      const hasRankReq = !!moduleSetting.minimumRank;
+
+      let roleOk = true;
+      if (hasRoleReq) {
         const userRoles = user.roles || [];
-        const hasRequiredRole = moduleSetting.requiredRoles.some(role => userRoles.includes(role));
-        if (!hasRequiredRole) {
-          return false;
-        }
+        roleOk = moduleSetting.requiredRoles!.some(role => userRoles.includes(role));
       }
 
-      if (moduleSetting.minimumRank) {
+      let rankOk = true;
+      if (hasRankReq) {
         const rankOrder = {
           "Probationary": 1,
           "Firefighter": 2,
@@ -636,9 +643,17 @@ export const getAllModuleAccess = query({
         };
 
         const userRank = user.rank;
-        if (!userRank || rankOrder[userRank] < rankOrder[moduleSetting.minimumRank]) {
-          return false;
+        if (!userRank) {
+          rankOk = false;
+        } else {
+          rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank as keyof typeof rankOrder];
         }
+      }
+
+      if (hasRoleReq && hasRankReq) {
+        if (!(roleOk || rankOk)) return false;
+      } else {
+        if (!(roleOk && rankOk)) return false;
       }
 
       return true;

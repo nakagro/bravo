@@ -8,7 +8,8 @@ import {
   UnauthorizedState,
   PasswordChangeForm,
   NotificationSettings,
-  TestEmailButton
+  TestEmailButton,
+  ForceUpdateButton
 } from "../features/userSettings/components";
 
 export function UserSettingsPage() {
@@ -70,6 +71,11 @@ export function UserSettingsPage() {
         {/* Password Change Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <PasswordChangeForm />
+        </div>
+        
+        {/* App Update Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+          <ForceUpdateButton />
         </div>
       </div>
     </div>

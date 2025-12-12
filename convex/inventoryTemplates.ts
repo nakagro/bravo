@@ -2,10 +2,76 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+ async function requireSignedIn(ctx: any) {
+   const userId = await getAuthUserId(ctx);
+   if (!userId) throw new Error("You must be signed in");
+   return userId;
+ }
+
+ async function requireInventoryAdmin(ctx: any) {
+   const userId = await requireSignedIn(ctx);
+   const user = await ctx.db.get(userId);
+   if (!user) throw new Error("User not found");
+
+   if (user.isAdmin) return userId;
+
+   const moduleSetting = await ctx.db
+     .query("moduleSettings")
+     .withIndex("by_moduleId", (q: any) => q.eq("moduleId", "inventoryAdmin"))
+     .first();
+
+   if (!moduleSetting || !moduleSetting.isEnabled) {
+     throw new Error("You do not have access to manage inventory templates");
+   }
+
+   if (moduleSetting.adminOnly) {
+     throw new Error("You do not have access to manage inventory templates");
+   }
+
+   const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
+   const hasRankReq = !!moduleSetting.minimumRank;
+
+   let roleOk = true;
+   if (hasRoleReq) {
+     const userRoles = user.roles || [];
+     roleOk = moduleSetting.requiredRoles.some((role: string) => userRoles.includes(role));
+   }
+
+   let rankOk = true;
+   if (hasRankReq) {
+     const rankOrder: Record<string, number> = {
+       Probationary: 1,
+       Firefighter: 2,
+       Lieutenant: 3,
+       Captain: 4,
+     };
+
+     const userRank = user.rank;
+     if (!userRank) {
+       rankOk = false;
+     } else {
+       rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank];
+     }
+   }
+
+   if (hasRoleReq && hasRankReq) {
+     if (!(roleOk || rankOk)) {
+       throw new Error("You do not have access to manage inventory templates");
+     }
+   } else {
+     if (!(roleOk && rankOk)) {
+       throw new Error("You do not have access to manage inventory templates");
+     }
+   }
+
+   return userId;
+ }
+
 // Queries
 export const getApplianceTemplates = query({
   args: {},
   handler: async (ctx) => {
+    await requireSignedIn(ctx);
     return await ctx.db
       .query("applianceTemplates")
       .withIndex("by_updatedAt")
@@ -19,6 +85,7 @@ export const getTemplateStructure = query({
     templateId: v.id("applianceTemplates"),
   },
   handler: async (ctx, { templateId }) => {
+    await requireSignedIn(ctx);
     const template = await ctx.db.get(templateId);
     if (!template) return null;
 
@@ -51,8 +118,7 @@ export const createApplianceTemplate = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, { name, description }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const now = Date.now();
     const id = await ctx.db.insert("applianceTemplates", {
@@ -79,8 +145,7 @@ export const updateApplianceTemplate = mutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const { templateId, ...patch } = args;
     const existing = await ctx.db.get(templateId);
@@ -98,8 +163,7 @@ export const updateApplianceTemplate = mutation({
 export const deleteApplianceTemplate = mutation({
   args: { templateId: v.id("applianceTemplates") },
   handler: async (ctx, { templateId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    await requireInventoryAdmin(ctx);
 
     // Delete children sections and items
     const sections = await ctx.db
@@ -130,8 +194,10 @@ export const createSection = mutation({
     name: v.string(),
   },
   handler: async (ctx, { templateId, name }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
+
+    const template = await ctx.db.get(templateId);
+    if (!template) throw new Error("Template not found");
 
     const now = Date.now();
     // Determine next order
@@ -172,8 +238,7 @@ export const updateSection = mutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, { sectionId, imageStorageId, ...patch }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const existing = await ctx.db.get(sectionId);
     if (!existing) throw new Error("Section not found");
@@ -218,8 +283,7 @@ export const updateSection = mutation({
 export const deleteSection = mutation({
   args: { sectionId: v.id("applianceSections") },
   handler: async (ctx, { sectionId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const section = await ctx.db.get(sectionId);
     if (!section) throw new Error("Section not found");
@@ -260,8 +324,16 @@ export const createItem = mutation({
     defaultNotes: v.optional(v.string()),
   },
   handler: async (ctx, { templateId, sectionId, name, itemType, isRequired, defaultNotes }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
+
+    const template = await ctx.db.get(templateId);
+    if (!template) throw new Error("Template not found");
+
+    const section = await ctx.db.get(sectionId);
+    if (!section) throw new Error("Section not found");
+    if (section.templateId !== templateId) {
+      throw new Error("Section does not belong to the specified template");
+    }
 
     const now = Date.now();
     // Determine next order within section
@@ -316,8 +388,17 @@ export const updateItem = mutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, { itemId, imageStorageId, ...patch }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
+
+    if (typeof (patch as any).expectedQuantity !== "undefined") {
+      const q = (patch as any).expectedQuantity as number;
+      if (!Number.isInteger(q)) {
+        throw new Error("Expected quantity must be a whole number");
+      }
+      if (q < 1) {
+        throw new Error("Expected quantity must be at least 1");
+      }
+    }
 
     const existing = await ctx.db.get(itemId);
     if (!existing) throw new Error("Item not found");
@@ -362,8 +443,7 @@ export const updateItem = mutation({
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    await requireInventoryAdmin(ctx);
 
     return await ctx.storage.generateUploadUrl();
   },
@@ -372,6 +452,7 @@ export const generateUploadUrl = mutation({
 export const getImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, { storageId }) => {
+    await requireSignedIn(ctx);
     return await ctx.storage.getUrl(storageId);
   },
 });
@@ -379,8 +460,7 @@ export const getImageUrl = query({
 export const deleteItem = mutation({
   args: { itemId: v.id("applianceItems") },
   handler: async (ctx, { itemId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const existing = await ctx.db.get(itemId);
     if (!existing) throw new Error("Item not found");
@@ -402,8 +482,7 @@ export const reorderItems = mutation({
     itemIds: v.array(v.id("applianceItems")),
   },
   handler: async (ctx, { sectionId, itemIds }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const section = await ctx.db.get(sectionId);
     if (!section) throw new Error("Section not found");
@@ -436,8 +515,7 @@ export const reorderItems = mutation({
 export const publishTemplate = mutation({
   args: { templateId: v.id("applianceTemplates") },
   handler: async (ctx, { templateId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = await requireInventoryAdmin(ctx);
 
     const tpl = await ctx.db.get(templateId);
     if (!tpl) throw new Error("Template not found");

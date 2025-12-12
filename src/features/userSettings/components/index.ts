@@ -5,3 +5,4 @@ export * from './UnauthorizedState';
 export * from './PasswordChangeForm';
 export * from './NotificationSettings';
 export * from './TestEmailButton';
+export * from './ForceUpdateButton';

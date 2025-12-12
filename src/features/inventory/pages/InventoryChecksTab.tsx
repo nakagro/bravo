@@ -154,13 +154,13 @@ export function InventoryChecksTab() {
 
   const handleSetValue = async (runItemId: Id<"applianceCheckRunItems">, value: "yes" | "no", expectedQuantity?: number) => {
     if (isReadOnly) return;
-    // For quantity items, "yes" means all present, "no" means none found
     if (expectedQuantity !== undefined) {
       const actualQuantity = value === "yes" ? expectedQuantity : 0;
-      await updateItem({ runItemId, value, actualQuantity });
-    } else {
-      await updateItem({ runItemId, value });
+      await updateItem({ runItemId, actualQuantity });
+      return;
     }
+
+    await updateItem({ runItemId, value });
   };
 
   const handleSaveNotes = async (runItemId: Id<"applianceCheckRunItems">, notes: string) => {
@@ -393,16 +393,14 @@ export function InventoryChecksTab() {
                                 <div className="flex flex-col sm:flex-row gap-2">
                                   <Button
                                     variant={
-                                      item.actualQuantity !== undefined &&
-                                        (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                                      item.actualQuantity !== undefined && item.actualQuantity === item.expectedQuantity
                                         ? "default"
                                         : "outline"
                                     }
                                     size="lg"
                                     onClick={() => handleSetValue(item._id, "yes", item.expectedQuantity)}
                                     disabled={isReadOnly}
-                                    className={`flex-1 min-h-[44px] ${item.actualQuantity !== undefined &&
-                                      (item.actualQuantity === item.expectedQuantity || item.actualQuantity !== 0)
+                                    className={`flex-1 min-h-[44px] ${item.actualQuantity !== undefined && item.actualQuantity === item.expectedQuantity
                                       ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
                                       : "hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/20 hover:text-green-700 dark:hover:text-green-400"
                                       }`}
@@ -410,11 +408,11 @@ export function InventoryChecksTab() {
                                     <span className="font-medium">Yes</span>
                                   </Button>
                                   <Button
-                                    variant={item.value === "no" && item.actualQuantity === 0 ? "destructive" : "outline"}
+                                    variant={item.actualQuantity === 0 ? "destructive" : "outline"}
                                     size="lg"
                                     onClick={() => handleSetValue(item._id, "no", item.expectedQuantity)}
                                     disabled={isReadOnly}
-                                    className={`flex-1 min-h-[44px] ${item.value === "no" && item.actualQuantity === 0
+                                    className={`flex-1 min-h-[44px] ${item.actualQuantity === 0
                                       ? ""
                                       : "hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-400"
                                       }`}
@@ -511,11 +509,11 @@ export function InventoryChecksTab() {
                                                 if (input) {
                                                   const inputValue = input.value;
                                                   if (inputValue === "") {
-                                                    updateItem({ runItemId: item._id, actualQuantity: undefined, value: undefined });
+                                                    updateItem({ runItemId: item._id, actualQuantity: null, value: null });
                                                   } else {
                                                     const value = parseInt(inputValue, 10);
                                                     if (!isNaN(value) && value >= 0 && Number.isInteger(value)) {
-                                                      updateItem({ runItemId: item._id, actualQuantity: value, value: "yes" });
+                                                      updateItem({ runItemId: item._id, actualQuantity: value, value: null });
                                                     }
                                                   }
                                                 }

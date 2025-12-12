@@ -843,12 +843,18 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
           <div className="flex items-center gap-2 flex-shrink-0">
             <Input
               type="number"
-              min="0"
+              min="1"
+              step="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+              }}
               onBlur={() => {
                 const num = quantity.trim() ? parseInt(quantity.trim(), 10) : undefined;
-                if (num && !isNaN(num) && num >= 0) {
+                if (typeof num !== "undefined" && !isNaN(num) && num >= 1) {
                   onUpdateQuantity(num);
                 } else if (!quantity.trim()) {
                   onUpdateQuantity(undefined);

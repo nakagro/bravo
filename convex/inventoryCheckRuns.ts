@@ -115,8 +115,8 @@ export const getRun = query({
 export const updateRunItem = mutation({
   args: {
     runItemId: v.id("applianceCheckRunItems"),
-    value: v.optional(v.union(v.literal("yes"), v.literal("no"))),
-    actualQuantity: v.optional(v.number()),
+    value: v.optional(v.union(v.literal("yes"), v.literal("no"), v.null())),
+    actualQuantity: v.optional(v.union(v.number(), v.null())),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { runItemId, value, actualQuantity, notes }) => {
@@ -133,7 +133,7 @@ export const updateRunItem = mutation({
     }
 
     // Validate actualQuantity if provided
-    if (typeof actualQuantity !== "undefined") {
+    if (typeof actualQuantity !== "undefined" && actualQuantity !== null) {
       if (actualQuantity < 0) {
         throw new Error("Quantity cannot be negative");
       }
@@ -143,8 +143,12 @@ export const updateRunItem = mutation({
     }
 
     const patch: any = { updatedAt: Date.now(), updatedBy: userId };
-    if (typeof value !== "undefined") patch.value = value;
-    if (typeof actualQuantity !== "undefined") patch.actualQuantity = actualQuantity;
+    if (typeof value !== "undefined") {
+      patch.value = value === null ? undefined : value;
+    }
+    if (typeof actualQuantity !== "undefined") {
+      patch.actualQuantity = actualQuantity === null ? undefined : actualQuantity;
+    }
     if (typeof notes !== "undefined") patch.notes = notes;
 
     await ctx.db.patch(runItemId, patch);
