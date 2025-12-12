@@ -52,7 +52,7 @@ export function ForceUpdateButton() {
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-        App Update
+        Update
       </h3>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
         If the app isn't behaving correctly or you want to ensure you have the
