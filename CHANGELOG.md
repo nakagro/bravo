@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.50] - 2025-12-14
+- Force Update button added at the bottom of the User Settings page. Useful if the user wants to force the latest update instead of waiting for it.
+- Inventory module; refactored a lot of the code into management smaller components, added the display of the deviations found (such as marking an item as no and/or an item with a QTY that doesn't match the template) at the top when checking previously done inventories so its easier to find what wasn't found as excpected.
+
 ## [1.0.48] - 2025-12-05
 - 🔥 Extras 🔥
 
