@@ -63,6 +63,10 @@ interface BookingData {
 
 export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
   const isMobile = useIsMobile();
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1));
   
   const activeResources = useQuery(api.bookings.getActiveBookingResources);
   const allBookings = useQuery(api.bookings.getBookings);
@@ -260,7 +264,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
             style={{ colorScheme: 'light dark' }}
           />
           {/* iOS placeholder overlay */}
-          {!startDate && (
+          {isIOS && !startDate && (
             <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
               Select date
             </span>
@@ -299,7 +303,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
               style={{ colorScheme: 'light dark' }}
             />
             {/* iOS placeholder overlay */}
-            {!endDate && (
+            {isIOS && !endDate && (
               <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
                 Select end date
               </span>
@@ -344,7 +348,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                 style={{ colorScheme: 'light dark' }}
               />
               {/* iOS placeholder overlay */}
-              {!startTime && (
+              {isIOS && !startTime && (
                 <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
                   Select start time
                 </span>
@@ -365,7 +369,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                 style={{ colorScheme: 'light dark' }}
               />
               {/* iOS placeholder overlay */}
-              {!endTime && (
+              {isIOS && !endTime && (
                 <span className="absolute inset-0 flex items-center px-4 text-gray-400 dark:text-gray-500 pointer-events-none text-base">
                   Select end time
                 </span>

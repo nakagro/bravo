@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import {
   UsersIcon,
   LockClosedIcon,
   LockOpenIcon,
+  ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 
 interface AdminTabProps {
@@ -25,6 +27,7 @@ interface AdminTabProps {
 }
 
 const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
+  const navigate = useNavigate();
   const [showResourceForm, setShowResourceForm] = useState(false);
   const [editingResourceId, setEditingResourceId] = useState<Id<"bookingResources"> | null>(null);
 
@@ -262,39 +265,11 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
           ) : (
             resources.map((resource) => (
               <div key={resource._id} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-semibold">{resource.name}</h4>
-                      {resource.approverOnly ? (
-                        <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                          <LockClosedIcon className="h-3 w-3" />
-                          Approver Only
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
-                          <LockOpenIcon className="h-3 w-3" />
-                          Open
-                        </span>
-                      )}
-                      {!resource.isActive && (
-                        <span className="px-1.5 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                          Inactive
-                        </span>
-                      )}
-                    </div>
-                    {resource.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {resource.description}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                      <UsersIcon className="h-4 w-4" />
-                      <span className="font-medium">Approvers:</span>{' '}
-                      {resource.approverUsers.map(u => formatUserName(u)).join(', ')}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
+                {/* Header row: Name + Desktop actions */}
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="font-semibold text-base">{resource.name}</h4>
+                  {/* Desktop action buttons */}
+                  <div className="hidden sm:flex gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleEditResource(resource._id)}
                       className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
@@ -311,23 +286,79 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                     </button>
                   </div>
                 </div>
+
+                {/* Status badges */}
+                <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                  {resource.approverOnly ? (
+                    <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                      <LockClosedIcon className="h-3 w-3" />
+                      Approver Only
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
+                      <LockOpenIcon className="h-3 w-3" />
+                      Open
+                    </span>
+                  )}
+                  {!resource.isActive && (
+                    <span className="px-1.5 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+
+                {/* Description */}
+                {resource.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    {resource.description}
+                  </p>
+                )}
+
+                {/* Approvers */}
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  <div className="flex items-start gap-1.5">
+                    <UsersIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-medium">Approvers:</span>{' '}
+                      <span className="break-words">
+                        {resource.approverUsers.map(u => formatUserName(u)).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile action buttons - full width */}
+                <div className="flex sm:hidden gap-2 mt-3">
+                  <button
+                    onClick={() => handleEditResource(resource._id)}
+                    className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                  >
+                    <PencilSquareIcon className="h-4 w-4 mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteResource(resource._id)}
+                    className="flex-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
+                  >
+                    <TrashIcon className="h-4 w-4 mr-1" />
+                    Delete
+                  </button>
+                </div>
               </div>
             ))
           )}
         </div>
       </div>
 
-      {/* All Bookings Section */}
+      {/* Recent Bookings Section */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium flex items-center">
             <CalendarDaysIcon className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-            All Bookings
-            {allBookings && allBookings.length > 0 && (
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
-                ({allBookings.length})
-              </span>
-            )}
+            Recent Bookings
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
+              (Last 10)
+            </span>
           </h3>
         </div>
         
@@ -338,7 +369,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
               <p className="text-gray-500 dark:text-gray-400">No bookings have been made yet.</p>
             </div>
           ) : (
-            [...allBookings].sort((a, b) => b.createdAt - a.createdAt).map((booking) => {
+            [...allBookings].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10).map((booking) => {
               const startDate = new Date(booking.startDate + 'T00:00:00');
               const formatTime = (timeStr: string) => {
                 const [hours, minutes] = timeStr.split(':');
@@ -351,51 +382,88 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
               return (
                 <div key={booking._id} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-start gap-3">
-                    <div className="text-center min-w-[50px]">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {/* Date badge */}
+                    <div className="text-center min-w-[50px] bg-gray-100 dark:bg-gray-700 rounded-lg py-1.5 px-2">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         {startDate.toLocaleDateString('en-AU', { weekday: 'short' })}
                       </div>
-                      <div className="text-lg font-bold">{startDate.getDate()}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">{startDate.getDate()}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                         {startDate.toLocaleDateString('en-AU', { month: 'short' })}
                       </div>
                     </div>
+
+                    {/* Booking details */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{booking.resource?.name}</span>
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClasses(booking.status)}`}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                        </span>
+                      {/* Resource name, status, and view link */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-900 dark:text-white">{booking.resource?.name}</span>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClasses(booking.status)}`}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/bookings?tab=schedule&date=${booking.startDate}`)}
+                          className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1 flex-shrink-0"
+                        >
+                          <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">View in Schedule</span>
+                          <span className="sm:hidden">View</span>
+                        </button>
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+
+                      {/* Time info */}
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {booking.isAllDay ? (
-                          'All day'
+                          <span className="inline-flex items-center">
+                            <span className="font-medium">All day</span>
+                          </span>
                         ) : booking.startTime && booking.endTime ? (
-                          `${formatTime(booking.startTime)} - ${formatTime(booking.endTime)}`
+                          <span>{formatTime(booking.startTime)} – {formatTime(booking.endTime)}</span>
                         ) : (
-                          'All day'
+                          <span className="font-medium">All day</span>
                         )}
                         {booking.endDate && booking.endDate !== booking.startDate && (
-                          <span className="ml-1">→ {new Date(booking.endDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                          <span className="ml-1 text-gray-500 dark:text-gray-400">
+                            → {new Date(booking.endDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                          </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Requested by {formatUserName(booking.requestedByUser)} • {getRelativeTimeString(booking.createdAt)}
+
+                      {/* Requester info */}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                        <span className="font-medium">Requested by:</span> {formatUserName(booking.requestedByUser)}
+                        <span className="mx-1.5">•</span>
+                        {getRelativeTimeString(booking.createdAt)}
                       </div>
+
+                      {/* Notes - with clear label */}
                       {booking.notes && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                          {booking.notes}
+                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs">
+                          <span className="font-medium text-gray-600 dark:text-gray-300">Notes:</span>
+                          <span className="ml-1 text-gray-600 dark:text-gray-400">{booking.notes}</span>
                         </div>
                       )}
+
+                      {/* Review info */}
                       {booking.reviewedBy && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Reviewed by {formatUserName(booking.reviewedByUser)}
-                          {booking.reviewedAt && ` • ${getRelativeTimeString(booking.reviewedAt)}`}
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                          <span className="font-medium">Reviewed by:</span> {formatUserName(booking.reviewedByUser)}
+                          {booking.reviewedAt && (
+                            <>
+                              <span className="mx-1.5">•</span>
+                              {getRelativeTimeString(booking.reviewedAt)}
+                            </>
+                          )}
                         </div>
                       )}
+
+                      {/* Review notes - distinct styling */}
                       {booking.reviewNotes && (
-                        <div className="text-xs text-red-600 dark:text-red-400 mt-1">
-                          Review: {booking.reviewNotes}
+                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs border-l-2 border-red-400 dark:border-red-500">
+                          <span className="font-medium text-red-700 dark:text-red-300">Review notes:</span>
+                          <span className="ml-1 text-red-600 dark:text-red-400">{booking.reviewNotes}</span>
                         </div>
                       )}
                     </div>

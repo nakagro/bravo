@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import BookingsTab from "../features/bookings/components/BookingsTab";
 import AdminTab from "../features/bookings/components/AdminTab";
@@ -10,7 +10,25 @@ import { Badge } from "@/components/ui/badge";
 export function BookingsPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Read tab from URL params, default to 'bookings'
+  const tabFromUrl = searchParams.get('tab');
+  const dateFromUrl = searchParams.get('date');
+  const [activeTab, setActiveTab] = useState(tabFromUrl === 'schedule' || tabFromUrl === 'admin' ? tabFromUrl : 'bookings');
+  
+  // Sync tab state with URL params on mount and when URL changes
+  React.useEffect(() => {
+    if (tabFromUrl && (tabFromUrl === 'bookings' || tabFromUrl === 'schedule' || tabFromUrl === 'admin')) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+  
+  // Update URL when tab changes (without the date param to keep URL clean after navigation)
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams(tab === 'bookings' ? {} : { tab });
+  };
   
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -73,7 +91,7 @@ export function BookingsPage() {
         <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
           <button
             ref={(el) => { tabRefs.current['bookings'] = el; }}
-            onClick={() => setActiveTab('bookings')}
+            onClick={() => handleTabChange('bookings')}
             className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'bookings' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
@@ -84,7 +102,7 @@ export function BookingsPage() {
           </button>
           <button
             ref={(el) => { tabRefs.current['schedule'] = el; }}
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => handleTabChange('schedule')}
             className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === 'schedule' 
                 ? 'text-red-600 dark:text-red-400 font-bold' 
@@ -96,7 +114,7 @@ export function BookingsPage() {
           {isAdmin && (
             <button
               ref={(el) => { tabRefs.current['admin'] = el; }}
-              onClick={() => setActiveTab('admin')}
+              onClick={() => handleTabChange('admin')}
               className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'admin' 
                   ? 'text-red-600 dark:text-red-400 font-bold' 
@@ -124,7 +142,7 @@ export function BookingsPage() {
         )}
         
         {activeTab === 'schedule' && (
-          <ScheduleTab isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
+          <ScheduleTab isAuthenticated={isAuthenticated} isAdmin={isAdmin} initialDate={dateFromUrl || undefined} />
         )}
         
         {activeTab === 'admin' && isAdmin && (

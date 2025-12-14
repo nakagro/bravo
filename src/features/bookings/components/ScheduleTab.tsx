@@ -16,17 +16,19 @@ import {
 interface ScheduleTabProps {
   isAuthenticated: boolean;
   isAdmin?: boolean;
+  initialDate?: string;
 }
 
-const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = false }) => {
+const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = false, initialDate }) => {
   const isMobile = useIsMobile();
   const [selectedResource, setSelectedResource] = useState<Id<"bookingResources"> | 'all'>('all');
   const [editingBookingId, setEditingBookingId] = useState<Id<"bookings"> | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    // If initialDate is provided, use it to set the week
+    const targetDate = initialDate ? new Date(initialDate + 'T00:00:00') : new Date();
+    const dayOfWeek = targetDate.getDay();
+    const monday = new Date(targetDate);
+    monday.setDate(targetDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
     monday.setHours(0, 0, 0, 0);
     return monday;
   });

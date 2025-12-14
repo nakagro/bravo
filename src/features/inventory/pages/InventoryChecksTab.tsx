@@ -9,7 +9,7 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../components/ui/accordion";
-import { CheckCircle2, XCircle, ArrowLeft, CheckCheck, MessageSquarePlus, Info, Ban } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowLeft, CheckCheck, MessageSquarePlus, Info, Ban, AlertTriangle, FileText, Hash } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 
@@ -30,6 +30,142 @@ interface RunItemDoc {
   imageStorageId?: Id<"_storage">;
   expectedQuantity?: number;
   actualQuantity?: number;
+}
+
+interface DeviationItem {
+  item: RunItemDoc;
+  deviationType: "no" | "quantity_mismatch" | "notes_only";
+  quantityDiff?: number;
+}
+
+// Executive Summary component for read-only completed checks
+function ExecutiveSummary({ items }: { items: RunItemDoc[] }) {
+  const deviations = useMemo(() => {
+    const result: DeviationItem[] = [];
+    
+    for (const item of items) {
+      const hasNotes = item.notes && item.notes.trim().length > 0;
+      const isNo = item.value === "no";
+      const hasQuantityMismatch = item.expectedQuantity !== undefined && 
+        item.actualQuantity !== undefined && 
+        item.actualQuantity !== item.expectedQuantity;
+      
+      if (isNo) {
+        result.push({ item, deviationType: "no" });
+      } else if (hasQuantityMismatch) {
+        result.push({ 
+          item, 
+          deviationType: "quantity_mismatch",
+          quantityDiff: item.actualQuantity! - item.expectedQuantity!
+        });
+      } else if (hasNotes) {
+        result.push({ item, deviationType: "notes_only" });
+      }
+    }
+    
+    return result;
+  }, [items]);
+
+  const noCount = deviations.filter(d => d.deviationType === "no").length;
+  const quantityCount = deviations.filter(d => d.deviationType === "quantity_mismatch").length;
+  const notesOnlyCount = deviations.filter(d => d.deviationType === "notes_only").length;
+
+  if (deviations.length === 0) {
+    return (
+      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/50">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-green-800 dark:text-green-300">All Items OK</h3>
+              <p className="text-sm text-green-700 dark:text-green-400">All {items.length} items passed with no issues or notes.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/50">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300">Items Requiring Attention</h3>
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              {deviations.length} item{deviations.length !== 1 ? "s" : ""} deviated from expected
+              {noCount > 0 && <span className="ml-2">• {noCount} marked No</span>}
+              {quantityCount > 0 && <span className="ml-2">• {quantityCount} quantity adjusted</span>}
+              {notesOnlyCount > 0 && <span className="ml-2">• {notesOnlyCount} with notes</span>}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="space-y-2">
+          {deviations.map((deviation) => (
+            <div 
+              key={deviation.item._id} 
+              className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/50"
+            >
+              {/* Icon based on deviation type */}
+              <div className="flex-shrink-0 mt-0.5">
+                {deviation.deviationType === "no" && (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+                {deviation.deviationType === "quantity_mismatch" && (
+                  <Hash className="w-5 h-5 text-amber-500" />
+                )}
+                {deviation.deviationType === "notes_only" && (
+                  <FileText className="w-5 h-5 text-blue-500" />
+                )}
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-sm text-gray-900 dark:text-white">
+                    {deviation.item.itemName}
+                  </span>
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    {deviation.item.sectionName}
+                  </Badge>
+                  {deviation.deviationType === "no" && (
+                    <Badge variant="destructive" className="text-xs">No</Badge>
+                  )}
+                  {deviation.deviationType === "quantity_mismatch" && (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs font-semibold ${
+                        deviation.quantityDiff! > 0 
+                          ? "border-green-500 text-green-600 dark:text-green-500" 
+                          : "border-red-500 text-red-600 dark:text-red-500"
+                      }`}
+                    >
+                      {deviation.quantityDiff! > 0 ? "+" : ""}{deviation.quantityDiff}
+                      <span className="ml-1 font-normal">
+                        ({deviation.item.actualQuantity}/{deviation.item.expectedQuantity})
+                      </span>
+                    </Badge>
+                  )}
+                </div>
+                {deviation.item.notes && (
+                  <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+                    {deviation.item.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 // Component to display item info (description + image)
@@ -328,6 +464,11 @@ export function InventoryChecksTab() {
           </div>
         </CardHeader>
       </Card>
+
+      {/* Executive Summary - only shown for completed/read-only checks */}
+      {isReadOnly && runData?.items && (
+        <ExecutiveSummary items={runData.items as RunItemDoc[]} />
+      )}
 
       {/* Sections and Items */}
       <Accordion type="multiple" defaultValue={grouped.map(s => `section-${s.order}`)} className="space-y-4">
