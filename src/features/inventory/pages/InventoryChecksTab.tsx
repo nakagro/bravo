@@ -8,6 +8,7 @@ import { Accordion } from "../../../components/ui/accordion";
 import { InventoryCheckHeader } from "../components/InventoryCheckHeader";
 import { InventoryCheckSection } from "../components/InventoryCheckSection";
 import { InventoryExecutiveSummary } from "../components/InventoryExecutiveSummary";
+import { exportCheckToPdf } from "../utils/exportCheckToPdf";
 import type { RunItemDoc, GroupedSection, ProgressInfo } from "../types/inventory.types";
 
 export function InventoryChecksTab() {
@@ -107,6 +108,32 @@ export function InventoryChecksTab() {
     }
   };
 
+  const handleExportPdf = () => {
+    if (!run || !runData?.items) return;
+    
+    const startedByName = runData.startedByUser 
+      ? `${runData.startedByUser.firstName || ""} ${runData.startedByUser.lastName || ""}`.trim() || runData.startedByUser.name || "Unknown"
+      : undefined;
+    
+    const completedByName = runData.completedByUser
+      ? `${runData.completedByUser.firstName || ""} ${runData.completedByUser.lastName || ""}`.trim() || runData.completedByUser.name || "Unknown"
+      : undefined;
+
+    exportCheckToPdf({
+      run: {
+        templateName: run.templateName,
+        status: run.status,
+        startedAt: run.startedAt,
+        completedAt: run.completedAt,
+        notes: run.notes,
+        startedByName,
+        completedByName,
+      },
+      items: runData.items as RunItemDoc[],
+      groupedSections: grouped,
+    });
+  };
+
   if (!run) {
     return (
       <Card>
@@ -128,6 +155,7 @@ export function InventoryChecksTab() {
         cancelling={cancelling}
         onComplete={handleComplete}
         onCancel={handleCancel}
+        onExportPdf={handleExportPdf}
       />
 
       {isReadOnly && runData?.items && (

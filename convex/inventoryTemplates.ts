@@ -541,3 +541,237 @@ export const publishTemplate = mutation({
     return true;
   },
 });
+
+// Clone a template with all its sections and items
+export const cloneTemplate = mutation({
+  args: {
+    templateId: v.id("applianceTemplates"),
+    newName: v.string(),
+  },
+  handler: async (ctx, { templateId, newName }) => {
+    const userId = await requireInventoryAdmin(ctx);
+
+    const originalTemplate = await ctx.db.get(templateId);
+    if (!originalTemplate) throw new Error("Template not found");
+
+    const now = Date.now();
+
+    // Create the new template
+    const newTemplateId = await ctx.db.insert("applianceTemplates", {
+      name: newName.trim(),
+      description: originalTemplate.description,
+      version: 1,
+      hasUnpublishedChanges: false,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+      updatedBy: userId,
+      metadata: {},
+    });
+
+    // Get all sections from the original template
+    const sections = await ctx.db
+      .query("applianceSections")
+      .withIndex("by_template_order", (q) => q.eq("templateId", templateId))
+      .order("asc")
+      .collect();
+
+    // Clone each section and its items
+    for (const section of sections) {
+      const newSectionId = await ctx.db.insert("applianceSections", {
+        templateId: newTemplateId,
+        name: section.name,
+        description: section.description,
+        order: section.order,
+        imageStorageId: section.imageStorageId,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: userId,
+        metadata: {},
+      });
+
+      // Get all items from the original section
+      const items = await ctx.db
+        .query("applianceItems")
+        .withIndex("by_section_order", (q) => q.eq("sectionId", section._id))
+        .order("asc")
+        .collect();
+
+      // Clone each item
+      for (const item of items) {
+        await ctx.db.insert("applianceItems", {
+          templateId: newTemplateId,
+          sectionId: newSectionId,
+          name: item.name,
+          description: item.description,
+          order: item.order,
+          itemType: item.itemType,
+          isRequired: item.isRequired,
+          defaultNotes: item.defaultNotes,
+          imageStorageId: item.imageStorageId,
+          expectedQuantity: item.expectedQuantity,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+          updatedBy: userId,
+          metadata: {},
+        });
+      }
+    }
+
+    return newTemplateId;
+  },
+});
+
+// Export a template as JSON (for sharing/backup)
+export const exportTemplate = query({
+  args: { templateId: v.id("applianceTemplates") },
+  handler: async (ctx, { templateId }) => {
+    await requireSignedIn(ctx);
+
+    const template = await ctx.db.get(templateId);
+    if (!template) throw new Error("Template not found");
+
+    // Get all sections
+    const sections = await ctx.db
+      .query("applianceSections")
+      .withIndex("by_template_order", (q) => q.eq("templateId", templateId))
+      .order("asc")
+      .collect();
+
+    // Get all items for each section
+    const sectionsWithItems = await Promise.all(
+      sections.map(async (section) => {
+        const items = await ctx.db
+          .query("applianceItems")
+          .withIndex("by_section_order", (q) => q.eq("sectionId", section._id))
+          .order("asc")
+          .collect();
+
+        return {
+          name: section.name,
+          description: section.description,
+          order: section.order,
+          items: items.map((item) => ({
+            name: item.name,
+            description: item.description,
+            order: item.order,
+            itemType: item.itemType,
+            isRequired: item.isRequired,
+            defaultNotes: item.defaultNotes,
+            expectedQuantity: item.expectedQuantity,
+          })),
+        };
+      })
+    );
+
+    return {
+      exportVersion: 1,
+      exportedAt: Date.now(),
+      template: {
+        name: template.name,
+        description: template.description,
+      },
+      sections: sectionsWithItems,
+    };
+  },
+});
+
+// Import a template from JSON
+export const importTemplate = mutation({
+  args: {
+    data: v.object({
+      exportVersion: v.number(),
+      exportedAt: v.optional(v.number()),
+      template: v.object({
+        name: v.string(),
+        description: v.optional(v.string()),
+      }),
+      sections: v.array(
+        v.object({
+          name: v.string(),
+          description: v.optional(v.string()),
+          order: v.number(),
+          items: v.array(
+            v.object({
+              name: v.string(),
+              description: v.optional(v.string()),
+              order: v.number(),
+              itemType: v.optional(
+                v.union(
+                  v.literal("boolean_with_notes"),
+                  v.literal("boolean"),
+                  v.literal("text")
+                )
+              ),
+              isRequired: v.optional(v.boolean()),
+              defaultNotes: v.optional(v.string()),
+              expectedQuantity: v.optional(v.number()),
+            })
+          ),
+        })
+      ),
+    }),
+    templateName: v.optional(v.string()),
+  },
+  handler: async (ctx, { data, templateName }) => {
+    const userId = await requireInventoryAdmin(ctx);
+
+    if (data.exportVersion !== 1) {
+      throw new Error("Unsupported export version");
+    }
+
+    const now = Date.now();
+    const name = templateName?.trim() || data.template.name;
+
+    // Create the template
+    const newTemplateId = await ctx.db.insert("applianceTemplates", {
+      name,
+      description: data.template.description,
+      version: 1,
+      hasUnpublishedChanges: false,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+      updatedBy: userId,
+      metadata: {},
+    });
+
+    // Create sections and items
+    for (const section of data.sections) {
+      const newSectionId = await ctx.db.insert("applianceSections", {
+        templateId: newTemplateId,
+        name: section.name,
+        description: section.description,
+        order: section.order,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: userId,
+        metadata: {},
+      });
+
+      for (const item of section.items) {
+        await ctx.db.insert("applianceItems", {
+          templateId: newTemplateId,
+          sectionId: newSectionId,
+          name: item.name,
+          description: item.description,
+          order: item.order,
+          itemType: item.itemType ?? "boolean_with_notes",
+          isRequired: item.isRequired ?? false,
+          defaultNotes: item.defaultNotes,
+          expectedQuantity: item.expectedQuantity,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+          updatedBy: userId,
+          metadata: {},
+        });
+      }
+    }
+
+    return newTemplateId;
+  },
+});

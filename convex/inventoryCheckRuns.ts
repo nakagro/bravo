@@ -107,8 +107,25 @@ export const getRun = query({
       .order("asc")
       .collect();
 
+    // Fetch user info for startedBy and completedBy
+    const startedByUser = run.startedBy ? await ctx.db.get(run.startedBy) : null;
+    const completedByUser = run.completedBy ? await ctx.db.get(run.completedBy) : null;
+
     // Return flat; client can group by sectionOrder/sectionName
-    return { run, items };
+    return { 
+      run, 
+      items,
+      startedByUser: startedByUser ? {
+        firstName: startedByUser.firstName,
+        lastName: startedByUser.lastName,
+        name: startedByUser.name,
+      } : null,
+      completedByUser: completedByUser ? {
+        firstName: completedByUser.firstName,
+        lastName: completedByUser.lastName,
+        name: completedByUser.name,
+      } : null,
+    };
   },
 });
 

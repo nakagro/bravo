@@ -3,7 +3,7 @@ import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardHeader, CardTitle } from "../../../components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
-import { ArrowLeft, CheckCheck, Ban } from "lucide-react";
+import { ArrowLeft, CheckCheck, Ban, FileDown } from "lucide-react";
 import type { ProgressInfo } from "../types/inventory.types";
 
 interface InventoryCheckHeaderProps {
@@ -15,6 +15,7 @@ interface InventoryCheckHeaderProps {
   cancelling: boolean;
   onComplete: () => void;
   onCancel: () => void;
+  onExportPdf?: () => void;
 }
 
 export function InventoryCheckHeader({
@@ -26,6 +27,7 @@ export function InventoryCheckHeader({
   cancelling,
   onComplete,
   onCancel,
+  onExportPdf,
 }: InventoryCheckHeaderProps) {
   const navigate = useNavigate();
 
@@ -79,6 +81,16 @@ export function InventoryCheckHeader({
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
+            {isReadOnly && onExportPdf && (
+              <Button
+                variant="outline"
+                onClick={onExportPdf}
+                className="flex-1 sm:flex-none"
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+            )}
             {!isReadOnly && (
               <>
                 <AlertDialog>
