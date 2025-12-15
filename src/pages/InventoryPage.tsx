@@ -4,14 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { InventoryTemplateList } from "../features/inventory/components/InventoryTemplateList";
 import { InventoryRecentChecks } from "../features/inventory/components/InventoryRecentChecks";
 import { InventoryTemplateSelector } from "../features/inventory/components/InventoryTemplateSelector";
+import InventoryAdminTab from "../features/inventory/components/InventoryAdminTab";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 
 export function InventoryPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"checks" | "history" | "templates">("checks");
+  const [activeTab, setActiveTab] = useState<"checks" | "history" | "templates" | "admin">("checks");
   const hasTemplatesAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventoryAdmin" });
+  const hasAdminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventoryAdmin" });
   
   // Get in-progress runs count for header context
   const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns);
@@ -26,7 +28,10 @@ export function InventoryPage() {
     if (activeTab === "templates" && hasTemplatesAccess === false) {
       setActiveTab("checks");
     }
-  }, [activeTab, hasTemplatesAccess]);
+    if (activeTab === "admin" && hasAdminAccess === false) {
+      setActiveTab("checks");
+    }
+  }, [activeTab, hasTemplatesAccess, hasAdminAccess]);
   
   // Update indicator position when active tab changes
   useEffect(() => {
@@ -37,7 +42,7 @@ export function InventoryPage() {
         width: activeTabElement.offsetWidth,
       });
     }
-  }, [activeTab, hasTemplatesAccess]);
+  }, [activeTab, hasTemplatesAccess, hasAdminAccess]);
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
@@ -105,6 +110,19 @@ export function InventoryPage() {
               Templates
             </button>
           )}
+          {hasAdminAccess && (
+            <button
+              ref={(el) => { tabRefs.current['admin'] = el; }}
+              onClick={() => setActiveTab("admin")}
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                activeTab === "admin"
+                  ? 'text-red-600 dark:text-red-400 font-bold'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+              }`}
+            >
+              Admin
+            </button>
+          )}
         </nav>
         {/* Animated indicator */}
         <div
@@ -128,6 +146,10 @@ export function InventoryPage() {
 
         {activeTab === "templates" && hasTemplatesAccess && (
           <InventoryTemplateList />
+        )}
+
+        {activeTab === "admin" && hasAdminAccess && (
+          <InventoryAdminTab isAuthenticated={isAuthenticated} />
         )}
       </div>
     </div>

@@ -198,6 +198,65 @@ export const cancelRun = mutation({
   },
 });
 
+export const deleteRun = mutation({
+  args: { runId: v.id("applianceCheckRuns") },
+  returns: v.boolean(),
+  handler: async (ctx, { runId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("You must be signed in");
+
+    // Check if user has inventoryAdmin access
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (!user.isAdmin) {
+      const moduleSetting = await ctx.db
+        .query("moduleSettings")
+        .withIndex("by_moduleId", (q) => q.eq("moduleId", "inventoryAdmin"))
+        .first();
+
+      if (!moduleSetting || !moduleSetting.isEnabled) {
+        throw new Error("You do not have permission to delete inventory checks");
+      }
+
+      if (moduleSetting.adminOnly) {
+        throw new Error("You do not have permission to delete inventory checks");
+      }
+
+      const rankOrder: Record<string, number> = {
+        Probationary: 1,
+        Firefighter: 2,
+        Lieutenant: 3,
+        Captain: 4,
+      };
+
+      if (moduleSetting.minimumRank) {
+        const userRank = user.rank;
+        if (!userRank || rankOrder[userRank] < rankOrder[moduleSetting.minimumRank]) {
+          throw new Error("You do not have permission to delete inventory checks");
+        }
+      }
+    }
+
+    const run = await ctx.db.get(runId);
+    if (!run) throw new Error("Run not found");
+
+    // Delete all run items first
+    const items = await ctx.db
+      .query("applianceCheckRunItems")
+      .withIndex("by_run", (q) => q.eq("runId", runId))
+      .collect();
+
+    for (const item of items) {
+      await ctx.db.delete(item._id);
+    }
+
+    // Delete the run itself
+    await ctx.db.delete(runId);
+    return true;
+  },
+});
+
 export const listRecentRuns = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {

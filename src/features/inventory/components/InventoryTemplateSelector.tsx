@@ -230,7 +230,11 @@ export function InventoryTemplateSelector() {
                     size="sm"
                     onClick={() => handleStartCheck(tpl)}
                     disabled={hasUnpublished}
-                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                    className={
+                      completedThisWeek || hasUnpublished
+                        ? "bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+                        : "bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                    }
                   >
                     <Play className="h-4 w-4 mr-1.5" />
                     {hasUnpublished ? 'Unavailable' : 'Start Check'}

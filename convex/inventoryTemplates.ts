@@ -80,6 +80,18 @@ export const getApplianceTemplates = query({
   },
 });
 
+export const listTemplates = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireSignedIn(ctx);
+    return await ctx.db
+      .query("applianceTemplates")
+      .withIndex("by_updatedAt")
+      .order("desc")
+      .collect();
+  },
+});
+
 export const getTemplateStructure = query({
   args: {
     templateId: v.id("applianceTemplates"),
