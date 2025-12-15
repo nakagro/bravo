@@ -22,6 +22,7 @@ import AboutPage from "./pages/AboutPage";
 import { FDRPage } from "./pages/FDRPage";
 import ExtrasPage from "./pages/ExtrasPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
+import AuthManagementPage from "./pages/AuthManagementPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
@@ -130,6 +131,11 @@ function AuthenticatedApp() {
         <Route path="/admin/feedback" element={
           <ProtectedRoute moduleId="admin">
             <FeedbackManagementPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/auth" element={
+          <ProtectedRoute moduleId="admin">
+            <AuthManagementPage />
           </ProtectedRoute>
         } />
         <Route path="/about" element={<AboutPage />} />

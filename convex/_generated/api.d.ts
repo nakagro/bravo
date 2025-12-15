@@ -16,6 +16,7 @@ import type {
 import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
+import type * as authManagement from "../authManagement.js";
 import type * as availability_getStatuses from "../availability/getStatuses.js";
 import type * as availability_updateStatus from "../availability/updateStatus.js";
 import type * as availability from "../availability.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   apiKeyAuth: typeof apiKeyAuth;
   applianceLocations: typeof applianceLocations;
   auth: typeof auth;
+  authManagement: typeof authManagement;
   "availability/getStatuses": typeof availability_getStatuses;
   "availability/updateStatus": typeof availability_updateStatus;
   availability: typeof availability;
