@@ -1,9 +1,9 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Switch } from "@headlessui/react";
+import { Switch, Dialog } from "@headlessui/react";
 import { Listbox, Transition } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon, ChevronUpDownIcon, PlusIcon, TrashIcon, XMarkIcon, PencilIcon } from "@heroicons/react/20/solid";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface ModuleSettingsProps {
@@ -30,11 +30,25 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
   const [selectedRank, setSelectedRank] = useState<"Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined>(undefined);
   const [isAdminOnly, setIsAdminOnly] = useState<boolean>(false);
   
+  // State for role management dialog
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [roleError, setRoleError] = useState<string | null>(null);
+  
+  // State for editing an existing role
+  const [editingRoleId, setEditingRoleId] = useState<Id<"roles"> | null>(null);
+  const [editRoleName, setEditRoleName] = useState("");
+  const [editRoleDescription, setEditRoleDescription] = useState("");
+  
   // Initialize module settings if they don't exist
   const initializeSettings = useMutation(api.modules.initializeModuleSettings);
   const syncSettings = useMutation(api.modules.syncModuleSettings);
   const updateModuleStatus = useMutation(api.modules.updateModuleStatus);
   const updateModuleRequirements = useMutation(api.modules.updateModuleRequirements);
+  const createRole = useMutation(api.users.createRole);
+  const deleteRole = useMutation(api.users.deleteRole);
+  const updateRole = useMutation(api.users.updateRole);
   
   // Initialize settings on component mount if needed
   useEffect(() => {
@@ -108,6 +122,85 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
     return new Date(timestamp).toLocaleString();
   };
   
+  // Handle adding a new role
+  const handleAddRole = async () => {
+    if (!newRoleName.trim()) {
+      setRoleError("Role name is required");
+      return;
+    }
+    
+    try {
+      await createRole({
+        name: newRoleName.trim(),
+        description: newRoleDescription.trim() || undefined,
+      });
+      setNewRoleName("");
+      setNewRoleDescription("");
+      setRoleError(null);
+    } catch (error) {
+      setRoleError(error instanceof Error ? error.message : "Failed to create role");
+    }
+  };
+  
+  // Handle deleting a role
+  const handleDeleteRole = async (roleId: Id<"roles">) => {
+    if (!confirm("Are you sure you want to delete this role? This will not remove the role from users who already have it.")) {
+      return;
+    }
+    
+    try {
+      await deleteRole({ roleId });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete role");
+    }
+  };
+  
+  // Handle toggling role active status
+  const handleToggleRoleActive = async (roleId: Id<"roles">, isActive: boolean) => {
+    try {
+      await updateRole({ roleId, isActive });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update role");
+    }
+  };
+  
+  // Start editing a role
+  const startEditingRole = (role: { _id: Id<"roles">; name: string; description?: string }) => {
+    setEditingRoleId(role._id);
+    setEditRoleName(role.name);
+    setEditRoleDescription(role.description || "");
+    setRoleError(null);
+  };
+  
+  // Cancel editing a role
+  const cancelEditingRole = () => {
+    setEditingRoleId(null);
+    setEditRoleName("");
+    setEditRoleDescription("");
+    setRoleError(null);
+  };
+  
+  // Save role edits
+  const handleSaveRoleEdit = async () => {
+    if (!editingRoleId) return;
+    
+    if (!editRoleName.trim()) {
+      setRoleError("Role name is required");
+      return;
+    }
+    
+    try {
+      await updateRole({
+        roleId: editingRoleId,
+        name: editRoleName.trim(),
+        description: editRoleDescription.trim() || undefined,
+      });
+      cancelEditingRole();
+    } catch (error) {
+      setRoleError(error instanceof Error ? error.message : "Failed to update role");
+    }
+  };
+  
   if (!moduleSettings) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -128,22 +221,198 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Configure access to modules based on global availability, user roles, and ranks.
         </p>
-        <button
-          onClick={async () => {
-            try {
-              const result = await syncSettings();
-              console.log('Sync result:', result);
-              alert(`Sync completed! Added ${result.addedCount} new modules. Total: ${result.totalModules}`);
-            } catch (error) {
-              console.error('Sync failed:', error);
-              alert('Sync failed. Check console for details.');
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-        >
-          Sync Missing Modules
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsRoleDialogOpen(true)}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+          >
+            Manage Roles
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const result = await syncSettings();
+                console.log('Sync result:', result);
+                alert(`Sync completed! Added ${result.addedCount} new modules. Total: ${result.totalModules}`);
+              } catch (error) {
+                console.error('Sync failed:', error);
+                alert('Sync failed. Check console for details.');
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+          >
+            Sync Missing Modules
+          </button>
+        </div>
       </div>
+      
+      {/* Role Management Dialog */}
+      <Dialog open={isRoleDialogOpen} onClose={() => setIsRoleDialogOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-lg w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
+                Manage Roles
+              </Dialog.Title>
+              <button
+                onClick={() => setIsRoleDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              {/* Add new role form */}
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Add New Role</h3>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Role name"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Description (optional)"
+                    value={newRoleDescription}
+                    onChange={(e) => setNewRoleDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {roleError && (
+                    <p className="text-sm text-red-600 dark:text-red-400">{roleError}</p>
+                  )}
+                  <button
+                    onClick={handleAddRole}
+                    className="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Role
+                  </button>
+                </div>
+              </div>
+              
+              {/* Existing roles list */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Existing Roles</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {!roles || roles.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No roles defined yet</p>
+                  ) : (
+                    roles.map((role) => (
+                      <div
+                        key={role._id}
+                        className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md"
+                      >
+                        {editingRoleId === role._id ? (
+                          // Edit mode
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="Role name"
+                              value={editRoleName}
+                              onChange={(e) => setEditRoleName(e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              autoFocus
+                            />
+                            <input
+                              type="text"
+                              placeholder="Description (optional)"
+                              value={editRoleDescription}
+                              onChange={(e) => setEditRoleDescription(e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            {roleError && (
+                              <p className="text-xs text-red-600 dark:text-red-400">{roleError}</p>
+                            )}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveRoleEdit}
+                                className="px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEditingRole}
+                                className="px-2 py-1 text-xs bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // View mode
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {role.name}
+                                </span>
+                                {!role.isActive && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded">
+                                    Inactive
+                                  </span>
+                                )}
+                              </div>
+                              {role.description && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{role.description}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={role.isActive}
+                                onChange={(isActive) => handleToggleRoleActive(role._id, isActive)}
+                                className={`${
+                                  role.isActive ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-600'
+                                } relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2`}
+                              >
+                                <span className="sr-only">
+                                  {role.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                                <span
+                                  className={`${
+                                    role.isActive ? 'translate-x-5' : 'translate-x-1'
+                                  } inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
+                                />
+                              </Switch>
+                              <button
+                                onClick={() => startEditingRole(role)}
+                                className="p-1 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                title="Edit role"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRole(role._id)}
+                                className="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                title="Delete role"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setIsRoleDialogOpen(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-md transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

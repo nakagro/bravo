@@ -15,6 +15,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/fdr",
     emoji: "🔥",
   },
+  {
+    title: "Equipment",
+    description: "Track and manage equipment stock levels.",
+    to: "/equipment",
+    emoji: "🧤",
+  },
 ];
 
 export default function ExtrasPage() {

@@ -833,6 +833,63 @@ const applicationTables = {
     .index("by_email", ["email"])
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
+
+  // Equipment Management - Categories for organizing equipment items
+  equipmentCategories: defineTable({
+    name: v.string(), // Category name (e.g., "PPE", "Batteries", "Tools")
+    description: v.optional(v.string()),
+    order: v.number(), // Display order
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_order", ["order"]),
+
+  // Equipment items - Individual items that can be tracked
+  equipmentItems: defineTable({
+    name: v.string(), // Item name (e.g., "XL Gloves", "AA Batteries")
+    categoryId: v.id("equipmentCategories"),
+    description: v.optional(v.string()),
+    // Size variant if applicable (e.g., XS, S, M, L, XL, XXL)
+    size: v.optional(v.string()),
+    // Current stock level
+    currentStock: v.number(),
+    // Minimum stock level before warning
+    minimumStock: v.optional(v.number()),
+    // Unit of measurement (e.g., "pairs", "units", "boxes")
+    unit: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("by_category", ["categoryId"])
+    .index("by_isActive", ["isActive"])
+    .index("by_name", ["name"]),
+
+  // Equipment transactions - Track all stock movements
+  equipmentTransactions: defineTable({
+    itemId: v.id("equipmentItems"),
+    type: v.union(
+      v.literal("take"), // User took item from stock
+      v.literal("replenish"), // Stock was replenished
+      v.literal("adjustment"), // Manual stock adjustment
+      v.literal("initial") // Initial stock entry
+    ),
+    quantity: v.number(), // Positive for additions, negative for removals
+    previousStock: v.number(), // Stock level before transaction
+    newStock: v.number(), // Stock level after transaction
+    notes: v.optional(v.string()),
+    userId: v.id("users"), // User who performed the transaction
+    createdAt: v.number(),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_user", ["userId"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_type", ["type"]),
 };
 
 export default defineSchema({

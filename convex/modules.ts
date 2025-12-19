@@ -171,6 +171,22 @@ export const syncModuleSettings = mutation({
         minimumRank: undefined
       },
       {
+        moduleId: "equipment",
+        moduleName: "Equipment",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "equipmentAdmin",
+        moduleName: "Equipment Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "admin",
         moduleName: "Admin Settings",
         isEnabled: true,
@@ -323,6 +339,22 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: undefined
+      },
+      {
+        moduleId: "equipment",
+        moduleName: "Equipment",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "equipmentAdmin",
+        moduleName: "Equipment Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "admin",
@@ -518,11 +550,9 @@ export const checkModuleAccess = query({
       }
     }
 
-    if (hasRoleReq && hasRankReq) {
-      if (!(roleOk || rankOk)) return false;
-    } else {
-      if (!(roleOk && rankOk)) return false;
-    }
+    // When both role and rank requirements exist, user must meet BOTH
+    // When only one requirement exists, user must meet that one
+    if (!(roleOk && rankOk)) return false;
 
     // If all checks pass, the user has access
     return true;
@@ -544,6 +574,8 @@ export const getAllModuleAccess = query({
     fireReports: v.boolean(),
     inventory: v.boolean(),
     vehicleFaults: v.boolean(),
+    equipment: v.boolean(),
+    equipmentAdmin: v.boolean(),
     bookings: v.boolean(),
     feedback: v.boolean(),
     links: v.boolean(),
@@ -563,6 +595,8 @@ export const getAllModuleAccess = query({
         fireReports: false,
         inventory: false,
         vehicleFaults: false,
+        equipment: false,
+        equipmentAdmin: false,
         bookings: false,
         feedback: false,
         links: false,
@@ -582,6 +616,8 @@ export const getAllModuleAccess = query({
         fireReports: false,
         inventory: false,
         vehicleFaults: false,
+        equipment: false,
+        equipmentAdmin: false,
         bookings: false,
         feedback: false,
         links: false,
@@ -601,6 +637,8 @@ export const getAllModuleAccess = query({
         fireReports: true,
         inventory: true,
         vehicleFaults: true,
+        equipment: true,
+        equipmentAdmin: true,
         bookings: true,
         feedback: true,
         links: true,
@@ -650,11 +688,9 @@ export const getAllModuleAccess = query({
         }
       }
 
-      if (hasRoleReq && hasRankReq) {
-        if (!(roleOk || rankOk)) return false;
-      } else {
-        if (!(roleOk && rankOk)) return false;
-      }
+      // When both role and rank requirements exist, user must meet BOTH
+      // When only one requirement exists, user must meet that one
+      if (!(roleOk && rankOk)) return false;
 
       return true;
     };
@@ -668,6 +704,8 @@ export const getAllModuleAccess = query({
       fireReports: checkAccess("fireReports"),
       inventory: checkAccess("inventory"),
       vehicleFaults: checkAccess("vehicleFaults"),
+      equipment: checkAccess("equipment"),
+      equipmentAdmin: checkAccess("equipmentAdmin"),
       bookings: checkAccess("bookings"),
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),

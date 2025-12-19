@@ -161,6 +161,7 @@ export const createRole = mutation({
 
 /**
  * Update an existing role
+ * If the name is changed, cascades the update to moduleSettings and users
  */
 export const updateRole = mutation({
   args: {
@@ -171,7 +172,7 @@ export const updateRole = mutation({
   },
   returns: v.id("roles"),
   handler: async (ctx, args) => {
-    const { roleId, ...updates } = args;
+    const { roleId, name, description, isActive } = args;
     
     // Verify the role exists
     const role = await ctx.db.get(roleId);
@@ -179,11 +180,54 @@ export const updateRole = mutation({
       throw new Error(`Role with ID ${roleId} not found`);
     }
     
-    // Update the role
-    await ctx.db.patch(roleId, {
-      ...updates,
+    const oldName = role.name;
+    const newName = name?.trim();
+    
+    // If renaming, check for duplicate and cascade the change
+    if (newName && newName !== oldName) {
+      // Check if another role with the new name already exists
+      const existingRole = await ctx.db
+        .query("roles")
+        .withIndex("by_name", (q) => q.eq("name", newName))
+        .first();
+      
+      if (existingRole && existingRole._id !== roleId) {
+        throw new Error(`Role with name "${newName}" already exists`);
+      }
+      
+      // Cascade rename to moduleSettings.requiredRoles
+      const moduleSettings = await ctx.db.query("moduleSettings").collect();
+      for (const moduleSetting of moduleSettings) {
+        if (moduleSetting.requiredRoles?.includes(oldName)) {
+          const updatedRoles = moduleSetting.requiredRoles.map(r => 
+            r === oldName ? newName : r
+          );
+          await ctx.db.patch(moduleSetting._id, { requiredRoles: updatedRoles });
+        }
+      }
+      
+      // Cascade rename to users.roles
+      const users = await ctx.db.query("users").collect();
+      for (const user of users) {
+        if (user.roles?.includes(oldName)) {
+          const updatedRoles = user.roles.map(r => 
+            r === oldName ? newName : r
+          );
+          await ctx.db.patch(user._id, { roles: updatedRoles });
+        }
+      }
+    }
+    
+    // Build update object
+    const updateObj: { name?: string; description?: string; isActive?: boolean; updatedAt: number } = {
       updatedAt: Date.now(),
-    });
+    };
+    if (newName) updateObj.name = newName;
+    if (description !== undefined) updateObj.description = description;
+    if (isActive !== undefined) updateObj.isActive = isActive;
+    
+    // Update the role
+    await ctx.db.patch(roleId, updateObj);
     
     return roleId;
   },

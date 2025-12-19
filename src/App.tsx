@@ -20,6 +20,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LinksPage } from "./pages/LinksPage";
 import AboutPage from "./pages/AboutPage";
 import { FDRPage } from "./pages/FDRPage";
+import { EquipmentPage } from "./pages/EquipmentPage";
 import ExtrasPage from "./pages/ExtrasPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import AuthManagementPage from "./pages/AuthManagementPage";
@@ -141,6 +142,11 @@ function AuthenticatedApp() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/extras" element={<ExtrasPage />} />
         <Route path="/fdr" element={<FDRPage />} />
+        <Route path="/equipment" element={
+          <ProtectedRoute moduleId="equipment">
+            <EquipmentPage />
+          </ProtectedRoute>
+        } />
 
         {/* Catch all other routes and redirect to dashboard */}
         <Route path="*" element={<Navigate to="/" replace />} />

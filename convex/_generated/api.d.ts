@@ -29,6 +29,7 @@ import type * as dutyCrew from "../dutyCrew.js";
 import type * as dutyCrewMembers from "../dutyCrewMembers.js";
 import type * as emailSettings from "../emailSettings.js";
 import type * as emails from "../emails.js";
+import type * as equipment from "../equipment.js";
 import type * as feedback from "../feedback.js";
 import type * as fireReports from "../fireReports.js";
 import type * as hoseAuditTrail from "../hoseAuditTrail.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   dutyCrewMembers: typeof dutyCrewMembers;
   emailSettings: typeof emailSettings;
   emails: typeof emails;
+  equipment: typeof equipment;
   feedback: typeof feedback;
   fireReports: typeof fireReports;
   hoseAuditTrail: typeof hoseAuditTrail;

@@ -1,4 +1,7 @@
 # Changelog
+## [1.0.51] - 2025-12-19
+- Ground work being laid for an upcoming Equipment's module. 
+- Inventory Module: some tweaks based on a trial run with some members, such as a yes/no being selected when the user adjusted the QTY found and an easy to reference indication at the top of a historical check what the deviations were.
 
 ## [1.0.50] - 2025-12-14
 - Force Update button added at the bottom of the User Settings page. Useful if the user wants to force the latest update instead of waiting for it.
