@@ -19,13 +19,13 @@ const EXTRA_LINKS: ExtraLink[] = [
     title: "Equipment",
     description: "Track and manage equipment stock levels.",
     to: "/equipment",
-    emoji: "🧤",
+    emoji: "",
   },
   {
     title: "BA Skills Maintenance",
     description: "Log BA cylinder usage for skills maintenance tracking.",
     to: "/ba-skills",
-    emoji: "🎭",
+    emoji: "",
   },
 ];
 
@@ -48,9 +48,11 @@ export default function ExtrasPage() {
             className="group rounded-xl border border-border bg-card/60 hover:bg-card transition-colors shadow-sm"
           >
             <div className="p-5 flex items-center gap-4">
-              <div className="text-2xl">
-                {link.emoji ?? "✨"}
-              </div>
+              {link.emoji && (
+                <div className="text-2xl">
+                  {link.emoji}
+                </div>
+              )}
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold">{link.title}</h2>

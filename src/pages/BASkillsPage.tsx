@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { BASkillsForm, BASkillsRecordList } from "@/features/baSkills/components";
+import { BASkillsForm, BASkillsRecordList, BASkillsAudit } from "@/features/baSkills/components";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2 } from "lucide-react";
 
 export function BASkillsPage() {
   const [activeTab, setActiveTab] = useState("submit");
   const [showSuccess, setShowSuccess] = useState(false);
+  const isMobile = useIsMobile();
 
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -29,21 +34,19 @@ export function BASkillsPage() {
     <div className="space-y-4" data-component="BASkillsPage">
       {/* Header */}
       <div className="flex justify-between items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            BA Skills Maintenance
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            MSA G1E BA Set Skills Maintenance
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          BA Skills Maintenance
+        </h1>
       </div>
 
       {/* Success Message */}
       {showSuccess && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-200">
-          ✓ BA usage record submitted successfully!
-        </div>
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            BA usage record submitted successfully!
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Tabs */}
@@ -75,6 +78,19 @@ export function BASkillsPage() {
           >
             History
           </button>
+          <button
+            ref={(el) => {
+              tabRefs.current["audit"] = el;
+            }}
+            onClick={() => setActiveTab("audit")}
+            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+              activeTab === "audit"
+                ? "text-red-600 dark:text-red-400 font-bold"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+            }`}
+          >
+            Audit
+          </button>
         </nav>
         {/* Animated indicator */}
         <div
@@ -89,11 +105,89 @@ export function BASkillsPage() {
       {/* Tab Content */}
       <div className="mt-4">
         {activeTab === "submit" && (
-          <div className="max-w-xl">
-            <BASkillsForm onSuccess={handleFormSuccess} />
-          </div>
+          <>
+            {isMobile ? (
+              <BASkillsForm onSuccess={handleFormSuccess} />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Log BA Usage</CardTitle>
+                      <CardDescription>
+                        Record when you or another member used a BA cylinder
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BASkillsForm onSuccess={handleFormSuccess} />
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="hidden lg:block">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">About BA Skills</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground space-y-3">
+                      <p>
+                        This form replaces the Google Forms page for tracking BA cylinder usage.
+                      </p>
+                      <p>
+                        <strong>Fire Call:</strong> Use this when you wore BA during an actual incident.
+                      </p>
+                      <p>
+                        <strong>Training/Drill:</strong> Use this for practice sessions and training exercises.
+                      </p>
+                      <p>
+                        You can submit records on behalf of other members if needed.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </>
         )}
-        {activeTab === "history" && <BASkillsRecordList />}
+
+        {activeTab === "history" && (
+          <>
+            {isMobile ? (
+              <BASkillsRecordList />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usage History</CardTitle>
+                  <CardDescription>
+                    View all BA usage records submitted by members
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BASkillsRecordList />
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        {activeTab === "audit" && (
+          <>
+            {isMobile ? (
+              <BASkillsAudit />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>BA Skills Audit</CardTitle>
+                  <CardDescription>
+                    Track members with BA skills and their 6-month qualification status
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BASkillsAudit />
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

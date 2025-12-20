@@ -14,7 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, UserPlus } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Save, User, Users } from "lucide-react";
 
 interface BASkillsFormProps {
   onSuccess?: () => void;
@@ -109,36 +110,146 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
   const verifierOptions = allMembers.filter((m) => m._id !== memberId);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* On Behalf Toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-border bg-card/50 p-4">
-        <div className="space-y-0.5">
-          <Label htmlFor="on-behalf" className="text-base font-medium">
-            Entering for another member?
-          </Label>
-          <p className="text-sm text-muted-foreground">
-            Toggle this on to submit a record on behalf of someone else
-          </p>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Who is this for? - Clear visual selection */}
+      <div className="space-y-3">
+        <Label className="text-base font-semibold">
+          Who is this BA record for? <span className="text-red-500">*</span>
+        </Label>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Option 1: For myself */}
+          <button
+            type="button"
+            onClick={() => setIsOnBehalf(false)}
+            className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+              !isOnBehalf
+                ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+                : "border-border hover:border-gray-400 dark:hover:border-gray-600"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`shrink-0 rounded-full p-2 ${
+                  !isOnBehalf
+                    ? "bg-red-100 dark:bg-red-900/30"
+                    : "bg-muted"
+                }`}
+              >
+                <User
+                  className={`h-5 w-5 ${
+                    !isOnBehalf
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`font-medium ${
+                    !isOnBehalf ? "text-red-900 dark:text-red-100" : ""
+                  }`}
+                >
+                  For myself
+                </div>
+                <div className="text-sm text-muted-foreground truncate mt-0.5">
+                  {currentUser.name}
+                </div>
+              </div>
+              {!isOnBehalf && (
+                <div className="shrink-0">
+                  <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <svg
+                      className="h-3 w-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          </button>
+
+          {/* Option 2: For another member */}
+          <button
+            type="button"
+            onClick={() => setIsOnBehalf(true)}
+            className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+              isOnBehalf
+                ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+                : "border-border hover:border-gray-400 dark:hover:border-gray-600"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`shrink-0 rounded-full p-2 ${
+                  isOnBehalf
+                    ? "bg-red-100 dark:bg-red-900/30"
+                    : "bg-muted"
+                }`}
+              >
+                <Users
+                  className={`h-5 w-5 ${
+                    isOnBehalf
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`font-medium ${
+                    isOnBehalf ? "text-red-900 dark:text-red-100" : ""
+                  }`}
+                >
+                  For another member
+                </div>
+                <div className="text-sm text-muted-foreground mt-0.5">
+                  Select member below
+                </div>
+              </div>
+              {isOnBehalf && (
+                <div className="shrink-0">
+                  <div className="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
+                    <svg
+                      className="h-3 w-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          </button>
         </div>
-        <Switch
-          id="on-behalf"
-          checked={isOnBehalf}
-          onCheckedChange={setIsOnBehalf}
-        />
       </div>
 
-      {/* Member Selection */}
-      <div className="space-y-2">
-        <Label htmlFor="member">
-          {isOnBehalf ? "Member who wore BA" : "Member"}{" "}
-          <span className="text-red-500">*</span>
-        </Label>
-        {isOnBehalf ? (
+      {/* Member Selection - Only show when entering on behalf */}
+      {isOnBehalf && (
+        <div className="space-y-2">
+          <Label htmlFor="member">
+            Select member <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={memberId || ""}
             onValueChange={(value) => setMemberId(value as Id<"users">)}
           >
-            <SelectTrigger id="member">
+            <SelectTrigger id="member" className="h-11">
               <SelectValue placeholder="Select a member..." />
             </SelectTrigger>
             <SelectContent>
@@ -149,47 +260,43 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
               ))}
             </SelectContent>
           </Select>
-        ) : (
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2">
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{currentUser.name}</span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Date Used */}
-      <div className="space-y-2">
-        <Label htmlFor="dateUsed">
-          Date BA was worn <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="dateUsed"
-          type="date"
-          value={dateUsed}
-          onChange={(e) => setDateUsed(e.target.value)}
-          max={new Date().toISOString().split("T")[0]}
-          required
-        />
-      </div>
+      {/* Date and Duration - Side by side on larger screens */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="dateUsed">
+            Date <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="dateUsed"
+            type="date"
+            className="h-11"
+            value={dateUsed}
+            onChange={(e) => setDateUsed(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
+            required
+          />
+        </div>
 
-      {/* Duration */}
-      <div className="space-y-2">
-        <Label htmlFor="duration">
-          Duration (minutes) <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="duration"
-          type="number"
-          min="1"
-          max="480"
-          placeholder="e.g., 30"
-          value={durationMinutes}
-          onChange={(e) => setDurationMinutes(e.target.value)}
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          How many minutes was the BA worn for?
-        </p>
+        <div className="space-y-2">
+          <Label htmlFor="duration">
+            Duration (mins) <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="duration"
+            type="number"
+            className="h-11"
+            inputMode="numeric"
+            min="1"
+            max="480"
+            placeholder="e.g., 30"
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+            required
+          />
+        </div>
       </div>
 
       {/* Usage Type */}
@@ -201,7 +308,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           value={usageType}
           onValueChange={(value) => setUsageType(value as "firecall" | "drill")}
         >
-          <SelectTrigger id="usageType">
+          <SelectTrigger id="usageType" className="h-11">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -226,6 +333,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           rows={3}
+          className="resize-none"
           required
         />
         <p className="text-xs text-muted-foreground">
@@ -235,18 +343,17 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
 
       {/* Verified By */}
       <div className="space-y-2">
-        <Label htmlFor="verifiedBy">Verified by (optional)</Label>
+        <Label htmlFor="verifiedBy">
+          Verified by <span className="text-red-500">*</span>
+        </Label>
         <Select
-          value={verifiedBy || "none"}
-          onValueChange={(value) =>
-            setVerifiedBy(value === "none" ? null : (value as Id<"users">))
-          }
+          value={verifiedBy || ""}
+          onValueChange={(value) => setVerifiedBy(value as Id<"users">)}
         >
-          <SelectTrigger id="verifiedBy">
+          <SelectTrigger id="verifiedBy" className="h-11">
             <SelectValue placeholder="Select a member to verify..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">No verifier</SelectItem>
             {verifierOptions.map((member) => (
               <SelectItem key={member._id} value={member._id}>
                 {member.name}
@@ -254,30 +361,29 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">
-          Which member can verify this BA usage?
-        </p>
       </div>
 
-      {/* Submit Button */}
+      {/* Submit Button - Large touch target for mobile */}
       <Button
         type="submit"
-        className="w-full"
+        size="lg"
+        className="w-full h-12 text-base"
         disabled={
           isSubmitting ||
           !memberId ||
           !durationMinutes ||
-          !location.trim()
+          !location.trim() ||
+          !verifiedBy
         }
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Submitting...
           </>
         ) : (
           <>
-            <Save className="mr-2 h-4 w-4" />
+            <Save className="mr-2 h-5 w-5" />
             Submit BA Record
           </>
         )}
