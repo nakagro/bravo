@@ -21,6 +21,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/equipment",
     emoji: "🧤",
   },
+  {
+    title: "BA Skills Maintenance",
+    description: "Log BA cylinder usage for skills maintenance tracking.",
+    to: "/ba-skills",
+    emoji: "🎭",
+  },
 ];
 
 export default function ExtrasPage() {
