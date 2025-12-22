@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { BASkillsForm, BASkillsRecordList, BASkillsAudit } from "@/features/baSkills/components";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +11,12 @@ export function BASkillsPage() {
   const [activeTab, setActiveTab] = useState("submit");
   const [showSuccess, setShowSuccess] = useState(false);
   const isMobile = useIsMobile();
+  
+  // Get module permissions
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const canSubmit = moduleAccess?.baSkills ?? false;
+  const canViewHistory = moduleAccess?.baSkillsAdmin ?? false;
+  const canViewAudit = moduleAccess?.baSkillsAdmin ?? false;
 
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -24,6 +32,22 @@ export function BASkillsPage() {
       });
     }
   }, [activeTab]);
+
+  // Switch to first available tab if current tab is not accessible
+  useEffect(() => {
+    if (!canSubmit && !canViewHistory && !canViewAudit) {
+      // User has no access to any tab
+      return;
+    }
+    
+    if (activeTab === "submit" && !canSubmit) {
+      setActiveTab(canViewHistory ? "history" : "audit");
+    } else if (activeTab === "history" && !canViewHistory) {
+      setActiveTab(canSubmit ? "submit" : "audit");
+    } else if (activeTab === "audit" && !canViewAudit) {
+      setActiveTab(canSubmit ? "submit" : "history");
+    }
+  }, [canSubmit, canViewHistory, canViewAudit, activeTab]);
 
   const handleFormSuccess = () => {
     setShowSuccess(true);
@@ -52,45 +76,51 @@ export function BASkillsPage() {
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 relative">
         <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
-          <button
-            ref={(el) => {
-              tabRefs.current["submit"] = el;
-            }}
-            onClick={() => setActiveTab("submit")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === "submit"
-                ? "text-red-600 dark:text-red-400 font-bold"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
-            }`}
-          >
-            Submit Record
-          </button>
-          <button
-            ref={(el) => {
-              tabRefs.current["history"] = el;
-            }}
-            onClick={() => setActiveTab("history")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === "history"
-                ? "text-red-600 dark:text-red-400 font-bold"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
-            }`}
-          >
-            History
-          </button>
-          <button
-            ref={(el) => {
-              tabRefs.current["audit"] = el;
-            }}
-            onClick={() => setActiveTab("audit")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === "audit"
-                ? "text-red-600 dark:text-red-400 font-bold"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
-            }`}
-          >
-            Audit
-          </button>
+          {canSubmit && (
+            <button
+              ref={(el) => {
+                tabRefs.current["submit"] = el;
+              }}
+              onClick={() => setActiveTab("submit")}
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                activeTab === "submit"
+                  ? "text-red-600 dark:text-red-400 font-bold"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+              }`}
+            >
+              Submit Record
+            </button>
+          )}
+          {canViewHistory && (
+            <button
+              ref={(el) => {
+                tabRefs.current["history"] = el;
+              }}
+              onClick={() => setActiveTab("history")}
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                activeTab === "history"
+                  ? "text-red-600 dark:text-red-400 font-bold"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+              }`}
+            >
+              History
+            </button>
+          )}
+          {canViewAudit && (
+            <button
+              ref={(el) => {
+                tabRefs.current["audit"] = el;
+              }}
+              onClick={() => setActiveTab("audit")}
+              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                activeTab === "audit"
+                  ? "text-red-600 dark:text-red-400 font-bold"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+              }`}
+            >
+              Audit
+            </button>
+          )}
         </nav>
         {/* Animated indicator */}
         <div
@@ -104,7 +134,7 @@ export function BASkillsPage() {
 
       {/* Tab Content */}
       <div className="mt-4">
-        {activeTab === "submit" && (
+        {activeTab === "submit" && canSubmit && (
           <>
             {isMobile ? (
               <BASkillsForm onSuccess={handleFormSuccess} />
@@ -149,7 +179,7 @@ export function BASkillsPage() {
           </>
         )}
 
-        {activeTab === "history" && (
+        {activeTab === "history" && canViewHistory && (
           <>
             {isMobile ? (
               <BASkillsRecordList />
@@ -169,7 +199,7 @@ export function BASkillsPage() {
           </>
         )}
 
-        {activeTab === "audit" && (
+        {activeTab === "audit" && canViewAudit && (
           <>
             {isMobile ? (
               <BASkillsAudit />

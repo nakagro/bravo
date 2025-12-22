@@ -121,7 +121,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           <button
             type="button"
             onClick={() => setIsOnBehalf(false)}
-            className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+            className={`relative p- sm:p-4 rounded-lg border-2 transition-all text-left ${
               !isOnBehalf
                 ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                 : "border-border hover:border-gray-400 dark:hover:border-gray-600"
@@ -181,7 +181,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           <button
             type="button"
             onClick={() => setIsOnBehalf(true)}
-            className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+            className={`relative p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${
               isOnBehalf
                 ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                 : "border-border hover:border-gray-400 dark:hover:border-gray-600"
