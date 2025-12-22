@@ -281,6 +281,12 @@ export const getAllMembers = query({
       name: v.string(),
       firstName: v.optional(v.string()),
       lastName: v.optional(v.string()),
+      rank: v.optional(v.union(
+        v.literal("Probationary"),
+        v.literal("Firefighter"),
+        v.literal("Lieutenant"),
+        v.literal("Captain")
+      )),
     })
   ),
   handler: async (ctx) => {
@@ -302,6 +308,7 @@ export const getAllMembers = query({
           "Unknown",
         firstName: user.firstName,
         lastName: user.lastName,
+        rank: user.rank,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   },

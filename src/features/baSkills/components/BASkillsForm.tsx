@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Save, User, Users } from "lucide-react";
@@ -53,6 +54,54 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
       setMemberId(null);
     }
   }, [isOnBehalf, currentUser]);
+
+  // Sort members by rank (Captain > Lieutenant > Firefighter > Probationary) then alphabetically
+  const sortMembersByRank = (members: typeof allMembers) => {
+    if (!members) return [];
+    
+    const rankOrder = {
+      "Captain": 1,
+      "Lieutenant": 2,
+      "Firefighter": 3,
+      "Probationary": 4,
+    };
+
+    return [...members].sort((a, b) => {
+      const rankA = rankOrder[a.rank as keyof typeof rankOrder] || 999;
+      const rankB = rankOrder[b.rank as keyof typeof rankOrder] || 999;
+      
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      
+      return a.name.localeCompare(b.name);
+    });
+  };
+
+  // Sorted member options for combobox
+  const sortedMembers = useMemo(() => sortMembersByRank(allMembers), [allMembers]);
+  
+  // Member options for the "on behalf" combobox
+  const memberOptions: ComboboxOption[] = useMemo(
+    () => sortedMembers.map((member) => ({
+      value: member._id,
+      label: member.name,
+      rank: member.rank,
+    })),
+    [sortedMembers]
+  );
+
+  // Filter out current user from verifier list (can't verify your own usage)
+  const verifierOptions: ComboboxOption[] = useMemo(
+    () => sortedMembers
+      .filter((m) => m._id !== memberId)
+      .map((member) => ({
+        value: member._id,
+        label: member.name,
+        rank: member.rank,
+      })),
+    [sortedMembers, memberId]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +155,6 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
     );
   }
 
-  // Filter out current user from verifier list (can't verify your own usage)
-  const verifierOptions = allMembers.filter((m) => m._id !== memberId);
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Who is this for? - Clear visual selection */}
@@ -121,13 +167,13 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           <button
             type="button"
             onClick={() => setIsOnBehalf(false)}
-            className={`relative p- sm:p-4 rounded-lg border-2 transition-all text-left ${
+            className={`relative px-3 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[76px] ${
               !isOnBehalf
                 ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                 : "border-border hover:border-gray-400 dark:hover:border-gray-600"
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3 h-full">
               <div
                 className={`shrink-0 rounded-full p-2 ${
                   !isOnBehalf
@@ -181,13 +227,13 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           <button
             type="button"
             onClick={() => setIsOnBehalf(true)}
-            className={`relative p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${
+            className={`relative px-3 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[76px] ${
               isOnBehalf
                 ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                 : "border-border hover:border-gray-400 dark:hover:border-gray-600"
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3 h-full">
               <div
                 className={`shrink-0 rounded-full p-2 ${
                   isOnBehalf
@@ -210,9 +256,6 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
                   }`}
                 >
                   For another member
-                </div>
-                <div className="text-sm text-muted-foreground mt-0.5">
-                  Select member below
                 </div>
               </div>
               {isOnBehalf && (
@@ -245,21 +288,14 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
           <Label htmlFor="member">
             Select member <span className="text-red-500">*</span>
           </Label>
-          <Select
+          <Combobox
+            options={memberOptions}
             value={memberId || ""}
             onValueChange={(value) => setMemberId(value as Id<"users">)}
-          >
-            <SelectTrigger id="member" className="h-11">
-              <SelectValue placeholder="Select a member..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allMembers.map((member) => (
-                <SelectItem key={member._id} value={member._id}>
-                  {member.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Select a member..."
+            searchPlaceholder="Search members..."
+            emptyText="No member found."
+          />
         </div>
       )}
 
@@ -346,21 +382,14 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
         <Label htmlFor="verifiedBy">
           Verified by <span className="text-red-500">*</span>
         </Label>
-        <Select
+        <Combobox
+          options={verifierOptions}
           value={verifiedBy || ""}
           onValueChange={(value) => setVerifiedBy(value as Id<"users">)}
-        >
-          <SelectTrigger id="verifiedBy" className="h-11">
-            <SelectValue placeholder="Select a member to verify..." />
-          </SelectTrigger>
-          <SelectContent>
-            {verifierOptions.map((member) => (
-              <SelectItem key={member._id} value={member._id}>
-                {member.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select a member to verify..."
+          searchPlaceholder="Search members..."
+          emptyText="No member found."
+        />
       </div>
 
       {/* Submit Button - Large touch target for mobile */}
