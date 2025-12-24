@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.53] - 2025-12-25
+- Deployment tab on the Availability page was doubling up on the days and duplicating them, bug has been fixed that was causing it.
+
 ## [1.0.52] - 2025-12-20
 - Backend work to support some upcoming features.
 - Fixed some bugs with the new Equipment's module.
