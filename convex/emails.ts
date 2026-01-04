@@ -89,11 +89,11 @@ export const sendFeedbackNotification = internalAction({
       const result = await resend.emails.send({
         from: "BRAVO <noreply@mail.bravo.grayhux.io>",
         to: args.adminEmails,
-        subject: `${info.emoji} New Feedback: ${args.subject}`,
+        subject: `New Feedback: ${args.subject}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #dc2626; margin-bottom: 20px;">BRAVO</h1>
-            <h2 style="color: #374151; margin-bottom: 16px;">${info.emoji} New ${info.label}</h2>
+            <h2 style="color: #374151; margin-bottom: 16px;">New ${info.label}</h2>
             
             <div style="background-color: ${info.color}15; border-left: 4px solid ${info.color}; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
               <h3 style="color: #374151; margin-top: 0; margin-bottom: 8px; font-size: 18px;">${args.subject}</h3>

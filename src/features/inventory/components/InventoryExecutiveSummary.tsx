@@ -10,19 +10,19 @@ interface InventoryExecutiveSummaryProps {
 export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryProps) {
   const deviations = useMemo(() => {
     const result: DeviationItem[] = [];
-    
+
     for (const item of items) {
       const hasNotes = item.notes && item.notes.trim().length > 0;
       const isNo = item.value === "no";
-      const hasQuantityMismatch = item.expectedQuantity !== undefined && 
-        item.actualQuantity !== undefined && 
+      const hasQuantityMismatch = item.expectedQuantity !== undefined &&
+        item.actualQuantity !== undefined &&
         item.actualQuantity !== item.expectedQuantity;
-      
+
       if (isNo) {
         result.push({ item, deviationType: "no" });
       } else if (hasQuantityMismatch) {
-        result.push({ 
-          item, 
+        result.push({
+          item,
           deviationType: "quantity_mismatch",
           quantityDiff: item.actualQuantity! - item.expectedQuantity!
         });
@@ -30,7 +30,7 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
         result.push({ item, deviationType: "notes_only" });
       }
     }
-    
+
     return result;
   }, [items]);
 
@@ -65,8 +65,8 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
       <CardContent className="p-4 pt-0">
         <div className="space-y-2">
           {deviations.map((deviation) => (
-            <div 
-              key={deviation.item._id} 
+            <div
+              key={deviation.item._id}
               className="p-3 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/50"
             >
               <div className="flex items-start gap-3">
@@ -82,7 +82,7 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
                     <FileText className="w-5 h-5 text-blue-500" />
                   )}
                 </div>
-                
+
                 {/* Content */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <span className="font-medium text-sm text-gray-900 dark:text-white break-words">
@@ -103,13 +103,35 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
                     <div className="text-sm text-gray-700 dark:text-gray-300">
                       {(() => {
                         const expected = deviation.item.expectedQuantity ?? 0;
-                        const counted = deviation.item.actualQuantity ?? 0;
-                        const diff = counted - expected;
-                        const label = diff < 0 ? `Missing ${Math.abs(diff)}` : `Extra ${diff}`;
+                        const found = deviation.item.actualQuantity ?? 0;
+                        const diff = found - expected;
+                        const isOver = diff > 0;
+
                         return (
-                          <span>
-                            <span className="font-semibold">{label}.</span> Expected {expected}.
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">Found:</span>
+                              <span className={`inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 text-sm font-bold rounded-md ${isOver
+                                  ? "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+                                  : "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300"
+                                }`}>
+                                {found}
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground">→</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">Expected:</span>
+                              <span className="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 text-sm font-bold rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                {expected}
+                              </span>
+                            </div>
+                            <span className={`inline-flex items-center px-1.5 py-0.5 text-xs font-semibold rounded ${isOver
+                                ? "bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200"
+                                : "bg-red-200 dark:bg-red-800/60 text-red-800 dark:text-red-200"
+                              }`}>
+                              {isOver ? `+${diff} over` : `${diff} short`}
+                            </span>
+                          </div>
                         );
                       })()}
                     </div>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, CheckCircle2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { getVersionString } from "@/utils/version";
 
@@ -17,6 +17,8 @@ export function FeedbackPage() {
   const [category, setCategory] = useState<"bug" | "feature" | "improvement" | "general">("general");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedCategory, setSubmittedCategory] = useState<"bug" | "feature" | "improvement" | "general">("general");
 
   const submitFeedback = useMutation(api.feedback.submitFeedback);
 
@@ -39,19 +41,59 @@ export function FeedbackPage() {
         appVersion: getVersionString(),
       });
 
-      // Reset form and show success toast
+      setSubmittedCategory(category);
+      setIsSubmitted(true);
+      
       setSubject("");
       setMessage("");
       setCategory("general");
       setIsAnonymous(false);
-      
-      toast.success("Thank you for your feedback! 😍");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit feedback");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleSubmitAnother = () => {
+    setIsSubmitted(false);
+  };
+
+  const categoryInfo = {
+    general: { emoji: "💬", color: "green", label: "General Feedback" },
+    bug: { emoji: "🐛", color: "red", label: "Bug Report" },
+    feature: { emoji: "✨", color: "blue", label: "Feature Request" },
+    improvement: { emoji: "🔧", color: "orange", label: "Improvement" },
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+          <div className="mb-6">
+            <CheckCircle2 className="h-20 w-20 text-green-500 mx-auto mb-4" />
+          </div>
+          
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            Feedback submitted
+          </h1>
+          
+          <p className="text-base text-gray-600 dark:text-gray-400 mb-8 max-w-md">
+            Thank you for taking the time to help improve BRAVO. Your feedback is valuable to making the system better for everyone in the brigade.
+          </p>
+          
+          <Button 
+            onClick={handleSubmitAnother}
+            variant="outline"
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Submit More Feedback
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
