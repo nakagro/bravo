@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.54] - 2025-12-26
+- Availability page, Deployment tab: discovered a bug that was introduced by 1.0.53 that was showing the wrong days on the brigade view tab.
+
 ## [1.0.53] - 2025-12-25
 - Deployment tab on the Availability page was doubling up on the days and duplicating them, bug has been fixed that was causing it.
 

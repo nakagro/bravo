@@ -200,14 +200,14 @@ export const getAggregatedDeploymentAvailability = query({
     const users = await ctx.db.query("users").collect();
     const usersMap = new Map(users.map(user => [user._id, user]));
 
-    // Group records by date (normalized to midnight)
+    // Group records by date
+    // Note: The frontend already sends dates normalized to midnight in the user's local timezone.
+    // We use the stored date directly to avoid timezone mismatches from re-normalizing in UTC.
     const recordsByDate = new Map();
 
     for (const record of deploymentAvailability) {
-      // Normalize the date to midnight to ensure same-day records are grouped together
-      const date = new Date(record.date);
-      date.setHours(0, 0, 0, 0);
-      const dateKey = date.getTime();
+      // Use the date as stored - it's already normalized to midnight in the user's local timezone
+      const dateKey = record.date;
 
       if (!recordsByDate.has(dateKey)) {
         recordsByDate.set(dateKey, []);
