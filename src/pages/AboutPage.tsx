@@ -26,6 +26,15 @@ export default function AboutPage() {
             A passion project created by Shaun Gordon, originally created for the Wyndham Vale Fire Brigade
             designed to help streamline brigade operations.
           </p>
+      <div className="text-center">
+        <Link 
+          to="/extras" 
+          className="text-2xl opacity-50 hover:opacity-100 transition-opacity"
+        >
+          🔥
+        </Link>
+      </div>
+
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold">Current Version:</span>
             <span className="font-mono bg-muted px-2 py-1 rounded">v{getVersionString()}</span>
