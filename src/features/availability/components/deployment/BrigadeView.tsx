@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { cn } from "../../../../lib/utils";
 import { ChevronDown, ChevronRight, HomeIcon, MapPinIcon, GlobeIcon, XIcon, Users } from 'lucide-react';
+import SkillBadge from "../brigadetab/SkillBadge";
 
 interface BrigadeViewProps {
   aggregatedDeploymentAvailability: Array<{
@@ -293,16 +297,19 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
                           {users.map((user) => (
                             <div 
                               key={user.userId}
-                              className="flex flex-col py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                              className="flex items-start justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 gap-2"
                             >
-                              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                                {getDisplayName(user)}
-                              </span>
-                              {user.message && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 italic mt-0.5 line-clamp-2">
-                                  "{user.message}"
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                  {getDisplayName(user)}
                                 </span>
-                              )}
+                                {user.message && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 italic mt-0.5 line-clamp-2">
+                                    "{user.message}"
+                                  </span>
+                                )}
+                              </div>
+                              <DeploymentSkillBadges userId={user.userId as Id<"users">} />
                             </div>
                           ))}
                         </div>
@@ -334,6 +341,30 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
           <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Members will appear here once they set their availability</p>
         </div>
       )}
+    </div>
+  );
+};
+
+// Deployment-specific skill badges - only shows DR, BAi, PC1, TC1
+const DEPLOYMENT_SKILLS = ['DR', 'BAi', 'PC1', 'TC1'];
+
+interface DeploymentSkillBadgesProps {
+  userId: Id<"users">;
+}
+
+const DeploymentSkillBadges: React.FC<DeploymentSkillBadgesProps> = ({ userId }) => {
+  const userSkills = useQuery(api.skills.getUserSkills, { userId });
+
+  // Filter to only show deployment-relevant skills
+  const filtered = (userSkills || []).filter((s) => DEPLOYMENT_SKILLS.includes(s.code));
+
+  if (filtered.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-end flex-shrink-0">
+      {filtered.map((skill) => (
+        <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
+      ))}
     </div>
   );
 };
