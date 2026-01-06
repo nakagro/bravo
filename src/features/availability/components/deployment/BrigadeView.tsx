@@ -1,10 +1,6 @@
-import React, { useState } from 'react';
-import { Button } from "../../../../components/ui/button";
-import { Card, CardHeader, CardContent } from "../../../../components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../../components/ui/accordion";
-import { Badge } from "../../../../components/ui/badge";
+import React, { useState, useRef, useEffect } from 'react';
 import { cn } from "../../../../lib/utils";
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, HomeIcon, MapPinIcon, GlobeIcon, XIcon, Users } from 'lucide-react';
 
 interface BrigadeViewProps {
   aggregatedDeploymentAvailability: Array<{
@@ -30,224 +26,312 @@ interface BrigadeViewProps {
       message?: string;
     }>;
   }>;
-  setSelectedDetailDate: (date: any) => void;
-  setShowDetailModal: (show: boolean) => void;
+  setSelectedDetailDate?: (date: any) => void;
+  setShowDetailModal?: (show: boolean) => void;
 }
+
+type AvailabilityType = 'local' | 'shortHaul' | 'longHaul' | 'notAvailable';
 
 const BrigadeView: React.FC<BrigadeViewProps> = ({
   aggregatedDeploymentAvailability,
-  setSelectedDetailDate,
-  setShowDetailModal
 }) => {
-  // State for filters
-  const [filters, setFilters] = useState({
-    notAvailable: true,
+  // Selected day (default to first day / today)
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+  
+  // Expanded sections (all expanded by default)
+  const [expandedSections, setExpandedSections] = useState<Record<AvailabilityType, boolean>>({
     local: true,
     shortHaul: true,
-    longHaul: true
+    longHaul: true,
+    notAvailable: true,
   });
 
-  // State for expanded accordion items
-  const [expandedDate, setExpandedDate] = useState<number | null>(null);
+  // Ref for horizontal scroll container
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Toggle filter
-  const toggleFilter = (filter: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul') => {
-    setFilters(prev => ({
+  // Auto-scroll to show selected day on mount and when selection changes
+  useEffect(() => {
+    if (scrollRef.current && aggregatedDeploymentAvailability.length > 0) {
+      const container = scrollRef.current;
+      const buttons = container.querySelectorAll('button');
+      const selectedButton = buttons[selectedDateIndex];
+      if (selectedButton) {
+        // Scroll the selected button into view with some padding
+        const containerRect = container.getBoundingClientRect();
+        const buttonRect = selectedButton.getBoundingClientRect();
+        const scrollLeft = buttonRect.left - containerRect.left + container.scrollLeft - 8;
+        container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+      }
+    }
+  }, [selectedDateIndex, aggregatedDeploymentAvailability.length]);
+
+  // Get selected day's data
+  const selectedDayData = aggregatedDeploymentAvailability[selectedDateIndex] || null;
+
+  // Toggle section expansion
+  const toggleSection = (section: AvailabilityType) => {
+    setExpandedSections(prev => ({
       ...prev,
-      [filter]: !prev[filter]
+      [section]: !prev[section]
     }));
   };
 
-  // Toggle accordion expansion
-  const toggleExpand = (dateTimestamp: number) => {
-    setExpandedDate(expandedDate === dateTimestamp ? null : dateTimestamp);
+  // Group users by availability type
+  const groupUsersByAvailability = (users: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['users']) => {
+    const groups: Record<AvailabilityType, typeof users> = {
+      local: [],
+      shortHaul: [],
+      longHaul: [],
+      notAvailable: [],
+    };
+
+    users.forEach(user => {
+      if (user.availability.notAvailable) {
+        groups.notAvailable.push(user);
+      } else {
+        if (user.availability.local) groups.local.push(user);
+        if (user.availability.shortHaul) groups.shortHaul.push(user);
+        if (user.availability.longHaul) groups.longHaul.push(user);
+      }
+    });
+
+    return groups;
   };
 
-  // Filter users based on selected filters
-  const filterUsers = (users: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['users']) => {
-    return users.filter(user => {
-      // If all filters are off, show everyone
-      if (!filters.notAvailable && !filters.local && !filters.shortHaul && !filters.longHaul) {
-        return true;
-      }
-      
-      // Check if user matches any active filter
-      return (filters.notAvailable && user.availability.notAvailable) ||
-             (filters.local && user.availability.local) ||
-             (filters.shortHaul && user.availability.shortHaul) ||
-             (filters.longHaul && user.availability.longHaul);
-    });
+  // Get display name for user
+  const getDisplayName = (user: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['users'][0]) => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return user.name || 'Unknown User';
+  };
+
+  // Section config for consistent styling
+  const sectionConfig: Record<AvailabilityType, { 
+    label: string; 
+    icon: React.ReactNode;
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+    iconBg: string;
+  }> = {
+    local: {
+      label: 'Local',
+      icon: <HomeIcon className="h-4 w-4" />,
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+      textColor: 'text-green-800 dark:text-green-300',
+      borderColor: 'border-green-200 dark:border-green-800',
+      iconBg: 'bg-green-100 dark:bg-green-800/50',
+    },
+    shortHaul: {
+      label: 'Short Haul',
+      icon: <MapPinIcon className="h-4 w-4" />,
+      bgColor: 'bg-yellow-50 dark:bg-yellow-900/20',
+      textColor: 'text-yellow-800 dark:text-yellow-300',
+      borderColor: 'border-yellow-200 dark:border-yellow-800',
+      iconBg: 'bg-yellow-100 dark:bg-yellow-800/50',
+    },
+    longHaul: {
+      label: 'Long Haul',
+      icon: <GlobeIcon className="h-4 w-4" />,
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      textColor: 'text-orange-800 dark:text-orange-300',
+      borderColor: 'border-orange-200 dark:border-orange-800',
+      iconBg: 'bg-orange-100 dark:bg-orange-800/50',
+    },
+    notAvailable: {
+      label: 'Not Available',
+      icon: <XIcon className="h-4 w-4" />,
+      bgColor: 'bg-red-50 dark:bg-red-900/20',
+      textColor: 'text-red-800 dark:text-red-300',
+      borderColor: 'border-red-200 dark:border-red-800',
+      iconBg: 'bg-red-100 dark:bg-red-800/50',
+    },
+  };
+
+  // Calculate total available (not "not available")
+  const getTotalAvailable = (counts: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['counts']) => {
+    return counts.total - counts.notAvailable;
   };
 
   return (
     <div className="flex flex-col">
-      {/* Filter buttons */}
-      <div className="flex flex-wrap gap-2 mb-4 self-center">
-        <Button
-          onClick={() => toggleFilter('notAvailable')}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "text-xs flex items-center border-gray-200 dark:border-gray-800",
-            filters.notAvailable && "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600"
-          )}
-        >
-          <div className={cn(
-            "w-3 h-3 rounded-full mr-1.5",
-            filters.notAvailable ? "bg-red-200 dark:bg-red-800/50" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-          Not Available
-        </Button>
+      {/* Horizontal day selector strip */}
+      <div className="relative">
+        {/* Scroll hint gradient - right side */}
+        <div className="absolute right-0 top-0 bottom-3 w-6 bg-gradient-to-l from-white dark:from-gray-800 to-transparent pointer-events-none z-10" />
         
-        <Button
-          onClick={() => toggleFilter('local')}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "text-xs flex items-center border-gray-200 dark:border-gray-800",
-            filters.local && "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-400 dark:border-green-600"
-          )}
+        <div 
+          ref={scrollRef}
+          className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1 pr-6"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
-          <div className={cn(
-            "w-3 h-3 rounded-full mr-1.5",
-            filters.local ? "bg-green-200 dark:bg-green-800/50" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-          Local
-        </Button>
-        
-        <Button
-          onClick={() => toggleFilter('shortHaul')}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "text-xs flex items-center border-gray-200 dark:border-gray-800",
-            filters.shortHaul && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-400 dark:border-yellow-600"
-          )}
-        >
-          <div className={cn(
-            "w-3 h-3 rounded-full mr-1.5",
-            filters.shortHaul ? "bg-yellow-200 dark:bg-yellow-800/50" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-          Short Haul
-        </Button>
-        
-        <Button
-          onClick={() => toggleFilter('longHaul')}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "text-xs flex items-center border-gray-200 dark:border-gray-800",
-            filters.longHaul && "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-400 dark:border-orange-600"
-          )}
-        >
-          <div className={cn(
-            "w-3 h-3 rounded-full mr-1.5",
-            filters.longHaul ? "bg-orange-200 dark:bg-orange-800/50" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-          Long Haul
-        </Button>
-      </div>
-
-      {/* Accordion layout */}
-      <div className="space-y-3">
-        {aggregatedDeploymentAvailability.map((dateData) => {
+        {aggregatedDeploymentAvailability.map((dateData, index) => {
           const date = new Date(dateData.date);
-          // No longer highlighting today
           const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-          const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
-          const filteredUsers = filterUsers(dateData.users);
+          const dayNum = date.getDate();
+          const isSelected = index === selectedDateIndex;
+          const totalAvailable = getTotalAvailable(dateData.counts);
+          const isToday = new Date().toDateString() === date.toDateString();
           
           return (
-            <Card key={dateData.date} className="border-gray-200 dark:border-gray-800 overflow-hidden">
-              <Accordion 
-                type="single" 
-                collapsible
-                value={expandedDate === dateData.date ? dateData.date.toString() : undefined}
-                onValueChange={(value) => setExpandedDate(value === undefined ? null : Number(value))}
-              >
-                <AccordionItem value={dateData.date.toString()} className="border-0">
-                  <AccordionTrigger className="px-3 py-2 hover:no-underline">
-                    <div className="flex flex-row w-full items-center justify-between">
-                      <div className="text-sm font-medium">{dayName}, {formattedDate}</div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-3 py-2">
-                    {/* View all button */}
-                    <div className="flex justify-between items-center mb-3">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDetailDate(dateData);
-                          setShowDetailModal(true);
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-blue-300 dark:border-blue-800"
-                      >
-                        View All
-                      </Button>
-                    </div>
-                  
-                  {/* Member list */}
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {filteredUsers.length > 0 ? (
-                      filteredUsers.map((user) => {
-                        const displayName = user.name || 
-                          (user.firstName && user.lastName ? `${user.lastName}, ${user.firstName}` : 'Unknown User');
-                        
-                        return (
-                          <Card key={user.userId} className="p-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                            <div className="flex flex-col gap-2">
-                              <div className="text-sm font-medium">{displayName}</div>
-                              <div className="flex flex-wrap gap-1">
-                                {user.availability.notAvailable && (
-                                  <Badge variant="outline" className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-400 dark:border-red-600 hover:bg-red-100 dark:hover:bg-red-900/30">
-                                    Not Available
-                                  </Badge>
-                                )}
-                                {user.availability.local && (
-                                  <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-400 dark:border-green-600 hover:bg-green-100 dark:hover:bg-green-900/30">
-                                    Local
-                                  </Badge>
-                                )}
-                                {user.availability.shortHaul && (
-                                  <Badge variant="outline" className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-400 dark:border-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/30">
-                                    Short Haul
-                                  </Badge>
-                                )}
-                                {user.availability.longHaul && (
-                                  <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-400 dark:border-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30">
-                                    Long Haul
-                                  </Badge>
-                                )}
-                              </div>
-                              {user.message && (
-                                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
-                                  "{user.message}"
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        );
-                      })
-                    ) : (
-                      <div className="p-2 text-sm text-gray-500 dark:text-gray-400 text-center">
-                        No members match the selected filters.
-                      </div>
-                    )}
-                  </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </Card>
+            <button
+              key={dateData.date}
+              onClick={() => setSelectedDateIndex(index)}
+              className={cn(
+                "flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border transition-all min-w-[60px]",
+                isSelected 
+                  ? "bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200"
+                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+                isToday && !isSelected && "ring-2 ring-blue-300 dark:ring-blue-700"
+              )}
+            >
+              <span className="text-xs font-medium">{dayName}</span>
+              <span className="text-lg font-bold">{dayNum}</span>
+              {totalAvailable > 0 ? (
+                <span className={cn(
+                  "text-xs font-medium px-1.5 py-0.5 rounded-full mt-1",
+                  isSelected 
+                    ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+                    : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300"
+                )}>
+                  {totalAvailable}
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">—</span>
+              )}
+            </button>
           );
         })}
+        {/* Spacer to ensure last item can scroll into view */}
+        <div className="flex-shrink-0 w-4" aria-hidden="true" />
+        </div>
       </div>
-      
-      {/* Empty state */}
-      {aggregatedDeploymentAvailability.length === 0 && (
+
+      {/* Selected day content */}
+      {selectedDayData ? (
+        <>
+          {/* Day header with summary */}
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2">
+              {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(selectedDayData.date))}
+            </h3>
+            
+            {/* Quick summary badges */}
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                <HomeIcon className="h-3 w-3" />
+                {selectedDayData.counts.local} Local
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                <MapPinIcon className="h-3 w-3" />
+                {selectedDayData.counts.shortHaul} Short
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                <GlobeIcon className="h-3 w-3" />
+                {selectedDayData.counts.longHaul} Long
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                <Users className="h-3 w-3" />
+                {selectedDayData.counts.total} responded
+              </span>
+            </div>
+          </div>
+
+          {/* Grouped member sections */}
+          <div className="space-y-3">
+            {(['local', 'shortHaul', 'longHaul', 'notAvailable'] as AvailabilityType[]).map((type) => {
+              const config = sectionConfig[type];
+              const groups = groupUsersByAvailability(selectedDayData.users);
+              const users = groups[type];
+              const isExpanded = expandedSections[type];
+              
+              return (
+                <div 
+                  key={type}
+                  className="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                >
+                  {/* Section header - always visible */}
+                  <button
+                    onClick={() => toggleSection(type)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-2 py-2.5 rounded-lg",
+                      config.bgColor
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-6 h-6 rounded-full flex items-center justify-center",
+                        config.iconBg,
+                        config.textColor
+                      )}>
+                        {config.icon}
+                      </div>
+                      <span className={cn("font-medium text-sm", config.textColor)}>
+                        {config.label}
+                      </span>
+                      <span className={cn(
+                        "text-xs font-bold px-2 py-0.5 rounded-full",
+                        config.iconBg,
+                        config.textColor
+                      )}>
+                        {users.length}
+                      </span>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDown className={cn("h-4 w-4", config.textColor)} />
+                    ) : (
+                      <ChevronRight className={cn("h-4 w-4", config.textColor)} />
+                    )}
+                  </button>
+
+                  {/* Expanded member list */}
+                  {isExpanded && (
+                    <div className="px-2 py-2">
+                      {users.length > 0 ? (
+                        <div className="space-y-1">
+                          {users.map((user) => (
+                            <div 
+                              key={user.userId}
+                              className="flex flex-col py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                            >
+                              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                {getDisplayName(user)}
+                              </span>
+                              {user.message && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 italic mt-0.5 line-clamp-2">
+                                  "{user.message}"
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 py-2 text-center">
+                          No members
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
         <div className="text-center py-10">
           <p className="text-gray-500 dark:text-gray-400">No deployment data available</p>
+        </div>
+      )}
+
+      {/* Empty state when no data at all */}
+      {aggregatedDeploymentAvailability.length === 0 && (
+        <div className="text-center py-10">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <Users className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+          </div>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No deployment data available</p>
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Members will appear here once they set their availability</p>
         </div>
       )}
     </div>

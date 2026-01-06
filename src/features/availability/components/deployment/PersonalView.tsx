@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardHeader, CardContent } from "../../../../components/ui/card";
 import { Button } from "../../../../components/ui/button";
 import { Toggle } from "../../../../components/ui/toggle";
-import { Separator } from "../../../../components/ui/separator";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { XIcon, HomeIcon, MapPinIcon, GlobeIcon } from 'lucide-react';
@@ -38,17 +36,17 @@ const PersonalView: React.FC<PersonalViewProps> = ({
           const formattedDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
           
           return (
-            <Card 
+            <div 
               key={dateKey} 
-              className="mb-4 overflow-hidden border-gray-200 dark:border-gray-800"
+              className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0 last:pb-0"
             >
-              <CardHeader className="px-3 py-2 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-medium">{dayName}, {formattedDate}</h4>
-                </div>
-              </CardHeader>
+              {/* Date header */}
+              <div className="mb-2">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dayName}, {formattedDate}</h4>
+              </div>
               
-              <CardContent className="px-3 py-2 bg-gray-50 dark:bg-gray-800/80">
+              {/* Controls */}
+              <div className="space-y-2">
                 <div className="grid grid-cols-1 gap-2">
                   {/* Not Available Button */}
                   <Button
@@ -163,8 +161,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                   </div>
                   
                   {/* Message input field */}
-                  <div className="mt-2 pt-2">
-                    <Separator className="mb-2" />
+                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                     <Label htmlFor={`message-${dateKey}`} className="text-xs text-gray-600 dark:text-gray-400 mb-1">Add a note (optional):</Label>
                     <MessageInput 
                       date={date}
@@ -175,8 +172,8 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>

@@ -3,10 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
 import BrigadeView from './deployment/BrigadeView';
-import DetailModal from './deployment/DetailModal';
-import { Button } from "../../../components/ui/button";
-import { Card, CardHeader, CardContent } from "../../../components/ui/card";
-import { cn } from "../../../lib/utils";
+import { Plane } from 'lucide-react';
 
 interface DeploymentTabProps {
   isAuthenticated: boolean;
@@ -17,32 +14,6 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
   const [deploymentAvailability, setDeploymentAvailability] = useState<{[key: string]: {notAvailable: boolean, local: boolean, shortHaul: boolean, longHaul: boolean, message?: string}}>({});
-  
-  // State for detailed view modal
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedDetailDate, setSelectedDetailDate] = useState<{
-    date: number, 
-    counts: {
-      notAvailable: number,
-      local: number,
-      shortHaul: number,
-      longHaul: number,
-      total: number
-    },
-    users: Array<{
-      userId: string,
-      name?: string,
-      firstName?: string,
-      lastName?: string,
-      availability: {
-        notAvailable: boolean,
-        local: boolean,
-        shortHaul: boolean,
-        longHaul: boolean
-      },
-      message?: string
-    }>
-  } | null>(null);
   
   // Toggle between personal and brigade view
   const [showBrigadeView, setShowBrigadeView] = useState(false);
@@ -175,20 +146,42 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
 
   return (
     <>
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardHeader className="px-4 py-3 flex flex-row justify-between items-center border-gray-100 dark:border-gray-800">
-          <h3 className="text-base font-medium text-gray-800 dark:text-gray-200">Deployment Availability</h3>
-          {/* Toggle button for personal/brigade view */}
-          <Button
-            onClick={() => setShowBrigadeView(!showBrigadeView)}
-            variant={showBrigadeView ? "default" : "secondary"}
-            size="sm"
-            className="text-xs font-medium"
-          >
-            {showBrigadeView ? 'Show Your Availability' : 'Show Brigade View'}
-          </Button>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 pt-0">
+      {/* Header Section */}
+      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm p-3 rounded">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold flex items-center">
+            <Plane className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+            Deployment Availability
+          </h2>
+          {/* Toggle buttons for personal/brigade view */}
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5">
+            <button
+              onClick={() => setShowBrigadeView(false)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                !showBrigadeView
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              You
+            </button>
+            <button
+              onClick={() => setShowBrigadeView(true)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                showBrigadeView
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Brigade
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+        <div className="p-3">
           {!showBrigadeView ? (
             <PersonalView 
               deploymentDates={deploymentDates}
@@ -198,20 +191,10 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
           ) : (
             <BrigadeView 
               aggregatedDeploymentAvailability={aggregatedDeploymentAvailability}
-              setSelectedDetailDate={setSelectedDetailDate}
-              setShowDetailModal={setShowDetailModal}
             />
           )}
-        </CardContent>
-      </Card>
-        
-      {/* Detailed View Modal */}
-      {showDetailModal && selectedDetailDate && (
-        <DetailModal 
-          selectedDetailDate={selectedDetailDate}
-          setShowDetailModal={setShowDetailModal}
-        />
-      )}
+        </div>
+      </div>
     </>
   );
 };
