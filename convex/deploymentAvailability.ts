@@ -2,6 +2,14 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+// Helper to normalize a timestamp to midnight UTC of that day
+// This ensures all records for the same calendar date use the same timestamp
+function normalizeToMidnight(timestamp: number): number {
+  const date = new Date(timestamp);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
 // Get deployment availability for a specific date range
 export const getDeploymentAvailability = query({
   args: {
@@ -116,13 +124,16 @@ export const updateDeploymentAvailability = mutation({
       throw new Error("You must be signed in to update your deployment availability");
     }
 
+    // Normalize the date to midnight UTC to ensure consistent storage
+    const normalizedDate = normalizeToMidnight(args.date);
+
     // Check if a record already exists for this user and date
     const existingRecord = await ctx.db
       .query("deploymentAvailability")
       .filter((q) =>
         q.and(
           q.eq(q.field("userId"), userId),
-          q.eq(q.field("date"), args.date)
+          q.eq(q.field("date"), normalizedDate)
         )
       )
       .first();
@@ -140,7 +151,7 @@ export const updateDeploymentAvailability = mutation({
       // Create new record
       await ctx.db.insert("deploymentAvailability", {
         userId,
-        date: args.date,
+        date: normalizedDate,
         availability: args.availability,
         message: args.message,
         updatedAt: now,

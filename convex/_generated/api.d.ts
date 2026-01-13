@@ -48,6 +48,7 @@ import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
 import type * as links from "../links.js";
 import type * as messages from "../messages.js";
+import type * as migrations_normalizeDeploymentDates from "../migrations/normalizeDeploymentDates.js";
 import type * as modules from "../modules.js";
 import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationHistory from "../notificationHistory.js";
@@ -112,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   keys: typeof keys;
   links: typeof links;
   messages: typeof messages;
+  "migrations/normalizeDeploymentDates": typeof migrations_normalizeDeploymentDates;
   modules: typeof modules;
   notificationAudit: typeof notificationAudit;
   notificationHistory: typeof notificationHistory;

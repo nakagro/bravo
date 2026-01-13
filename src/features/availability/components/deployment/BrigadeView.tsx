@@ -41,7 +41,7 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
 }) => {
   // Selected day (default to first day / today)
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
-  
+
   // Expanded sections (all expanded by default)
   const [expandedSections, setExpandedSections] = useState<Record<AvailabilityType, boolean>>({
     local: true,
@@ -111,8 +111,8 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
   };
 
   // Section config for consistent styling
-  const sectionConfig: Record<AvailabilityType, { 
-    label: string; 
+  const sectionConfig: Record<AvailabilityType, {
+    label: string;
     icon: React.ReactNode;
     bgColor: string;
     textColor: string;
@@ -164,51 +164,56 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
       <div className="relative">
         {/* Scroll hint gradient - right side */}
         <div className="absolute right-0 top-0 bottom-3 w-6 bg-gradient-to-l from-white dark:from-gray-800 to-transparent pointer-events-none z-10" />
-        
-        <div 
+
+        <div
           ref={scrollRef}
           className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1 pr-6"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
-        {aggregatedDeploymentAvailability.map((dateData, index) => {
-          const date = new Date(dateData.date);
-          const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-          const dayNum = date.getDate();
-          const isSelected = index === selectedDateIndex;
-          const totalAvailable = getTotalAvailable(dateData.counts);
-          const isToday = new Date().toDateString() === date.toDateString();
-          
-          return (
-            <button
-              key={dateData.date}
-              onClick={() => setSelectedDateIndex(index)}
-              className={cn(
-                "flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border transition-all min-w-[60px]",
-                isSelected 
-                  ? "bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200"
-                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50",
-                isToday && !isSelected && "ring-2 ring-blue-300 dark:ring-blue-700"
-              )}
-            >
-              <span className="text-xs font-medium">{dayName}</span>
-              <span className="text-lg font-bold">{dayNum}</span>
-              {totalAvailable > 0 ? (
-                <span className={cn(
-                  "text-xs font-medium px-1.5 py-0.5 rounded-full mt-1",
-                  isSelected 
-                    ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
-                    : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300"
-                )}>
-                  {totalAvailable}
-                </span>
-              ) : (
-                <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">—</span>
-              )}
-            </button>
-          );
-        })}
-        {/* Spacer to ensure last item can scroll into view */}
-        <div className="flex-shrink-0 w-4" aria-hidden="true" />
+          {aggregatedDeploymentAvailability.map((dateData, index) => {
+            const date = new Date(dateData.date);
+            // Use UTC timezone for formatting since dates are stored as UTC midnight
+            const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(date);
+            const dayNum = date.getUTCDate();
+            const isSelected = index === selectedDateIndex;
+            const totalAvailable = getTotalAvailable(dateData.counts);
+            // Compare today's UTC date with the stored UTC date
+            const todayUTC = new Date();
+            const todayUTCString = `${todayUTC.getUTCFullYear()}-${todayUTC.getUTCMonth()}-${todayUTC.getUTCDate()}`;
+            const dateUTCString = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+            const isToday = todayUTCString === dateUTCString;
+
+            return (
+              <button
+                key={dateData.date}
+                onClick={() => setSelectedDateIndex(index)}
+                className={cn(
+                  "flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border transition-all min-w-[60px]",
+                  isSelected
+                    ? "bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200"
+                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+                  isToday && !isSelected && "ring-2 ring-blue-300 dark:ring-blue-700"
+                )}
+              >
+                <span className="text-xs font-medium">{dayName}</span>
+                <span className="text-lg font-bold">{dayNum}</span>
+                {totalAvailable > 0 ? (
+                  <span className={cn(
+                    "text-xs font-medium px-1.5 py-0.5 rounded-full mt-1",
+                    isSelected
+                      ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+                      : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300"
+                  )}>
+                    {totalAvailable}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">—</span>
+                )}
+              </button>
+            );
+          })}
+          {/* Spacer to ensure last item can scroll into view */}
+          <div className="flex-shrink-0 w-4" aria-hidden="true" />
         </div>
       </div>
 
@@ -218,9 +223,9 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
           {/* Day header with summary */}
           <div className="mb-4">
             <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(selectedDayData.date))}
+              {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(selectedDayData.date))}
             </h3>
-            
+
             {/* Quick summary badges */}
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
@@ -249,9 +254,9 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
               const groups = groupUsersByAvailability(selectedDayData.users);
               const users = groups[type];
               const isExpanded = expandedSections[type];
-              
+
               return (
-                <div 
+                <div
                   key={type}
                   className="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
                 >
@@ -295,7 +300,7 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
                       {users.length > 0 ? (
                         <div className="space-y-1">
                           {users.map((user) => (
-                            <div 
+                            <div
                               key={user.userId}
                               className="flex items-start justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 gap-2"
                             >
