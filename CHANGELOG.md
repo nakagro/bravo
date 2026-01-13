@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.55] - 2026-01-13
+- Availability page, Deployment tab: Trying to fix the deployment duplicate bug again and also added a minor visual change to this view too.
+
 ## [1.0.54] - 2025-12-26
 - Availability page, Deployment tab: discovered a bug that was introduced by 1.0.53 that was showing the wrong days on the brigade view tab.
 

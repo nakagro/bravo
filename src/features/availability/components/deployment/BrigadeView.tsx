@@ -153,8 +153,8 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
     },
   };
 
-  // Calculate total available (not "not available")
-  const getTotalAvailable = (counts: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['counts']) => {
+  // Calculate total unique available (not "not available")
+  const getUniqueAvailable = (counts: BrigadeViewProps['aggregatedDeploymentAvailability'][0]['counts']) => {
     return counts.total - counts.notAvailable;
   };
 
@@ -176,7 +176,8 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
             const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(date);
             const dayNum = date.getUTCDate();
             const isSelected = index === selectedDateIndex;
-            const totalAvailable = getTotalAvailable(dateData.counts);
+            const uniqueAvailable = getUniqueAvailable(dateData.counts);
+            const hasResponses = dateData.counts.total > 0;
             // Compare today's UTC date with the stored UTC date
             const todayUTC = new Date();
             const todayUTCString = `${todayUTC.getUTCFullYear()}-${todayUTC.getUTCMonth()}-${todayUTC.getUTCDate()}`;
@@ -197,15 +198,33 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
               >
                 <span className="text-xs font-medium">{dayName}</span>
                 <span className="text-lg font-bold">{dayNum}</span>
-                {totalAvailable > 0 ? (
-                  <span className={cn(
-                    "text-xs font-medium px-1.5 py-0.5 rounded-full mt-1",
-                    isSelected
-                      ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
-                      : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300"
-                  )}>
-                    {totalAvailable}
-                  </span>
+                {hasResponses ? (
+                  <div className="flex flex-col items-center gap-0.5 mt-1">
+                    {/* Mini indicators showing availability breakdown - stacked vertically */}
+                    {dateData.counts.local > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        {dateData.counts.local}
+                      </span>
+                    )}
+                    {dateData.counts.shortHaul > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-yellow-600 dark:text-yellow-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                        {dateData.counts.shortHaul}
+                      </span>
+                    )}
+                    {dateData.counts.longHaul > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                        {dateData.counts.longHaul}
+                      </span>
+                    )}
+                    {uniqueAvailable === 0 && dateData.counts.notAvailable > 0 && (
+                      <span className="text-[10px] font-medium text-red-500 dark:text-red-400">
+                        —
+                      </span>
+                    )}
+                  </div>
                 ) : (
                   <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">—</span>
                 )}
@@ -225,26 +244,6 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
             <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2">
               {new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(selectedDayData.date))}
             </h3>
-
-            {/* Quick summary badges */}
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                <HomeIcon className="h-3 w-3" />
-                {selectedDayData.counts.local} Local
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
-                <MapPinIcon className="h-3 w-3" />
-                {selectedDayData.counts.shortHaul} Short
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-                <GlobeIcon className="h-3 w-3" />
-                {selectedDayData.counts.longHaul} Long
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                <Users className="h-3 w-3" />
-                {selectedDayData.counts.total} responded
-              </span>
-            </div>
           </div>
 
           {/* Grouped member sections */}
