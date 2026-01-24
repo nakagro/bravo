@@ -24,6 +24,7 @@ import type * as availabilityActions from "../availabilityActions.js";
 import type * as baSkills from "../baSkills.js";
 import type * as baSkillsAudit from "../baSkillsAudit.js";
 import type * as bookings from "../bookings.js";
+import type * as brigadeTasks from "../brigadeTasks.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   baSkills: typeof baSkills;
   baSkillsAudit: typeof baSkillsAudit;
   bookings: typeof bookings;
+  brigadeTasks: typeof brigadeTasks;
   crons: typeof crons;
   dashboard: typeof dashboard;
   deploymentAvailability: typeof deploymentAvailability;

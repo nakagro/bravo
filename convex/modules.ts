@@ -203,6 +203,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "brigadeTasks",
+        moduleName: "Brigade Tasks",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "admin",
         moduleName: "Admin Settings",
         isEnabled: true,
@@ -387,6 +395,14 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "brigadeTasks",
+        moduleName: "Brigade Tasks",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "admin",
@@ -610,6 +626,7 @@ export const getAllModuleAccess = query({
     equipmentAdmin: v.boolean(),
     baSkills: v.boolean(),
     baSkillsAdmin: v.boolean(),
+    brigadeTasks: v.boolean(),
     bookings: v.boolean(),
     feedback: v.boolean(),
     links: v.boolean(),
@@ -633,6 +650,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
+        brigadeTasks: false,
         bookings: false,
         feedback: false,
         links: false,
@@ -656,6 +674,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
+        brigadeTasks: false,
         bookings: false,
         feedback: false,
         links: false,
@@ -679,6 +698,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: true,
         baSkills: true,
         baSkillsAdmin: true,
+        brigadeTasks: true,
         bookings: true,
         feedback: true,
         links: true,
@@ -748,6 +768,7 @@ export const getAllModuleAccess = query({
       equipmentAdmin: checkAccess("equipmentAdmin"),
       baSkills: checkAccess("baSkills"),
       baSkillsAdmin: checkAccess("baSkillsAdmin"),
+      brigadeTasks: checkAccess("brigadeTasks"),
       bookings: checkAccess("bookings"),
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),

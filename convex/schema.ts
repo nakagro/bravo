@@ -913,6 +913,42 @@ const applicationTables = {
     .index("by_submittedBy", ["submittedBy"])
     .index("by_verifiedBy", ["verifiedBy"])
     .index("by_createdAt", ["createdAt"]),
+
+  // Brigade Tasks - Task/Todo tracking for brigade management
+  brigadeTasks: defineTable({
+    title: v.string(), // Task title
+    description: v.optional(v.string()), // Detailed description
+    status: v.union(
+      v.literal("active"), // Active task (default)
+      v.literal("completed"), // Done
+      v.literal("cancelled") // No longer needed
+    ),
+    dueDate: v.optional(v.string()), // ISO date string (YYYY-MM-DD)
+    assignedTo: v.id("users"), // User the task is assigned to
+    createdBy: v.id("users"), // User who created the task
+    completedAt: v.optional(v.number()), // Timestamp when marked complete
+    completedBy: v.optional(v.id("users")), // User who marked it complete
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.id("users"),
+  })
+    .index("by_assignedTo", ["assignedTo"])
+    .index("by_createdBy", ["createdBy"])
+    .index("by_status", ["status"])
+    .index("by_dueDate", ["dueDate"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_assignedTo_status", ["assignedTo", "status"]),
+
+  // Brigade Task Comments - Comments on tasks
+  brigadeTaskComments: defineTable({
+    taskId: v.id("brigadeTasks"), // The task this comment belongs to
+    content: v.string(), // Comment text
+    createdBy: v.id("users"), // User who wrote the comment
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_taskId", ["taskId"])
+    .index("by_createdBy", ["createdBy"]),
 };
 
 export default defineSchema({

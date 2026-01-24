@@ -34,8 +34,8 @@ export const sendTestEmail = action({
         throw new Error(`Failed to send email: ${result.error.message}`);
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         emailId: result.data?.id,
         message: "Test email sent successfully!"
       };
@@ -128,8 +128,8 @@ export const sendFeedbackNotification = internalAction({
         throw new Error(`Failed to send email: ${result.error.message}`);
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         emailId: result.data?.id,
         message: `Notification sent to ${args.adminEmails.length} admin(s)`
       };
@@ -210,8 +210,8 @@ export const sendNewUserSignupNotification = internalAction({
         throw new Error(`Failed to send email: ${result.error.message}`);
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         emailId: result.data?.id,
         message: `Notification sent to ${args.adminEmails.length} admin(s)`
       };
@@ -306,8 +306,8 @@ export const sendPasswordResetEmail = internalAction({
         throw new Error(`Failed to send email: ${result.error.message}`);
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         emailId: result.data?.id,
         message: "Password reset email sent successfully"
       };

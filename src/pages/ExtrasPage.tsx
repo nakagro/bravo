@@ -27,6 +27,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/ba-skills",
     emoji: "",
   },
+  {
+    title: "Brigade Tasks",
+    description: "Track your personal todo list and brigade activities.",
+    to: "/brigade-tasks",
+    emoji: "📋",
+  },
 ];
 
 export default function ExtrasPage() {

@@ -22,6 +22,7 @@ import AboutPage from "./pages/AboutPage";
 import { FDRPage } from "./pages/FDRPage";
 import { EquipmentPage } from "./pages/EquipmentPage";
 import { BASkillsPage } from "./pages/BASkillsPage";
+import { BrigadeTasksPage } from "./features/brigadeTasks/pages/BrigadeTasksPage";
 import ExtrasPage from "./pages/ExtrasPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import AuthManagementPage from "./pages/AuthManagementPage";
@@ -151,6 +152,11 @@ function AuthenticatedApp() {
         <Route path="/ba-skills" element={
           <ProtectedRoute moduleId="baSkills">
             <BASkillsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/brigade-tasks" element={
+          <ProtectedRoute moduleId="brigadeTasks">
+            <BrigadeTasksPage />
           </ProtectedRoute>
         } />
 
