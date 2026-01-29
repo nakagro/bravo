@@ -28,6 +28,8 @@ const extendedAuthTables = {
     skills: v.optional(v.array(v.id("skills"))),
     // Admin flag - determines if the user has administrative privileges
     isAdmin: v.optional(v.boolean()),
+    // Birthday flag - used for UI celebration
+    isBirthday: v.optional(v.boolean()),
     // Status fields
     currentStatus: v.optional(v.union(
       v.literal("available - station"),

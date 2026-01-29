@@ -150,8 +150,13 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                     {users.map((user) => (
                       <div key={user._id} className="border-l-4 border-transparent py-0.5">
                         <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                          <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
                             {formatUserName(user)}
+                            {user.isBirthday && (
+                              <span aria-label="Birthday" title="Birthday" className="text-base">
+                                🎂
+                              </span>
+                            )}
                           </span>
                           {user.statusUpdatedAt && (
                             <span className="text-xs text-gray-500 dark:text-gray-400">

@@ -25,6 +25,7 @@ export const getStatuses = query({
       statusUpdatedAt: v.optional(v.number()),
       statusExpiresAt: v.optional(v.number()),
       statusDurationHours: v.optional(v.number()),
+      isBirthday: v.optional(v.boolean()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
         v.literal("available - satellite"),
@@ -79,6 +80,7 @@ export const getStatuses = query({
         statusUpdatedAt: isStatusValid ? user.statusUpdatedAt : undefined,
         statusExpiresAt: isStatusValid ? user.statusExpiresAt : undefined,
         statusDurationHours: isStatusValid ? user.statusDurationHours : undefined,
+        isBirthday: user.isBirthday,
         nextStatus: isStatusValid ? user.nextStatus : undefined,
         nextStatusAt: isStatusValid ? user.nextStatusAt : undefined,
         isDutyOfficer: user.isDutyOfficer,
@@ -109,6 +111,7 @@ export const getAllUsersStatus = query({
       statusUpdatedAt: v.optional(v.number()),
       statusExpiresAt: v.optional(v.number()),
       statusDurationHours: v.optional(v.number()),
+      isBirthday: v.optional(v.boolean()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
         v.literal("available - satellite"),
@@ -133,6 +136,7 @@ export const getAllUsersStatus = query({
       statusUpdatedAt: u.statusUpdatedAt,
       statusExpiresAt: u.statusExpiresAt,
       statusDurationHours: u.statusDurationHours,
+      isBirthday: u.isBirthday,
       nextStatus: u.nextStatus,
       nextStatusAt: u.nextStatusAt,
       isDutyOfficer: u.isDutyOfficer,
