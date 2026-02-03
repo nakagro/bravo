@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.57] - 2026-02-04
+- Improvements made to the Auth Management page in Admin Settings to purge expired sessions and refresh tokens.
+
 ## [1.0.55] - 2026-01-13
 - Availability page, Deployment tab: Trying to fix the deployment duplicate bug again and also added a minor visual change to this view too.
 

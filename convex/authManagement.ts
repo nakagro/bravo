@@ -124,12 +124,24 @@ export const getUserAuthInfo = query({
       .filter((q) => q.eq(q.field("userId"), userId))
       .collect();
     
-    // Get refresh tokens for this user's sessions
-    const userSessionIds = new Set(userSessions.map(s => s._id));
-    const allRefreshTokens = await ctx.db.query("authRefreshTokens").collect();
-    const userRefreshTokens = allRefreshTokens.filter(
-      (token: { sessionId?: string }) => token.sessionId && userSessionIds.has(token.sessionId as any)
-    );
+    // Get refresh tokens for this user's sessions using the sessionId index
+    // This avoids loading all 12k+ tokens into memory
+    const userRefreshTokens: Array<{
+      _id: any;
+      _creationTime: number;
+      expirationTime?: number;
+    }> = [];
+    for (const session of userSessions) {
+      const sessionTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      userRefreshTokens.push(...sessionTokens.map((t: any) => ({
+        _id: t._id,
+        _creationTime: t._creationTime,
+        expirationTime: t.expirationTime,
+      })));
+    }
     
     // Find the most recent activity
     const sessionTimes = userSessions.map(s => s._creationTime);
@@ -196,16 +208,19 @@ export const invalidateUserSessions = query({
       .filter((q) => q.eq(q.field("userId"), userId))
       .collect();
     
-    // Get refresh tokens for these sessions
-    const sessionIds = new Set(sessions.map(s => s._id));
-    const allRefreshTokens = await ctx.db.query("authRefreshTokens").collect();
-    const userRefreshTokens = allRefreshTokens.filter(
-      (token: { sessionId?: string }) => token.sessionId && sessionIds.has(token.sessionId as any)
-    );
+    // Get refresh tokens for these sessions using the sessionId index
+    let refreshTokenCount = 0;
+    for (const session of sessions) {
+      const sessionTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      refreshTokenCount += sessionTokens.length;
+    }
     
     return {
       sessionsDeleted: sessions.length,
-      refreshTokensDeleted: userRefreshTokens.length,
+      refreshTokensDeleted: refreshTokenCount,
     };
   },
 });
@@ -231,16 +246,20 @@ export const purgeExpiredTokens = mutation({
       .filter((q) => q.eq(q.field("userId"), userId))
       .collect();
     
-    // Get refresh tokens for this user's sessions
-    const userSessionIds = new Set(userSessions.map(s => s._id));
-    const allRefreshTokens = await ctx.db.query("authRefreshTokens").collect();
-    
-    // Find expired tokens belonging to this user
-    const expiredTokens = allRefreshTokens.filter((token: any) => {
-      const belongsToUser = token.sessionId && userSessionIds.has(token.sessionId);
-      const isExpired = token.expirationTime && token.expirationTime < now;
-      return belongsToUser && isExpired;
-    });
+    // Get refresh tokens for this user's sessions using the sessionId index
+    // and find expired ones
+    const expiredTokens: Array<{ _id: any }> = [];
+    for (const session of userSessions) {
+      const sessionTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      for (const token of sessionTokens) {
+        if ((token as any).expirationTime && (token as any).expirationTime < now) {
+          expiredTokens.push({ _id: token._id });
+        }
+      }
+    }
     
     // Delete each expired token
     for (const token of expiredTokens) {
@@ -249,6 +268,45 @@ export const purgeExpiredTokens = mutation({
     
     return {
       deletedCount: expiredTokens.length,
+    };
+  },
+});
+
+/**
+ * Purge all expired refresh tokens across all users
+ * Admin only mutation
+ */
+export const purgeAllExpiredTokens = mutation({
+  args: {},
+  returns: v.object({
+    deletedCount: v.number(),
+    sessionsProcessed: v.number(),
+  }),
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Get all sessions
+    const sessions = await ctx.db.query("authSessions").collect();
+    
+    // Find and delete expired tokens for each session
+    let deletedCount = 0;
+    for (const session of sessions) {
+      const sessionTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      
+      for (const token of sessionTokens) {
+        if ((token as any).expirationTime && (token as any).expirationTime < now) {
+          await ctx.db.delete(token._id);
+          deletedCount++;
+        }
+      }
+    }
+    
+    return {
+      deletedCount,
+      sessionsProcessed: sessions.length,
     };
   },
 });
@@ -266,9 +324,9 @@ export const getAuthStats = query({
     expiredTokenCount: v.number(),
   }),
   handler: async (ctx) => {
+    // Get counts without loading all documents into memory where possible
     const users = await ctx.db.query("users").collect();
     const sessions = await ctx.db.query("authSessions").collect();
-    const refreshTokens = await ctx.db.query("authRefreshTokens").collect();
     
     // Count sessions per user
     const sessionsPerUser = new Map<string, number>();
@@ -282,16 +340,29 @@ export const getAuthStats = query({
     const usersWithMultipleSessions = Array.from(sessionsPerUser.values())
       .filter(count => count > 1).length;
     
-    // Count expired tokens
+    // For token counts, we need to iterate through sessions to use the index
+    // This is more efficient than loading all 12k+ tokens
+    let totalRefreshTokens = 0;
+    let expiredTokenCount = 0;
     const now = Date.now();
-    const expiredTokenCount = refreshTokens.filter(
-      (token: any) => token.expirationTime && token.expirationTime < now
-    ).length;
+    
+    for (const session of sessions) {
+      const sessionTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      totalRefreshTokens += sessionTokens.length;
+      for (const token of sessionTokens) {
+        if ((token as any).expirationTime && (token as any).expirationTime < now) {
+          expiredTokenCount++;
+        }
+      }
+    }
     
     return {
       totalUsers: users.length,
       totalSessions: sessions.length,
-      totalRefreshTokens: refreshTokens.length,
+      totalRefreshTokens,
       usersWithMultipleSessions,
       expiredTokenCount,
     };

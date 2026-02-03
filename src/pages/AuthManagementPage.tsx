@@ -20,6 +20,7 @@ export default function AuthManagementPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
     const [isPurging, setIsPurging] = useState(false);
+    const [isPurgingAll, setIsPurgingAll] = useState(false);
         
     // Only search when there's a search term
     const searchResults = useQuery(
@@ -35,6 +36,7 @@ export default function AuthManagementPage() {
     
     const authStats = useQuery(api.authManagement.getAuthStats);
     const purgeExpiredTokens = useMutation(api.authManagement.purgeExpiredTokens);
+    const purgeAllExpiredTokens = useMutation(api.authManagement.purgeAllExpiredTokens);
 
     const formatDate = (timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('en-AU', {
@@ -243,7 +245,32 @@ export default function AuthManagementPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
-                            <div className="text-2xl font-bold text-amber-600">{authStats.expiredTokenCount}</div>
+                            <div className="flex items-center justify-between">
+                                <div className="text-2xl font-bold text-amber-600">{authStats.expiredTokenCount}</div>
+                                {authStats.expiredTokenCount > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs text-destructive hover:text-destructive"
+                                        disabled={isPurgingAll}
+                                        onClick={async () => {
+                                            if (!confirm(`Are you sure you want to purge all ${authStats.expiredTokenCount} expired tokens?`)) return;
+                                            setIsPurgingAll(true);
+                                            try {
+                                                const result = await purgeAllExpiredTokens({});
+                                                alert(`Deleted ${result.deletedCount} expired token${result.deletedCount !== 1 ? 's' : ''} across ${result.sessionsProcessed} sessions`);
+                                            } catch (error) {
+                                                alert('Failed to purge tokens');
+                                            } finally {
+                                                setIsPurgingAll(false);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        {isPurgingAll ? "Purging..." : "Purge All"}
+                                    </Button>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
