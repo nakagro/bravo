@@ -47,6 +47,7 @@ import type * as keyAuditTrail from "../keyAuditTrail.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
+import type * as lib_logging from "../lib/logging.js";
 import type * as links from "../links.js";
 import type * as messages from "../messages.js";
 import type * as migrations_normalizeDeploymentDates from "../migrations/normalizeDeploymentDates.js";
@@ -113,6 +114,7 @@ declare const fullApi: ApiFromModules<{
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
+  "lib/logging": typeof lib_logging;
   links: typeof links;
   messages: typeof messages;
   "migrations/normalizeDeploymentDates": typeof migrations_normalizeDeploymentDates;

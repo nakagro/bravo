@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { logAction } from "./lib/logging";
 
 /**
  * Search for users by name or email (lightweight query for user list)
@@ -240,6 +241,12 @@ export const purgeExpiredTokens = mutation({
     const { userId } = args;
     const now = Date.now();
     
+    // Get the target user for logging
+    const targetUser = await ctx.db.get(userId);
+    const targetEmail = targetUser?.email || userId;
+    
+    await logAction(ctx, "purgeExpiredTokens", "Starting purge for user", { targetUser: targetEmail });
+    
     // Get sessions for this user
     const userSessions = await ctx.db
       .query("authSessions")
@@ -266,6 +273,11 @@ export const purgeExpiredTokens = mutation({
       await ctx.db.delete(token._id);
     }
     
+    await logAction(ctx, "purgeExpiredTokens", "Completed purge", { 
+      targetUser: targetEmail, 
+      deletedCount: expiredTokens.length 
+    });
+    
     return {
       deletedCount: expiredTokens.length,
     };
@@ -283,6 +295,8 @@ export const purgeAllExpiredTokens = mutation({
     sessionsProcessed: v.number(),
   }),
   handler: async (ctx) => {
+    await logAction(ctx, "purgeAllExpiredTokens", "Starting global purge of expired tokens");
+    
     const now = Date.now();
     
     // Get all sessions
@@ -303,6 +317,11 @@ export const purgeAllExpiredTokens = mutation({
         }
       }
     }
+    
+    await logAction(ctx, "purgeAllExpiredTokens", "Completed global purge", {
+      deletedCount,
+      sessionsProcessed: sessions.length,
+    });
     
     return {
       deletedCount,
