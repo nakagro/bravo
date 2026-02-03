@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Users, Key, RefreshCw, Clock, Shield, AlertTriangle, CheckCircle, XCircle, Search, HelpCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Accordion,
     AccordionContent,
@@ -191,7 +192,20 @@ export default function AuthManagementPage() {
             </Accordion>
 
             {/* Stats Cards */}
-            {authStats && (
+            {authStats === undefined ? (
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    {[...Array(6)].map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader className="pb-2 pt-4 px-4">
+                                <Skeleton className="h-4 w-16" />
+                            </CardHeader>
+                            <CardContent className="px-4 pb-4">
+                                <Skeleton className="h-8 w-12" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
                 <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                     <Card>
                         <CardHeader className="pb-2 pt-4 px-4">
@@ -261,6 +275,18 @@ export default function AuthManagementPage() {
                     </Card>
                 </div>
             )}
+
+            {/* Purge Button - skeleton or actual */}
+            {authStats === undefined ? (
+                <Card>
+                    <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                            <Skeleton className="h-5 w-64" />
+                            <Skeleton className="h-9 w-32" />
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : null}
 
             {/* Purge Button - separate row */}
             {authStats && (authStats.expiredTokenCount > 0 || authStats.orphanedTokenCount > 0) && (
