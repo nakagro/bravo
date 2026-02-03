@@ -1,6 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { logAction } from "./lib/logging";
+import { internal } from "./_generated/api";
 
 /**
  * Search for users by name or email (lightweight query for user list)
@@ -286,24 +287,75 @@ export const purgeExpiredTokens = mutation({
 
 /**
  * Purge all expired refresh tokens across all users
+ * Uses batching to avoid Convex read limits
+ * Also purges orphaned tokens (tokens with no valid session)
  * Admin only mutation
  */
 export const purgeAllExpiredTokens = mutation({
   args: {},
   returns: v.object({
-    deletedCount: v.number(),
-    sessionsProcessed: v.number(),
+    message: v.string(),
+    status: v.string(),
   }),
   handler: async (ctx) => {
-    await logAction(ctx, "purgeAllExpiredTokens", "Starting global purge of expired tokens");
+    await logAction(ctx, "purgeAllExpiredTokens", "Initiating batched purge of expired and orphaned tokens");
     
+    // Schedule the expired tokens purge
+    await ctx.scheduler.runAfter(0, internal.authManagement.purgeExpiredTokensBatch, {
+      cursor: null,
+      totalDeleted: 0,
+      batchNumber: 1,
+    });
+    
+    // Also schedule orphaned tokens purge (runs in parallel)
+    await ctx.scheduler.runAfter(0, internal.authManagement.purgeOrphanedTokensBatch, {
+      cursor: null,
+      totalDeleted: 0,
+      batchNumber: 1,
+    });
+    
+    return {
+      message: "Purge started. Processing expired tokens AND orphaned tokens (tokens with deleted sessions) in batches.",
+      status: "started",
+    };
+  },
+});
+
+/**
+ * Internal mutation to process expired tokens in batches
+ * Processes up to BATCH_SIZE sessions per invocation, then schedules itself for more
+ */
+export const purgeExpiredTokensBatch = internalMutation({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    totalDeleted: v.number(),
+    batchNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const BATCH_SIZE = 50; // Process 50 sessions per batch to stay well under limits
     const now = Date.now();
     
-    // Get all sessions
-    const sessions = await ctx.db.query("authSessions").collect();
+    // Query sessions with cursor-based pagination
+    let sessionsQuery = ctx.db.query("authSessions");
     
-    // Find and delete expired tokens for each session
-    let deletedCount = 0;
+    // If we have a cursor, filter to sessions after that ID
+    if (args.cursor) {
+      sessionsQuery = sessionsQuery.filter((q) => 
+        q.gt(q.field("_id"), args.cursor as string)
+      );
+    }
+    
+    const sessions = await sessionsQuery.take(BATCH_SIZE);
+    
+    if (sessions.length === 0) {
+      // No more sessions to process
+      console.log(`[INFO] [purgeExpiredTokensBatch] All batches complete. Total expired tokens deleted: ${args.totalDeleted}`);
+      return null;
+    }
+    
+    let deletedInBatch = 0;
+    
     for (const session of sessions) {
       const sessionTokens = await ctx.db
         .query("authRefreshTokens")
@@ -313,25 +365,105 @@ export const purgeAllExpiredTokens = mutation({
       for (const token of sessionTokens) {
         if ((token as any).expirationTime && (token as any).expirationTime < now) {
           await ctx.db.delete(token._id);
-          deletedCount++;
+          deletedInBatch++;
         }
       }
     }
     
-    await logAction(ctx, "purgeAllExpiredTokens", "Completed global purge", {
-      deletedCount,
-      sessionsProcessed: sessions.length,
-    });
+    const newTotal = args.totalDeleted + deletedInBatch;
+    console.log(`[INFO] [purgeExpiredTokensBatch] Batch ${args.batchNumber}: Processed ${sessions.length} sessions, deleted ${deletedInBatch} tokens (total: ${newTotal})`);
     
-    return {
-      deletedCount,
-      sessionsProcessed: sessions.length,
-    };
+    // Get the last session ID to use as cursor for next batch
+    const lastSession = sessions[sessions.length - 1];
+    
+    // If we got a full batch, there might be more
+    if (sessions.length === BATCH_SIZE) {
+      // Schedule next batch with small delay
+      await ctx.scheduler.runAfter(100, internal.authManagement.purgeExpiredTokensBatch, {
+        cursor: lastSession._id,
+        totalDeleted: newTotal,
+        batchNumber: args.batchNumber + 1,
+      });
+    } else {
+      // Got less than BATCH_SIZE, we're done
+      console.log(`[INFO] [purgeExpiredTokensBatch] All batches complete. Total expired tokens deleted: ${newTotal}`);
+    }
+    
+    return null;
+  },
+});
+
+/**
+ * Internal mutation to purge orphaned tokens (tokens with no valid session)
+ * This handles tokens that were left behind when sessions were deleted
+ */
+export const purgeOrphanedTokensBatch = internalMutation({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    totalDeleted: v.number(),
+    batchNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const BATCH_SIZE = 200; // Can process more since we're just checking existence
+    
+    // Get a batch of refresh tokens
+    let tokensQuery = ctx.db.query("authRefreshTokens");
+    
+    if (args.cursor) {
+      tokensQuery = tokensQuery.filter((q) => 
+        q.gt(q.field("_id"), args.cursor as string)
+      );
+    }
+    
+    const tokens = await tokensQuery.take(BATCH_SIZE);
+    
+    if (tokens.length === 0) {
+      console.log(`[INFO] [purgeOrphanedTokensBatch] All batches complete. Total orphaned tokens deleted: ${args.totalDeleted}`);
+      return null;
+    }
+    
+    let deletedInBatch = 0;
+    
+    for (const token of tokens) {
+      const sessionId = (token as any).sessionId;
+      if (sessionId) {
+        // Check if the session exists
+        const session = await ctx.db.get(sessionId);
+        if (!session) {
+          // Orphaned token - session doesn't exist
+          await ctx.db.delete(token._id);
+          deletedInBatch++;
+        }
+      } else {
+        // Token has no sessionId - delete it
+        await ctx.db.delete(token._id);
+        deletedInBatch++;
+      }
+    }
+    
+    const newTotal = args.totalDeleted + deletedInBatch;
+    console.log(`[INFO] [purgeOrphanedTokensBatch] Batch ${args.batchNumber}: Checked ${tokens.length} tokens, deleted ${deletedInBatch} orphaned (total: ${newTotal})`);
+    
+    const lastToken = tokens[tokens.length - 1];
+    
+    if (tokens.length === BATCH_SIZE) {
+      await ctx.scheduler.runAfter(100, internal.authManagement.purgeOrphanedTokensBatch, {
+        cursor: lastToken._id,
+        totalDeleted: newTotal,
+        batchNumber: args.batchNumber + 1,
+      });
+    } else {
+      console.log(`[INFO] [purgeOrphanedTokensBatch] All batches complete. Total orphaned tokens deleted: ${newTotal}`);
+    }
+    
+    return null;
   },
 });
 
 /**
  * Get auth summary statistics
+ * Uses sampling to avoid read limits on large datasets
  */
 export const getAuthStats = query({
   args: {},
@@ -341,11 +473,12 @@ export const getAuthStats = query({
     totalRefreshTokens: v.number(),
     usersWithMultipleSessions: v.number(),
     expiredTokenCount: v.number(),
+    orphanedTokenCount: v.number(),
   }),
   handler: async (ctx) => {
-    // Get counts without loading all documents into memory where possible
     const users = await ctx.db.query("users").collect();
     const sessions = await ctx.db.query("authSessions").collect();
+    const sessionIds = new Set(sessions.map(s => s._id));
     
     // Count sessions per user
     const sessionsPerUser = new Map<string, number>();
@@ -359,31 +492,39 @@ export const getAuthStats = query({
     const usersWithMultipleSessions = Array.from(sessionsPerUser.values())
       .filter(count => count > 1).length;
     
-    // For token counts, we need to iterate through sessions to use the index
-    // This is more efficient than loading all 12k+ tokens
-    let totalRefreshTokens = 0;
-    let expiredTokenCount = 0;
-    const now = Date.now();
+    // Sample tokens directly to count expired and orphaned
+    // Take a limited sample to avoid read limits
+    const SAMPLE_SIZE = 2000;
+    const tokenSample = await ctx.db.query("authRefreshTokens").take(SAMPLE_SIZE);
     
-    for (const session of sessions) {
-      const sessionTokens = await ctx.db
-        .query("authRefreshTokens")
-        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
-      totalRefreshTokens += sessionTokens.length;
-      for (const token of sessionTokens) {
-        if ((token as any).expirationTime && (token as any).expirationTime < now) {
-          expiredTokenCount++;
-        }
+    const now = Date.now();
+    let expiredCount = 0;
+    let orphanedCount = 0;
+    
+    for (const token of tokenSample) {
+      const sessionId = (token as any).sessionId;
+      const isOrphaned = !sessionId || !sessionIds.has(sessionId);
+      const isExpired = (token as any).expirationTime && (token as any).expirationTime < now;
+      
+      if (isOrphaned) {
+        orphanedCount++;
+      } else if (isExpired) {
+        expiredCount++;
       }
     }
+    
+    // Estimate total based on sample if we hit the limit
+    // This gives a rough idea without hitting read limits
+    const totalRefreshTokens = tokenSample.length;
+    const isEstimate = tokenSample.length === SAMPLE_SIZE;
     
     return {
       totalUsers: users.length,
       totalSessions: sessions.length,
-      totalRefreshTokens,
+      totalRefreshTokens: isEstimate ? totalRefreshTokens : tokenSample.length,
       usersWithMultipleSessions,
-      expiredTokenCount,
+      expiredTokenCount: expiredCount,
+      orphanedTokenCount: orphanedCount,
     };
   },
 });

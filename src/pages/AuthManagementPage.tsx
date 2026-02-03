@@ -192,7 +192,7 @@ export default function AuthManagementPage() {
 
             {/* Stats Cards */}
             {authStats && (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                     <Card>
                         <CardHeader className="pb-2 pt-4 px-4">
                             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -245,35 +245,56 @@ export default function AuthManagementPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-4">
-                            <div className="flex items-center justify-between">
-                                <div className="text-2xl font-bold text-amber-600">{authStats.expiredTokenCount}</div>
-                                {authStats.expiredTokenCount > 0 && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs text-destructive hover:text-destructive"
-                                        disabled={isPurgingAll}
-                                        onClick={async () => {
-                                            if (!confirm(`Are you sure you want to purge all ${authStats.expiredTokenCount} expired tokens?`)) return;
-                                            setIsPurgingAll(true);
-                                            try {
-                                                const result = await purgeAllExpiredTokens({});
-                                                alert(`Deleted ${result.deletedCount} expired token${result.deletedCount !== 1 ? 's' : ''} across ${result.sessionsProcessed} sessions`);
-                                            } catch (error) {
-                                                alert('Failed to purge tokens');
-                                            } finally {
-                                                setIsPurgingAll(false);
-                                            }
-                                        }}
-                                    >
-                                        <Trash2 className="h-3 w-3 mr-1" />
-                                        {isPurgingAll ? "Purging..." : "Purge All"}
-                                    </Button>
-                                )}
-                            </div>
+                            <div className="text-2xl font-bold text-amber-600">{authStats.expiredTokenCount}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2 pt-4 px-4">
+                            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                <XCircle className="h-3.5 w-3.5" />
+                                Orphaned
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4">
+                            <div className="text-2xl font-bold text-red-600">{authStats.orphanedTokenCount}</div>
                         </CardContent>
                     </Card>
                 </div>
+            )}
+
+            {/* Purge Button - separate row */}
+            {authStats && (authStats.expiredTokenCount > 0 || authStats.orphanedTokenCount > 0) && (
+                <Card>
+                    <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm text-muted-foreground">
+                                <span className="font-medium">{authStats.expiredTokenCount + authStats.orphanedTokenCount}</span> tokens to clean up 
+                                ({authStats.expiredTokenCount} expired + {authStats.orphanedTokenCount} orphaned)
+                            </div>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={isPurgingAll}
+                                onClick={async () => {
+                                    const total = authStats.expiredTokenCount + authStats.orphanedTokenCount;
+                                    if (!confirm(`Are you sure you want to purge ${total} tokens? This runs in the background.`)) return;
+                                    setIsPurgingAll(true);
+                                    try {
+                                        const result = await purgeAllExpiredTokens({});
+                                        alert(result.message);
+                                    } catch (error) {
+                                        alert('Failed to start purge');
+                                    } finally {
+                                        setIsPurgingAll(false);
+                                    }
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                {isPurgingAll ? "Starting..." : "Purge All Tokens"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Search Section */}
