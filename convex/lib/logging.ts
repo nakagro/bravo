@@ -1,4 +1,5 @@
 import { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 type LogLevel = "info" | "warn" | "error" | "debug";
 
@@ -9,7 +10,8 @@ interface LogContext {
 }
 
 /**
- * Get user context from the auth identity for logging
+ * Get user context from the auth identity and user record for logging
+ * Fetches the user's first/last name from the database for better log readability
  */
 export async function getLogContext(
   ctx: QueryCtx | MutationCtx | ActionCtx
@@ -19,10 +21,36 @@ export async function getLogContext(
     if (!identity) {
       return {};
     }
+    
+    // Try to get the user record from the database for first/last name
+    // This only works for QueryCtx and MutationCtx (not ActionCtx)
+    let userName = identity.name;
+    
+    if ("db" in ctx) {
+      try {
+        const userId = await getAuthUserId(ctx as QueryCtx | MutationCtx);
+        if (userId) {
+          const user = await (ctx as QueryCtx | MutationCtx).db.get(userId);
+          if (user) {
+            // Prefer firstName + lastName, fall back to name field
+            if (user.firstName && user.lastName) {
+              userName = `${user.firstName} ${user.lastName}`;
+            } else if (user.firstName) {
+              userName = user.firstName;
+            } else if (user.name) {
+              userName = user.name;
+            }
+          }
+        }
+      } catch {
+        // If we can't get the user record, fall back to identity name
+      }
+    }
+    
     return {
       userId: identity.subject,
       userEmail: identity.email,
-      userName: identity.name,
+      userName,
     };
   } catch {
     return {};
@@ -45,8 +73,10 @@ function formatLogMessage(
   parts.push(`[${level.toUpperCase()}]`);
   parts.push(`[${functionName}]`);
   
-  // User context
-  if (context?.userEmail) {
+  // User context - prefer name for readability, fall back to email, then userId
+  if (context?.userName) {
+    parts.push(`[${context.userName}]`);
+  } else if (context?.userEmail) {
     parts.push(`[${context.userEmail}]`);
   } else if (context?.userId) {
     parts.push(`[user:${context.userId.slice(-8)}]`);
