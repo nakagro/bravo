@@ -41,6 +41,18 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
 }) => {
   // Selected day (default to first day / today)
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+  
+  // Get selected day's data
+  const selectedDayData = aggregatedDeploymentAvailability[selectedDateIndex] || null;
+  
+  // Get all user IDs from the selected day for batch skills query
+  const userIds = selectedDayData?.users.map(u => u.userId as Id<"users">) || [];
+  
+  // Fetch all skills for all users in ONE query (avoids N+1 problem)
+  const batchSkills = useQuery(
+    api.skills.getBatchUserSkills,
+    userIds.length > 0 ? { userIds } : "skip"
+  );
 
   // Expanded sections (all expanded by default)
   const [expandedSections, setExpandedSections] = useState<Record<AvailabilityType, boolean>>({
@@ -68,9 +80,6 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
       }
     }
   }, [selectedDateIndex, aggregatedDeploymentAvailability.length]);
-
-  // Get selected day's data
-  const selectedDayData = aggregatedDeploymentAvailability[selectedDateIndex] || null;
 
   // Toggle section expansion
   const toggleSection = (section: AvailabilityType) => {
@@ -313,7 +322,7 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <DeploymentSkillBadges userId={user.userId as Id<"users">} />
+                              <DeploymentSkillBadges userId={user.userId as Id<"users">} skills={batchSkills?.[user.userId] || []} />
                             </div>
                           ))}
                         </div>
@@ -354,13 +363,12 @@ const DEPLOYMENT_SKILLS = ['DR', 'BAi', 'PC1', 'TC1'];
 
 interface DeploymentSkillBadgesProps {
   userId: Id<"users">;
+  skills: any[];
 }
 
-const DeploymentSkillBadges: React.FC<DeploymentSkillBadgesProps> = ({ userId }) => {
-  const userSkills = useQuery(api.skills.getUserSkills, { userId });
-
+const DeploymentSkillBadges: React.FC<DeploymentSkillBadgesProps> = ({ userId, skills }) => {
   // Filter to only show deployment-relevant skills
-  const filtered = (userSkills || []).filter((s) => DEPLOYMENT_SKILLS.includes(s.code));
+  const filtered = (skills || []).filter((s: any) => DEPLOYMENT_SKILLS.includes(s.code));
 
   if (filtered.length === 0) return null;
 

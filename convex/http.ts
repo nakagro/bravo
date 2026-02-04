@@ -131,6 +131,14 @@ http.route({
       // Get all users
       const users = await ctx.runQuery(api.users.getUsers);
       
+      // Get all user IDs for batch skills query
+      const userIds = users
+        .filter(user => user.firstName && user.lastName)
+        .map(user => user._id);
+      
+      // Fetch all skills in ONE batch query (avoids N+1 problem)
+      const batchSkills = await ctx.runQuery(api.skills.getBatchUserSkills, { userIds });
+      
       // Build response array
       const memberAvailability = [];
       
@@ -141,26 +149,13 @@ http.route({
         }
         
         // Map internal status to API response format
-        // Return actual status values from the system:
-        // - "available - station"
-        // - "available - satellite" 
-        // - "delayed response"
-        // - "not available"
-        // - "WFH"
-        // - "Unavailable" (default for users with no status set)
         const availability = user.currentStatus || "Unavailable";
         
-        // Get user's skills
-        const skillsets: string[] = [];
-        if (user.skills && Array.isArray(user.skills)) {
-          const userSkills = await ctx.runQuery(api.skills.getUserSkills, { userId: user._id });
-          // Extract skill codes from the skills array
-          for (const skill of userSkills) {
-            if (skill.code && skill.code !== "NONE") {
-              skillsets.push(skill.code);
-            }
-          }
-        }
+        // Get user's skills from batch result
+        const userSkills = batchSkills[user._id] || [];
+        const skillsets = userSkills
+          .filter((skill: any) => skill.code && skill.code !== "NONE")
+          .map((skill: any) => skill.code);
         
         memberAvailability.push({
           firstname: user.firstName,
