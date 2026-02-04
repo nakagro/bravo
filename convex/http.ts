@@ -113,6 +113,8 @@ http.route({
 });
 
 // Member availability endpoint for external SPA (API key protected)
+// Supports optional client identification via X-Client-Id header or ?client query param
+// Example: X-Client-Id: main-station-turnout or ?client=satellite-turnout
 http.route({
   path: "/api/member-availability",
   method: "GET",
@@ -125,7 +127,13 @@ http.route({
       return authResult.errorResponse!;
     }
 
-    console.log("[INFO] [GET /api/member-availability] Request from external SPA (API key authenticated)");
+    // Get optional client identifier from header or query param
+    const url = new URL(request.url);
+    const clientId = request.headers.get("X-Client-Id") 
+      || url.searchParams.get("client") 
+      || "unknown-client";
+    
+    console.log(`[INFO] [GET /api/member-availability] [${clientId}] Request received`);
 
     try {
       // Get all users
