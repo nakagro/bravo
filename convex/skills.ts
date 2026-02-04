@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { logAction } from "./lib/logging";
 
 /**
  * Get all skills from the system
@@ -65,6 +66,8 @@ export const getUserSkills = query({
       return [];
     }
     
+    await logAction(ctx, "getUserSkills", "Skills lookup", { email: user.email });
+    
     // Get all skills for the user
     const skills = [];
     for (const skillId of user.skills) {
@@ -75,6 +78,61 @@ export const getUserSkills = query({
     }
     
     return skills;
+  },
+});
+
+/**
+ * Get skills for multiple users in a single query (batch)
+ * This is optimized to avoid N+1 query problems when displaying skills for many users
+ */
+export const getBatchUserSkills = query({
+  args: {
+    userIds: v.array(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const { userIds } = args;
+    
+    if (userIds.length === 0) {
+      return {};
+    }
+    
+    // Get all unique skill IDs across all users first
+    const allSkillIds = new Set<Id<"skills">>();
+    const userSkillMap = new Map<string, Id<"skills">[]>();
+    
+    for (const userId of userIds) {
+      const user = await ctx.db.get(userId);
+      if (user?.skills && user.skills.length > 0) {
+        userSkillMap.set(userId, user.skills);
+        for (const skillId of user.skills) {
+          allSkillIds.add(skillId);
+        }
+      } else {
+        userSkillMap.set(userId, []);
+      }
+    }
+    
+    // Fetch all skills in one batch
+    const skillsById = new Map<string, any>();
+    for (const skillId of allSkillIds) {
+      const skill = await ctx.db.get(skillId);
+      if (skill) {
+        skillsById.set(skillId, skill);
+      }
+    }
+    
+    // Build the result: userId -> skills array
+    const result: Record<string, any[]> = {};
+    for (const userId of userIds) {
+      const userSkillIds = userSkillMap.get(userId) || [];
+      result[userId] = userSkillIds
+        .map(skillId => skillsById.get(skillId))
+        .filter(Boolean);
+    }
+    
+    await logAction(ctx, "getBatchUserSkills", "Batch skills lookup", { userCount: userIds.length });
+    
+    return result;
   },
 });
 

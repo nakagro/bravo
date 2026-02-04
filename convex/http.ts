@@ -121,8 +121,11 @@ http.route({
     const authResult = validateApiKey(request);
     
     if (!authResult.isValid) {
+      console.log("[INFO] [GET /api/member-availability] Unauthorized request - invalid API key");
       return authResult.errorResponse!;
     }
+
+    console.log("[INFO] [GET /api/member-availability] Request from external SPA (API key authenticated)");
 
     try {
       // Get all users

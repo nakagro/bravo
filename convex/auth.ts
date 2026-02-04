@@ -3,6 +3,7 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import { query, mutation, action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import { logAction } from "./lib/logging";
 
 /**
  * DEFAULT SIGNUP RANK CONFIGURATION
@@ -58,6 +59,7 @@ export const loggedInUser = query({
     if (!user) {
       return null;
     }
+    await logAction(ctx, "loggedInUser", "User session check", { email: user.email });
     return user;
   },
 });

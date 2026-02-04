@@ -17,6 +17,16 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
   dutyOfficer,
   handleDutyOfficerChange
 }) => {
+  // Get all user IDs that have a status set
+  const usersWithStatus = statuses.filter(user => user.currentStatus);
+  const userIds = usersWithStatus.map(user => user._id);
+  
+  // Fetch all skills for all users in ONE query (avoids N+1 problem)
+  const batchSkills = useQuery(
+    api.skills.getBatchUserSkills,
+    userIds.length > 0 ? { userIds } : "skip"
+  );
+  
   // Format user display name
   const formatUserName = (user: any) => {
     if (user.firstName && user.lastName) {
@@ -28,9 +38,6 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
     }
   };
 
-  // Filter users who have set a status and group by status
-  const usersWithStatus = statuses.filter(user => user.currentStatus);
-  
   // Group users by their status
   const groupedByStatus: Record<string, any[]> = {
     'available - station': [],
@@ -165,7 +172,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
                           )}
                         </div>
                         <div className="mt-0.5">
-                          <UserSkillsInline userId={user._id} />
+                          <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
                         </div>
                       </div>
                     ))}
@@ -184,16 +191,15 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
   );
 };
 
-// Compact inline skills renderer
+// Compact inline skills renderer - now receives skills as props instead of querying
 interface UserSkillsInlineProps {
   userId: Id<"users">;
+  skills: any[];
 }
 
-const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId }) => {
-  const userSkills = useQuery(api.skills.getUserSkills, { userId });
-
+const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, skills }) => {
   // Hide the special NONE skill from badges
-  const filtered = (userSkills || []).filter((s) => s.code !== "NONE");
+  const filtered = (skills || []).filter((s: any) => s.code !== "NONE");
 
   return (
     <div className="flex flex-wrap items-center min-h-[18px] -mt-0.5">
