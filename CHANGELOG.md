@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.59] - 2026-02-05
+- Temporarily disabled calendar on the dashboard page. 
+
 ## [1.0.58] - 2026-02-04
 - Changes made to the way The Availability page loads and queries data. Done in batches and not n+1 query for each user who has set their status.
 
