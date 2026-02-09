@@ -11,7 +11,8 @@ type TabType = "schedule" | "stationChecks" | "administration" | "stationChecksA
 
 export function DutyCrewPage() {
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
-  const adminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "admin" });
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const adminAccess = moduleAccess?.admin;
 
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});

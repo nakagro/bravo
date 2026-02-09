@@ -12,8 +12,9 @@ export function InventoryPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"checks" | "history" | "templates" | "admin">("checks");
-  const hasTemplatesAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventoryAdmin" });
-  const hasAdminAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventoryAdmin" });
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const hasTemplatesAccess = moduleAccess?.inventoryAdmin;
+  const hasAdminAccess = moduleAccess?.inventoryAdmin;
   
   // Get in-progress runs count for header context
   const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns);

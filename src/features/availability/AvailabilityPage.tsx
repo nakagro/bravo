@@ -53,8 +53,9 @@ const AvailabilityPage: React.FC = () => {
     lastViewedAt: lastViewedMessagesAt 
   }) || 0;
   
-  // Check permission for admin tab
-  const hasAdminTabAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availabilityAdmin" });
+  // Check permission for admin tab (uses batched query shared with ProtectedRoute)
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const hasAdminTabAccess = moduleAccess?.availabilityAdmin;
   
   // Redirect away from admin tab if user doesn't have access
   React.useEffect(() => {

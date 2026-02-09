@@ -14,10 +14,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   moduleId, 
   fallbackPath = "/" 
 }) => {
-  const hasAccess = useQuery(api.modules.checkModuleAccess, { moduleId });
+  // Use the batched query shared across all ProtectedRoute instances
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
 
   // Show loading state while checking permissions
-  if (hasAccess === undefined) {
+  if (moduleAccess === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 dark:border-white"></div>
@@ -25,8 +26,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Look up access for this specific module
+  const hasAccess = moduleAccess[moduleId as keyof typeof moduleAccess] ?? false;
+
   // Redirect if no access
-  if (hasAccess === false) {
+  if (!hasAccess) {
     return <Navigate to={fallbackPath} replace />;
   }
 

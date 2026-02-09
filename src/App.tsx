@@ -1,4 +1,4 @@
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { AuthLayout } from "./components/layout/AuthLayout";
@@ -36,6 +36,14 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <AuthLoading>
+          <div className="flex items-center justify-center min-h-screen bg-background">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          </div>
+        </AuthLoading>
         <Authenticated>
           <AuthenticatedApp />
         </Authenticated>

@@ -462,6 +462,121 @@ export const purgeOrphanedTokensBatch = internalMutation({
 });
 
 /**
+ * Internal mutation to purge expired sessions in batches
+ * Sessions past their expirationTime are no longer valid and can be removed
+ * Also cleans up all refresh tokens belonging to expired sessions
+ */
+export const purgeExpiredSessionsBatch = internalMutation({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    totalSessionsDeleted: v.number(),
+    totalTokensDeleted: v.number(),
+    batchNumber: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const BATCH_SIZE = 50;
+    const now = Date.now();
+
+    let sessionsQuery = ctx.db.query("authSessions");
+    if (args.cursor) {
+      sessionsQuery = sessionsQuery.filter((q) =>
+        q.gt(q.field("_id"), args.cursor as string)
+      );
+    }
+
+    const sessions = await sessionsQuery.take(BATCH_SIZE);
+
+    if (sessions.length === 0) {
+      console.log(
+        `[INFO] [purgeExpiredSessionsBatch] All batches complete. Sessions deleted: ${args.totalSessionsDeleted}, tokens deleted: ${args.totalTokensDeleted}`
+      );
+      return null;
+    }
+
+    let sessionsDeleted = 0;
+    let tokensDeleted = 0;
+
+    for (const session of sessions) {
+      if ((session as any).expirationTime && (session as any).expirationTime < now) {
+        // Delete all refresh tokens for this expired session first
+        const sessionTokens = await ctx.db
+          .query("authRefreshTokens")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+        for (const token of sessionTokens) {
+          await ctx.db.delete(token._id);
+          tokensDeleted++;
+        }
+        // Then delete the session itself
+        await ctx.db.delete(session._id);
+        sessionsDeleted++;
+      }
+    }
+
+    const newSessionsTotal = args.totalSessionsDeleted + sessionsDeleted;
+    const newTokensTotal = args.totalTokensDeleted + tokensDeleted;
+    console.log(
+      `[INFO] [purgeExpiredSessionsBatch] Batch ${args.batchNumber}: Checked ${sessions.length} sessions, deleted ${sessionsDeleted} expired sessions + ${tokensDeleted} tokens (totals: ${newSessionsTotal} sessions, ${newTokensTotal} tokens)`
+    );
+
+    const lastSession = sessions[sessions.length - 1];
+
+    if (sessions.length === BATCH_SIZE) {
+      await ctx.scheduler.runAfter(100, internal.authManagement.purgeExpiredSessionsBatch, {
+        cursor: lastSession._id,
+        totalSessionsDeleted: newSessionsTotal,
+        totalTokensDeleted: newTokensTotal,
+        batchNumber: args.batchNumber + 1,
+      });
+    } else {
+      console.log(
+        `[INFO] [purgeExpiredSessionsBatch] All batches complete. Sessions deleted: ${newSessionsTotal}, tokens deleted: ${newTokensTotal}`
+      );
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Scheduled daily auth cleanup
+ * Runs all three cleanup operations: expired sessions, expired tokens, and orphaned tokens
+ * Designed to be called from a cron job
+ */
+export const scheduledAuthCleanup = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    console.log("[INFO] [scheduledAuthCleanup] Starting daily auth cleanup");
+
+    // 1. Purge expired sessions (and their tokens)
+    await ctx.scheduler.runAfter(0, internal.authManagement.purgeExpiredSessionsBatch, {
+      cursor: null,
+      totalSessionsDeleted: 0,
+      totalTokensDeleted: 0,
+      batchNumber: 1,
+    });
+
+    // 2. Purge expired tokens (from still-valid sessions)
+    await ctx.scheduler.runAfter(500, internal.authManagement.purgeExpiredTokensBatch, {
+      cursor: null,
+      totalDeleted: 0,
+      batchNumber: 1,
+    });
+
+    // 3. Purge orphaned tokens (sessions deleted but tokens left behind)
+    await ctx.scheduler.runAfter(1000, internal.authManagement.purgeOrphanedTokensBatch, {
+      cursor: null,
+      totalDeleted: 0,
+      batchNumber: 1,
+    });
+
+    return null;
+  },
+});
+
+/**
  * Get auth summary statistics
  * Uses sampling to avoid read limits on large datasets
  */

@@ -34,6 +34,14 @@ crons.interval(
   {}
 );
 
+// Daily auth cleanup: purge expired sessions, expired tokens, and orphaned tokens
+crons.daily(
+  "auth cleanup", // identifier
+  { hourUTC: 17, minuteUTC: 0 }, // 17:00 UTC == 03:00 AEST (UTC+10), before other daily jobs
+  internal.authManagement.scheduledAuthCleanup,
+  {}
+);
+
 // Clean up expired notifications every hour
 crons.hourly(
   "cleanup expired notifications", // identifier

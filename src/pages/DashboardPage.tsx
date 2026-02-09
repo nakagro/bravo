@@ -12,16 +12,17 @@ export function DashboardPage() {
   // Fetch the current user's data
   const user = useQuery(api.auth.loggedInUser);
 
-  // Fetch module access status for the current user
-  const hoseAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "hoses" });
-  const keysAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "keys" });
-  const availabilityAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "availability" });
-  const fireReportsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "fireReports" });
-  const dutyCrewAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "dutyCrew" });
-  const inventoryAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "inventory" });
-  const linksAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "links" });
-  const vehicleFaultsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "vehicleFaults" });
-  const bookingsAccess = useQuery(api.modules.checkModuleAccess, { moduleId: "bookings" });
+  // Fetch all module access in a single query instead of 9 individual ones
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const hoseAccess = moduleAccess?.hoses;
+  const keysAccess = moduleAccess?.keys;
+  const availabilityAccess = moduleAccess?.availability;
+  const fireReportsAccess = moduleAccess?.fireReports;
+  const dutyCrewAccess = moduleAccess?.dutyCrew;
+  const inventoryAccess = moduleAccess?.inventory;
+  const linksAccess = moduleAccess?.links;
+  const vehicleFaultsAccess = moduleAccess?.vehicleFaults;
+  const bookingsAccess = moduleAccess?.bookings;
 
   // Fetch any pending actions or notifications
   const pendingActions = useQuery(api.dashboard.getPendingActions) || [];

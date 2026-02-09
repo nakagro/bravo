@@ -1,7 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { logAction } from "./lib/logging";
 
 /**
  * Get all module settings
@@ -619,9 +618,11 @@ export const getAllModuleAccess = query({
     hoses: v.boolean(),
     keys: v.boolean(),
     availability: v.boolean(),
+    availabilityAdmin: v.boolean(),
     dutyCrew: v.boolean(),
     fireReports: v.boolean(),
     inventory: v.boolean(),
+    inventoryAdmin: v.boolean(),
     vehicleFaults: v.boolean(),
     equipment: v.boolean(),
     equipmentAdmin: v.boolean(),
@@ -637,16 +638,16 @@ export const getAllModuleAccess = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      await logAction(ctx, "getAllModuleAccess", "Unauthenticated access attempt");
-      // Return all false if not authenticated
       return {
         dashboard: false,
         hoses: false,
         keys: false,
         availability: false,
+        availabilityAdmin: false,
         dutyCrew: false,
         fireReports: false,
         inventory: false,
+        inventoryAdmin: false,
         vehicleFaults: false,
         equipment: false,
         equipmentAdmin: false,
@@ -668,9 +669,11 @@ export const getAllModuleAccess = query({
         hoses: false,
         keys: false,
         availability: false,
+        availabilityAdmin: false,
         dutyCrew: false,
         fireReports: false,
         inventory: false,
+        inventoryAdmin: false,
         vehicleFaults: false,
         equipment: false,
         equipmentAdmin: false,
@@ -685,8 +688,6 @@ export const getAllModuleAccess = query({
       };
     }
 
-    await logAction(ctx, "getAllModuleAccess", "Module access check", { email: user.email });
-
     // Admin users have access to everything
     if (user.isAdmin) {
       return {
@@ -694,9 +695,11 @@ export const getAllModuleAccess = query({
         hoses: true,
         keys: true,
         availability: true,
+        availabilityAdmin: true,
         dutyCrew: true,
         fireReports: true,
         inventory: true,
+        inventoryAdmin: true,
         vehicleFaults: true,
         equipment: true,
         equipmentAdmin: true,
@@ -764,9 +767,11 @@ export const getAllModuleAccess = query({
       hoses: checkAccess("hoses"),
       keys: checkAccess("keys"),
       availability: checkAccess("availability"),
+      availabilityAdmin: checkAccess("availabilityAdmin"),
       dutyCrew: checkAccess("dutyCrew"),
       fireReports: checkAccess("fireReports"),
       inventory: checkAccess("inventory"),
+      inventoryAdmin: checkAccess("inventoryAdmin"),
       vehicleFaults: checkAccess("vehicleFaults"),
       equipment: checkAccess("equipment"),
       equipmentAdmin: checkAccess("equipmentAdmin"),
