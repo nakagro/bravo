@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.62] - 2026-02-9
+## [1.0.63] - 2026-02-9
 - Availability - Admin Tab: Added a banner to the Admin Tab to inform users that the appliance location permissions have been moved to the Brigade Tab. Removed the Appliance Location selector from the Admin tab as it has been superseeded with the Brigade Tab.
 
 ## [1.0.61] - 2026-02-09
