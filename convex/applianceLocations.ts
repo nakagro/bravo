@@ -84,10 +84,10 @@ export const updateApplianceLocation = mutation({
     const userRank = user.rank;
     const hasRequiredRank = userRank && rankOrder[userRank] >= rankOrder["Lieutenant"];
     
-    // Check if user has an authorized skill (Driver, Driver Code 3, Officer, Crew Leader)
+    // Check if user has an authorized skill (configurable via admin settings)
     let hasAuthorizedSkill = false;
     if (user.skills && user.skills.length > 0) {
-      const authorizedCodes = ["DR", "DR3", "OF", "CL"];
+      const authorizedCodes = await getLocationEditSkillCodes(ctx);
       const authorizedSkills = await Promise.all(
         authorizedCodes.map((code) =>
           ctx.db.query("skills").filter((q) => q.eq(q.field("code"), code)).first()
@@ -162,6 +162,60 @@ export const initializeApplianceLocations = mutation({
     }
     
     console.log("Appliance locations initialized successfully");
+  },
+});
+
+// Default skill codes that can edit appliance locations
+const DEFAULT_LOCATION_EDIT_SKILLS = ["DR", "DR3", "OF", "CL"];
+
+// Helper to get configured skill codes from moduleSettings
+async function getLocationEditSkillCodes(ctx: any): Promise<string[]> {
+  const moduleSetting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q: any) => q.eq("moduleId", "availability"))
+    .first();
+  const config = moduleSetting?.config as { applianceLocationEditSkills?: string[] } | undefined;
+  return config?.applianceLocationEditSkills ?? DEFAULT_LOCATION_EDIT_SKILLS;
+}
+
+// Query to get the configured skill codes for appliance location editing
+export const getLocationEditSkills = query({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    return await getLocationEditSkillCodes(ctx);
+  },
+});
+
+// Mutation to update which skills can edit appliance locations (admin only)
+export const updateLocationEditSkills = mutation({
+  args: {
+    skillCodes: v.array(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    if (!user.isAdmin) throw new Error("Admin access required");
+
+    const moduleSetting = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_moduleId", (q) => q.eq("moduleId", "availability"))
+      .first();
+
+    if (!moduleSetting) {
+      throw new Error("Availability module settings not found. Run syncModuleSettings first.");
+    }
+
+    const existingConfig = (moduleSetting.config as Record<string, any>) || {};
+    await ctx.db.patch(moduleSetting._id, {
+      config: { ...existingConfig, applianceLocationEditSkills: args.skillCodes },
+      updatedAt: Date.now(),
+      updatedBy: userId,
+    });
+    return null;
   },
 });
 

@@ -8,13 +8,14 @@ const ApplianceLocations: React.FC = () => {
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
   const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
   const currentUserSkills = useQuery(api.skills.getUserSkills, {});
+  const locationEditSkills = useQuery(api.applianceLocations.getLocationEditSkills);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-  // Check if current user has the Driver (DR) skill, Officer skill, or is otherwise authorized
-  const canEditLocations = currentUserSkills?.some(
-    (skill: any) => skill.code === 'DR' || skill.code === 'DR3' || skill.code === 'OF' || skill.code === 'CL'
-  ) ?? false;
+  // Check if current user has any of the configured skills for editing locations
+  const canEditLocations = (locationEditSkills && currentUserSkills)
+    ? currentUserSkills.some((skill: any) => locationEditSkills.includes(skill.code))
+    : false;
 
   // Most recent update across all appliances
   const lastUpdatedAt = applianceLocations.length > 0

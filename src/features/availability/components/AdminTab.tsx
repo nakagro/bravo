@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -15,23 +14,11 @@ interface AdminTabProps {
 }
 
 const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [customLocation, setCustomLocation] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState<string | null>(null); // Track which appliance is showing custom input
-
-  const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
-  const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
-  const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
   const usersWithScheduledChanges = useQuery(api.availability.getUsersWithScheduledChanges) || [];
-
-  // Create a map for easy lookup
-  const locationMap = applianceLocations.reduce((acc, location) => {
-    acc[location.applianceName] = location.stationLocation;
-    return acc;
-  }, {} as Record<string, string>);
-
-  const appliances = ['Pumper', 'Tanker', 'FCV'] as const;
-  const primaryStations = ['Main Station', 'Satellite Station'] as const;
+  const allSkills = useQuery(api.skills.getSkills) || [];
+  const locationEditSkills = useQuery(api.applianceLocations.getLocationEditSkills) || [];
+  const updateLocationEditSkills = useMutation(api.applianceLocations.updateLocationEditSkills);
+  const [isSavingSkills, setIsSavingSkills] = useState(false);
 
   // Format user display name
   const formatUserName = (user: any) => {
@@ -44,35 +31,24 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
     }
   };
 
-  const handleLocationUpdate = async (applianceName: typeof appliances[number], newLocation: string) => {
-    setIsUpdating(true);
+  // Filter out system skills (NONE) for the selector
+  const selectableSkills = allSkills.filter((s: any) => s.code !== 'NONE' && s.isActive);
 
+  const handleToggleSkill = async (code: string) => {
+    const updated = locationEditSkills.includes(code)
+      ? locationEditSkills.filter((c) => c !== code)
+      : [...locationEditSkills, code];
+    setIsSavingSkills(true);
     try {
-      await updateApplianceLocation({
-        applianceName,
-        stationLocation: newLocation,
-      });
-      toast.success(`${applianceName} location updated to ${newLocation}`, {
-        description: 'The appliance location has been successfully changed.',
-      });
-      setShowCustomInput(null);
-      setCustomLocation('');
+      await updateLocationEditSkills({ skillCodes: updated });
+      toast.success('Appliance location permissions updated');
     } catch (error) {
-      console.error('Error updating appliance location:', error);
-      toast.error('Failed to update appliance location', {
+      toast.error('Failed to update permissions', {
         description: error instanceof Error ? error.message : 'An unexpected error occurred.',
       });
     } finally {
-      setIsUpdating(false);
+      setIsSavingSkills(false);
     }
-  };
-
-  const handleCustomLocationSubmit = async (applianceName: typeof appliances[number]) => {
-    if (!customLocation.trim()) {
-      toast.error('Please enter a location name');
-      return;
-    }
-    await handleLocationUpdate(applianceName, customLocation.trim());
   };
 
   // Helper functions for scheduled status changes
@@ -171,159 +147,67 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
 
   return (
     <div className="space-y-4">
-      {/* Appliance Location Management */}
+      {/* Info banner */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm text-amber-800 dark:text-amber-200">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
+        </svg>
+        <span>Looking to change appliance locations? This has been moved to the <strong>Brigade</strong> tab next to Appliance Locations.</span>
+      </div>
+
+      {/* Module Settings */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <Accordion type="single" collapsible defaultValue="appliance-locations">
-          <AccordionItem value="appliance-locations" className="border-none">
+        <Accordion type="single" collapsible>
+          <AccordionItem value="module-settings" className="border-none">
             <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <h2 className="text-xl font-bold flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Manage Appliance Locations
+                Module Settings
               </h2>
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-6">
-              {applianceLocations.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              No appliance locations found. Please run the initialization function via the Convex dashboard to set up default locations.
-            </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              Function: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">applianceLocations:initializeApplianceLocations</code>
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {appliances.map((appliance) => {
-              const currentLocation = locationMap[appliance] || 'Unknown';
-              const locationData = applianceLocations.find(loc => loc.applianceName === appliance);
-              
-              return (
-                <div key={appliance} className="py-4 first:pt-0">
-                  {/* Mobile-first responsive layout */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Appliance info section */}
-                    <div className="flex items-center">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-lg">{appliance}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Currently at: <span className="font-medium">{currentLocation}</span>
-                        </p>
-                        {locationData && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            Last updated: {getRelativeTimeString(locationData.updatedAt)} by{' '}
-                            <span className="font-medium">
-                              {formatUserName(locationData.updatedByUser)}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Buttons section - full width on mobile, compact on desktop */}
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 sm:flex-shrink-0">
-                        {/* Primary stations */}
-                        {primaryStations.map((station) => (
-                          <button
-                            key={station}
-                            onClick={() => handleLocationUpdate(appliance, station)}
-                            disabled={isUpdating || currentLocation === station}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
-                              currentLocation === station
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 cursor-default'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
-                            }`}
-                          >
-                            <span className="flex items-center justify-center">
-                              {station}
-                              {currentLocation === station && (
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </span>
-                          </button>
-                        ))}
-                        
-                        {/* Custom locations */}
-                        {allLocations
-                          .filter(loc => !primaryStations.includes(loc as any))
-                          .map((location) => (
-                            <button
-                              key={location}
-                              onClick={() => handleLocationUpdate(appliance, location)}
-                              disabled={isUpdating || currentLocation === location}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto ${
-                                currentLocation === location
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 cursor-default'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
-                              }`}
-                            >
-                              <span className="flex items-center justify-center">
-                                {location}
-                                {currentLocation === location && (
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </span>
-                            </button>
-                          ))}
-                      </div>
-                      
-                      {/* Custom location input */}
-                      {showCustomInput === appliance ? (
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={customLocation}
-                            onChange={(e) => setCustomLocation(e.target.value)}
-                            placeholder="Enter custom location..."
-                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                handleCustomLocationSubmit(appliance);
-                              }
-                            }}
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleCustomLocationSubmit(appliance)}
-                              disabled={isUpdating || !customLocation.trim()}
-                              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Set
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowCustomInput(null);
-                                setCustomLocation('');
-                              }}
-                              className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+              {/* Appliance Location Edit Permissions */}
+              <div>
+                <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100 mb-1">
+                  Appliance Location Permissions
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Members with any enabled skill can move appliance locations. Admins and Lieutenants+ always have access.
+                </p>
+                <div className="divide-y divide-gray-100 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  {selectableSkills.map((skill: any) => {
+                    const isSelected = locationEditSkills.includes(skill.code);
+                    return (
+                      <button
+                        key={skill._id}
+                        onClick={() => handleToggleSkill(skill.code)}
+                        disabled={isSavingSkills}
+                        className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-50"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{skill.code}</span>
+                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 truncate">{skill.name}</span>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setShowCustomInput(appliance)}
-                          disabled={isUpdating}
-                          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
-                        >
-                          + Add Custom Location
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                        <div className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+                          isSelected ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'
+                        }`}>
+                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
+                            isSelected ? 'translate-x-5 ml-0.5' : 'translate-x-0.5'
+                          }`} />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        )}
+                {locationEditSkills.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                    No skills selected — only admins and Lieutenants+ can move appliances.
+                  </p>
+                )}
+              </div>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
