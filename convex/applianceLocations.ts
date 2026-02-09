@@ -73,7 +73,7 @@ export const updateApplianceLocation = mutation({
       throw new Error("User not found");
     }
 
-    // Check if user is admin or has Lieutenant rank or higher
+    // Check if user is admin, has Lieutenant rank or higher, or has the Driver (DR) skill
     const rankOrder = {
       "Probationary": 1,
       "Firefighter": 2,
@@ -84,8 +84,23 @@ export const updateApplianceLocation = mutation({
     const userRank = user.rank;
     const hasRequiredRank = userRank && rankOrder[userRank] >= rankOrder["Lieutenant"];
     
-    if (!user.isAdmin && !hasRequiredRank) {
-      throw new Error("Not authorized to update appliance locations. Lieutenant rank or higher required.");
+    // Check if user has an authorized skill (Driver, Driver Code 3, Officer, Crew Leader)
+    let hasAuthorizedSkill = false;
+    if (user.skills && user.skills.length > 0) {
+      const authorizedCodes = ["DR", "DR3", "OF", "CL"];
+      const authorizedSkills = await Promise.all(
+        authorizedCodes.map((code) =>
+          ctx.db.query("skills").filter((q) => q.eq(q.field("code"), code)).first()
+        )
+      );
+      const authorizedSkillIds = authorizedSkills
+        .filter((s): s is NonNullable<typeof s> => s !== null)
+        .map((s) => s._id);
+      hasAuthorizedSkill = user.skills.some((id: any) => authorizedSkillIds.includes(id));
+    }
+    
+    if (!user.isAdmin && !hasRequiredRank && !hasAuthorizedSkill) {
+      throw new Error("Not authorized to update appliance locations.");
     }
 
     // Check if appliance location already exists

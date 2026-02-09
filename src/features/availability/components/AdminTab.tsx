@@ -362,8 +362,18 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                         {formatUserName(user)}
                       </div>
                       
-                      {/* Current status */}
                       <div className="space-y-2 text-sm">
+                        {/* When status was set */}
+                        {user.statusUpdatedAt && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-gray-600 dark:text-gray-400 min-w-[120px]">Status Set:</span>
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {formatDateTime(user.statusUpdatedAt)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Current status */}
                         <div className="flex items-start gap-2">
                           <span className="text-gray-600 dark:text-gray-400 min-w-[120px]">Current Status:</span>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -378,7 +388,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                             {formatDurationHours(user.statusDurationHours)}
                           </span>
                         </div>
-                        
+
                         {/* Time remaining */}
                         <div className="flex items-start gap-2">
                           <span className="text-gray-600 dark:text-gray-400 min-w-[120px]">Time Remaining:</span>
@@ -402,6 +412,7 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
                             {formatDateTime(user.nextStatusAt)}
                           </span>
                         </div>
+
                       </div>
                     </div>
                   ))}

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.60] - 2026-02-09
+- Availability - Brigade Tab: Refactored the 'Appliance Location' section, Drivers can now change locations of appliances. Added a time stamp of when the appliance locations were last changed.
+- Availability - Admin Tab: Shifted the 'Scheduled Status Change' values around so Time Remaining is at the end.
+
 ## [1.0.59] - 2026-02-05
 - Temporarily disabled calendar on the dashboard page. 
 
