@@ -37,6 +37,9 @@ export function SignInForm() {
   // Check if we're in production (not localhost)
   const isProduction = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
 
+  // Allow disabling CAPTCHA via environment variable (e.g. for prod deploys without it)
+  const captchaEnabled = isProduction && import.meta.env.VITE_DISABLE_CAPTCHA !== 'true';
+
   // hCaptcha site key
   const hCaptchaSiteKey = "3130983c-4200-4120-98ae-46fe42be99f0";
 
@@ -78,7 +81,7 @@ export function SignInForm() {
 
           try {
             // Check CAPTCHA in production
-            if (isProduction && !captchaToken) {
+            if (captchaEnabled && !captchaToken) {
               toast.error("Please complete the CAPTCHA verification");
               setSubmitting(false);
               return;
@@ -120,7 +123,7 @@ export function SignInForm() {
 
                 toast.success("Account created successfully!");
                 // Reset CAPTCHA after successful signup
-                if (isProduction) {
+                if (captchaEnabled) {
                   setCaptchaToken(null);
                   hCaptchaRef.current?.resetCaptcha();
                 }
@@ -139,7 +142,7 @@ export function SignInForm() {
               });
 
               // Reset CAPTCHA after successful signin
-              if (isProduction) {
+              if (captchaEnabled) {
                 setCaptchaToken(null);
                 hCaptchaRef.current?.resetCaptcha();
               }
@@ -197,7 +200,7 @@ export function SignInForm() {
             toast.error(toastTitle);
             setSubmitting(false);
             // Reset CAPTCHA on error
-            if (isProduction) {
+            if (captchaEnabled) {
               setCaptchaToken(null);
               hCaptchaRef.current?.resetCaptcha();
             }
@@ -304,7 +307,7 @@ export function SignInForm() {
         )}
 
         {/* hCaptcha - only show in production */}
-        {isProduction && (
+        {captchaEnabled && (
           <div className="flex justify-center my-4">
             <HCaptcha
               ref={hCaptchaRef}
@@ -327,7 +330,7 @@ export function SignInForm() {
         <button
           className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
           type="submit"
-          disabled={submitting || (isProduction && !captchaToken)}
+          disabled={submitting || (captchaEnabled && !captchaToken)}
         >
           {submitting ? (
             <div className="flex items-center justify-center">
