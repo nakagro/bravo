@@ -37,7 +37,7 @@ export function SignInForm() {
   // Check if we're in production (not localhost)
   const isProduction = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
 
-  // Allow disabling CAPTCHA via environment variable (e.g. for prod deploys without it)
+  // Allow disabling captcha via environment variable (e.g. for deployments without captcha)
   const captchaEnabled = isProduction && import.meta.env.VITE_DISABLE_CAPTCHA !== 'true';
 
   // hCaptcha site key
