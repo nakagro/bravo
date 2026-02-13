@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
+import { isDevEnvironment } from "@/utils/environment";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,7 +17,14 @@ export function MainLayout({ children }: MainLayoutProps) {
           className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
           aria-label="Go to dashboard"
         >
-          <h2 className="text-xl font-semibold text-red-700 dark:text-red-600">Wyndham Vale Fire Brigade</h2>
+          <h2 className="text-xl font-semibold text-red-700 dark:text-red-600">
+            Wyndham Vale Fire Brigade
+            {isDevEnvironment() && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-500 text-amber-950 align-middle">
+                DEV
+              </span>
+            )}
+          </h2>
         </Link>
         <HamburgerMenu />
       </header>

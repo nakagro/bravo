@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Get Convex URL from argument or use default
-CONVEX_URL="${1:-https://convex.boss.grayhux.io}"
+CONVEX_URL="${1:-https://boss-convex.grayhux.io}"
 API_KEY="${2}"
 
 echo "========================================"

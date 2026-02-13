@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -32,11 +33,21 @@ import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
 import { usePostHogIdentify } from "./hooks/usePostHogIdentify";
 
+// --- Startup timing helper (reads from global set in main.tsx) ---
+const _t = (label: string) => (window as any).__BRAVO_T?.(label);
+
+function TimingMarker({ label }: { label: string }) {
+  _t(label);
+  useEffect(() => { _t(`${label} (useEffect)`); }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
         <AuthLoading>
+          <TimingMarker label="AuthLoading phase" />
           <div className="flex items-center justify-center min-h-screen bg-background">
             <div className="flex flex-col items-center gap-3">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
@@ -45,9 +56,11 @@ export default function App() {
           </div>
         </AuthLoading>
         <Authenticated>
+          <TimingMarker label="Auth resolved → Authenticated" />
           <AuthenticatedApp />
         </Authenticated>
         <Unauthenticated>
+          <TimingMarker label="Auth resolved → Unauthenticated" />
           <UnauthenticatedApp />
         </Unauthenticated>
       </BrowserRouter>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
@@ -8,12 +9,21 @@ import { Card, CardContent } from "../components/ui/card";
 import { RecentNotifications } from "../components/notifications/RecentNotifications";
 import { FireDangerRating } from "../components/dashboard/FireDangerRating";
 
+// --- Startup timing helper ---
+const _t = (label: string) => (window as any).__BRAVO_T?.(label);
+
 export function DashboardPage() {
+  // --- Startup timing: track query resolutions ---
+  const logged = useRef({ user: false, modules: false, actions: false });
+  useEffect(() => { _t("DashboardPage mounted"); }, []);
+
   // Fetch the current user's data
   const user = useQuery(api.auth.loggedInUser);
+  if (user !== undefined && !logged.current.user) { logged.current.user = true; _t("loggedInUser query resolved"); }
 
   // Fetch all module access in a single query instead of 9 individual ones
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  if (moduleAccess !== undefined && !logged.current.modules) { logged.current.modules = true; _t("moduleAccess query resolved"); }
   const hoseAccess = moduleAccess?.hoses;
   const keysAccess = moduleAccess?.keys;
   const availabilityAccess = moduleAccess?.availability;
@@ -25,7 +35,9 @@ export function DashboardPage() {
   const bookingsAccess = moduleAccess?.bookings;
 
   // Fetch any pending actions or notifications
-  const pendingActions = useQuery(api.dashboard.getPendingActions) || [];
+  const rawPendingActions = useQuery(api.dashboard.getPendingActions);
+  if (rawPendingActions !== undefined && !logged.current.actions) { logged.current.actions = true; _t("pendingActions query resolved"); }
+  const pendingActions = rawPendingActions || [];
 
   // Get the user's display name (prefer firstName if available)
   const displayName = user ?

@@ -35,6 +35,9 @@ interface EMVConditionsResponse {
 const REGION = "Central";
 const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
 
+// --- Startup timing helper ---
+const _t = (label: string) => (window as any).__BRAVO_T?.(label);
+
 // Toggle this to true to simulate a Total Fire Ban day for testing
 const DEBUG_FORCE_TFB = false;
 
@@ -50,8 +53,10 @@ export function FireDangerRating() {
     const fetchData = async () => {
       try {
         // Fetch FDR data
+        _t("FDR fetch start");
         const fdrResponse = await fetch("https://api2.grayhux.io/fdr");
         const fdrData: FDRResponse = await fdrResponse.json();
+        _t("FDR fetch complete");
 
         if (fdrData.forecasts && fdrData.forecasts.length > 0) {
           setCurrentFDR({
@@ -73,8 +78,10 @@ export function FireDangerRating() {
         }
 
         // Fetch TFB data
+        _t("TFB fetch start");
         const tfbResponse = await fetch("https://api2.grayhux.io/emv-conditions");
         const tfbData: EMVConditionsResponse = await tfbResponse.json();
+        _t("TFB fetch complete");
 
         const tfb: TFBData = {
           today: DEBUG_FORCE_TFB || tfbData.current?.tfb?.[REGION] === TFB_ACTIVE,
