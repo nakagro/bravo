@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, ArrowLeft } from 'lucide-react';
+import { MapPin, Plus, X } from 'lucide-react';
 import KioskApplianceLocations from '@/features/kiosk/KioskApplianceLocations';
 
 type KioskTileId = 'appliance-locations';
@@ -10,7 +10,6 @@ interface KioskTile {
     title: string;
     description: string;
     icon: React.ReactNode;
-    emoji?: string;
     color: string;
 }
 
@@ -18,92 +17,50 @@ const KIOSK_TILES: KioskTile[] = [
     {
         id: 'appliance-locations',
         title: 'Appliance Locations',
-        description: 'Move trucks between stations',
-        icon: <MapPin className="h-8 w-8" />,
-        emoji: '🚒',
-        color: 'from-blue-500 to-blue-600',
+        description: 'Update the location of appliances on BRAVO',
+        icon: <MapPin className="h-16 w-16 mb-4" />,
+        color: 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-500',
     },
-    // Future tiles go here, e.g.:
-    // {
-    //   id: 'availability',
-    //   title: 'Availability',
-    //   description: 'View who is available',
-    //   icon: <Users className="h-8 w-8" />,
-    //   emoji: '👥',
-    //   color: 'from-green-500 to-green-600',
-    // },
 ];
 
 export default function KioskPage() {
     const navigate = useNavigate();
     const [activeTile, setActiveTile] = useState<KioskTileId | null>(null);
 
-    // Render the active tile's content full-screen
+    // If a tile is active, render its component full-screen
     if (activeTile === 'appliance-locations') {
-        return (
-            <div className="min-h-[calc(100vh-56px)] flex flex-col bg-gray-50 dark:bg-gray-900">
-                <KioskApplianceLocations onBack={() => setActiveTile(null)} />
-            </div>
-        );
+        return <KioskApplianceLocations onBack={() => setActiveTile(null)} />;
     }
 
     return (
-        <div className="min-h-[calc(100vh-56px)] flex flex-col bg-gray-50 dark:bg-gray-900">
-            {/* Kiosk Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col overflow-hidden select-none touch-none text-slate-50">
+            {/* Header */}
+            <header className="flex-none flex items-center justify-between px-8 py-6">
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors text-base font-medium"
+                    className="p-4 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors"
+                    aria-label="Close Kiosk"
                 >
-                    <ArrowLeft className="h-5 w-5" />
-                    Back
+                    <X className="h-10 w-10" />
                 </button>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    🖥️ Station Kiosk
-                </h1>
-                <div className="w-[72px]" /> {/* Spacer for centering */}
-            </div>
+            </header>
 
-            {/* Dashboard Grid */}
-            <div className="flex-1 p-6 md:p-8">
-                <div className="max-w-4xl mx-auto">
-                    <p className="text-sm text-muted-foreground mb-6">
-                        Tap an option below to get started.
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                        {KIOSK_TILES.map((tile) => (
-                            <button
-                                key={tile.id}
-                                onClick={() => setActiveTile(tile.id)}
-                                className="group relative flex flex-col items-center justify-center gap-3 p-6 md:p-8 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md active:shadow-none active:scale-[0.98] transition-all text-center min-h-[160px]"
-                            >
-                                {/* Gradient accent bar at top */}
-                                <div className={`absolute top-0 left-4 right-4 h-1 rounded-b-full bg-gradient-to-r ${tile.color} opacity-60 group-hover:opacity-100 transition-opacity`} />
-
-                                {/* Icon */}
-                                <div className="text-4xl">{tile.emoji}</div>
-
-                                {/* Title */}
-                                <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                                    {tile.title}
-                                </h3>
-
-                                {/* Description */}
-                                <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug">
-                                    {tile.description}
-                                </p>
-                            </button>
-                        ))}
-
-                        {/* Placeholder for future tiles */}
-                        <div className="flex flex-col items-center justify-center gap-3 p-6 md:p-8 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 min-h-[160px]">
-                            <span className="text-3xl">➕</span>
-                            <span className="text-sm font-medium">More coming soon</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* Dashboard Tiles Grid */}
+            <main className="flex-1 p-8 md:p-12 flex gap-6 md:gap-8 items-start justify-center flex-wrap overflow-y-auto">
+                {KIOSK_TILES.map((tile) => (
+                    <button
+                        key={tile.id}
+                        onClick={() => setActiveTile(tile.id)}
+                        className={`group relative flex flex-col items-center justify-center p-6 md:p-8 rounded-[2rem] shadow-xl transition-all active:scale-[0.98] border-4 ${tile.color} w-full max-w-[320px] aspect-square`}
+                    >
+                        {tile.icon}
+                        <h2 className="text-3xl md:text-4xl font-bold mb-3 tracking-wide text-center leading-tight">{tile.title}</h2>
+                        <p className="text-xl md:text-2xl opacity-90 text-center font-medium leading-snug">
+                            {tile.description}
+                        </p>
+                    </button>
+                ))}
+            </main>
         </div>
     );
 }
