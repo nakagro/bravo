@@ -951,6 +951,16 @@ const applicationTables = {
   })
     .index("by_taskId", ["taskId"])
     .index("by_createdBy", ["createdBy"]),
+
+  // Shortcut tokens table for automating status changes via tools like Apple Shortcuts
+  shortcutTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(), // Unique secret token
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
 };
 
 export default defineSchema({

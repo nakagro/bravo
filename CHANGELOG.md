@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.67] - 2026-10-14
+- URL webhooks for Availability status'
+
 ## [1.0.66] - 2026-02-21
 - Added Kiosk screen 
 

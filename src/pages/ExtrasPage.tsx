@@ -39,6 +39,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/kiosk",
     emoji: "🖥️",
   },
+  {
+    title: "Automation Shortcuts",
+    description: "Generate a secure URL to automate your availability status.",
+    to: "/shortcuts",
+    emoji: "⚡",
+  },
 ];
 
 export default function ExtrasPage() {
