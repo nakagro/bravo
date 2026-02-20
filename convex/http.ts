@@ -270,6 +270,18 @@ http.route({
 // SHORTCUTS ENDPOINT - Apple Shortcuts
 // ============================================================================
 
+// CORS preflight for shortcuts endpoint
+http.route({
+  path: "/api/shortcuts/availability",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    return new Response(null, {
+      status: 200,
+      headers: getCorsHeaders(),
+    });
+  }),
+});
+
 http.route({
   path: "/api/shortcuts/availability",
   method: "POST",

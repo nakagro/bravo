@@ -114,6 +114,7 @@ export const internalUpdateStatus = internalMutation({
             v.literal("reset")
         )),
     },
+    returns: v.boolean(),
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
         if (!user) {
