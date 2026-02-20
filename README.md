@@ -277,7 +277,7 @@ Generate once with `npx web-push generate-vapid-keys` and set:
 Two deployment options:
 
 1. **Self-hosted Docker**: Deploy Convex as a Docker container on your infrastructure
-   *   Local URL: `https://convex.grayhux.io/http`
+   *   Local URL: `https://boss-convex.grayhux.io/http`
    *   Full control over data and infrastructure
    *   Requires Docker and container orchestration
 

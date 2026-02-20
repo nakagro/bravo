@@ -5,10 +5,10 @@ import { api } from "../convex/_generated/api";
 
 async function main() {
   console.log("Seeding initial skills data...");
-  
+
   // Create a Convex client - default to local Docker URL
-  const client = new ConvexClient(process.env.CONVEX_URL || "https://convex.grayhux.io");
-  
+  const client = new ConvexClient(process.env.CONVEX_URL || "https://boss-convex.grayhux.io");
+
   try {
     // Seed the initial skills
     const result = await client.mutation(api.skills.seedInitialSkills, {});

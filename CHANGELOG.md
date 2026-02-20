@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.0.66] - 2026-02-21
+- Added Kiosk screen 
 
 ## [1.0.64] - 2026-02-14
 - Changed the backend URL of the database

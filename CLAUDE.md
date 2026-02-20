@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Multi-Environment Setup
 The project supports three deployment environments:
-- **Local Docker**: `https://convex.grayhux.io` (development)
+- **Local Docker**: `https://boss-convex.grayhux.io` (development)
 - **Convex Cloud Dev**: `https://whimsical-hamster-488.convex.cloud`
 - **Convex Cloud Prod**: `https://hushed-scorpion-51.convex.cloud`
 
