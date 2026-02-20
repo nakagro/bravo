@@ -33,6 +33,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/brigade-tasks",
     emoji: "📋",
   },
+  {
+    title: "Kiosk Mode",
+    description: "Touch-friendly dashboard for the station kiosk.",
+    to: "/kiosk",
+    emoji: "🖥️",
+  },
 ];
 
 export default function ExtrasPage() {

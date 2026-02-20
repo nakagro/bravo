@@ -25,6 +25,7 @@ import { EquipmentPage } from "./pages/EquipmentPage";
 import { BASkillsPage } from "./pages/BASkillsPage";
 import { BrigadeTasksPage } from "./features/brigadeTasks/pages/BrigadeTasksPage";
 import ExtrasPage from "./pages/ExtrasPage";
+import KioskPage from "./pages/KioskPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import AuthManagementPage from "./pages/AuthManagementPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
@@ -164,6 +165,7 @@ function AuthenticatedApp() {
         } />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/extras" element={<ExtrasPage />} />
+        <Route path="/kiosk" element={<KioskPage />} />
         <Route path="/fdr" element={<FDRPage />} />
         <Route path="/equipment" element={
           <ProtectedRoute moduleId="equipment">
