@@ -49,6 +49,7 @@ import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as links from "../links.js";
+import type * as messagePresets from "../messagePresets.js";
 import type * as messages from "../messages.js";
 import type * as migrations_normalizeDeploymentDates from "../migrations/normalizeDeploymentDates.js";
 import type * as modules from "../modules.js";
@@ -118,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   keys: typeof keys;
   "lib/logging": typeof lib_logging;
   links: typeof links;
+  messagePresets: typeof messagePresets;
   messages: typeof messages;
   "migrations/normalizeDeploymentDates": typeof migrations_normalizeDeploymentDates;
   modules: typeof modules;

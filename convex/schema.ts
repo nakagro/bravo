@@ -961,6 +961,17 @@ const applicationTables = {
   })
     .index("by_token", ["token"])
     .index("by_user", ["userId"]),
+
+  // Message presets - User-defined quick messages for availability messaging
+  messagePresets: defineTable({
+    userId: v.id("users"),
+    message: v.string(), // The preset message text
+    order: v.number(), // Display order (0-4)
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_order", ["userId", "order"]),
 };
 
 export default defineSchema({

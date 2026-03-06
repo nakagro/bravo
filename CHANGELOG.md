@@ -1,6 +1,9 @@
 # Changelog
 
-## [1.0.67] - 2026-10-14
+## [1.0.68] - 2026-03-07
+- Availability - Messages Tab: Added a Quick Messages button to the Messages tab. Users can save 5 preset messages to quickly post in the messages tab.
+
+## [1.0.67] - 2026-02-24
 - URL webhooks for Availability status'
 
 ## [1.0.66] - 2026-02-21
