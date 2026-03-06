@@ -267,8 +267,17 @@ http.route({
 });
 
 // ============================================================================
-// SHORTCUTS ENDPOINT - Apple Shortcuts
+// SHORTCUTS ENDPOINT - Apple Shortcuts / Webhooks
 // ============================================================================
+
+const VALID_STATUSES = new Set([
+  "available - station",
+  "available - satellite",
+  "not available",
+  "delayed response",
+  "WFH",
+]);
+const VALID_NEXT_STATUSES = new Set([...VALID_STATUSES, "reset"]);
 
 // CORS preflight for shortcuts endpoint
 http.route({
@@ -282,86 +291,172 @@ http.route({
   }),
 });
 
-http.route({
-  path: "/api/shortcuts/availability",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    try {
-      const url = new URL(request.url);
+// Shared handler for both GET and POST requests
+const shortcutsHandler = httpAction(async (ctx, request) => {
+  try {
+    const url = new URL(request.url);
 
-      // Try to parse JSON body, but fall back to query params if unavailable
-      let body: any = {};
+    // Parse parameters: POST supports JSON body + query params, GET uses query params only
+    let body: any = {};
+    if (request.method === "POST") {
       const contentType = request.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         try {
           body = await request.json();
         } catch (e) {
-          // Ignore
+          // Ignore malformed JSON, fall back to query params
         }
       }
+    }
 
-      const token = body.token || url.searchParams.get("token");
-      const status = body.status || url.searchParams.get("status");
+    const token = body.token || url.searchParams.get("token");
+    const status = body.status || url.searchParams.get("status");
 
-      let durationHours = body.durationHours !== undefined ? body.durationHours : url.searchParams.get("durationHours");
-      if (typeof durationHours === 'string' && durationHours) {
-        durationHours = parseFloat(durationHours);
-      }
-      if (!durationHours || isNaN(durationHours)) {
-        durationHours = undefined;
-      }
+    let durationHours = body.durationHours !== undefined ? body.durationHours : url.searchParams.get("durationHours");
+    if (typeof durationHours === "string" && durationHours) {
+      durationHours = parseFloat(durationHours);
+    }
+    if (!durationHours || isNaN(durationHours)) {
+      durationHours = undefined;
+    }
 
-      const nextStatus = body.nextStatus || url.searchParams.get("nextStatus") || undefined;
+    let nextStatus: string | undefined = body.nextStatus || url.searchParams.get("nextStatus") || undefined;
 
-      if (!token) {
-        return new Response(JSON.stringify({ error: "Missing token" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders() }
-        });
-      }
-
-      if (!status) {
-        return new Response(JSON.stringify({ error: "Missing status" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders() }
-        });
-      }
-
-      const userId = await ctx.runMutation(internal.shortcuts.verifyTokenAndGetUser, { token });
-
-      if (!userId) {
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders() }
-        });
-      }
-
-      await ctx.runMutation(internal.shortcuts.internalUpdateStatus, {
-        userId,
-        status,
-        durationHours,
-        nextStatus
+    // --- Input validation ---
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Missing token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...getCorsHeaders() },
       });
+    }
 
-      return new Response(JSON.stringify({ success: true, status, durationHours, nextStatus }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...getCorsHeaders() }
-      });
-
-    } catch (error) {
-      console.error("Error in shortcuts endpoint:", error);
+    if (!status) {
       return new Response(
         JSON.stringify({
-          error: "Internal server error",
-          details: error instanceof Error ? error.message : "Unknown error"
+          error: "Missing status parameter",
+          validValues: [...VALID_STATUSES],
         }),
         {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...getCorsHeaders() }
+          status: 400,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders() },
         }
       );
     }
-  }),
+
+    if (!VALID_STATUSES.has(status)) {
+      return new Response(
+        JSON.stringify({
+          error: `Invalid status "${status}"`,
+          validValues: [...VALID_STATUSES],
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+        }
+      );
+    }
+
+    if (nextStatus && !VALID_NEXT_STATUSES.has(nextStatus)) {
+      return new Response(
+        JSON.stringify({
+          error: `Invalid nextStatus "${nextStatus}"`,
+          validValues: [...VALID_NEXT_STATUSES],
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+        }
+      );
+    }
+
+    if (nextStatus && !durationHours) {
+      return new Response(
+        JSON.stringify({
+          error: "durationHours is required when nextStatus is specified",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+        }
+      );
+    }
+
+    // Default nextStatus to "reset" when duration is set but no nextStatus specified
+    if (durationHours && !nextStatus) {
+      nextStatus = "reset";
+    }
+
+    // --- Token verification ---
+    const userId = await ctx.runMutation(
+      internal.shortcuts.verifyTokenAndGetUser,
+      { token }
+    );
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired token" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+        }
+      );
+    }
+
+    // --- Update status ---
+    // Safe to cast: both status and nextStatus have been validated above
+    type Status = "available - station" | "available - satellite" | "not available" | "delayed response" | "WFH";
+    type NextStatus = Status | "reset";
+
+    const result = await ctx.runMutation(
+      internal.shortcuts.internalUpdateStatus,
+      {
+        userId,
+        status: status as Status,
+        durationHours,
+        nextStatus: nextStatus as NextStatus | undefined,
+      }
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `Status updated to "${status}" for ${result.userName}`,
+        status,
+        durationHours: durationHours ?? null,
+        nextStatus: nextStatus ?? null,
+        statusExpiresAt: result.statusExpiresAt,
+        userName: result.userName,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+      }
+    );
+  } catch (error) {
+    console.error("Error in shortcuts endpoint:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...getCorsHeaders() },
+      }
+    );
+  }
+});
+
+http.route({
+  path: "/api/shortcuts/availability",
+  method: "POST",
+  handler: shortcutsHandler,
+});
+
+http.route({
+  path: "/api/shortcuts/availability",
+  method: "GET",
+  handler: shortcutsHandler,
 });
 
 export default http;

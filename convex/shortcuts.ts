@@ -114,7 +114,10 @@ export const internalUpdateStatus = internalMutation({
             v.literal("reset")
         )),
     },
-    returns: v.boolean(),
+    returns: v.object({
+        userName: v.string(),
+        statusExpiresAt: v.union(v.number(), v.null()),
+    }),
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
         if (!user) {
@@ -141,6 +144,11 @@ export const internalUpdateStatus = internalMutation({
             timestamp: now,
         });
 
-        return true;
+        const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.name || "Unknown";
+
+        return {
+            userName,
+            statusExpiresAt: statusExpiresAt ?? null,
+        };
     }
 });

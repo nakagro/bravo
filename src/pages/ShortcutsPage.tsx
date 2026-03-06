@@ -1,9 +1,43 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
-import { Copy, RefreshCw, Trash2, ArrowLeft, Zap } from "lucide-react";
+import { Copy, RefreshCw, Trash2, ArrowLeft, Zap, Play, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+
+// Helper to build properly URL-encoded webhook URLs
+function buildWebhookUrl(
+    endpointUrl: string,
+    token: string,
+    params: Record<string, string | undefined>
+) {
+    const searchParams = new URLSearchParams();
+    searchParams.set("token", token);
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== "") {
+            searchParams.set(key, value);
+        }
+    }
+    return `${endpointUrl}?${searchParams.toString()}`;
+}
+
+// Test a webhook URL and show the result via toast
+async function testWebhookUrl(url: string): Promise<void> {
+    try {
+        const response = await fetch(url, { method: "GET" });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            const expiresMsg = data.statusExpiresAt
+                ? ` (expires ${new Date(data.statusExpiresAt).toLocaleTimeString()})`
+                : "";
+            toast.success(data.message + expiresMsg);
+        } else {
+            toast.error(data.error || `Request failed with status ${response.status}`);
+        }
+    } catch {
+        toast.error("Network error — could not reach the endpoint.");
+    }
+}
 
 export default function ShortcutsPage() {
     const token = useQuery(api.shortcuts.getToken);
@@ -11,13 +45,14 @@ export default function ShortcutsPage() {
     const revokeToken = useMutation(api.shortcuts.revokeToken);
 
     const [isGenerating, setIsGenerating] = useState(false);
+    const [showFullToken, setShowFullToken] = useState(false);
 
     const handleGenerate = async () => {
         try {
             setIsGenerating(true);
             await generateToken();
             toast.success("Shortcut token generated successfully.");
-        } catch (error) {
+        } catch {
             toast.error("Failed to generate token.");
         } finally {
             setIsGenerating(false);
@@ -25,13 +60,17 @@ export default function ShortcutsPage() {
     };
 
     const handleRevoke = async () => {
-        if (!confirm("Are you sure you want to revoke your shortcut token? Any existing shortcuts using it will stop working.")) {
+        if (
+            !confirm(
+                "Are you sure you want to revoke your shortcut token? Any existing shortcuts using it will stop working."
+            )
+        ) {
             return;
         }
         try {
             await revokeToken();
             toast.success("Shortcut token revoked.");
-        } catch (error) {
+        } catch {
             toast.error("Failed to revoke token.");
         }
     };
@@ -41,27 +80,31 @@ export default function ShortcutsPage() {
         toast.success(message);
     };
 
-    // Build the webhook URL
-    // Self-hosted Convex: HTTP endpoints are at <base>/http/<path>
-    // Convex Cloud: HTTP endpoints are at <base>.site/<path> (replace .cloud with .site)
-    const convexUrl = import.meta.env.VITE_CONVEX_URL || '';
+    // Build the webhook base URL
+    const convexUrl = import.meta.env.VITE_CONVEX_URL || "";
     let httpBaseUrl: string;
-    if (convexUrl.includes('.cloud')) {
-        // Convex Cloud
-        httpBaseUrl = convexUrl.replace('.cloud', '.site');
+    if (convexUrl.includes(".cloud")) {
+        httpBaseUrl = convexUrl.replace(".cloud", ".site");
     } else if (convexUrl) {
-        // Self-hosted Convex — HTTP actions are served under /http
-        httpBaseUrl = convexUrl.replace(/\/$/, '') + '/http';
+        httpBaseUrl = convexUrl.replace(/\/$/, "") + "/http";
     } else {
         httpBaseUrl = window.location.origin;
     }
 
     const endpointUrl = `${httpBaseUrl}/api/shortcuts/availability`;
 
+    // Mask token for display — show only last 8 characters
+    const maskedToken = token
+        ? `${"•".repeat(Math.max(0, token.length - 8))}${token.slice(-8)}`
+        : "";
+
     return (
         <div className="space-y-6 max-w-3xl mx-auto pb-12">
             <div className="flex items-center gap-4">
-                <Link to="/extras" className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                <Link
+                    to="/extras"
+                    className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                >
                     <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -72,15 +115,24 @@ export default function ShortcutsPage() {
 
             <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-900 border-l-4 border-l-blue-500 text-sm">
                 <p className="text-blue-900 dark:text-blue-300">
-                    <strong>iOS Shortcuts / Webhooks:</strong> You can automate your availability status using Apple Shortcuts or any standard HTTP request. Generate a token below to get your secure personal URLs.
+                    <strong>iOS Shortcuts / Webhooks:</strong> Automate your
+                    availability status using Apple Shortcuts or any HTTP client.
+                    Generate a token below to get your secure personal URLs.
+                    Supports both <strong>GET</strong> and{" "}
+                    <strong>POST</strong> requests.
                 </p>
             </div>
 
+            {/* Token Management Card */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="p-5 border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-lg font-semibold mb-1">Your Secret Token</h2>
+                    <h2 className="text-lg font-semibold mb-1">
+                        Your Secret Token
+                    </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        This token uniquely identifies you and allows changing your status without needing to log in. Treat it like a password.
+                        This token uniquely identifies you and allows changing
+                        your status without needing to log in. Treat it like a
+                        password.
                     </p>
                 </div>
 
@@ -92,9 +144,35 @@ export default function ShortcutsPage() {
                     ) : token ? (
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm break-all">
-                                <span className="flex-1 text-gray-700 dark:text-gray-300">{token}</span>
+                                <span className="flex-1 text-gray-700 dark:text-gray-300">
+                                    {showFullToken ? token : maskedToken}
+                                </span>
                                 <button
-                                    onClick={() => copyToClipboard(token, "Token copied!")}
+                                    onClick={() =>
+                                        setShowFullToken(!showFullToken)
+                                    }
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                                    aria-label={
+                                        showFullToken
+                                            ? "Hide token"
+                                            : "Show token"
+                                    }
+                                    title={
+                                        showFullToken
+                                            ? "Hide token"
+                                            : "Reveal full token"
+                                    }
+                                >
+                                    {showFullToken ? (
+                                        <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                        <Eye className="w-4 h-4" />
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        copyToClipboard(token, "Token copied!")
+                                    }
                                     className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                                     aria-label="Copy token"
                                 >
@@ -108,7 +186,9 @@ export default function ShortcutsPage() {
                                     disabled={isGenerating}
                                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded text-sm font-medium transition-colors flex items-center gap-2"
                                 >
-                                    <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                    <RefreshCw
+                                        className={`w-4 h-4 ${isGenerating ? "animate-spin" : ""}`}
+                                    />
                                     Regenerate Token
                                 </button>
                                 <button
@@ -122,14 +202,18 @@ export default function ShortcutsPage() {
                         </div>
                     ) : (
                         <div className="text-center py-6">
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">You don't have an active shortcut token.</p>
+                            <p className="text-gray-500 dark:text-gray-400 mb-4">
+                                You don't have an active shortcut token.
+                            </p>
                             <button
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
                                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors inline-flex items-center gap-2 shadow-sm"
                             >
                                 <Zap className="w-4 h-4" />
-                                {isGenerating ? "Generating..." : "Generate Token"}
+                                {isGenerating
+                                    ? "Generating..."
+                                    : "Generate Token"}
                             </button>
                         </div>
                     )}
@@ -137,117 +221,288 @@ export default function ShortcutsPage() {
             </div>
 
             {token && (
-                <UrlBuilder token={token} endpointUrl={endpointUrl} copyToClipboard={copyToClipboard} />
+                <UrlBuilder
+                    token={token}
+                    endpointUrl={endpointUrl}
+                    copyToClipboard={copyToClipboard}
+                />
             )}
 
             {token && (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold mt-8 mb-2">Ready-to-Use Webhook URLs</h2>
+                    <h2 className="text-xl font-semibold mt-8 mb-2">
+                        Ready-to-Use Webhook URLs
+                    </h2>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Copy any URL below and paste it into the Apple Shortcuts &quot;Get content of URL&quot; action with the method set to <strong>POST</strong>. Each URL is pre-filled with your token.
+                        Copy any URL below and use it directly in a browser,{" "}
+                        <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">
+                            curl
+                        </code>
+                        , or the Apple Shortcuts &quot;Get Contents of
+                        URL&quot; action. Both <strong>GET</strong> and{" "}
+                        <strong>POST</strong> methods are supported.
                     </p>
 
                     {/* Quick Status Changes */}
                     <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mt-6 mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500" /> Quick Status Changes
+                        <span className="w-2 h-2 rounded-full bg-green-500" />{" "}
+                        Quick Status Changes
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Set your status instantly with no duration or auto-transition.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Set your status instantly with no duration or
+                        auto-transition.
+                    </p>
 
                     <ExampleIntegration
                         title="Set to Available (Station)"
                         description="You are available and responding from Main Station."
-                        url={`${endpointUrl}?token=${token}&status=available - station`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=available - station`, "Available (Station) URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "available - station",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "available - station",
+                                }),
+                                "Available (Station) URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Set to Available (Satellite)"
                         description="You are available and responding from Satellite Station."
-                        url={`${endpointUrl}?token=${token}&status=available - satellite`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=available - satellite`, "Available (Satellite) URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "available - satellite",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "available - satellite",
+                                }),
+                                "Available (Satellite) URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Set to Delayed Response"
                         description="You can respond but will be delayed."
-                        url={`${endpointUrl}?token=${token}&status=delayed response`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=delayed response`, "Delayed Response URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "delayed response",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "delayed response",
+                                }),
+                                "Delayed Response URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Set to Working From Home"
                         description="You are working from home."
-                        url={`${endpointUrl}?token=${token}&status=WFH`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=WFH`, "WFH URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "WFH",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "WFH",
+                                }),
+                                "WFH URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Set to Unavailable"
                         description="You are not available to respond."
-                        url={`${endpointUrl}?token=${token}&status=not available`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=not available`, "Unavailable URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "not available",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "not available",
+                                }),
+                                "Unavailable URL copied!"
+                            )
+                        }
                     />
 
                     {/* With Duration */}
                     <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mt-8 mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-purple-500" /> With Duration &amp; Auto-Transition
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />{" "}
+                        With Duration &amp; Auto-Transition
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Set your status for a specific number of hours, then automatically transition to another status (or clear it).</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Set your status for a specific number of hours, then
+                        automatically transition to another status (or clear
+                        it).
+                    </p>
 
                     <ExampleIntegration
                         title="Available (Station) for 4 Hours → Clear"
                         description="Available from Station for 4 hours, then status resets."
-                        url={`${endpointUrl}?token=${token}&status=available - station&durationHours=4&nextStatus=reset`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=available - station&durationHours=4&nextStatus=reset`, "4h Available URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "available - station",
+                            durationHours: "4",
+                            nextStatus: "reset",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "available - station",
+                                    durationHours: "4",
+                                    nextStatus: "reset",
+                                }),
+                                "4h Available URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Delayed Response for 2 Hours → Available (Station)"
                         description="Delayed for 2 hours, then automatically switches to Available (Station)."
-                        url={`${endpointUrl}?token=${token}&status=delayed response&durationHours=2&nextStatus=available - station`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=delayed response&durationHours=2&nextStatus=available - station`, "2h Delayed → Available URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "delayed response",
+                            durationHours: "2",
+                            nextStatus: "available - station",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "delayed response",
+                                    durationHours: "2",
+                                    nextStatus: "available - station",
+                                }),
+                                "2h Delayed → Available URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="WFH for 8 Hours → Unavailable"
                         description="Working from home for 8 hours, then switches to Unavailable."
-                        url={`${endpointUrl}?token=${token}&status=WFH&durationHours=8&nextStatus=not available`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=WFH&durationHours=8&nextStatus=not available`, "8h WFH → Unavailable URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "WFH",
+                            durationHours: "8",
+                            nextStatus: "not available",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "WFH",
+                                    durationHours: "8",
+                                    nextStatus: "not available",
+                                }),
+                                "8h WFH → Unavailable URL copied!"
+                            )
+                        }
                     />
 
                     <ExampleIntegration
                         title="Unavailable for 12 Hours → Available (Station)"
                         description="Unavailable for 12 hours, then automatically available at station."
-                        url={`${endpointUrl}?token=${token}&status=not available&durationHours=12&nextStatus=available - station`}
-                        onCopy={() => copyToClipboard(`${endpointUrl}?token=${token}&status=not available&durationHours=12&nextStatus=available - station`, "12h Unavailable → Available URL copied!")}
+                        url={buildWebhookUrl(endpointUrl, token, {
+                            status: "not available",
+                            durationHours: "12",
+                            nextStatus: "available - station",
+                        })}
+                        onCopy={() =>
+                            copyToClipboard(
+                                buildWebhookUrl(endpointUrl, token, {
+                                    status: "not available",
+                                    durationHours: "12",
+                                    nextStatus: "available - station",
+                                }),
+                                "12h Unavailable → Available URL copied!"
+                            )
+                        }
                     />
 
                     {/* Reference */}
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mt-8">
                         <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                            <h3 className="font-medium text-sm">Parameter Reference</h3>
+                            <h3 className="font-medium text-sm">
+                                Parameter Reference
+                            </h3>
                         </div>
                         <div className="p-4 text-sm text-gray-600 dark:text-gray-400 space-y-3">
                             <div>
-                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">status <span className="text-red-500">*required</span></p>
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    status{" "}
+                                    <span className="text-red-500">
+                                        *required
+                                    </span>
+                                </p>
                                 <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><code>available - station</code></li>
-                                    <li><code>available - satellite</code></li>
-                                    <li><code>delayed response</code></li>
-                                    <li><code>WFH</code></li>
-                                    <li><code>not available</code></li>
+                                    <li>
+                                        <code>available - station</code>
+                                    </li>
+                                    <li>
+                                        <code>available - satellite</code>
+                                    </li>
+                                    <li>
+                                        <code>delayed response</code>
+                                    </li>
+                                    <li>
+                                        <code>WFH</code>
+                                    </li>
+                                    <li>
+                                        <code>not available</code>
+                                    </li>
                                 </ul>
                             </div>
                             <div>
-                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">durationHours <span className="text-gray-400">optional</span></p>
-                                <p>Number of hours the status lasts (e.g. <code>2</code>, <code>4.5</code>, <code>12</code>).</p>
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    durationHours{" "}
+                                    <span className="text-gray-400">
+                                        optional
+                                    </span>
+                                </p>
+                                <p>
+                                    Number of hours the status lasts (e.g.{" "}
+                                    <code>2</code>, <code>4.5</code>,{" "}
+                                    <code>12</code>). If set without{" "}
+                                    <code>nextStatus</code>, defaults to
+                                    clearing the status when the duration
+                                    expires.
+                                </p>
                             </div>
                             <div>
-                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">nextStatus <span className="text-gray-400">optional</span></p>
-                                <p>Status to transition to after the duration expires. Accepts all values from <code>status</code> plus:</p>
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    nextStatus{" "}
+                                    <span className="text-gray-400">
+                                        optional
+                                    </span>
+                                </p>
+                                <p>
+                                    Status to transition to after the duration
+                                    expires. Requires{" "}
+                                    <code>durationHours</code>. Accepts all
+                                    values from <code>status</code> plus:
+                                </p>
                                 <ul className="list-disc pl-5 mt-1">
-                                    <li><code>reset</code> — clears the status entirely</li>
+                                    <li>
+                                        <code>reset</code> — clears the status
+                                        entirely
+                                    </li>
                                 </ul>
+                            </div>
+                            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    HTTP Methods
+                                </p>
+                                <p>
+                                    Both <code>GET</code> and <code>POST</code>{" "}
+                                    are supported. For <code>POST</code>, you
+                                    can send parameters as JSON in the request
+                                    body or as query parameters.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -258,11 +513,31 @@ export default function ShortcutsPage() {
 }
 
 const STATUS_OPTIONS = [
-    { value: "available - station", label: "Available (Station)", color: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700" },
-    { value: "available - satellite", label: "Available (Satellite)", color: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700" },
-    { value: "delayed response", label: "Delayed Response", color: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700" },
-    { value: "WFH", label: "Working From Home", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700" },
-    { value: "not available", label: "Unavailable", color: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600" },
+    {
+        value: "available - station",
+        label: "Available (Station)",
+        color: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700",
+    },
+    {
+        value: "available - satellite",
+        label: "Available (Satellite)",
+        color: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700",
+    },
+    {
+        value: "delayed response",
+        label: "Delayed Response",
+        color: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",
+    },
+    {
+        value: "WFH",
+        label: "Working From Home",
+        color: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+    },
+    {
+        value: "not available",
+        label: "Unavailable",
+        color: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600",
+    },
 ] as const;
 
 const NEXT_STATUS_OPTIONS = [
@@ -275,24 +550,31 @@ const NEXT_STATUS_OPTIONS = [
     { value: "not available", label: "Unavailable" },
 ] as const;
 
-function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, endpointUrl: string, copyToClipboard: (text: string, message: string) => void }) {
+function UrlBuilder({
+    token,
+    endpointUrl,
+    copyToClipboard,
+}: {
+    token: string;
+    endpointUrl: string;
+    copyToClipboard: (text: string, message: string) => void;
+}) {
     const [selectedStatus, setSelectedStatus] = useState("");
     const [durationHours, setDurationHours] = useState("");
     const [nextStatus, setNextStatus] = useState("");
+    const [isTesting, setIsTesting] = useState(false);
 
-    // Build the URL dynamically
+    // Build the URL dynamically using the shared helper
     const buildUrl = () => {
         if (!selectedStatus) return null;
-        const params = new URLSearchParams();
-        params.set("token", token);
-        params.set("status", selectedStatus);
-        if (durationHours && parseFloat(durationHours) > 0) {
-            params.set("durationHours", durationHours);
-        }
-        if (nextStatus) {
-            params.set("nextStatus", nextStatus);
-        }
-        return `${endpointUrl}?${params.toString()}`;
+        return buildWebhookUrl(endpointUrl, token, {
+            status: selectedStatus,
+            durationHours:
+                durationHours && parseFloat(durationHours) > 0
+                    ? durationHours
+                    : undefined,
+            nextStatus: nextStatus || undefined,
+        });
     };
 
     const generatedUrl = buildUrl();
@@ -300,23 +582,52 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
     // Build a human-readable summary
     const buildSummary = () => {
         if (!selectedStatus) return null;
-        const statusLabel = STATUS_OPTIONS.find(s => s.value === selectedStatus)?.label || selectedStatus;
+        const statusLabel =
+            STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label ||
+            selectedStatus;
         let summary = `Set status to "${statusLabel}"`;
         if (durationHours && parseFloat(durationHours) > 0) {
-            summary += ` for ${durationHours} hour${parseFloat(durationHours) !== 1 ? 's' : ''}`;
+            summary += ` for ${durationHours} hour${parseFloat(durationHours) !== 1 ? "s" : ""}`;
         }
         if (nextStatus) {
-            const nextLabel = NEXT_STATUS_OPTIONS.find(s => s.value === nextStatus)?.label || nextStatus;
+            const nextLabel =
+                NEXT_STATUS_OPTIONS.find((s) => s.value === nextStatus)
+                    ?.label || nextStatus;
             summary += `, then → ${nextLabel}`;
         }
         return summary;
+    };
+
+    const handleTest = async () => {
+        if (!generatedUrl) return;
+        setIsTesting(true);
+        await testWebhookUrl(generatedUrl);
+        setIsTesting(false);
     };
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mt-6">
             <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold mb-1 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    <svg
+                        className="w-5 h-5 text-purple-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                        />
+                    </svg>
                     URL Builder
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -328,13 +639,16 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
                 {/* Step 1: Status */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        1. Choose status <span className="text-red-500">*</span>
+                        1. Choose status{" "}
+                        <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         {STATUS_OPTIONS.map((option) => (
                             <button
                                 key={option.value}
-                                onClick={() => setSelectedStatus(option.value)}
+                                onClick={() =>
+                                    setSelectedStatus(option.value)
+                                }
                                 className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all text-left ${selectedStatus === option.value
                                         ? `${option.color} ring-2 ring-offset-1 ring-blue-500 dark:ring-offset-gray-800 shadow-sm`
                                         : `${option.color} opacity-70 hover:opacity-100`
@@ -349,7 +663,10 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
                 {/* Step 2: Duration (optional) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        2. Duration in hours <span className="text-gray-400 font-normal">(optional)</span>
+                        2. Duration in hours{" "}
+                        <span className="text-gray-400 font-normal">
+                            (optional)
+                        </span>
                     </label>
                     <div className="flex gap-2 items-center">
                         <input
@@ -361,16 +678,20 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
                             step="0.5"
                             className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                         />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">hours</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                            hours
+                        </span>
                         {/* Quick duration buttons */}
                         <div className="flex gap-1.5 ml-2">
                             {[1, 2, 4, 8, 12, 24].map((h) => (
                                 <button
                                     key={h}
-                                    onClick={() => setDurationHours(String(h))}
+                                    onClick={() =>
+                                        setDurationHours(String(h))
+                                    }
                                     className={`px-2 py-1 rounded text-xs transition-colors ${durationHours === String(h)
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            ? "bg-blue-500 text-white"
+                                            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                                         }`}
                                 >
                                     {h}h
@@ -383,7 +704,10 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
                 {/* Step 3: Next Status (optional) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        3. After duration, switch to <span className="text-gray-400 font-normal">(optional)</span>
+                        3. After duration, switch to{" "}
+                        <span className="text-gray-400 font-normal">
+                            (optional)
+                        </span>
                     </label>
                     <select
                         value={nextStatus}
@@ -402,24 +726,46 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
                 {generatedUrl ? (
                     <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
                         <div className="text-sm text-gray-600 dark:text-gray-400">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Summary:</span> {buildSummary()}
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                Summary:
+                            </span>{" "}
+                            {buildSummary()}
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs overflow-x-auto whitespace-nowrap">
                                 {generatedUrl}
                             </div>
-                            <button
-                                onClick={() => copyToClipboard(generatedUrl, "Custom URL copied!")}
-                                className="px-5 py-2.5 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
-                            >
-                                <Copy className="w-4 h-4" />
-                                Copy URL
-                            </button>
+                            <div className="flex gap-2 shrink-0">
+                                <button
+                                    onClick={() =>
+                                        copyToClipboard(
+                                            generatedUrl,
+                                            "Custom URL copied!"
+                                        )
+                                    }
+                                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    Copy
+                                </button>
+                                <button
+                                    onClick={handleTest}
+                                    disabled={isTesting}
+                                    className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <Play
+                                        className={`w-4 h-4 ${isTesting ? "animate-pulse" : ""}`}
+                                    />
+                                    Test
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ) : (
                     <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-sm text-gray-400 dark:text-gray-500 italic">Select a status above to generate your URL.</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                            Select a status above to generate your URL.
+                        </p>
                     </div>
                 )}
             </div>
@@ -427,28 +773,64 @@ function UrlBuilder({ token, endpointUrl, copyToClipboard }: { token: string, en
     );
 }
 
-function ExampleIntegration({ title, description, url, onCopy }: { title: string, description?: string, url: string, onCopy: () => void }) {
+function ExampleIntegration({
+    title,
+    description,
+    url,
+    onCopy,
+}: {
+    title: string;
+    description?: string;
+    url: string;
+    onCopy: () => void;
+}) {
+    const [isTesting, setIsTesting] = useState(false);
+
+    const handleTest = async () => {
+        setIsTesting(true);
+        await testWebhookUrl(url);
+        setIsTesting(false);
+    };
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center gap-3">
                 <div className="min-w-0">
                     <h3 className="font-medium text-sm">{title}</h3>
-                    {description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>}
+                    {description && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {description}
+                        </p>
+                    )}
                 </div>
-                <span className="text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded uppercase shrink-0">POST</span>
+                <span className="text-xs font-semibold px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded uppercase shrink-0">
+                    GET / POST
+                </span>
             </div>
             <div className="p-4">
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 font-mono text-xs overflow-x-auto whitespace-nowrap">
                         {url}
                     </div>
-                    <button
-                        onClick={onCopy}
-                        className="px-4 py-2 shrink-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                        <Copy className="w-4 h-4" />
-                        Copy URL
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                        <button
+                            onClick={onCopy}
+                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Copy className="w-4 h-4" />
+                            Copy
+                        </button>
+                        <button
+                            onClick={handleTest}
+                            disabled={isTesting}
+                            className="px-4 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/40 disabled:opacity-50 text-green-700 dark:text-green-300 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Play
+                                className={`w-4 h-4 ${isTesting ? "animate-pulse" : ""}`}
+                            />
+                            Test
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
