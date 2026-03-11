@@ -32,7 +32,7 @@ export function EquipmentStockTab() {
 
   return (
     <div className="space-y-2">
-      {itemsByCategory.map((group) => {
+      {[...itemsByCategory].sort((a, b) => a.category.name.localeCompare(b.category.name)).map((group) => {
         const lowStockCount = group.items.filter(item => item.isLowStock).length;
         
         return (

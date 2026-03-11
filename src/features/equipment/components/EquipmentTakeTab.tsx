@@ -25,6 +25,7 @@ import { Search, Minus, Plus, X, AlertTriangle, Package, ChevronRight } from "lu
 interface ItemVariant {
   _id: Id<"equipmentItems">;
   size?: string;
+  label: string; // Display label: size for normal items, item name (+size) for collapsed categories
   currentStock: number;
   unit?: string;
   isLowStock: boolean;
@@ -36,7 +37,8 @@ interface GroupedItem {
   variants: ItemVariant[];
   totalStock: number;
   hasLowStock: boolean;
-  hasSizes: boolean;
+  hasSizes: boolean; // true if variants have meaningful labels to pick from
+  isCollapsedCategory: boolean; // true if grouped by category (collapseItems)
 }
 
 export function EquipmentTakeTab() {
@@ -51,66 +53,85 @@ export function EquipmentTakeTab() {
   const items = useQuery(api.equipment.getItems);
   const takeItem = useMutation(api.equipment.takeItem);
 
-  // Group items by name - items with same name but different sizes become variants
+  // Group items by name (or by category for collapsed categories)
   const groupedItems = useMemo(() => {
     if (!items) return [];
     
     const groups = new Map<string, GroupedItem>();
     
     for (const item of items) {
-      const key = item.name;
+      // For collapsed categories, group by categoryId; otherwise group by item name
+      const isCollapsed = item.categoryCollapseItems;
+      const key = isCollapsed ? `cat:${item.categoryId}` : item.name;
       
       if (!groups.has(key)) {
         groups.set(key, {
-          name: item.name,
-          categoryName: item.categoryName,
+          name: isCollapsed ? item.categoryName : item.name,
+          categoryName: isCollapsed ? undefined : item.categoryName,
           variants: [],
           totalStock: 0,
           hasLowStock: false,
           hasSizes: false,
+          isCollapsedCategory: isCollapsed,
         });
       }
       
       const group = groups.get(key)!;
+      // For collapsed categories, label = item name (+ size); for normal, label = size
+      const label = isCollapsed
+        ? (item.size ? `${item.name} (${item.size})` : item.name)
+        : (item.size || "");
+      
       group.variants.push({
         _id: item._id,
         size: item.size,
+        label,
         currentStock: item.currentStock,
         unit: item.unit,
         isLowStock: item.isLowStock,
       });
       group.totalStock += item.currentStock;
       if (item.isLowStock) group.hasLowStock = true;
-      if (item.size) group.hasSizes = true;
+      // For collapsed categories, always show picker if >1 variant
+      // For normal items, show picker if any variant has a size
+      if (isCollapsed) {
+        if (group.variants.length > 1) group.hasSizes = true;
+      } else {
+        if (item.size) group.hasSizes = true;
+      }
     }
     
-    // Sort variants by size (try numeric first, then alphabetic)
+    // Sort variants
     for (const group of groups.values()) {
-      group.variants.sort((a, b) => {
-        if (!a.size && !b.size) return 0;
-        if (!a.size) return -1;
-        if (!b.size) return 1;
-        
-        // Try numeric comparison
-        const numA = parseFloat(a.size);
-        const numB = parseFloat(b.size);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB;
-        }
-        
-        // Size order for common sizes
-        const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
-        const indexA = sizeOrder.indexOf(a.size.toUpperCase());
-        const indexB = sizeOrder.indexOf(b.size.toUpperCase());
-        if (indexA !== -1 && indexB !== -1) {
-          return indexA - indexB;
-        }
-        
-        return a.size.localeCompare(b.size);
-      });
+      if (group.isCollapsedCategory) {
+        // For collapsed categories, sort alphabetically by label
+        group.variants.sort((a, b) => a.label.localeCompare(b.label));
+      } else {
+        // For normal groups, sort by size
+        group.variants.sort((a, b) => {
+          if (!a.size && !b.size) return 0;
+          if (!a.size) return -1;
+          if (!b.size) return 1;
+          
+          const numA = parseFloat(a.size);
+          const numB = parseFloat(b.size);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
+          const indexA = sizeOrder.indexOf(a.size.toUpperCase());
+          const indexB = sizeOrder.indexOf(b.size.toUpperCase());
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          
+          return a.size.localeCompare(b.size);
+        });
+      }
+      // After all variants are added, recalculate hasSizes for collapsed categories
+      if (group.isCollapsedCategory) {
+        group.hasSizes = group.variants.length > 1;
+      }
     }
     
-    return Array.from(groups.values());
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [items]);
 
   // Filter groups based on search
@@ -121,7 +142,7 @@ export function EquipmentTakeTab() {
     return groupedItems.filter(group => 
       group.name.toLowerCase().includes(query) ||
       (group.categoryName && group.categoryName.toLowerCase().includes(query)) ||
-      group.variants.some(v => v.size && v.size.toLowerCase().includes(query))
+      group.variants.some(v => v.label.toLowerCase().includes(query))
     );
   }, [groupedItems, searchQuery]);
 
@@ -187,15 +208,17 @@ export function EquipmentTakeTab() {
 
   const unitLabel = selectedVariant?.unit || "units";
 
-  // Size selection content
+  // Size/item selection content
   const sizeSelectionContent = selectedGroup && !selectedVariant && selectedGroup.hasSizes && (
     <div className="space-y-4 py-4">
       <div className="text-center mb-4">
         <h3 className="text-lg font-semibold">{selectedGroup.name}</h3>
-        <p className="text-sm text-muted-foreground">Select a size</p>
+        <p className="text-sm text-muted-foreground">
+          {selectedGroup.isCollapsedCategory ? "Select an item" : "Select a size"}
+        </p>
       </div>
       
-      <div className="grid grid-cols-3 gap-2 px-4">
+      <div className={`grid gap-2 px-4 ${selectedGroup.isCollapsedCategory ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {selectedGroup.variants.map((variant) => (
           <button
             key={variant._id}
@@ -207,7 +230,9 @@ export function EquipmentTakeTab() {
                 : "bg-card border-border hover:border-red-500/50 hover:bg-red-500/5 active:bg-red-500/10"
             }`}
           >
-            <span className="font-semibold text-lg">{variant.size || "—"}</span>
+            <span className={`font-semibold ${selectedGroup.isCollapsedCategory ? 'text-sm' : 'text-lg'}`}>
+              {variant.label || "—"}
+            </span>
             <p className={`text-xs mt-1 ${variant.isLowStock ? "text-destructive" : "text-muted-foreground"}`}>
               {variant.currentStock} left
             </p>
@@ -223,8 +248,8 @@ export function EquipmentTakeTab() {
       {/* Item info */}
       <div className="text-center">
         <h3 className="text-lg font-semibold">
-          {selectedGroup?.name}
-          {selectedVariant.size && (
+          {selectedGroup?.isCollapsedCategory ? selectedVariant.label : selectedGroup?.name}
+          {!selectedGroup?.isCollapsedCategory && selectedVariant.size && (
             <span className="text-muted-foreground ml-1">({selectedVariant.size})</span>
           )}
         </h3>
@@ -395,7 +420,7 @@ export function EquipmentTakeTab() {
                   <span className="font-medium text-foreground">{group.name}</span>
                   {group.hasSizes && (
                     <Badge variant="secondary" className="text-xs">
-                      {group.variants.length} sizes
+                      {group.variants.length} {group.isCollapsedCategory ? 'items' : 'sizes'}
                     </Badge>
                   )}
                   {group.hasLowStock && (

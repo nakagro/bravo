@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.70] - 2026-03-12
+- Equipment Module: QoL improvements
+
 ## [1.0.69] - 2026-03-07
 - Availability - Messages Tab: Added a Quick Messages button to the Messages tab. Users can save 5 preset messages to quickly post in the messages tab.
 - Improvements to the URL webhook feature backend and logic.

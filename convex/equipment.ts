@@ -18,6 +18,7 @@ export const getCategories = query({
     description: v.optional(v.string()),
     order: v.number(),
     isActive: v.boolean(),
+    collapseItems: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -43,6 +44,7 @@ export const getAllCategories = query({
     description: v.optional(v.string()),
     order: v.number(),
     isActive: v.boolean(),
+    collapseItems: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -60,6 +62,7 @@ export const createCategory = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
+    collapseItems: v.optional(v.boolean()),
   },
   returns: v.id("equipmentCategories"),
   handler: async (ctx, args) => {
@@ -78,6 +81,7 @@ export const createCategory = mutation({
       description: args.description,
       order: maxOrder + 1,
       isActive: true,
+      collapseItems: args.collapseItems,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
@@ -95,6 +99,7 @@ export const updateCategory = mutation({
     description: v.optional(v.string()),
     order: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    collapseItems: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -113,6 +118,7 @@ export const updateCategory = mutation({
       ...(args.description !== undefined && { description: args.description }),
       ...(args.order !== undefined && { order: args.order }),
       ...(args.isActive !== undefined && { isActive: args.isActive }),
+      ...(args.collapseItems !== undefined && { collapseItems: args.collapseItems }),
       updatedAt: Date.now(),
     });
 
@@ -164,6 +170,7 @@ export const getItems = query({
     name: v.string(),
     categoryId: v.id("equipmentCategories"),
     categoryName: v.string(),
+    categoryCollapseItems: v.boolean(),
     description: v.optional(v.string()),
     size: v.optional(v.string()),
     currentStock: v.number(),
@@ -191,6 +198,7 @@ export const getItems = query({
         name: item.name,
         categoryId: item.categoryId,
         categoryName: category?.name ?? "Unknown",
+        categoryCollapseItems: category?.collapseItems ?? false,
         description: item.description,
         size: item.size,
         currentStock: item.currentStock,

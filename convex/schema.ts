@@ -842,6 +842,9 @@ const applicationTables = {
     description: v.optional(v.string()),
     order: v.number(), // Display order
     isActive: v.boolean(),
+    // When true, all items in this category collapse into a single row in Take/Replenish views
+    // (grouped by category name instead of item name). Useful for misc categories with diverse items.
+    collapseItems: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
