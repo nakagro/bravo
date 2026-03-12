@@ -22,11 +22,12 @@ import { Pencil, Trash2, Plus, X, Check, MessageSquareText, Send } from "lucide-
 
 interface MessagePresetManagerProps {
     onClose: () => void;
+    onSelectPreset?: (message: string) => void;
 }
 
 const MAX_PRESETS = 5;
 
-const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose }) => {
+const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose, onSelectPreset }) => {
     const isMobile = useIsMobile();
     const presets = useQuery(api.messagePresets.getPresets) || [];
     const createPreset = useMutation(api.messagePresets.createPreset);
@@ -85,6 +86,12 @@ const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose }) 
     };
 
     const handleSendPreset = async (message: string) => {
+        if (onSelectPreset) {
+            onSelectPreset(message);
+            onClose();
+            return;
+        }
+
         try {
             await postMessage({ message });
             onClose();
@@ -121,7 +128,7 @@ const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose }) 
     const sendModeContent = (
         <div className="space-y-1.5">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Tap a message to post it immediately.
+                {onSelectPreset ? "Tap a message to insert it into this note." : "Tap a message to post it immediately."}
             </p>
             {presets.map((preset) => (
                 <button
@@ -270,7 +277,7 @@ const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose }) 
                     <DrawerHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4">
                         <div className="flex items-center justify-between">
                             <DrawerTitle className="text-xl font-bold">
-                                Quick Messages
+                                {onSelectPreset ? "Quick Notes" : "Quick Messages"}
                             </DrawerTitle>
                             {headerRight}
                         </div>
@@ -293,7 +300,7 @@ const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose }) 
                 <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="text-xl font-bold">
-                            Quick Messages
+                            {onSelectPreset ? "Quick Notes" : "Quick Messages"}
                         </DialogTitle>
                         {headerRight}
                     </div>

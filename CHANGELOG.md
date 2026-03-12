@@ -2,6 +2,7 @@
 
 ## [1.0.70] - 2026-03-12
 - Equipment Module: QoL improvements
+- Availability - Deployment Tab: Added a Quick Messages button also in the deployment tab next to the notes text field for easily using pre-set messages.
 
 ## [1.0.69] - 2026-03-07
 - Availability - Messages Tab: Added a Quick Messages button to the Messages tab. Users can save 5 preset messages to quickly post in the messages tab.

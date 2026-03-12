@@ -3,8 +3,9 @@ import { Button } from "../../../../components/ui/button";
 import { Toggle } from "../../../../components/ui/toggle";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { XIcon, HomeIcon, MapPinIcon, GlobeIcon } from 'lucide-react';
+import { XIcon, HomeIcon, MapPinIcon, GlobeIcon, Zap } from 'lucide-react';
 import { cn } from "../../../../lib/utils";
+import MessagePresetManager from "../MessagePresetManager";
 
 interface PersonalViewProps {
   deploymentDates: Date[];
@@ -164,7 +165,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({
 
                   {/* Message input field */}
                   <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <Label htmlFor={`message-${dateKey}`} className="text-xs text-gray-600 dark:text-gray-400 mb-1">Add a note (optional):</Label>
+                    <Label htmlFor={`message-${dateKey}`} className="text-xs text-gray-600 dark:text-gray-400 mb-1">Add a note:</Label>
                     <MessageInput
                       date={date}
                       initialValue={availability.message || ""}
@@ -201,6 +202,7 @@ interface MessageInputProps {
 const MessageInput: React.FC<MessageInputProps> = ({ date, initialValue, availability, handleDeploymentAvailabilityChange, id }) => {
   // Local state for the input value
   const [inputValue, setInputValue] = useState(initialValue);
+  const [showPresetManager, setShowPresetManager] = useState(false);
   // Ref to store the timeout ID
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -240,14 +242,54 @@ const MessageInput: React.FC<MessageInputProps> = ({ date, initialValue, availab
     };
   }, []);
 
+  const persistMessage = (message: string) => {
+    handleDeploymentAvailabilityChange(
+      date,
+      availability.notAvailable ? 'notAvailable' : 'local',
+      availability.notAvailable ? true : availability.local,
+      message
+    );
+  };
+
+  const handlePresetSelect = (message: string) => {
+    setInputValue(message);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    persistMessage(message);
+  };
+
   return (
-    <Input
-      type="text"
-      id={id}
-      className="w-full text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600"
-      value={inputValue}
-      onChange={handleInputChange}
-    />
+    <>
+      <div className="flex gap-2">
+        <Input
+          type="text"
+          id={id}
+          className="w-full text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600"
+          value={inputValue}
+          onChange={handleInputChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="flex-shrink-0"
+          title="Quick messages"
+          onClick={() => setShowPresetManager(true)}
+        >
+          <Zap className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {showPresetManager && (
+        <MessagePresetManager
+          onClose={() => setShowPresetManager(false)}
+          onSelectPreset={handlePresetSelect}
+        />
+      )}
+    </>
   );
 };
 
