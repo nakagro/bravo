@@ -38,7 +38,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
     }
   };
 
-  // Group users by their status
+  // Group users by their status (merge 'at station' variants into base groups but track which are physically at station)
   const groupedByStatus: Record<string, any[]> = {
     'available - station': [],
     'available - satellite': [],
@@ -48,15 +48,27 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
   };
   
   usersWithStatus.forEach(user => {
-    const status = user.currentStatus || 'not available';
+    let status = user.currentStatus || 'not available';
+    // Merge 'at station' variants into their base groups but preserve the original status for indicator
+    if (status === 'available - at station') {
+      status = 'available - station';
+    } else if (status === 'WFH - at station') {
+      status = 'WFH';
+    }
     if (groupedByStatus[status]) {
       groupedByStatus[status].push(user);
     }
   });
   
-  // Sort users alphabetically by first name within each status group
+  // Sort users: 'at station' users first, then alphabetically by first name
   Object.keys(groupedByStatus).forEach(status => {
     groupedByStatus[status].sort((a, b) => {
+      // 'At station' users come first (both available and WFH variants)
+      const aAtStation = a.currentStatus === 'available - at station' || a.currentStatus === 'WFH - at station';
+      const bAtStation = b.currentStatus === 'available - at station' || b.currentStatus === 'WFH - at station';
+      if (aAtStation && !bAtStation) return -1;
+      if (!aAtStation && bAtStation) return 1;
+      // Then sort alphabetically
       const nameA = a.firstName || a.name || '';
       const nameB = b.firstName || b.name || '';
       return nameA.localeCompare(nameB);
@@ -96,6 +108,9 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
       borderColor: 'border-gray-400 dark:border-gray-600'
     }
   };
+  
+  // Check if user is physically at station (either available or WFH variant)
+  const isAtStation = (user: any) => user.currentStatus === 'available - at station' || user.currentStatus === 'WFH - at station';
 
   return (
     <>
@@ -129,63 +144,165 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
           </h3>
         </div>
         
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {usersWithStatus.length > 0 ? (
-            Object.entries(groupedByStatus).map(([status, users]) => {
-              if (users.length === 0) return null;
-              
-              const info = statusInfo[status];
-              
-              return (
-                <div key={status} className={`${info.bgColor}`}>
-                  {/* Status Header */}
-                  <div className={`px-3 py-1 border-l-4 border-b-2 ${info.borderColor}`}>
-                    <h4 className={`font-semibold text-base ${info.textColor}`}>
-                      {info.label}
-                      <span className="ml-2 text-sm font-normal opacity-75">
-                        ({users.length})
-                      </span>
-                    </h4>
-                    {/* Skill counters temporarily hidden - will be re-enabled later */}
-                    {/* {(status === 'available - station' || status === 'available - satellite') && (
-                      <SkillCounters userIds={users.map(u => u._id)} textColor={info.textColor} />
-                    )} */}
-                  </div>
-                  
-                  {/* Users in this status */}
-                  <div className="px-3 pb-1 space-y-0.5">
-                    {users.map((user) => (
-                      <div key={user._id} className="border-l-4 border-transparent py-0.5">
-                        <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                          <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
-                            {formatUserName(user)}
-                            {user.isBirthday && (
-                              <span aria-label="Birthday" title="Birthday" className="text-base">
-                                🎂
+        {usersWithStatus.length > 0 ? (
+          <>
+            {/* Station & Satellite - 2 columns on md+ screens */}
+            {(groupedByStatus['available - station'].length > 0 || groupedByStatus['available - satellite'].length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-200 dark:border-gray-700">
+                {/* Available - Station */}
+                {groupedByStatus['available - station'].length > 0 && (
+                  <div className={`${statusInfo['available - station'].bgColor} ${groupedByStatus['available - satellite'].length > 0 ? 'md:border-r md:border-gray-200 md:dark:border-gray-700' : ''}`}>
+                    <div className={`px-3 py-1 border-l-4 border-b-2 ${statusInfo['available - station'].borderColor}`}>
+                      <h4 className={`font-semibold text-base ${statusInfo['available - station'].textColor}`}>
+                        {statusInfo['available - station'].label}
+                        <span className="ml-2 text-sm font-normal opacity-75">
+                          ({groupedByStatus['available - station'].length})
+                        </span>
+                      </h4>
+                    </div>
+                    <div className="px-3 pb-1 space-y-0.5">
+                      {groupedByStatus['available - station'].map((user) => (
+                        <div key={user._id} className="border-l-4 border-transparent py-0.5">
+                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                              {isAtStation(user) && (
+                                <svg 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0" 
+                                  viewBox="0 0 24 24" 
+                                  fill="currentColor"
+                                  aria-label="At Station"
+                                >
+                                  <title>At Station</title>
+                                  <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                              {formatUserName(user)}
+                              {user.isBirthday && (
+                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                  🎂
+                                </span>
+                              )}
+                            </span>
+                            {user.statusUpdatedAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {getRelativeTimeCompact(user.statusUpdatedAt)}
                               </span>
                             )}
-                          </span>
-                          {user.statusUpdatedAt && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {getRelativeTimeCompact(user.statusUpdatedAt)}
-                            </span>
-                          )}
+                          </div>
+                          <div className="mt-0.5">
+                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                          </div>
                         </div>
-                        <div className="mt-0.5">
-                          <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              No members found
+                )}
+                
+                {/* Available - Satellite */}
+                {groupedByStatus['available - satellite'].length > 0 && (
+                  <div className={`${statusInfo['available - satellite'].bgColor}`}>
+                    <div className={`px-3 py-1 border-l-4 border-b-2 ${statusInfo['available - satellite'].borderColor}`}>
+                      <h4 className={`font-semibold text-base ${statusInfo['available - satellite'].textColor}`}>
+                        {statusInfo['available - satellite'].label}
+                        <span className="ml-2 text-sm font-normal opacity-75">
+                          ({groupedByStatus['available - satellite'].length})
+                        </span>
+                      </h4>
+                    </div>
+                    <div className="px-3 pb-1 space-y-0.5">
+                      {groupedByStatus['available - satellite'].map((user) => (
+                        <div key={user._id} className="border-l-4 border-transparent py-0.5">
+                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                              {formatUserName(user)}
+                              {user.isBirthday && (
+                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                  🎂
+                                </span>
+                              )}
+                            </span>
+                            {user.statusUpdatedAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {getRelativeTimeCompact(user.statusUpdatedAt)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5">
+                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Other statuses - full width, stacked */}
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {(['delayed response', 'WFH', 'not available'] as const).map((status) => {
+                const users = groupedByStatus[status];
+                if (users.length === 0) return null;
+                
+                const info = statusInfo[status];
+                
+                return (
+                  <div key={status} className={`${info.bgColor}`}>
+                    <div className={`px-3 py-1 border-l-4 border-b-2 ${info.borderColor}`}>
+                      <h4 className={`font-semibold text-base ${info.textColor}`}>
+                        {info.label}
+                        <span className="ml-2 text-sm font-normal opacity-75">
+                          ({users.length})
+                        </span>
+                      </h4>
+                    </div>
+                    <div className="px-3 pb-1 space-y-0.5">
+                      {users.map((user) => (
+                        <div key={user._id} className="border-l-4 border-transparent py-0.5">
+                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                              {isAtStation(user) && (
+                                <svg 
+                                  xmlns="http://www.w3.org/2000/svg" 
+                                  className={`h-3.5 w-3.5 flex-shrink-0 ${status === 'WFH' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`}
+                                  viewBox="0 0 24 24" 
+                                  fill="currentColor"
+                                  aria-label="At Station"
+                                >
+                                  <title>At Station</title>
+                                  <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                              {formatUserName(user)}
+                              {user.isBirthday && (
+                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                  🎂
+                                </span>
+                              )}
+                            </span>
+                            {user.statusUpdatedAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {getRelativeTimeCompact(user.statusUpdatedAt)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5">
+                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            No members found
+          </div>
+        )}
       </div>
     </>
   );

@@ -11,6 +11,20 @@ export const MAIN_STATUS_OPTIONS = [
     buttonHoverColorClass: 'hover:bg-green-50 dark:hover:bg-green-900/20',
     buttonActiveColorClass: 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600',
     buttonBorderColorClass: 'border-green-300 dark:border-green-800/50',
+    hasAtStationVariant: true,
+  },
+  { 
+    value: 'available - at station', 
+    label: 'Available - At Station',
+    shortLabel: 'Available - Station',
+    icon: 'M5 13l4 4L19 7',
+    backgroundColorClass: 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 dark:border-green-600',
+    textColorClass: 'text-green-800 dark:text-green-300',
+    buttonColorClass: 'text-green-700 dark:text-green-400',
+    buttonHoverColorClass: 'hover:bg-green-50 dark:hover:bg-green-900/20',
+    buttonActiveColorClass: 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600',
+    buttonBorderColorClass: 'border-green-300 dark:border-green-800/50',
+    hidden: true,
   },
   { 
     value: 'available - satellite', 
@@ -47,6 +61,21 @@ export const MAIN_STATUS_OPTIONS = [
     buttonHoverColorClass: 'hover:bg-blue-50 dark:hover:bg-blue-900/20',
     buttonActiveColorClass: 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 dark:border-blue-600',
     buttonBorderColorClass: 'border-blue-300 dark:border-blue-800/50',
+    hasAtStationVariant: true,
+    atStationValue: 'WFH - at station',
+  },
+  { 
+    value: 'WFH - at station', 
+    label: 'WFH - At Station',
+    shortLabel: 'WFH',
+    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    backgroundColorClass: 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-600',
+    textColorClass: 'text-blue-800 dark:text-blue-300',
+    buttonColorClass: 'text-blue-700 dark:text-blue-400',
+    buttonHoverColorClass: 'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+    buttonActiveColorClass: 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 dark:border-blue-600',
+    buttonBorderColorClass: 'border-blue-300 dark:border-blue-800/50',
+    hidden: true,
   },
   { 
     value: 'not available', 
@@ -69,6 +98,11 @@ export const NEXT_STATUS_OPTIONS = [
     color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
   },
   { 
+    value: 'available - at station', 
+    label: 'Available - At Station', 
+    color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+  },
+  { 
     value: 'available - satellite', 
     label: 'Available - Satellite', 
     color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
@@ -81,6 +115,11 @@ export const NEXT_STATUS_OPTIONS = [
   { 
     value: 'WFH', 
     label: 'WFH', 
+    color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+  },
+  { 
+    value: 'WFH - at station', 
+    label: 'WFH - At Station', 
     color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
   },
   { 

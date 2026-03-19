@@ -441,22 +441,74 @@ const YouTab: React.FC<YouTabProps> = ({
         <div className="mb-4 p-3 bg-white dark:bg-gray-800 shadow-sm rounded">
           <h3 className="text-lg font-medium mb-3">Update Your Status</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {mainStatusOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleStatusWithDuration(option.value)}
-                className={`flex items-center justify-center ${
-                  effectiveUserStatus?.currentStatus === option.value
-                    ? `${option.buttonActiveColorClass} shadow-md`
-                    : `bg-white dark:bg-gray-800 ${option.buttonHoverColorClass} ${option.buttonColorClass} border ${option.buttonBorderColorClass} hover:shadow-md dark:hover:shadow-none`
-                } px-4 py-3 rounded-lg transition-all`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={option.icon} />
-                </svg>
-                {option.shortLabel}
-              </button>
-            ))}
+            {mainStatusOptions.filter((o) => !(o as any).hidden).map((option) => {
+              const hasAtStationVariant = (option as any).hasAtStationVariant;
+              // Determine the "at station" value for this option
+              const atStationValue = (option as any).atStationValue || 
+                (option.value === 'available - station' ? 'available - at station' : null);
+              const isBaseActive = effectiveUserStatus?.currentStatus === option.value;
+              const isAtStationActive = atStationValue && effectiveUserStatus?.currentStatus === atStationValue;
+              const isEitherActive = isBaseActive || isAtStationActive;
+
+              if (hasAtStationVariant && atStationValue) {
+                return (
+                  <div
+                    key={option.value}
+                    className={`flex rounded-lg overflow-hidden transition-all ${
+                      isEitherActive
+                        ? `${option.buttonActiveColorClass} shadow-md`
+                        : `bg-white dark:bg-gray-800 border ${option.buttonBorderColorClass}`
+                    }`}
+                  >
+                    <button
+                      onClick={() => handleStatusWithDuration(option.value)}
+                      title={`${option.label} (responding from home)`}
+                      className={`flex flex-1 items-center justify-center ${
+                        isEitherActive
+                          ? ''
+                          : `${option.buttonHoverColorClass} ${option.buttonColorClass} hover:shadow-md dark:hover:shadow-none`
+                      } pl-10 pr-4 py-3 transition-all`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={option.icon} />
+                      </svg>
+                      {option.shortLabel}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleStatusWithDuration(atStationValue); }}
+                      title={`${option.shortLabel} - At Station (physically at station)`}
+                      className={`flex items-center justify-center px-4 border-l transition-all ${
+                        isEitherActive
+                          ? `${isAtStationActive ? 'opacity-100' : 'opacity-50'} ${option.buttonBorderColorClass}`
+                          : `${option.buttonBorderColorClass} ${option.buttonHoverColorClass} ${option.buttonColorClass}`
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isAtStationActive ? 'fill-current' : ''}`} viewBox="0 0 24 24" stroke="currentColor" fill={isAtStationActive ? 'currentColor' : 'none'}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isAtStationActive ? 0 : 2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isAtStationActive ? 0 : 2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleStatusWithDuration(option.value)}
+                  className={`flex items-center justify-center ${
+                    effectiveUserStatus?.currentStatus === option.value
+                      ? `${option.buttonActiveColorClass} shadow-md`
+                      : `bg-white dark:bg-gray-800 ${option.buttonHoverColorClass} ${option.buttonColorClass} border ${option.buttonBorderColorClass} hover:shadow-md dark:hover:shadow-none`
+                  } px-4 py-3 rounded-lg transition-all`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={option.icon} />
+                  </svg>
+                  {option.shortLabel}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

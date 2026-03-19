@@ -5,10 +5,12 @@ export const updateUserStatus = mutation({
   args: {
     status: v.union(
       v.literal("available - station"),
+      v.literal("available - at station"),
       v.literal("available - satellite"),
       v.literal("not available"),
       v.literal("delayed response"),
-      v.literal("WFH")
+      v.literal("WFH"),
+      v.literal("WFH - at station")
     ),
   },
   returns: v.boolean(),

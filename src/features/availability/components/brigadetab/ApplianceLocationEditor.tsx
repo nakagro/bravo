@@ -23,7 +23,7 @@ interface ApplianceLocationEditorProps {
 
 const ApplianceLocationEditor: React.FC<ApplianceLocationEditorProps> = ({ onClose }) => {
   const isMobile = useIsMobile();
-  const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
+  const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
   const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
   const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
 
@@ -35,6 +35,35 @@ const ApplianceLocationEditor: React.FC<ApplianceLocationEditorProps> = ({ onClo
     acc[location.applianceName] = location.stationLocation;
     return acc;
   }, {} as Record<string, string>);
+
+  // Map to get full location data including updatedBy user info
+  const locationDataMap = applianceLocations.reduce((acc, location) => {
+    acc[location.applianceName] = location;
+    return acc;
+  }, {} as Record<string, typeof applianceLocations[number]>);
+
+  // Format relative time compactly
+  const formatRelativeTime = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  // Get user display name
+  const getUserName = (user?: { firstName?: string; lastName?: string; name?: string }) => {
+    if (!user) return 'Unknown';
+    if (user.firstName) return user.firstName;
+    if (user.name) return user.name;
+    return 'Unknown';
+  };
 
   const appliances = ['Pumper', 'Tanker', 'FCV'] as const;
   const primaryStations = ['Main Station', 'Satellite Station'];
@@ -72,9 +101,11 @@ const ApplianceLocationEditor: React.FC<ApplianceLocationEditorProps> = ({ onClo
               <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100">
                 {appliance}
               </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Currently: {currentLocation}
-              </span>
+              {locationDataMap[appliance]?.updatedAt && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {getUserName(locationDataMap[appliance]?.updatedByUser)}, {formatRelativeTime(locationDataMap[appliance].updatedAt)}
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {allAvailableLocations.map((location) => (

@@ -272,10 +272,12 @@ http.route({
 
 const VALID_STATUSES = new Set([
   "available - station",
+  "available - at station",
   "available - satellite",
   "not available",
   "delayed response",
   "WFH",
+  "WFH - at station",
 ]);
 const VALID_NEXT_STATUSES = new Set([...VALID_STATUSES, "reset"]);
 
@@ -404,7 +406,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
 
     // --- Update status ---
     // Safe to cast: both status and nextStatus have been validated above
-    type Status = "available - station" | "available - satellite" | "not available" | "delayed response" | "WFH";
+    type Status = "available - station" | "available - at station" | "available - satellite" | "not available" | "delayed response" | "WFH" | "WFH - at station";
     type NextStatus = Status | "reset";
 
     const result = await ctx.runMutation(

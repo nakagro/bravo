@@ -99,18 +99,22 @@ export const internalUpdateStatus = internalMutation({
         userId: v.id("users"),
         status: v.union(
             v.literal("available - station"),
-            v.literal("available - satellite"),
-            v.literal("not available"),
-            v.literal("delayed response"),
-            v.literal("WFH")
-        ),
-        durationHours: v.optional(v.number()),
-        nextStatus: v.optional(v.union(
-            v.literal("available - station"),
+            v.literal("available - at station"),
             v.literal("available - satellite"),
             v.literal("not available"),
             v.literal("delayed response"),
             v.literal("WFH"),
+            v.literal("WFH - at station")
+        ),
+        durationHours: v.optional(v.number()),
+        nextStatus: v.optional(v.union(
+            v.literal("available - station"),
+            v.literal("available - at station"),
+            v.literal("available - satellite"),
+            v.literal("not available"),
+            v.literal("delayed response"),
+            v.literal("WFH"),
+            v.literal("WFH - at station"),
             v.literal("reset")
         )),
     },

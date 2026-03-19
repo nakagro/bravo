@@ -13,10 +13,12 @@ export const getStatuses = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -76,10 +78,12 @@ export const getCurrentUserStatus = query({
     currentStatus: v.optional(
       v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
-        v.literal("WFH")
+        v.literal("WFH"),
+        v.literal("WFH - at station")
       )
     ),
     statusUpdatedAt: v.optional(v.number()),

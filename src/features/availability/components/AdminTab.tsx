@@ -148,12 +148,12 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
   return (
     <div className="space-y-4">
       {/* Info banner */}
-      <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm text-amber-800 dark:text-amber-200">
+      {/* <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm text-amber-800 dark:text-amber-200">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86l-8.6 14.86A1 1 0 002.56 20h18.88a1 1 0 00.87-1.28l-8.6-14.86a1 1 0 00-1.72 0z" />
         </svg>
         <span>Looking to change appliance locations? This has been moved to the <strong>Brigade</strong> tab next to Appliance Locations.</span>
-      </div>
+      </div> */}
 
       {/* Module Settings */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">

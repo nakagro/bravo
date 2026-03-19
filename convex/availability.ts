@@ -16,10 +16,12 @@ export const getStatuses = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -28,10 +30,12 @@ export const getStatuses = query({
       isBirthday: v.optional(v.boolean()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH"),
+        v.literal("WFH - at station"),
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
@@ -102,10 +106,12 @@ export const getAllUsersStatus = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -114,10 +120,12 @@ export const getAllUsersStatus = query({
       isBirthday: v.optional(v.boolean()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH"),
+        v.literal("WFH - at station"),
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
@@ -183,10 +191,12 @@ export const getCurrentUserStatus = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -194,10 +204,12 @@ export const getCurrentUserStatus = query({
       statusDurationHours: v.optional(v.number()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH"),
+        v.literal("WFH - at station"),
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
@@ -237,18 +249,22 @@ export const updateUserStatus = mutation({
   args: {
     status: v.union(
       v.literal("available - station"),
-      v.literal("available - satellite"),
-      v.literal("not available"),
-      v.literal("delayed response"),
-      v.literal("WFH")
-    ),
-    durationHours: v.optional(v.number()), // Optional duration in hours
-    nextStatus: v.optional(v.union(
-      v.literal("available - station"),
+      v.literal("available - at station"),
       v.literal("available - satellite"),
       v.literal("not available"),
       v.literal("delayed response"),
       v.literal("WFH"),
+      v.literal("WFH - at station")
+    ),
+    durationHours: v.optional(v.number()), // Optional duration in hours
+    nextStatus: v.optional(v.union(
+      v.literal("available - station"),
+      v.literal("available - at station"),
+      v.literal("available - satellite"),
+      v.literal("not available"),
+      v.literal("delayed response"),
+      v.literal("WFH"),
+      v.literal("WFH - at station"),
       v.literal("reset")
     )), // Optional status to transition to after duration
   },
@@ -687,10 +703,12 @@ export const getUserInfoForYouTab = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -698,10 +716,12 @@ export const getUserInfoForYouTab = query({
       statusDurationHours: v.optional(v.number()),
       nextStatus: v.optional(v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH"),
+        v.literal("WFH - at station"),
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
@@ -762,10 +782,12 @@ export const getUsersWithScheduledChanges = query({
       currentStatus: v.optional(
         v.union(
           v.literal("available - station"),
+          v.literal("available - at station"),
           v.literal("available - satellite"),
           v.literal("not available"),
           v.literal("delayed response"),
-          v.literal("WFH")
+          v.literal("WFH"),
+          v.literal("WFH - at station")
         )
       ),
       statusUpdatedAt: v.optional(v.number()),
@@ -773,10 +795,12 @@ export const getUsersWithScheduledChanges = query({
       statusDurationHours: v.number(),
       nextStatus: v.union(
         v.literal("available - station"),
+        v.literal("available - at station"),
         v.literal("available - satellite"),
         v.literal("not available"),
         v.literal("delayed response"),
         v.literal("WFH"),
+        v.literal("WFH - at station"),
         v.literal("reset")
       ),
       nextStatusAt: v.number(),
