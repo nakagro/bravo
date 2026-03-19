@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.71] - 2026-03-12
+## [1.0.71] - 2026-03-19
 - Availability - You/Brigade Tab: Added a "At Station" button next to "Available - Station" and "WFH" to indicate you are physically at the station alongside with these status'
 - Availability - Brigade Tab: On a desktop browser, Available - Station and Satellite will show as with 2 columns side by side.
 - Availability - Brigade Tab: QoL change for the Appliance location edit modal - it will show who last updated the location and when.
