@@ -200,21 +200,21 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
       </div>
 
       {/* Content Section */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <div className="p-3">
-          {!showBrigadeView ? (
-            <PersonalView
-              deploymentDates={deploymentDates}
-              deploymentAvailability={deploymentAvailability}
-              handleDeploymentAvailabilityChange={handleDeploymentAvailabilityChange}
-            />
-          ) : (
+      {!showBrigadeView ? (
+        <PersonalView
+          deploymentDates={deploymentDates}
+          deploymentAvailability={deploymentAvailability}
+          handleDeploymentAvailabilityChange={handleDeploymentAvailabilityChange}
+        />
+      ) : (
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+          <div className="p-3">
             <BrigadeView
               aggregatedDeploymentAvailability={aggregatedDeploymentAvailability}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

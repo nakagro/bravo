@@ -5,6 +5,7 @@
 - Availability - Brigade Tab: On a desktop browser, Available - Station and Satellite will show as with 2 columns side by side.
 - Availability - Brigade Tab: QoL change for the Appliance location edit modal - it will show who last updated the location and when.
 - Availability - Admin Tab: Removed the banner that informed users that the appliance location permissions have been moved to the Brigade Tab.
+- Availability - Deployment Tab: Design change to make it easier to differentiate between the days.
 
 ## [1.0.70] - 2026-03-12
 - Equipment Module: QoL improvements

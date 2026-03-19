@@ -21,7 +21,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({
   return (
     <>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {deploymentDates.map((date) => {
           // Use UTC-based ISO string for consistent key matching with stored data
           const dateKey = date.toISOString().split('T')[0];
@@ -41,11 +41,11 @@ const PersonalView: React.FC<PersonalViewProps> = ({
           return (
             <div
               key={dateKey}
-              className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0 last:pb-0"
+              className="bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 rounded-lg p-3 shadow-sm"
             >
               {/* Date header */}
-              <div className="mb-2">
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dayName}, {formattedDate}</h4>
+              <div className="mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{dayName}, {formattedDate}</h4>
               </div>
 
               {/* Controls */}
@@ -87,9 +87,9 @@ const PersonalView: React.FC<PersonalViewProps> = ({
 
                   {/* Divider with text */}
                   <div className="relative flex py-2">
-                    <div className="flex-grow border-t border-gray-200 dark:border-gray-700 h-0 my-auto"></div>
-                    <span className="flex-shrink-0 mx-2 text-xs text-gray-400 dark:text-gray-500">OR</span>
-                    <div className="flex-grow border-t border-gray-200 dark:border-gray-700 h-0 my-auto"></div>
+                    <div className="flex-grow border-t border-gray-400 dark:border-gray-600 h-0 my-auto"></div>
+                    <span className="flex-shrink-0 mx-2 text-xs font-medium text-gray-500 dark:text-gray-400">OR</span>
+                    <div className="flex-grow border-t border-gray-400 dark:border-gray-600 h-0 my-auto"></div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
@@ -100,8 +100,8 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                       disabled={availability.notAvailable}
                       className={cn(
                         "flex flex-col items-center justify-center h-auto py-2 space-y-1.5",
-                        "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-800",
-                        "data-[state=on]:bg-green-100 dark:data-[state=on]:bg-green-900/30 data-[state=on]:text-green-800 dark:data-[state=on]:text-green-300 data-[state=on]:border-green-400 dark:data-[state=on]:border-green-600",
+                        "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm",
+                        "data-[state=on]:bg-green-100 dark:data-[state=on]:bg-green-900/30 data-[state=on]:text-green-800 dark:data-[state=on]:text-green-300 data-[state=on]:border-green-500 dark:data-[state=on]:border-green-600",
                         "hover:bg-green-50 dark:hover:bg-green-900/10 data-[disabled]:opacity-50"
                       )}
                     >
@@ -123,8 +123,8 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                       disabled={availability.notAvailable}
                       className={cn(
                         "flex flex-col items-center justify-center h-auto py-2 space-y-1.5",
-                        "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-800",
-                        "data-[state=on]:bg-yellow-100 dark:data-[state=on]:bg-yellow-900/30 data-[state=on]:text-yellow-800 dark:data-[state=on]:text-yellow-300 data-[state=on]:border-yellow-400 dark:data-[state=on]:border-yellow-600",
+                        "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm",
+                        "data-[state=on]:bg-yellow-100 dark:data-[state=on]:bg-yellow-900/30 data-[state=on]:text-yellow-800 dark:data-[state=on]:text-yellow-300 data-[state=on]:border-yellow-500 dark:data-[state=on]:border-yellow-600",
                         "hover:bg-yellow-50 dark:hover:bg-yellow-900/10 data-[disabled]:opacity-50"
                       )}
                     >
@@ -146,8 +146,8 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                       disabled={availability.notAvailable}
                       className={cn(
                         "flex flex-col items-center justify-center h-auto py-2 space-y-1.5",
-                        "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-800",
-                        "data-[state=on]:bg-orange-100 dark:data-[state=on]:bg-orange-900/30 data-[state=on]:text-orange-800 dark:data-[state=on]:text-orange-300 data-[state=on]:border-orange-400 dark:data-[state=on]:border-orange-600",
+                        "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-sm",
+                        "data-[state=on]:bg-orange-100 dark:data-[state=on]:bg-orange-900/30 data-[state=on]:text-orange-800 dark:data-[state=on]:text-orange-300 data-[state=on]:border-orange-500 dark:data-[state=on]:border-orange-600",
                         "hover:bg-orange-50 dark:hover:bg-orange-900/10 data-[disabled]:opacity-50"
                       )}
                     >
@@ -164,7 +164,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({
                   </div>
 
                   {/* Message input field */}
-                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
                     <Label htmlFor={`message-${dateKey}`} className="text-xs text-gray-600 dark:text-gray-400 mb-1">Add a note:</Label>
                     <MessageInput
                       date={date}
