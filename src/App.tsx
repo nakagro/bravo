@@ -26,6 +26,7 @@ import { BASkillsPage } from "./pages/BASkillsPage";
 import { BrigadeTasksPage } from "./features/brigadeTasks/pages/BrigadeTasksPage";
 import ExtrasPage from "./pages/ExtrasPage";
 import ShortcutsPage from "./pages/ShortcutsPage";
+import QRCodesPage from "./features/qrCodes/QRCodesPage";
 import KioskPage from "./pages/KioskPage";
 import FeedbackManagementPage from "./pages/FeedbackManagementPage";
 import AuthManagementPage from "./pages/AuthManagementPage";
@@ -188,6 +189,7 @@ function AuthenticatedApp() {
             <BrigadeTasksPage />
           </ProtectedRoute>
         } />
+        <Route path="/qr-codes" element={<QRCodesPage />} />
 
         {/* Catch all other routes and redirect to dashboard */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -60,6 +60,7 @@ import type * as passwordReset from "../passwordReset.js";
 import type * as posthogAnalytics from "../posthogAnalytics.js";
 import type * as pushNotificationAction from "../pushNotificationAction.js";
 import type * as pushNotifications from "../pushNotifications.js";
+import type * as qrCodes from "../qrCodes.js";
 import type * as seed from "../seed.js";
 import type * as shortcuts from "../shortcuts.js";
 import type * as skills from "../skills.js";
@@ -130,6 +131,7 @@ declare const fullApi: ApiFromModules<{
   posthogAnalytics: typeof posthogAnalytics;
   pushNotificationAction: typeof pushNotificationAction;
   pushNotifications: typeof pushNotifications;
+  qrCodes: typeof qrCodes;
   seed: typeof seed;
   shortcuts: typeof shortcuts;
   skills: typeof skills;

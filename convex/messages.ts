@@ -107,19 +107,80 @@ export const getMessages = query({
   },
 });
 
-// Get count of messages after a specific timestamp (for unread message count)
-// Messages are automatically deleted at 4am daily by cron job
-export const getUnreadMessageCount = query({
-  args: {
-    lastViewedAt: v.number(),
-  },
+// Get the user's last viewed messages timestamp from the database
+export const getLastViewedMessagesAt = query({
+  args: {},
   returns: v.number(),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return 0;
+    }
+    
+    const prefs = await ctx.db
+      .query("userMessagePreferences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    
+    return prefs?.lastViewedMessagesAt ?? 0;
+  },
+});
+
+// Update the user's last viewed messages timestamp in the database
+export const markMessagesAsViewed = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to mark messages as viewed");
+    }
+    
+    const now = Date.now();
+    
+    // Check if user already has preferences
+    const existing = await ctx.db
+      .query("userMessagePreferences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    
+    if (existing) {
+      await ctx.db.patch(existing._id, { lastViewedMessagesAt: now });
+    } else {
+      await ctx.db.insert("userMessagePreferences", {
+        userId,
+        lastViewedMessagesAt: now,
+      });
+    }
+    
+    return null;
+  },
+});
+
+// Get count of unread messages for the current user
+// Uses database-stored lastViewedAt for consistency across devices
+export const getUnreadMessageCount = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return 0;
+    }
+    
+    // Get user's last viewed timestamp from database
+    const prefs = await ctx.db
+      .query("userMessagePreferences")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    
+    const lastViewedAt = prefs?.lastViewedMessagesAt ?? 0;
+    
     // Count messages posted after the user's last viewed timestamp
     const messages = await ctx.db
       .query("availabilityMessages")
       .withIndex("by_timestamp")
-      .filter((q) => q.gt(q.field("timestamp"), args.lastViewedAt))
+      .filter((q) => q.gt(q.field("timestamp"), lastViewedAt))
       .collect();
     
     return messages.length;

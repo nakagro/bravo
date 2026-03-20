@@ -981,6 +981,25 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"]),
+
+  // User message preferences - Stores per-user message viewing state
+  userMessagePreferences: defineTable({
+    userId: v.id("users"),
+    lastViewedMessagesAt: v.number(), // Timestamp when user last viewed messages tab
+  })
+    .index("by_user", ["userId"]),
+
+  // QR Codes - User-generated QR codes for URLs
+  qrCodes: defineTable({
+    name: v.string(), // User-friendly name for the QR code
+    url: v.string(), // The URL encoded in the QR code
+    svgData: v.string(), // The SVG string for the QR code (vector, scalable)
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_createdAt", ["createdAt"]),
 };
 
 export default defineSchema({

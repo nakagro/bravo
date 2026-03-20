@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.72] - 2026-03-20
+- QR code generator in Links - QR codes can be saved for retrieval or anonymously created.
+
 ## [1.0.71] - 2026-03-19
 - Availability - You/Brigade Tab: Added a "At Station" button next to "Available - Station" and "WFH" to indicate you are physically at the station alongside with these status'
 - Availability - Brigade Tab: On a desktop browser, Available - Station and Satellite will show as with 2 columns side by side.

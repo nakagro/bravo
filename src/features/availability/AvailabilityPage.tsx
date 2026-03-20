@@ -9,8 +9,6 @@ import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-const MESSAGES_LAST_VIEWED_KEY = 'availability_messages_last_viewed';
-
 const AvailabilityPage: React.FC = () => {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
@@ -21,12 +19,6 @@ const AvailabilityPage: React.FC = () => {
   // Refs for tab animation
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  
-  // State to track when user last viewed messages (loaded from localStorage)
-  const [lastViewedMessagesAt, setLastViewedMessagesAt] = useState<number>(() => {
-    const stored = localStorage.getItem(MESSAGES_LAST_VIEWED_KEY);
-    return stored ? parseInt(stored, 10) : 0;
-  });
   
   // Get current user's status
   const userStatus = useQuery(api.availability.getCurrentUserStatus);
@@ -48,10 +40,11 @@ const AvailabilityPage: React.FC = () => {
   const updateMessage = useMutation(api.messages.updateMessage);
   const currentUserId = useQuery(api.messages.getCurrentUserId);
   
-  // Get unread message count
-  const unreadCount = useQuery(api.messages.getUnreadMessageCount, { 
-    lastViewedAt: lastViewedMessagesAt 
-  }) || 0;
+  // Get unread message count (uses database-stored lastViewedAt for consistency)
+  const unreadCount = useQuery(api.messages.getUnreadMessageCount) ?? 0;
+  
+  // Mutation to mark messages as viewed
+  const markMessagesAsViewed = useMutation(api.messages.markMessagesAsViewed);
   
   // Check permission for admin tab (uses batched query shared with ProtectedRoute)
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
@@ -64,14 +57,12 @@ const AvailabilityPage: React.FC = () => {
     }
   }, [activeTab, hasAdminTabAccess]);
   
-  // Update last viewed timestamp when Messages tab is opened
+  // Mark messages as viewed when Messages tab is opened
   useEffect(() => {
-    if (activeTab === 'messages') {
-      const now = Date.now();
-      setLastViewedMessagesAt(now);
-      localStorage.setItem(MESSAGES_LAST_VIEWED_KEY, now.toString());
+    if (activeTab === 'messages' && isAuthenticated) {
+      markMessagesAsViewed();
     }
-  }, [activeTab]);
+  }, [activeTab, isAuthenticated, markMessagesAsViewed]);
   
   // Update indicator position when active tab changes
   useEffect(() => {
