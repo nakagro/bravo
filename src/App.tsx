@@ -189,7 +189,7 @@ function AuthenticatedApp() {
             <BrigadeTasksPage />
           </ProtectedRoute>
         } />
-        <Route path="/qr-codes" element={<QRCodesPage />} />
+        <Route path="/qr" element={<QRCodesPage />} />
 
         {/* Catch all other routes and redirect to dashboard */}
         <Route path="*" element={<Navigate to="/" replace />} />
