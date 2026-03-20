@@ -14,8 +14,10 @@ interface LinksManagerProps {
 
 export default function LinksManager({ showTitle = true }: LinksManagerProps) {
   const links = useQuery(api.links.getAllLinks);
+  const linkCategories = useQuery(api.links.getLinkCategories);
   const createLink = useMutation(api.links.createLink);
   const updateLink = useMutation(api.links.updateLink);
+  const reorderLinkCategories = useMutation(api.links.reorderLinkCategories);
   const deleteLink = useMutation(api.links.deleteLink);
 
   const [form, setForm] = useState({
@@ -112,9 +114,11 @@ export default function LinksManager({ showTitle = true }: LinksManagerProps) {
           {links && links.length > 0 && (
             <CategoryTables
               links={links}
+              linkCategories={linkCategories || []}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               updateLink={updateLink}
+              reorderLinkCategories={reorderLinkCategories}
             />
           )}
         </div>
@@ -127,12 +131,14 @@ type LinkDoc = any;
 
 interface CategoryTablesProps {
   links: readonly LinkDoc[];
+  linkCategories: readonly { name: string; order: number }[];
   onUpdate: (id: string, patch: Partial<any>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   updateLink: any;
+  reorderLinkCategories: any;
 }
 
-function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTablesProps) {
+function CategoryTables({ links, linkCategories, onUpdate, onDelete, updateLink, reorderLinkCategories }: CategoryTablesProps) {
   const dragFromId = useRef<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -149,7 +155,13 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
   const categories = useMemo(() => {
     const groups = new Map<string, LinkDoc[]>();
     const normalized = (s: string | undefined | null) => (s || "").trim();
+    const categoryOrderMap = new Map(
+      linkCategories.map((category) => [normalized(category.name), category.order])
+    );
     const sorted = [...links].sort((a, b) => {
+      const aOrder = Number(a.categoryOrder ?? categoryOrderMap.get(normalized(a.category)) ?? Number.MAX_SAFE_INTEGER);
+      const bOrder = Number(b.categoryOrder ?? categoryOrderMap.get(normalized(b.category)) ?? Number.MAX_SAFE_INTEGER);
+      if (aOrder !== bOrder) return aOrder - bOrder;
       const ca = normalized(a.category);
       const cb = normalized(b.category);
       if (ca !== cb) return ca.localeCompare(cb);
@@ -161,7 +173,22 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
       groups.get(key)!.push(l);
     }
     return groups;
-  }, [links]);
+  }, [linkCategories, links]);
+
+  const orderedCategoryKeys = useMemo(() => [...categories.keys()], [categories]);
+
+  const moveCategory = async (categoryKey: string, direction: -1 | 1) => {
+    const currentIndex = orderedCategoryKeys.indexOf(categoryKey);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex === -1 || nextIndex < 0 || nextIndex >= orderedCategoryKeys.length) {
+      return;
+    }
+
+    const reordered = [...orderedCategoryKeys];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(nextIndex, 0, moved);
+    await reorderLinkCategories({ orderedCategoryNames: reordered });
+  };
 
   const handleReorderWithinCategory = async (categoryKey: string, orderedIds: string[]) => {
     // Persist sequential order starting from 0 within the category.
@@ -218,10 +245,34 @@ function CategoryTables({ links, onUpdate, onDelete, updateLink }: CategoryTable
 
   return (
     <div className="space-y-6">
-      {[...categories.entries()].map(([categoryKey, items]) => (
+      {[...categories.entries()].map(([categoryKey, items], categoryIndex) => (
         <div key={categoryKey || "__uncat__"} className="overflow-x-auto">
-          <div className="text-xs uppercase text-muted-foreground font-semibold tracking-wide mb-2">
-            {categoryKey || "Uncategorized"}
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-xs uppercase text-muted-foreground font-semibold tracking-wide">
+              {categoryKey || "Uncategorized"}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={categoryIndex === 0}
+                onClick={() => moveCategory(categoryKey, -1)}
+                title="Move category up"
+              >
+                ▲
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={categoryIndex === orderedCategoryKeys.length - 1}
+                onClick={() => moveCategory(categoryKey, 1)}
+                title="Move category down"
+              >
+                ▼
+              </Button>
+            </div>
           </div>
           <table className="w-full text-sm">
             <thead className="text-left">

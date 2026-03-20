@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ExternalLink, Link2 } from "lucide-react";
 
@@ -56,7 +55,12 @@ export function LinksPage() {
     return acc;
   }, {});
 
-  const categories = Object.keys(groups).sort();
+  const categories = Object.keys(groups).sort((a, b) => {
+    const aOrder = Number(links.find((link) => (link.category || "General") === a)?.categoryOrder ?? Number.MAX_SAFE_INTEGER);
+    const bOrder = Number(links.find((link) => (link.category || "General") === b)?.categoryOrder ?? Number.MAX_SAFE_INTEGER);
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="space-y-4">

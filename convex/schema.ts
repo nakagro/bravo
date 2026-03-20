@@ -609,6 +609,16 @@ const applicationTables = {
     .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
 
+  linkCategories: defineTable({
+    name: v.string(),
+    order: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_order", ["order"]),
+
   // Vehicle Faults table for tracking appliance issues
   vehicleFaults: defineTable({
     dateReported: v.number(), // Timestamp when the fault was first reported
