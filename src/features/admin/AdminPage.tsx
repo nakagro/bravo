@@ -1,5 +1,6 @@
 import UserManagement from "./UserManagement";
 import ModuleSettings from "./ModuleSettings";
+import ServiceAccountSettings from "./ServiceAccountSettings";
 import NotificationTester from "./NotificationTester";
 import NotificationSettings from "./NotificationSettings";
 import EmailSettings from "./EmailSettings";
@@ -33,6 +34,13 @@ export default function AdminPage() {
           <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Module Settings</AccordionTrigger>
           <AccordionContent>
             <ModuleSettings showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="serviceAccountSettings">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Service Accounts</AccordionTrigger>
+          <AccordionContent>
+            <ServiceAccountSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 

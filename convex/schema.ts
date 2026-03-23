@@ -1010,6 +1010,41 @@ const applicationTables = {
   })
     .index("by_createdBy", ["createdBy"])
     .index("by_createdAt", ["createdAt"]),
+
+  // Service Accounts - Headless accounts for kiosks, displays, integrations, etc.
+  serviceAccounts: defineTable({
+    name: v.string(), // Display name (e.g., "Station Kiosk", "Display Board")
+    description: v.optional(v.string()), // Optional purpose description
+    pinHash: v.string(), // SHA-256 hash of the PIN
+    isActive: v.boolean(), // Can be deactivated without deletion
+    allowedModules: v.array(v.string()), // Array of moduleIds this account can access
+    lastLoginAt: v.optional(v.number()), // Timestamp of last successful login
+    createdBy: v.id("users"), // Admin who created it
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_pinHash", ["pinHash"]),
+
+  // Service Account Sessions - Session tokens for authenticated service accounts
+  serviceAccountSessions: defineTable({
+    serviceAccountId: v.id("serviceAccounts"), // Which service account
+    tokenHash: v.string(), // SHA-256 hash of the session token
+    expiresAt: v.number(), // Session expiry timestamp
+    createdAt: v.number(),
+  })
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_serviceAccountId", ["serviceAccountId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  // Service Account Login Attempts - Rate limiting for PIN brute-force protection
+  serviceAccountLoginAttempts: defineTable({
+    ipIdentifier: v.string(), // Hashed identifier (e.g. from header or "unknown")
+    attemptedAt: v.number(),
+    success: v.boolean(),
+  })
+    .index("by_ipIdentifier_attemptedAt", ["ipIdentifier", "attemptedAt"])
+    .index("by_attemptedAt", ["attemptedAt"]),
 };
 
 export default defineSchema({

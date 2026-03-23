@@ -1,11 +1,15 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 type ExtraLink = {
   title: string;
   description: string;
   to: string;
   emoji?: string;
+  /** If set, the link is only shown when the user has access to this module */
+  moduleId?: string;
 };
 
 const EXTRA_LINKS: ExtraLink[] = [
@@ -20,24 +24,28 @@ const EXTRA_LINKS: ExtraLink[] = [
     description: "Track and manage equipment stock levels.",
     to: "/equipment",
     emoji: "",
+    moduleId: "equipment",
   },
   {
     title: "BA Skills Maintenance",
     description: "Log BA cylinder usage for skills maintenance tracking.",
     to: "/ba-skills",
     emoji: "",
+    moduleId: "baSkills",
   },
   {
     title: "Brigade Tasks",
     description: "Track your personal todo list and brigade activities.",
     to: "/brigade-tasks",
     emoji: "📋",
+    moduleId: "brigadeTasks",
   },
   {
     title: "Kiosk Mode",
     description: "Touch-friendly dashboard for the station kiosk.",
     to: "/kiosk",
     emoji: "🖥️",
+    moduleId: "kiosk",
   },
   {
     title: "Automation Shortcuts",
@@ -48,6 +56,15 @@ const EXTRA_LINKS: ExtraLink[] = [
 ];
 
 export default function ExtrasPage() {
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+
+  // Filter links based on module access (links without a moduleId are always visible)
+  const visibleLinks = EXTRA_LINKS.filter((link) => {
+    if (!link.moduleId) return true;
+    if (!moduleAccess) return false; // hide until loaded
+    return moduleAccess[link.moduleId as keyof typeof moduleAccess] ?? false;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center gap-4">
@@ -59,7 +76,7 @@ export default function ExtrasPage() {
       </p>
 
       <div className="grid gap-4">
-        {EXTRA_LINKS.map((link) => (
+        {visibleLinks.map((link) => (
           <Link
             key={link.to}
             to={link.to}
@@ -83,7 +100,7 @@ export default function ExtrasPage() {
             </div>
           </Link>
         ))}
-        {EXTRA_LINKS.length === 0 && (
+        {visibleLinks.length === 0 && (
           <div className="rounded-xl border border-dashed border-border/60 bg-card/50 p-6 text-center text-muted-foreground">
             More coming soon.
           </div>

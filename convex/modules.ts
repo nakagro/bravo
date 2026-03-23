@@ -211,6 +211,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "kiosk",
+        moduleName: "Kiosk Mode",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
         moduleId: "admin",
         moduleName: "Admin Settings",
         isEnabled: true,
@@ -403,6 +411,14 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "kiosk",
+        moduleName: "Kiosk Mode",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
       },
       {
         moduleId: "admin",
@@ -633,6 +649,7 @@ export const getAllModuleAccess = query({
     feedback: v.boolean(),
     links: v.boolean(),
     settings: v.boolean(),
+    kiosk: v.boolean(),
     admin: v.boolean(),
   }),
   handler: async (ctx) => {
@@ -658,6 +675,7 @@ export const getAllModuleAccess = query({
         feedback: false,
         links: false,
         settings: false,
+        kiosk: false,
         admin: false,
       };
     }
@@ -684,6 +702,7 @@ export const getAllModuleAccess = query({
         feedback: false,
         links: false,
         settings: false,
+        kiosk: false,
         admin: false,
       };
     }
@@ -710,6 +729,7 @@ export const getAllModuleAccess = query({
         feedback: true,
         links: true,
         settings: true,
+        kiosk: true,
         admin: true,
       };
     }
@@ -782,6 +802,7 @@ export const getAllModuleAccess = query({
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),
       settings: checkAccess("settings"),
+      kiosk: checkAccess("kiosk"),
       admin: checkAccess("admin"),
     };
   },

@@ -50,4 +50,12 @@ crons.hourly(
   {}
 );
 
+// Clean up expired service account sessions daily
+crons.daily(
+  "cleanup expired service account sessions",
+  { hourUTC: 17, minuteUTC: 30 }, // 17:30 UTC == 03:30 AEST
+  internal.serviceAccounts.cleanupExpiredSessions,
+  {}
+);
+
 export default crons;

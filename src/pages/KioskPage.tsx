@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Plus, X } from 'lucide-react';
+import React from 'react';
+import { MapPin, DoorOpen, X } from 'lucide-react';
 import KioskApplianceLocations from '@/features/kiosk/KioskApplianceLocations';
+import KioskGateControl from '@/features/kiosk/KioskGateControl';
 
-type KioskTileId = 'appliance-locations';
+type KioskTileId = 'appliance-locations' | 'gate-control';
 
 interface KioskTile {
     id: KioskTileId;
@@ -21,15 +23,25 @@ const KIOSK_TILES: KioskTile[] = [
         icon: <MapPin className="h-16 w-16 mb-4" />,
         color: 'bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-500',
     },
+    {
+        id: 'gate-control',
+        title: 'Carpark Gate',
+        description: 'Open or control the D14 carpark gate',
+        icon: <DoorOpen className="h-16 w-16 mb-4" />,
+        color: 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white border-amber-500',
+    },
 ];
 
 export default function KioskPage() {
     const navigate = useNavigate();
     const [activeTile, setActiveTile] = useState<KioskTileId | null>(null);
 
-    // If a tile is active, render its component full-screen
     if (activeTile === 'appliance-locations') {
         return <KioskApplianceLocations onBack={() => setActiveTile(null)} />;
+    }
+
+    if (activeTile === 'gate-control') {
+        return <KioskGateControl onBack={() => setActiveTile(null)} />;
     }
 
     return (

@@ -62,6 +62,7 @@ import type * as pushNotificationAction from "../pushNotificationAction.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as qrCodes from "../qrCodes.js";
 import type * as seed from "../seed.js";
+import type * as serviceAccounts from "../serviceAccounts.js";
 import type * as shortcuts from "../shortcuts.js";
 import type * as skills from "../skills.js";
 import type * as stationChecks from "../stationChecks.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   pushNotifications: typeof pushNotifications;
   qrCodes: typeof qrCodes;
   seed: typeof seed;
+  serviceAccounts: typeof serviceAccounts;
   shortcuts: typeof shortcuts;
   skills: typeof skills;
   stationChecks: typeof stationChecks;
