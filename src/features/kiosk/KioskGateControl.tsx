@@ -3,10 +3,13 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const GATE_API_BASE = 'http://192.0.2.10:3000';
-const GATE_DOOR_ID  = 'c03e570f-4003-4b24-91d1-fcb216734785';
+// When proxied through the BRAVO server (recommended): set VITE_GATE_API_BASE=/gate-api
+// API key is then injected by nginx — leave VITE_GATE_API_KEY blank.
+// Direct local access fallback: set VITE_GATE_API_BASE=http://192.0.2.10:3000
+const GATE_API_BASE  = import.meta.env.VITE_GATE_API_BASE ?? '/gate-api';
+const GATE_DOOR_ID   = 'c03e570f-4003-4b24-91d1-fcb216734785';
 const GATE_DOOR_NAME = 'D14 Carpark Gate';
-const API_KEY = import.meta.env.VITE_GATE_API_KEY ?? '';
+const API_KEY        = import.meta.env.VITE_GATE_API_KEY ?? '';
 const POLL_INTERVAL_MS = 5000;
 
 // ── State interpretation (bit-flags from InnerRange Inception) ────────────────
