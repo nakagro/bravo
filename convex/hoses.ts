@@ -61,6 +61,24 @@ export const list = query({
   },
 });
 
+/**
+ * Get a single hose by ID
+ */
+export const get = query({
+  args: {
+    id: v.id("hoses"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const hose = await ctx.db.get(args.id);
+    if (!hose) throw new Error("Hose not found");
+
+    return hose;
+  },
+});
+
 export const add = mutation({
   args: {
     hoseId: v.string(),

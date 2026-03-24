@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "convex/react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { HoseForm } from "./HoseForm";
-import { HoseHistoryModal } from "./HoseHistoryModal";
+import { HoseDetailPanel } from "./HoseDetailPanel";
 import {
   Status,
   Size,
@@ -16,62 +17,27 @@ import {
   HoseFilterType,
 } from "../types";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import {
-  Squares2X2Icon,
-  TableCellsIcon,
   PlusIcon,
-  MagnifyingGlassIcon,
   FunnelIcon,
   ChevronDownIcon,
   XMarkIcon,
   ClockIcon,
-  PencilSquareIcon,
-  ChevronUpIcon,
   MapPinIcon,
-  InboxIcon,
 } from "@heroicons/react/24/outline";
+import { Flame } from "lucide-react";
 
-type ViewMode = 'cards' | 'table';
+// Shared components
+import { InventorySearch } from "@/components/shared/InventorySearch";
+import { SortableTableHeader } from "@/components/shared/SortableTableHeader";
+import { ViewModeToggle, getSavedViewMode, type ViewMode } from "@/components/shared/ViewModeToggle";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 type SortField = 'hoseId' | 'status' | 'size' | 'length' | 'type' | 'testDate' | 'location';
 type SortDirection = 'asc' | 'desc';
-
-// Sortable table header component
-interface SortableHeaderProps {
-  field: SortField;
-  label: string;
-  currentField: SortField;
-  direction: SortDirection;
-  onSort: (field: SortField) => void;
-}
-
-function SortableHeader({ field, label, currentField, direction, onSort }: SortableHeaderProps) {
-  const isActive = currentField === field;
-  return (
-    <TableHead
-      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-      onClick={() => onSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {label}
-        {isActive ? (
-          direction === 'asc' ? (
-            <ChevronUpIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-          ) : (
-            <ChevronDownIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
-          )
-        ) : (
-          <div className="h-4 w-4" /> // Spacer for alignment
-        )}
-      </div>
-    </TableHead>
-  );
-}
 
 interface HoseInventoryProps {
   initialStatusFilter?: HoseFilterType;
@@ -79,20 +45,33 @@ interface HoseInventoryProps {
 }
 
 export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInventoryProps = {}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize state from URL params
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
   const [filters, setFilters] = useState({
-    status: "" as Status | "",
-    size: "" as Size | "",
-    type: "" as Type | "",
-    location: "" as Location | "",
-    search: "",
+    status: (searchParams.get('status') || "") as Status | "",
+    size: (searchParams.get('size') || "") as Size | "",
+    type: (searchParams.get('type') || "") as Type | "",
+    location: (searchParams.get('location') || "") as Location | "",
     upcomingTest: "" as UpcomingTestFilter | "",
     overdueFilter: "" as OverdueFilter | "",
   });
 
-  // Handle initial filter changes (status, upcoming test, or overdue)
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingHose, setEditingHose] = useState<Id<"hoses"> | null>(null);
+  const [viewingHose, setViewingHose] = useState<Id<"hoses"> | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => getSavedViewMode('hoseInventoryViewMode'));
+  const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection }>(() => ({
+    field: (searchParams.get('sort') as SortField) || 'hoseId',
+    direction: (searchParams.get('dir') as SortDirection) || 'asc',
+  }));
+
+  // Handle initial filter changes (from dashboard clicks)
   useEffect(() => {
     if (initialStatusFilter) {
-      // Check if it's a status filter, upcoming test filter, or overdue filter
       const statusOptions: Status[] = ["In date", "Due for testing", "With district for repair", "Condemned"];
       const upcomingTestOptions: UpcomingTestFilter[] = ["1month", "3months", "6months"];
       const overdueOptions: OverdueFilter[] = ["overdue3months", "overdue6months", "overdue12months", "overdue12plus"];
@@ -107,178 +86,109 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
       onFilterApplied?.();
     }
   }, [initialStatusFilter, onFilterApplied]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingHose, setEditingHose] = useState<Id<"hoses"> | null>(null);
-  const [viewingHistory, setViewingHistory] = useState<Id<"hoses"> | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  // Function to detect if user is on a mobile device
-  const isMobileDevice = () => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768; // Common breakpoint for mobile devices
-    }
-    return false;
-  };
 
-  // Initialize viewMode from localStorage or default based on device type
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    // Only access localStorage in browser environment
-    if (typeof window !== 'undefined') {
-      // Check if user has a saved preference
-      const savedViewMode = localStorage.getItem('hoseInventoryViewMode');
-      if (savedViewMode) {
-        return (savedViewMode === 'table' ? 'table' : 'cards') as ViewMode;
-      }
+  // Sync state to URL params
+  useEffect(() => {
+    const params = new URLSearchParams();
+    // Preserve the tab param from the parent page
+    const currentTab = searchParams.get('tab');
+    if (currentTab) params.set('tab', currentTab);
 
-      // If no saved preference, set default based on device type
-      return isMobileDevice() ? 'cards' : 'table';
-    }
-    return 'cards'; // Server-side rendering default
-  });
-  const [sortConfig, setSortConfig] = useState<{ field: SortField; direction: SortDirection }>({
-    field: 'hoseId',
-    direction: 'asc'
-  });
+    if (searchTerm) params.set('q', searchTerm);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.size) params.set('size', filters.size);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.location) params.set('location', filters.location);
+    if (sortConfig.field !== 'hoseId') params.set('sort', sortConfig.field);
+    if (sortConfig.direction !== 'asc') params.set('dir', sortConfig.direction);
+    setSearchParams(params, { replace: true });
+  }, [searchTerm, filters.status, filters.size, filters.type, filters.location, sortConfig, setSearchParams]);
 
-  const handleSearch = () => {
-    setFilters(f => ({ ...f, search: searchTerm }));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       status: "",
       size: "",
       type: "",
       location: "",
-      search: "",
       upcomingTest: "",
       overdueFilter: "",
     });
     setSearchTerm("");
-  };
+  }, []);
+
+  const hasActiveFilters = filters.status || filters.size || filters.type || filters.location || searchTerm || filters.upcomingTest || filters.overdueFilter;
 
   const hoses = useQuery(api.hoses.list, {
     status: filters.status || undefined,
     size: filters.size || undefined,
     type: filters.type || undefined,
     location: filters.location || undefined,
-    search: filters.search || undefined,
+    search: searchTerm || undefined,
   });
 
-  // Function to handle sorting
-  // Update localStorage when viewMode changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('hoseInventoryViewMode', viewMode);
-    }
-  }, [viewMode]);
-
   const handleSort = (field: SortField) => {
-    setSortConfig(prevConfig => {
-      // If clicking the same field, toggle direction
-      if (prevConfig.field === field) {
-        return { field, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
+    setSortConfig(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
       }
-      // If clicking a new field, set to ascending by default
       return { field, direction: 'asc' };
     });
   };
 
-  // Function to filter hoses by upcoming test dates
-  // Using non-overlapping ranges to match dashboard logic
+  // Filter by upcoming test / overdue (client-side on top of server filters)
   const filterHosesByUpcomingTest = (hoses: any[], timeframe: UpcomingTestFilter) => {
     const now = Date.now();
-    const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+    const oneYearMs = 365 * 24 * 60 * 60 * 1000;
     const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000;
     const fourMonthsMs = 4 * 30 * 24 * 60 * 60 * 1000;
     const threeMonthsMs = 3 * 30 * 24 * 60 * 60 * 1000;
     const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
 
     return hoses.filter(hose => {
-      // Only consider "In date" hoses for upcoming test filtering
       if (hose.status !== "In date") return false;
-
       const testExpiryDate = hose.testDate + oneYearMs;
-
-      // Non-overlapping ranges
       if (timeframe === "6months") {
-        // Hoses expiring between 4-6 months from now
-        const sixMonthsFromNow = now + sixMonthsMs;
-        const fourMonthsFromNow = now + fourMonthsMs;
-        return testExpiryDate <= sixMonthsFromNow && testExpiryDate > fourMonthsFromNow;
+        return testExpiryDate <= now + sixMonthsMs && testExpiryDate > now + fourMonthsMs;
       } else if (timeframe === "3months") {
-        // Hoses expiring between 1-3 months from now
-        const threeMonthsFromNow = now + threeMonthsMs;
-        const oneMonthFromNow = now + oneMonthMs;
-        return testExpiryDate <= threeMonthsFromNow && testExpiryDate > oneMonthFromNow;
+        return testExpiryDate <= now + threeMonthsMs && testExpiryDate > now + oneMonthMs;
       } else if (timeframe === "1month") {
-        // Hoses expiring within the next month
-        const oneMonthFromNow = now + oneMonthMs;
-        return testExpiryDate <= oneMonthFromNow && testExpiryDate > now;
+        return testExpiryDate <= now + oneMonthMs && testExpiryDate > now;
       }
-
       return false;
     });
   };
 
-  // Function to filter hoses by overdue status
-  // Using non-overlapping ranges to match dashboard logic: 0-3, 3-6, 6-12, 12+ months
   const filterHosesByOverdue = (hoses: any[], timeframe: OverdueFilter) => {
     const now = Date.now();
-    const oneYearMs = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+    const oneYearMs = 365 * 24 * 60 * 60 * 1000;
     const twelveMonthsMs = 12 * 30 * 24 * 60 * 60 * 1000;
     const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000;
     const threeMonthsMs = 3 * 30 * 24 * 60 * 60 * 1000;
 
     return hoses.filter(hose => {
-      // Only consider "Due for testing" hoses for overdue filtering
       if (hose.status !== "Due for testing") return false;
-
       const testExpiryDate = hose.testDate + oneYearMs;
-
-      // Non-overlapping ranges
       if (timeframe === "overdue3months") {
-        // Hoses that expired 0-3 months ago
-        const threeMonthsAgo = now - threeMonthsMs;
-        return testExpiryDate >= threeMonthsAgo && testExpiryDate < now;
+        return testExpiryDate >= now - threeMonthsMs && testExpiryDate < now;
       } else if (timeframe === "overdue6months") {
-        // Hoses that expired 3-6 months ago
-        const sixMonthsAgo = now - sixMonthsMs;
-        const threeMonthsAgo = now - threeMonthsMs;
-        return testExpiryDate >= sixMonthsAgo && testExpiryDate < threeMonthsAgo;
+        return testExpiryDate >= now - sixMonthsMs && testExpiryDate < now - threeMonthsMs;
       } else if (timeframe === "overdue12months") {
-        // Hoses that expired 6-12 months ago
-        const twelveMonthsAgo = now - twelveMonthsMs;
-        const sixMonthsAgo = now - sixMonthsMs;
-        return testExpiryDate >= twelveMonthsAgo && testExpiryDate < sixMonthsAgo;
+        return testExpiryDate >= now - twelveMonthsMs && testExpiryDate < now - sixMonthsMs;
       } else if (timeframe === "overdue12plus") {
-        // Hoses that expired more than 12 months ago
-        const twelveMonthsAgo = now - twelveMonthsMs;
-        return testExpiryDate < twelveMonthsAgo;
+        return testExpiryDate < now - twelveMonthsMs;
       }
-
       return false;
     });
   };
 
-  // Function to sort and filter the hoses array
   const sortedHoses = useMemo(() => {
     if (!hoses) return [];
 
     let filteredHoses = [...hoses];
 
-    // Apply upcoming test filter if set
     if (filters.upcomingTest) {
       filteredHoses = filterHosesByUpcomingTest(filteredHoses, filters.upcomingTest);
     }
-
-    // Apply overdue filter if set
     if (filters.overdueFilter) {
       filteredHoses = filterHosesByOverdue(filteredHoses, filters.overdueFilter);
     }
@@ -309,8 +219,6 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         case 'location':
           comparison = (a.location || '').localeCompare(b.location || '');
           break;
-        default:
-          break;
       }
 
       return direction === 'asc' ? comparison : -comparison;
@@ -320,190 +228,166 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
   if (hoses === undefined) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6" data-component="HoseInventory">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        {/* <h1 className="text-2xl font-bold text-gray-900 dark:text-white w-full sm:w-auto whitespace-nowrap">Hose Management</h1> */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:ml-auto">
-          {/* View mode selector */}
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(value) => {
-              if (value) setViewMode(value as ViewMode);
-            }}
-            className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
-          >
-            <ToggleGroupItem
-              value="cards"
-              aria-label="Card View"
-              title="Card View"
-              className="px-3 py-2 text-sm data-[state=on]:bg-red-700 data-[state=on]:dark:bg-red-600 data-[state=on]:text-white bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 data-[state=on]:hover:bg-red-800 data-[state=on]:dark:hover:bg-red-700 rounded-none border-r border-gray-300 dark:border-gray-700 last:border-r-0"
-            >
-              <Squares2X2Icon className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Cards</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="table"
-              aria-label="Table View"
-              title="Table View"
-              className="px-3 py-2 text-sm data-[state=on]:bg-red-700 data-[state=on]:dark:bg-red-600 data-[state=on]:text-white bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 data-[state=on]:hover:bg-red-800 data-[state=on]:dark:hover:bg-red-700 rounded-none"
-            >
-              <TableCellsIcon className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Table</span>
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <Button
-            onClick={() => setShowAddForm(true)}
-            variant="destructive"
-            className="bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            Add Hose
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4">
-          {/* Search input - takes full width on mobile, 3 cols on desktop */}
-          <div className="flex space-x-2 sm:col-span-3">
-            <Input
-              type="text"
-              placeholder="Search hose ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="flex-grow"
-            />
-            <Button
-              onClick={handleSearch}
-              variant="destructive"
-              className="bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-700"
-              aria-label="Search"
-            >
-              <MagnifyingGlassIcon className="h-4 w-4 mr-1 sm:mr-0" />
-              <span className="hidden sm:inline">Search</span>
-            </Button>
-          </div>
-          {/* Filter controls - grouped together */}
-          <div className="flex w-full sm:w-auto">
-            {/* Filter toggle button - takes 3/4 of the space */}
-            <Button
-              onClick={() => setShowFilters(!showFilters)}
-              variant="outline"
-              className="flex-grow justify-center rounded-l-lg"
-            >
-              <FunnelIcon className="h-4 w-4 mr-1" />
-              <span className="inline">{showFilters ? 'Hide Filters' : 'Filters'}</span>
-              <ChevronDownIcon className={`h-4 w-4 ml-1 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </Button>
-            {/* Clear button - takes 1/4 of the space */}
-            <Button
-              onClick={clearFilters}
-              variant="outline"
-              className="w-1/4 rounded-r-lg rounded-l-none border-l-0 flex items-center justify-center px-2 py-2"
-              title="Clear Filters"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
-            <Select
-              value={filters.status === "" ? "all" : filters.status}
-              onValueChange={(value) => setFilters(f => ({ ...f, status: value === "all" ? "" : value as Status }))}
-            >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Condemned">Condemned</SelectItem>
-                <SelectItem value="Due for testing">Due for testing</SelectItem>
-                <SelectItem value="With district for repair">With district for repair</SelectItem>
-                <SelectItem value="In date">In date</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.size === "" ? "all" : filters.size}
-              onValueChange={(value) => setFilters(f => ({ ...f, size: value === "all" ? "" : value as Size }))}
-            >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="All Sizes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sizes</SelectItem>
-                <SelectItem value="25">25mm</SelectItem>
-                <SelectItem value="38">38mm</SelectItem>
-                <SelectItem value="65">65mm</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.type === "" ? "all" : filters.type}
-              onValueChange={(value) => setFilters(f => ({ ...f, type: value === "all" ? "" : value as Type }))}
-            >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Canvas">Canvas</SelectItem>
-                <SelectItem value="Duraline">Duraline</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.location === "" ? "all" : filters.location}
-              onValueChange={(value) => setFilters(f => ({ ...f, location: value === "all" ? "" : value as Location }))}
-            >
-              <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="All Locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Station">Station</SelectItem>
-                <SelectItem value="Pumper">Pumper</SelectItem>
-                <SelectItem value="Tanker">Tanker</SelectItem>
-                <SelectItem value="FCV">FCV</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+  // Empty state when no hoses exist at all
+  if (hoses.length === 0 && !hasActiveFilters) {
+    return (
+      <>
+        <EmptyState
+          icon={<Flame className="h-12 w-12 text-red-400 dark:text-red-500" />}
+          title="No hoses registered yet"
+          description="Track fire hoses across your brigade. Each record includes the hose ID, size, length, type, location, and testing status."
+          secondaryDescription="Monitor testing schedules, manage replacements, and maintain compliance records."
+          actionLabel="Add First Hose"
+          onAction={() => setShowAddForm(true)}
+        />
+        {showAddForm && (
+          <HoseForm hoseId={null} onClose={() => setShowAddForm(false)} />
         )}
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-component="HoseInventory">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2">
+        <InventorySearch
+          placeholder="Search hose ID..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+        />
+
+        {/* Filter toggle */}
+        <Button
+          onClick={() => setShowFilters(!showFilters)}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-1"
+        >
+          <FunnelIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Filters'}</span>
+          <ChevronDownIcon className={`h-3 w-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+        </Button>
+
+        {hasActiveFilters && (
+          <Button
+            onClick={clearFilters}
+            variant="ghost"
+            size="sm"
+            className="text-red-600 dark:text-red-400"
+            title="Clear all filters"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </Button>
+        )}
+
+        <ViewModeToggle
+          storageKey="hoseInventoryViewMode"
+          value={viewMode}
+          onChange={setViewMode}
+        />
+
+        <Button
+          onClick={() => setShowAddForm(true)}
+          className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 text-white"
+        >
+          <PlusIcon className="h-4 w-4 mr-1" />
+          <span className="hidden sm:inline">Add Hose</span>
+        </Button>
       </div>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
+          <Select
+            value={filters.status === "" ? "all" : filters.status}
+            onValueChange={(value) => setFilters(f => ({ ...f, status: value === "all" ? "" : value as Status }))}
+          >
+            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="Condemned">Condemned</SelectItem>
+              <SelectItem value="Due for testing">Due for testing</SelectItem>
+              <SelectItem value="With district for repair">With district for repair</SelectItem>
+              <SelectItem value="In date">In date</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.size === "" ? "all" : filters.size}
+            onValueChange={(value) => setFilters(f => ({ ...f, size: value === "all" ? "" : value as Size }))}
+          >
+            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <SelectValue placeholder="All Sizes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sizes</SelectItem>
+              <SelectItem value="25">25mm</SelectItem>
+              <SelectItem value="38">38mm</SelectItem>
+              <SelectItem value="65">65mm</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.type === "" ? "all" : filters.type}
+            onValueChange={(value) => setFilters(f => ({ ...f, type: value === "all" ? "" : value as Type }))}
+          >
+            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="Canvas">Canvas</SelectItem>
+              <SelectItem value="Duraline">Duraline</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.location === "" ? "all" : filters.location}
+            onValueChange={(value) => setFilters(f => ({ ...f, location: value === "all" ? "" : value as Location }))}
+          >
+            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              <SelectItem value="Station">Station</SelectItem>
+              <SelectItem value="Pumper">Pumper</SelectItem>
+              <SelectItem value="Tanker">Tanker</SelectItem>
+              <SelectItem value="FCV">FCV</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Results count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {sortedHoses.length} {sortedHoses.length === 1 ? 'hose' : 'hoses'}
-          {(filters.status || filters.size || filters.type || filters.location || filters.search || filters.upcomingTest || filters.overdueFilter) && (
+      {hasActiveFilters && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span>
+            {sortedHoses.length} {sortedHoses.length === 1 ? 'hose' : 'hoses'}
             <span className="ml-1 text-red-600 dark:text-red-400">(filtered)</span>
-          )}
-        </p>
-      </div>
+          </span>
+          <button onClick={clearFilters} className="text-red-600 dark:text-red-400 hover:underline text-sm">
+            Clear
+          </button>
+        </div>
+      )}
 
-      {/* Empty state */}
+      {/* Empty state for filtered results */}
       {sortedHoses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <InboxIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No hoses found</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            {filters.status || filters.size || filters.type || filters.location || filters.search
-              ? "Try adjusting your filters or search term"
-              : "Add your first hose to get started"}
+          <Flame className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" />
+          <p className="text-gray-500 dark:text-gray-400">
+            No hoses match your current filters
           </p>
-          {(filters.status || filters.size || filters.type || filters.location || filters.search) && (
-            <Button variant="outline" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          )}
+          <button onClick={clearFilters} className="mt-2 text-red-600 dark:text-red-400 hover:underline text-sm">
+            Clear filters
+          </button>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -511,7 +395,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
             <Card
               key={hose._id}
               className={`cursor-pointer hover:shadow-md transition-all rounded-none border-l-4 ${statusBorderColors[hose.status]}`}
-              onClick={() => setEditingHose(hose._id)}
+              onClick={() => setViewingHose(hose._id)}
             >
               <CardContent className="p-4">
                 {/* Header: ID and status */}
@@ -522,21 +406,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                       {hose.status}
                     </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setViewingHistory(hose._id);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 h-8 w-8 -mt-1 -mr-1"
-                    title="View History"
-                  >
-                    <ClockIcon className="h-4 w-4" />
-                  </Button>
                 </div>
 
-                {/* Key specs - large and prominent */}
+                {/* Key specs */}
                 <div className="flex items-baseline gap-3 mb-3">
                   <span className="text-2xl font-bold text-gray-900 dark:text-white">{hose.size}<span className="text-sm font-normal text-muted-foreground">mm</span></span>
                   <span className="text-xl font-semibold text-gray-700 dark:text-gray-300">{hose.length}<span className="text-sm font-normal text-muted-foreground">m</span></span>
@@ -565,24 +437,23 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
           <Table>
             <TableHeader className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10">
               <TableRow>
-                <SortableHeader field="hoseId" label="Hose ID" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="status" label="Status" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="size" label="Size" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="length" label="Length" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="type" label="Type" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="location" label="Location" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <SortableHeader field="testDate" label="Test Date" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
-                <TableHead className="w-24">Actions</TableHead>
+                <SortableTableHeader field="hoseId" label="Hose ID" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="status" label="Status" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="size" label="Size" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="length" label="Length" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="type" label="Type" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="location" label="Location" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
+                <SortableTableHeader field="testDate" label="Test Date" currentField={sortConfig.field} direction={sortConfig.direction} onSort={handleSort} />
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedHoses.map((hose, index) => (
                 <TableRow
                   key={hose._id}
-                  className={`cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                  className={`cursor-pointer transition-colors hover:bg-red-50/50 dark:hover:bg-red-950/20 ${
                     index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'
                   }`}
-                  onClick={() => setEditingHose(hose._id)}
+                  onClick={() => setViewingHose(hose._id)}
                 >
                   <TableCell className="font-semibold">{hose.hoseId}</TableCell>
                   <TableCell>
@@ -600,34 +471,6 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                     </span>
                   </TableCell>
                   <TableCell>{new Date(hose.testDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setViewingHistory(hose._id);
-                        }}
-                        className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                        title="View History"
-                      >
-                        <ClockIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingHose(hose._id);
-                        }}
-                        className="h-8 w-8 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        title="Edit Hose"
-                      >
-                        <PencilSquareIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -635,6 +478,19 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         </div>
       )}
 
+      {/* Detail Panel - read-only quick view */}
+      {viewingHose && (
+        <HoseDetailPanel
+          hoseId={viewingHose}
+          onClose={() => setViewingHose(null)}
+          onEdit={() => {
+            setEditingHose(viewingHose);
+            setViewingHose(null);
+          }}
+        />
+      )}
+
+      {/* Add/Edit Form */}
       {(showAddForm || editingHose) && (
         <HoseForm
           hoseId={editingHose}
@@ -644,15 +500,6 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
           }}
         />
       )}
-
-      {viewingHistory && (
-        <HoseHistoryModal
-          hoseId={viewingHistory}
-          onClose={() => setViewingHistory(null)}
-        />
-      )}
     </div>
   );
 }
-
-

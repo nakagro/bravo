@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { Textarea } from "@/components/ui/textarea";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { Trash2, MessageSquare } from "lucide-react";
 
 export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
   const [newComment, setNewComment] = useState("");
-  // TypeScript will recognize these functions once you run the app and Convex generates the types
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // @ts-ignore - The hoseComments API will be available after running the app
   const comments = useQuery(api.hoseComments?.list, { hoseId });
   // @ts-ignore - The hoseComments API will be available after running the app
@@ -21,12 +23,15 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
     e.preventDefault();
     if (!newComment.trim()) return;
 
+    setIsSubmitting(true);
     try {
       await addComment({ hoseId, text: newComment.trim() });
       setNewComment("");
       toast.success("Comment added");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add comment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -39,44 +44,46 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
+  if (comments === undefined) {
+    return (
+      <div className="flex justify-center items-center h-16">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700 dark:border-red-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-6 border-t border-border pt-4">
-      <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Comments</h3>
-      
+    <div className="space-y-4">
       {/* Add comment form */}
-      <form onSubmit={handleAddComment} className="mb-4">
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add a comment..."
-            className="flex-grow dark:bg-gray-800 dark:text-gray-100"
-          />
+      <form onSubmit={handleAddComment} className="space-y-2">
+        <Textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Add a comment..."
+          className="min-h-[60px] text-sm"
+          rows={2}
+        />
+        <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={!newComment.trim()}
-            className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
+            size="sm"
+            disabled={isSubmitting || !newComment.trim()}
+            className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 text-white"
           >
-            Add Comment
+            {isSubmitting ? "Adding..." : "Add Comment"}
           </Button>
         </div>
       </form>
-      
+
       {/* Comments list */}
-      <div className="space-y-4 max-h-60 overflow-y-auto">
-        {comments === undefined ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin h-5 w-5 border-2 border-red-700 dark:border-red-500 rounded-full border-t-transparent"></div>
-          </div>
-        ) : comments.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-2">No comments yet</p>
-        ) : (
-          comments.map((comment: {
+      {comments.length === 0 ? (
+        <div className="text-center py-4">
+          <MessageSquare className="h-6 w-6 text-gray-300 dark:text-gray-600 mx-auto mb-1" />
+          <p className="text-xs text-gray-400 dark:text-gray-500">No comments yet. Be the first to add one.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {comments.map((comment: {
             _id: Id<"hoseComments">;
             hoseId: Id<"hoses">;
             timestamp: number;
@@ -87,28 +94,43 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
               email: string | null;
             };
           }) => (
-            <div key={comment._id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <div key={comment._id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
               <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {comment.user.name} • {formatDate(comment.timestamp)}
-                  </p>
-                  <p className="mt-1 text-gray-900 dark:text-gray-100">{comment.text}</p>
+                <div className="flex items-start gap-2 min-w-0">
+                  <div className="h-7 w-7 rounded-full bg-red-700 dark:bg-red-600 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                    {comment.user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">{comment.user.name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mt-0.5">
+                      {comment.text}
+                    </p>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteComment(comment._id)}
-                  className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500"
-                  title="Delete comment"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </Button>
+
+                <DeleteConfirmDialog
+                  title="Delete this comment?"
+                  description={`This comment by ${comment.user.name} will be permanently removed.`}
+                  onConfirm={() => handleDeleteComment(comment._id)}
+                  trigger={
+                    <button
+                      className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      title="Delete comment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  }
+                />
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

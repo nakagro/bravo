@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { HoseDashboard } from "../features/hoses/components/HoseDashboard";
 import { HoseInventory } from "../features/hoses/components/HoseInventory";
 import { HoseStatusSync } from "../features/hoses/components/HoseStatusSync";
 import { HoseAuditTrail } from "../features/hoses/components/HoseAuditTrail";
+import { PageTabs } from "../components/shared/PageTabs";
 import {
   Status,
   UpcomingTestFilter,
@@ -13,38 +14,9 @@ import {
   hoseTabs,
 } from "../features/hoses/types";
 
-// Tab button component for DRY code and accessibility
-interface TabButtonProps {
-  tabKey: HoseTab;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-  tabRef: (el: HTMLButtonElement | null) => void;
-}
-
-function TabButton({ tabKey, label, isActive, onClick, tabRef }: TabButtonProps) {
-  return (
-    <button
-      ref={tabRef}
-      role="tab"
-      id={`tab-${tabKey}`}
-      aria-selected={isActive}
-      aria-controls={`tabpanel-${tabKey}`}
-      onClick={onClick}
-      className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-        isActive
-          ? "text-red-600 dark:text-red-400 font-bold"
-          : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 export function HosesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get initial tab from URL or default to dashboard
   const getInitialTab = (): HoseTab => {
     const urlTab = searchParams.get("tab");
@@ -57,25 +29,10 @@ export function HosesPage() {
   const [activeTab, setActiveTab] = useState<HoseTab>(getInitialTab);
   const [inventoryFilter, setInventoryFilter] = useState<HoseFilterType>(null);
 
-  // Refs for tab animation
-  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-
-  // Update indicator position when active tab changes
-  useEffect(() => {
-    const activeTabElement = tabRefs.current[activeTab];
-    if (activeTabElement) {
-      setIndicatorStyle({
-        left: activeTabElement.offsetLeft,
-        width: activeTabElement.offsetWidth,
-      });
-    }
-  }, [activeTab]);
-
   // Sync URL with tab state
   const handleTabChange = useCallback(
-    (tab: HoseTab) => {
-      setActiveTab(tab);
+    (tab: string) => {
+      setActiveTab(tab as HoseTab);
       setSearchParams({ tab }, { replace: true });
     },
     [setSearchParams]
@@ -114,37 +71,14 @@ export function HosesPage() {
         Hose Management
       </h1>
 
-      {/* Tabs with accessibility */}
-      <div className="border-b border-gray-200 dark:border-gray-700 relative">
-        <nav
-          role="tablist"
-          aria-label="Hose management tabs"
-          className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative"
-        >
-          {hoseTabs.map((tab) => (
-            <TabButton
-              key={tab.key}
-              tabKey={tab.key}
-              label={tab.label}
-              isActive={activeTab === tab.key}
-              onClick={() => handleTabChange(tab.key)}
-              tabRef={(el) => {
-                tabRefs.current[tab.key] = el;
-              }}
-            />
-          ))}
-        </nav>
-        {/* Animated indicator */}
-        <div
-          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
-          style={{
-            left: `${indicatorStyle.left}px`,
-            width: `${indicatorStyle.width}px`,
-          }}
-        />
-      </div>
+      <PageTabs
+        tabs={hoseTabs}
+        activeTab={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Hose management tabs"
+      />
 
-      {/* Tab Content with accessibility */}
+      {/* Tab Content */}
       <div className="mt-4">
         <div
           role="tabpanel"

@@ -25,17 +25,27 @@ export const list = query({
       );
     }
 
-    // Get key items count for each key
+    // Get key items count and type summary for each key
     const keysWithItemCount = await Promise.all(
       results.map(async (key) => {
         const keyItems = await ctx.db
           .query("keyItems")
           .withIndex("by_keyId", (q) => q.eq("keyId", key._id))
           .collect();
-        
+
+        // Build type summary (e.g., "2 Keys, 1 Fob")
+        const typeCounts: Record<string, number> = {};
+        for (const item of keyItems) {
+          typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
+        }
+        const itemSummary = Object.entries(typeCounts)
+          .map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`)
+          .join(', ');
+
         return {
           ...key,
           itemCount: keyItems.length,
+          itemSummary,
         };
       })
     );
@@ -56,6 +66,7 @@ export const list = query({
       createdBy: v.id("users"),
       updatedAt: v.number(),
       itemCount: v.number(),
+      itemSummary: v.string(),
     })
   ),
 });

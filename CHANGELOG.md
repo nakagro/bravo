@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.73] - 2026-03-24
+- Hose and Key Management page changes, various not worth listing. Lots of effeciency changes in the code, QoL to make it easier to navigate. 
+
 ## [1.0.72] - 2026-03-20
 - QR code generator in Links - QR codes can be saved for retrieval or anonymously created.
 

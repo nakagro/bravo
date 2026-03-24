@@ -21,6 +21,13 @@ export const getDashboardStats = query({
       count: v.number(),
       percentage: v.number(),
     })),
+    locationBreakdown: v.array(v.object({
+      location: v.string(),
+      count: v.number(),
+      percentage: v.number(),
+      inDate: v.number(),
+      dueForTesting: v.number(),
+    })),
     lengthStats: v.object({
       average: v.number(),
       min: v.number(),
@@ -61,6 +68,7 @@ export const getDashboardStats = query({
         statusBreakdown: [],
         sizeBreakdown: [],
         typeBreakdown: [],
+        locationBreakdown: [],
         lengthStats: { average: 0, min: 0, max: 0, total: 0 },
         lengthDistribution: [],
         testingStatus: { inDate: 0, dueForTesting: 0, overdue: 0 },
@@ -104,6 +112,28 @@ export const getDashboardStats = query({
       count,
       percentage: Math.round((count / totalHoses) * 100),
     }));
+
+    // Location breakdown with per-location status
+    const locationMap: Record<string, { count: number; inDate: number; dueForTesting: number }> = {};
+    for (const hose of hoses) {
+      const loc = hose.location || "Unknown";
+      if (!locationMap[loc]) {
+        locationMap[loc] = { count: 0, inDate: 0, dueForTesting: 0 };
+      }
+      locationMap[loc].count++;
+      if (hose.status === "In date") locationMap[loc].inDate++;
+      if (hose.status === "Due for testing") locationMap[loc].dueForTesting++;
+    }
+
+    const locationBreakdown = Object.entries(locationMap)
+      .map(([location, data]) => ({
+        location,
+        count: data.count,
+        percentage: Math.round((data.count / totalHoses) * 100),
+        inDate: data.inDate,
+        dueForTesting: data.dueForTesting,
+      }))
+      .sort((a, b) => b.count - a.count);
 
     // Length statistics
     const lengths = hoses.map(h => h.length);
@@ -215,6 +245,7 @@ export const getDashboardStats = query({
       statusBreakdown,
       sizeBreakdown,
       typeBreakdown,
+      locationBreakdown,
       lengthStats,
       lengthDistribution,
       testingStatus,
