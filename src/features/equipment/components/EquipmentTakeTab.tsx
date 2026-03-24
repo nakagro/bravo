@@ -20,7 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Minus, Plus, X, AlertTriangle, Package, ChevronRight } from "lucide-react";
+import { Search, Minus, Plus, X, AlertTriangle, Package, ChevronRight, Clock } from "lucide-react";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 interface ItemVariant {
   _id: Id<"equipmentItems">;
@@ -52,6 +54,7 @@ export function EquipmentTakeTab() {
 
   const items = useQuery(api.equipment.getItems);
   const takeItem = useMutation(api.equipment.takeItem);
+  const myRecentTakes = useQuery(api.equipment.getMyRecentTakes, { limit: 5 });
 
   // Group items by name (or by category for collapsed categories)
   const groupedItems = useMemo(() => {
@@ -190,9 +193,11 @@ export function EquipmentTakeTab() {
         quantity,
         notes: notes.trim() || undefined,
       });
+      const label = selectedGroup?.isCollapsedCategory ? selectedVariant.label : (selectedGroup?.name || "Item");
+      toast.success(`Took ${quantity} ${selectedVariant.unit || "units"} of ${label}`);
       handleClose();
-    } catch (error) {
-      console.error("Failed to take item:", error);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to take item");
     } finally {
       setIsSubmitting(false);
     }
@@ -393,6 +398,29 @@ export function EquipmentTakeTab() {
           </Button>
         )}
       </div>
+
+      {/* Recent takes */}
+      {!searchQuery && myRecentTakes && myRecentTakes.length > 0 && (
+        <div className="space-y-1.5">
+          <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 px-1">
+            <Clock className="h-3 w-3" />
+            Your Recent Takes
+          </h3>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {myRecentTakes.map((take) => (
+              <div
+                key={take._id}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full bg-muted text-xs text-muted-foreground border"
+              >
+                <span className="font-medium text-foreground">{take.quantity}</span>
+                {" "}{take.itemName}
+                {take.itemSize && <span className="opacity-60"> ({take.itemSize})</span>}
+                <span className="ml-1.5 opacity-50">{formatDistanceToNow(take.createdAt, { addSuffix: true })}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Grouped items list */}
       {filteredGroups.length === 0 ? (

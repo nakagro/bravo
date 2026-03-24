@@ -643,6 +643,12 @@ export const getItemTransactions = query({
 export const getRecentTransactions = query({
   args: {
     limit: v.optional(v.number()),
+    type: v.optional(v.union(
+      v.literal("take"),
+      v.literal("replenish"),
+      v.literal("adjustment"),
+      v.literal("initial")
+    )),
   },
   returns: v.array(v.object({
     _id: v.id("equipmentTransactions"),
@@ -661,12 +667,18 @@ export const getRecentTransactions = query({
     createdAt: v.number(),
   })),
   handler: async (ctx, args) => {
-    const limit = args.limit ?? 20;
-    const transactions = await ctx.db
+    const fetchLimit = args.type ? 200 : (args.limit ?? 20);
+    let transactions = await ctx.db
       .query("equipmentTransactions")
       .withIndex("by_createdAt")
       .order("desc")
-      .take(limit);
+      .take(fetchLimit);
+
+    if (args.type) {
+      transactions = transactions.filter(t => t.type === args.type);
+    }
+    const limit = args.limit ?? 20;
+    transactions = transactions.slice(0, limit);
 
     // Get item and user info
     const itemIds = [...new Set(transactions.map((t) => t.itemId))];
@@ -693,6 +705,51 @@ export const getRecentTransactions = query({
       userName: userMap.get(t.userId) ?? "Unknown",
       createdAt: t.createdAt,
     }));
+  },
+});
+
+/**
+ * Get the current user's recent takes
+ */
+export const getMyRecentTakes = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.object({
+    _id: v.id("equipmentTransactions"),
+    itemName: v.string(),
+    itemSize: v.optional(v.string()),
+    quantity: v.number(),
+    createdAt: v.number(),
+  })),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const limit = args.limit ?? 5;
+    const transactions = await ctx.db
+      .query("equipmentTransactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(50);
+
+    // Filter to takes only, then limit
+    const takes = transactions.filter(t => t.type === "take").slice(0, limit);
+
+    const itemIds = [...new Set(takes.map(t => t.itemId))];
+    const items = await Promise.all(itemIds.map(id => ctx.db.get(id)));
+    const itemMap = new Map(items.filter(Boolean).map(i => [i!._id, i!]));
+
+    return takes.map(t => {
+      const item = itemMap.get(t.itemId);
+      return {
+        _id: t._id,
+        itemName: item?.name ?? "Unknown",
+        itemSize: item?.size,
+        quantity: Math.abs(t.quantity),
+        createdAt: t.createdAt,
+      };
+    });
   },
 });
 

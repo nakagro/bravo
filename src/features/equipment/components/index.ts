@@ -4,4 +4,5 @@ export { EquipmentAdminPanel } from "./EquipmentAdminPanel";
 export { EquipmentRecentActivity } from "./EquipmentRecentActivity";
 export { EquipmentTakeTab } from "./EquipmentTakeTab";
 export { EquipmentStockTab } from "./EquipmentStockTab";
+export { EquipmentReplenishTab } from "./EquipmentReplenishTab";
 export { EquipmentManageTab } from "./EquipmentManageTab";

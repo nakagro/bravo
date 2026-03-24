@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import {
   EquipmentTakeTab,
   EquipmentStockTab,
+  EquipmentReplenishTab,
   EquipmentManageTab,
   EquipmentRecentActivity,
 } from "@/features/equipment/components";
@@ -75,11 +76,22 @@ export function EquipmentPage() {
           {canManage && (
             <>
               <button
+                ref={(el) => { tabRefs.current['replenish'] = el; }}
+                onClick={() => setActiveTab('replenish')}
+                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                  activeTab === 'replenish'
+                    ? 'text-red-600 dark:text-red-400 font-bold'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
+                }`}
+              >
+                Replenish
+              </button>
+              <button
                 ref={(el) => { tabRefs.current['history'] = el; }}
                 onClick={() => setActiveTab('history')}
                 className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-                  activeTab === 'history' 
-                    ? 'text-red-600 dark:text-red-400 font-bold' 
+                  activeTab === 'history'
+                    ? 'text-red-600 dark:text-red-400 font-bold'
                     : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
                 }`}
               >
@@ -89,8 +101,8 @@ export function EquipmentPage() {
                 ref={(el) => { tabRefs.current['manage'] = el; }}
                 onClick={() => setActiveTab('manage')}
                 className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-                  activeTab === 'manage' 
-                    ? 'text-red-600 dark:text-red-400 font-bold' 
+                  activeTab === 'manage'
+                    ? 'text-red-600 dark:text-red-400 font-bold'
                     : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
                 }`}
               >
@@ -113,6 +125,7 @@ export function EquipmentPage() {
       <div className="mt-4">
         {activeTab === 'take' && <EquipmentTakeTab />}
         {activeTab === 'stock' && <EquipmentStockTab />}
+        {activeTab === 'replenish' && canManage && <EquipmentReplenishTab />}
         {activeTab === 'history' && canManage && <EquipmentRecentActivity />}
         {activeTab === 'manage' && canManage && <EquipmentManageTab />}
       </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -23,6 +23,7 @@ export function InventoryChecksTab() {
 
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const sectionRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   const grouped = useMemo((): GroupedSection[] => {
     const items = (runData?.items as RunItemDoc[]) ?? [];
@@ -32,14 +33,13 @@ export function InventoryChecksTab() {
       if (!map.has(key)) map.set(key, { sectionName: item.sectionName, items: [] });
       map.get(key)!.items.push(item);
     }
-    const sections = Array.from(map.entries())
+    return Array.from(map.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([order, { sectionName, items }]) => ({
         order,
         sectionName,
         items: items.sort((a, b) => a.itemOrder - b.itemOrder),
       }));
-    return sections;
   }, [runData]);
 
   const run = runData?.run;
@@ -48,23 +48,100 @@ export function InventoryChecksTab() {
   const progress = useMemo((): ProgressInfo => {
     const items = (runData?.items as RunItemDoc[]) ?? [];
     const answered = items.filter(i => {
-      if (i.expectedQuantity !== undefined) {
-        return i.actualQuantity !== undefined;
-      }
+      if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
       return typeof i.value !== "undefined";
     }).length;
     const total = items.length;
     return { answered, total, percentage: total > 0 ? Math.round((answered / total) * 100) : 0 };
   }, [runData]);
 
+  // Count deviations (No answers + quantity mismatches)
+  const deviationCount = useMemo(() => {
+    const items = (runData?.items as RunItemDoc[]) ?? [];
+    return items.filter(i => {
+      if (i.expectedQuantity !== undefined) {
+        return i.actualQuantity !== undefined && i.actualQuantity !== i.expectedQuantity;
+      }
+      return i.value === "no";
+    }).length;
+  }, [runData]);
+
+  // Auto-expand: track which sections are open
+  // Start with all open, then auto-open next unanswered when a section completes
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  const prevProgressRef = useRef<Map<number, number>>(new Map());
+
+  // Initialize open sections when data loads
+  useEffect(() => {
+    if (grouped.length > 0 && openSections.length === 0) {
+      setOpenSections(grouped.map(s => `section-${s.order}`));
+    }
+  }, [grouped, openSections.length]);
+
+  // Auto-expand next section when one completes
+  useEffect(() => {
+    if (isReadOnly || grouped.length === 0) return;
+
+    for (const section of grouped) {
+      const answered = section.items.filter(i => {
+        if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
+        return typeof i.value !== "undefined";
+      }).length;
+      const total = section.items.length;
+      const prevAnswered = prevProgressRef.current.get(section.order) ?? 0;
+
+      // Section just completed
+      if (answered === total && prevAnswered < total) {
+        // Find next incomplete section
+        const nextIncomplete = grouped.find(s => {
+          if (s.order <= section.order) return false;
+          const a = s.items.filter(i => {
+            if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
+            return typeof i.value !== "undefined";
+          }).length;
+          return a < s.items.length;
+        });
+
+        if (nextIncomplete) {
+          const nextKey = `section-${nextIncomplete.order}`;
+          setOpenSections(prev => {
+            if (prev.includes(nextKey)) return prev;
+            return [...prev, nextKey];
+          });
+          // Scroll to next section
+          setTimeout(() => {
+            const el = sectionRefs.current.get(nextIncomplete.order);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 200);
+        }
+      }
+
+      prevProgressRef.current.set(section.order, answered);
+    }
+  }, [grouped, isReadOnly]);
+
+  const handleNavigateSection = useCallback((sectionOrder: number) => {
+    const key = `section-${sectionOrder}`;
+    setOpenSections(prev => {
+      if (prev.includes(key)) return prev;
+      return [...prev, key];
+    });
+    setTimeout(() => {
+      const el = sectionRefs.current.get(sectionOrder);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 100);
+  }, []);
+
   const handleComplete = async () => {
     if (!run) return;
     const items = (runData?.items as RunItemDoc[] | undefined) ?? [];
 
     const unanswered = items.filter(i => {
-      if (i.expectedQuantity !== undefined) {
-        return i.actualQuantity === undefined;
-      }
+      if (i.expectedQuantity !== undefined) return i.actualQuantity === undefined;
       return typeof i.value === "undefined";
     });
 
@@ -110,11 +187,11 @@ export function InventoryChecksTab() {
 
   const handleExportPdf = () => {
     if (!run || !runData?.items) return;
-    
-    const startedByName = runData.startedByUser 
+
+    const startedByName = runData.startedByUser
       ? `${runData.startedByUser.firstName || ""} ${runData.startedByUser.lastName || ""}`.trim() || runData.startedByUser.name || "Unknown"
       : undefined;
-    
+
     const completedByName = runData.completedByUser
       ? `${runData.completedByUser.firstName || ""} ${runData.completedByUser.lastName || ""}`.trim() || runData.completedByUser.name || "Unknown"
       : undefined;
@@ -138,37 +215,54 @@ export function InventoryChecksTab() {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-sm text-muted-foreground">Loading run...</div>
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-3 pb-4">
       <InventoryCheckHeader
         templateName={run.templateName}
         status={run.status}
         progress={progress}
+        deviationCount={deviationCount}
         isReadOnly={isReadOnly}
         completing={completing}
         cancelling={cancelling}
         onComplete={handleComplete}
         onCancel={handleCancel}
         onExportPdf={handleExportPdf}
+        sections={grouped}
+        onNavigateSection={handleNavigateSection}
       />
 
       {isReadOnly && runData?.items && (
         <InventoryExecutiveSummary items={runData.items as RunItemDoc[]} />
       )}
 
-      <Accordion type="multiple" defaultValue={grouped.map(s => `section-${s.order}`)} className="space-y-4">
+      <Accordion
+        type="multiple"
+        value={openSections}
+        onValueChange={setOpenSections}
+        className="space-y-3"
+      >
         {grouped.map((section) => (
-          <InventoryCheckSection
+          <div
             key={section.order}
-            section={section}
-            isReadOnly={isReadOnly}
-          />
+            ref={(el) => {
+              if (el) sectionRefs.current.set(section.order, el);
+              else sectionRefs.current.delete(section.order);
+            }}
+          >
+            <InventoryCheckSection
+              section={section}
+              isReadOnly={isReadOnly}
+            />
+          </div>
         ))}
       </Accordion>
     </div>
