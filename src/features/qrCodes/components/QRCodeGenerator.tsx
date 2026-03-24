@@ -61,15 +61,10 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
       return;
     }
 
-    if (!name.trim()) {
-      toast.error('Please enter a name for the QR code');
-      return;
-    }
-
     setIsSaving(true);
     try {
       await createQRCode({
-        name: name.trim(),
+        name: name.trim() || undefined,
         url: url.trim(),
         svgData,
       });
@@ -153,6 +148,23 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="name" className="flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              Name
+            </Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="My QR Code"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              A friendly name to identify this QR code
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="url" className="flex items-center gap-2">
               <Link2 className="w-4 h-4" />
               URL
@@ -165,23 +177,6 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && generateQRCode()}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name" className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Name {saveToDatabase && <span className="text-red-500">*</span>}
-            </Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="My QR Code"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              A friendly name to identify this QR code
-            </p>
           </div>
 
           <div className="flex items-center justify-between pt-2">
@@ -257,7 +252,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
             {saveToDatabase && (
               <Button
                 onClick={handleSave}
-                disabled={isSaving || !name.trim()}
+                disabled={isSaving}
                 className="w-full"
               >
                 {isSaving ? (

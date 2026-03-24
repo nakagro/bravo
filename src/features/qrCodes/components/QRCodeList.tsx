@@ -37,7 +37,7 @@ export function QRCodeList() {
     }
   }, [deleteQRCode]);
 
-  const handleDownload = useCallback((svgData: string, name: string, format: 'svg' | 'png') => {
+  const handleDownload = useCallback((svgData: string, name: string | undefined, format: 'svg' | 'png') => {
     const fileName = name || 'qr-code';
 
     if (format === 'svg') {
@@ -139,7 +139,7 @@ export function QRCodeList() {
               <div className="min-w-0 space-y-3">
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-white break-words">
-                    {qrCode.name}
+                    {qrCode.name ?? 'Unnamed'}
                   </h3>
                   <a
                     href={qrCode.url}
@@ -199,7 +199,7 @@ export function QRCodeList() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete QR Code</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete "{qrCode.name}"? This action cannot be undone.
+                          Are you sure you want to delete "{qrCode.name ?? 'Unnamed'}"? This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

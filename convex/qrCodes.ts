@@ -8,7 +8,7 @@ export const getUserQRCodes = query({
     v.object({
       _id: v.id("qrCodes"),
       _creationTime: v.number(),
-      name: v.string(),
+      name: v.optional(v.string()),
       url: v.string(),
       svgData: v.string(),
       createdBy: v.id("users"),
@@ -34,7 +34,7 @@ export const getUserQRCodes = query({
 
 export const createQRCode = mutation({
   args: {
-    name: v.string(),
+    name: v.optional(v.string()),
     url: v.string(),
     svgData: v.string(),
   },
@@ -62,7 +62,7 @@ export const createQRCode = mutation({
 export const updateQRCode = mutation({
   args: {
     id: v.id("qrCodes"),
-    name: v.string(),
+    name: v.optional(v.string()),
     url: v.string(),
     svgData: v.string(),
   },

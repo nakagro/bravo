@@ -1001,7 +1001,7 @@ const applicationTables = {
 
   // QR Codes - User-generated QR codes for URLs
   qrCodes: defineTable({
-    name: v.string(), // User-friendly name for the QR code
+    name: v.optional(v.string()), // User-friendly name for the QR code
     url: v.string(), // The URL encoded in the QR code
     svgData: v.string(), // The SVG string for the QR code (vector, scalable)
     createdBy: v.id("users"),
