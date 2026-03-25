@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.74] - 2026-03-25
+- Vehicle Faults Module: Overhauled with a full component restructure. Fault logging, comments, attachments, audit trail, and vehicle type administration are now properly separated into dedicated components.
+- Duty Crew Module: Overhauled with a full component restructure. This week's crew, schedule view, crew management, station check templates and history are now properly separated.
+- Availability - Brigade Tab: Now shows this week's duty crew assignment inline and fetches member skills in a single query (no more N+1 per member).
+- Availability - You Tab: Duration input improvements with time, hours, and datetime entry modes.
+- Bookings Module: Full UX overhaul — booking and edit forms rebuilt with proper inline validation (React Hook Form + Zod). Rejection now uses a dedicated dialog instead of a browser prompt. Pending approvals extracted into its own reusable component shared across tabs.
+- Bookings Module: New inline calendar date picker replacing the native date input, fixing compatibility issues across browsers and inside side panels.
+- Shared: New ResponsiveModal component (Drawer on mobile, Sheet on desktop) standardising all form modals across the app.
+
 ## [1.0.73] - 2026-03-24
 - Hose and Key Management page changes, various not worth listing. Lots of effeciency changes in the code, QoL to make it easier to navigate. 
 

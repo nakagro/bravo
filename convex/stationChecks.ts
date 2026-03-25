@@ -157,6 +157,8 @@ export const updateStationCheck = mutation({
 });
 
 // Delete a station check
+// Historical submissions store check data (name, result, notes) inline as a snapshot,
+// so deleting the template does not affect past records — checkId is optional.
 export const deleteStationCheck = mutation({
   args: {
     id: v.id("stationChecks"),
@@ -167,25 +169,7 @@ export const deleteStationCheck = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    
-    // Check if there are any submissions using this check
-    const submissions = await ctx.db
-      .query("stationCheckSubmissions")
-      .collect();
-    
-    const isUsed = submissions.some(submission => 
-      submission.checkItems.some(item => item.checkId === args.id)
-    );
-    
-    if (isUsed) {
-      // Instead of deleting, mark as inactive
-      await ctx.db.patch(args.id, {
-        isActive: false,
-        updatedAt: Date.now(),
-      });
-      return false;
-    }
-    
+
     await ctx.db.delete(args.id);
     return true;
   },
@@ -211,12 +195,14 @@ export const getCurrentWeekCheckStatus = query({
         lastUpdatedAt: v.optional(v.number()),
         checkItems: v.array(
           v.object({
-            checkId: v.id("stationChecks"),
+            checkId: v.optional(v.id("stationChecks")),
             name: v.string(),
             isCompleted: v.boolean(),
             notes: v.optional(v.string()),
             completedBy: v.optional(v.id("users")),
             completedAt: v.optional(v.number()),
+            isAdHoc: v.optional(v.boolean()),
+            addedBy: v.optional(v.id("users")),
           })
         ),
         notes: v.optional(v.string()),
@@ -419,12 +405,14 @@ export const saveDraftStationCheck = mutation({
     dutyCrewId: v.id("dutyCrew"),
     checkItems: v.array(
       v.object({
-        checkId: v.id("stationChecks"),
+        checkId: v.optional(v.id("stationChecks")),
         name: v.string(),
         isCompleted: v.boolean(),
         notes: v.optional(v.string()),
         completedBy: v.optional(v.id("users")),
         completedAt: v.optional(v.number()),
+        isAdHoc: v.optional(v.boolean()),
+        addedBy: v.optional(v.id("users")),
       })
     ),
     notes: v.optional(v.string()),
@@ -503,12 +491,14 @@ export const submitStationCheck = mutation({
     dutyCrewId: v.id("dutyCrew"),
     checkItems: v.array(
       v.object({
-        checkId: v.id("stationChecks"),
+        checkId: v.optional(v.id("stationChecks")),
         name: v.string(),
         isCompleted: v.boolean(),
         notes: v.optional(v.string()),
         completedBy: v.optional(v.id("users")),
         completedAt: v.optional(v.number()),
+        isAdHoc: v.optional(v.boolean()),
+        addedBy: v.optional(v.id("users")),
       })
     ),
     notes: v.optional(v.string()),
@@ -655,10 +645,12 @@ export const getStationCheckHistory = query({
       completedAt: v.number(),
       checkItems: v.array(
         v.object({
-          checkId: v.id("stationChecks"),
+          checkId: v.optional(v.id("stationChecks")),
           name: v.string(),
           isCompleted: v.boolean(),
           notes: v.optional(v.string()),
+          isAdHoc: v.optional(v.boolean()),
+          addedBy: v.optional(v.id("users")),
         })
       ),
       notes: v.optional(v.string()),
@@ -666,32 +658,45 @@ export const getStationCheckHistory = query({
   ),
   handler: async (ctx, args) => {
     const limit = args.limit ?? 10;
-    
+
+    // Only surface completed submissions; use the index for efficiency
     const submissions = await ctx.db
       .query("stationCheckSubmissions")
-      .filter((q) => q.eq(q.field("dutyCrewId"), args.dutyCrewId))
+      .withIndex("by_dutyCrew", (q) => q.eq("dutyCrewId", args.dutyCrewId))
+      .filter((q) => q.eq(q.field("status"), "completed"))
       .order("desc")
       .take(limit);
-    
-    // Fetch user details for each submission
+
     const results = [];
-    
+
     for (const submission of submissions) {
       const user = await ctx.db.get(submission.completedBy);
-      
-      if (user) {
-        results.push({
-          ...submission,
-          completedBy: {
-            _id: user._id,
-            name: user.name || "",
-            firstName: user.firstName,
-            lastName: user.lastName,
-          },
-        });
-      }
+      if (!user) continue;
+
+      // Explicitly construct the return object — never spread the raw document
+      // to avoid leaking undeclared fields (_creationTime, dutyCrewId, status, etc.)
+      results.push({
+        _id: submission._id,
+        date: submission.date,
+        completedAt: submission.completedAt,
+        completedBy: {
+          _id: user._id,
+          name: user.name || "",
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+        checkItems: submission.checkItems.map((item) => ({
+          checkId: item.checkId,
+          name: item.name,
+          isCompleted: item.isCompleted,
+          notes: item.notes,
+          isAdHoc: item.isAdHoc,
+          addedBy: item.addedBy,
+        })),
+        notes: submission.notes,
+      });
     }
-    
+
     return results;
   },
 });

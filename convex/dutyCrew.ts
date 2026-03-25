@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Get all duty crews
 export const getAllDutyCrews = query({
@@ -18,10 +19,8 @@ export const getAllDutyCrews = query({
     })
   ),
   handler: async (ctx) => {
-    return await ctx.db
-      .query("dutyCrew")
-      .order("asc")
-      .collect();
+    const crews = await ctx.db.query("dutyCrew").collect();
+    return crews.sort((a, b) => a.number - b.number);
   },
 });
 
@@ -90,6 +89,7 @@ export const updateDutyCrew = mutation({
   args: {
     id: v.id("dutyCrew"),
     name: v.optional(v.string()),
+    number: v.optional(v.number()),
     members: v.optional(v.array(v.id("users"))),
     leader: v.optional(v.id("users")),
   },
@@ -107,6 +107,7 @@ export const updateDutyCrew = mutation({
 
     const updates: {
       name?: string;
+      number?: number;
       members?: Id<"users">[];
       leader?: Id<"users"> | undefined;
       updatedAt: number;
@@ -116,6 +117,10 @@ export const updateDutyCrew = mutation({
 
     if (args.name !== undefined) {
       updates.name = args.name;
+    }
+
+    if (args.number !== undefined) {
+      updates.number = args.number;
     }
 
     if (args.members !== undefined) {
@@ -276,7 +281,7 @@ export const getDutyCrewForDate = query({
           number: 0,
           members: allMembers,
           isSpecial: true,
-          notes: "Working Bee - All duty crews",
+          notes: "All duty crews",
           date: args.date,
         };
       }
@@ -394,7 +399,7 @@ export const getUpcomingDutyCrewAssignments = query({
                   number: 0,
                 },
                 isSpecial: true,
-                notes: "Working Bee - All duty crews",
+                notes: "All duty crews",
               });
             }
           }
@@ -489,8 +494,25 @@ export const deleteAssignment = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    
+
     await ctx.db.delete(args.id);
     return true;
+  },
+});
+
+// Check if the current authenticated user is a leader of the given duty crew
+export const isCurrentUserDutyCrewLeader = query({
+  args: {
+    dutyCrewId: v.id("dutyCrew"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return false;
+
+    const dutyCrew = await ctx.db.get(args.dutyCrewId);
+    if (!dutyCrew) return false;
+
+    return dutyCrew.leader === userId;
   },
 });

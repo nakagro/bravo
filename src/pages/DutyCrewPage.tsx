@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { DutyCrewSchedule } from "../components/dutyCrew/DutyCrewSchedule";
-import { DutyCrewAdmin } from "../components/dutyCrew/DutyCrewAdmin";
-import { StationChecksTab } from "../components/dutyCrew/StationChecksTab";
-import { StationChecksAdmin } from "../components/dutyCrew/StationChecksAdmin";
-import { StationChecksHistory } from "../components/dutyCrew/StationChecksHistory";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-
-type TabType = "schedule" | "stationChecks" | "administration" | "stationChecksAdmin" | "checksHistory";
+import { ThisWeekTab } from "../features/dutyCrew/components/ThisWeekTab";
+import { ScheduleTab } from "../features/dutyCrew/components/ScheduleTab";
+import { AdminTab } from "../features/dutyCrew/components/AdminTab";
+import type { TabType } from "../features/dutyCrew/types";
 
 export function DutyCrewPage() {
-  const [activeTab, setActiveTab] = useState<TabType>("schedule");
+  const [activeTab, setActiveTab] = useState<TabType>("thisWeek");
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const adminAccess = moduleAccess?.admin;
 
@@ -20,8 +17,8 @@ export function DutyCrewPage() {
 
   // Ensure we don't render a tab the user cannot access
   useEffect(() => {
-    if ((activeTab === "administration" || activeTab === "stationChecksAdmin" || activeTab === "checksHistory") && adminAccess === false) {
-      setActiveTab("schedule");
+    if (activeTab === "admin" && adminAccess === false) {
+      setActiveTab("thisWeek");
     }
   }, [activeTab, adminAccess]);
 
@@ -36,69 +33,42 @@ export function DutyCrewPage() {
     }
   }, [activeTab, adminAccess]);
 
+  const tabs: { key: TabType; label: string; adminOnly?: boolean }[] = [
+    { key: "thisWeek", label: "This Week" },
+    { key: "schedule", label: "Schedule" },
+    { key: "admin", label: "Admin", adminOnly: true },
+  ];
+
   return (
     <div className="space-y-4" data-component="DutyCrewPage">
       <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Duty Crew</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Duty Crew
+        </h1>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 relative">
         <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
-          <button
-            ref={(el) => { tabRefs.current['schedule'] = el; }}
-            onClick={() => setActiveTab("schedule")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "schedule"
-                ? 'text-red-600 dark:text-red-400 font-bold'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-          >
-            Schedule
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['stationChecks'] = el; }}
-            onClick={() => setActiveTab("stationChecks")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "stationChecks"
-                ? 'text-red-600 dark:text-red-400 font-bold'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-          >
-            Station Checks
-          </button>
-          {adminAccess && (
-            <>
+          {tabs.map((tab) => {
+            if (tab.adminOnly && !adminAccess) return null;
+            return (
               <button
-                ref={(el) => { tabRefs.current['administration'] = el; }}
-                onClick={() => setActiveTab("administration")}
-                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "administration"
-                    ? 'text-red-600 dark:text-red-400 font-bold'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-                  }`}
+                key={tab.key}
+                ref={(el) => {
+                  tabRefs.current[tab.key] = el;
+                }}
+                onClick={() => setActiveTab(tab.key)}
+                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? "text-red-600 dark:text-red-400 font-bold"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+                }`}
               >
-                Administration
+                {tab.label}
               </button>
-              <button
-                ref={(el) => { tabRefs.current['stationChecksAdmin'] = el; }}
-                onClick={() => setActiveTab("stationChecksAdmin")}
-                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "stationChecksAdmin"
-                    ? 'text-red-600 dark:text-red-400 font-bold'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-                  }`}
-              >
-                Station Checks Admin
-              </button>
-              <button
-                ref={(el) => { tabRefs.current['checksHistory'] = el; }}
-                onClick={() => setActiveTab("checksHistory")}
-                className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "checksHistory"
-                    ? 'text-red-600 dark:text-red-400 font-bold'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-                  }`}
-              >
-                Checks History
-              </button>
-            </>
-          )}
+            );
+          })}
         </nav>
         {/* Animated indicator */}
         <div
@@ -112,25 +82,13 @@ export function DutyCrewPage() {
 
       {/* Tab Content */}
       <div className="mt-4">
-        {activeTab === "schedule" && (
-          <DutyCrewSchedule />
+        {activeTab === "thisWeek" && (
+          <ThisWeekTab isAdmin={adminAccess === true} />
         )}
 
-        {activeTab === "stationChecks" && (
-          <StationChecksTab />
-        )}
+        {activeTab === "schedule" && <ScheduleTab />}
 
-        {activeTab === "administration" && adminAccess && (
-          <DutyCrewAdmin />
-        )}
-
-        {activeTab === "stationChecksAdmin" && adminAccess && (
-          <StationChecksAdmin />
-        )}
-
-        {activeTab === "checksHistory" && adminAccess && (
-          <StationChecksHistory />
-        )}
+        {activeTab === "admin" && adminAccess && <AdminTab />}
       </div>
     </div>
   );

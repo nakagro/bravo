@@ -321,12 +321,14 @@ const applicationTables = {
     lastUpdatedAt: v.optional(v.number()), // Timestamp of the last update
     checkItems: v.array(
       v.object({
-        checkId: v.id("stationChecks"), // Reference to the check item
+        checkId: v.optional(v.id("stationChecks")), // Reference to the check item (optional for ad-hoc items)
         name: v.string(), // Name of the check at the time of submission (in case it changes later)
         isCompleted: v.boolean(), // Whether this specific check was completed
         notes: v.optional(v.string()), // Optional notes for this specific check
         completedBy: v.optional(v.id("users")), // User who completed this specific check
         completedAt: v.optional(v.number()), // Timestamp when this specific check was completed
+        isAdHoc: v.optional(v.boolean()), // Whether this is an ad-hoc item added by a crew leader
+        addedBy: v.optional(v.id("users")), // User who added this ad-hoc item
       })
     ),
     notes: v.optional(v.string()), // Optional general notes for the entire submission
@@ -619,15 +621,34 @@ const applicationTables = {
     .index("by_name", ["name"])
     .index("by_order", ["order"]),
 
+  // Vehicle Fault Vehicle Types - admin-configurable vehicle types
+  vehicleFaultVehicleTypes: defineTable({
+    name: v.string(),
+    isActive: v.boolean(),
+    order: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["order"])
+    .index("by_active", ["isActive", "order"]),
+
+  // Vehicle Fault Attachments - photos/files attached to faults
+  vehicleFaultAttachments: defineTable({
+    faultId: v.id("vehicleFaults"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+  })
+    .index("by_fault", ["faultId"]),
+
   // Vehicle Faults table for tracking appliance issues
   vehicleFaults: defineTable({
     dateReported: v.number(), // Timestamp when the fault was first reported
     dateLogged: v.optional(v.number()), // Timestamp when the fault was logged into CFA system
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(), // Vehicle name (admin-configurable via vehicleFaultVehicleTypes)
     shortDescription: v.string(), // Brief description of the issue (e.g., "Air leak", "Electrical issue")
     longDescription: v.string(), // Detailed description of the issue
     eamRequestNumber: v.optional(v.string()), // EAM Request Number from CFA system

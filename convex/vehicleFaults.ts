@@ -10,11 +10,7 @@ export const getVehicleFaults = query({
     _creationTime: v.number(),
     dateReported: v.number(),
     dateLogged: v.optional(v.number()),
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(),
     shortDescription: v.string(),
     longDescription: v.string(),
     eamRequestNumber: v.optional(v.string()),
@@ -82,22 +78,14 @@ export const getVehicleFaults = query({
 // Query to get vehicle faults by vehicle
 export const getVehicleFaultsByVehicle = query({
   args: {
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(),
   },
   returns: v.array(v.object({
     _id: v.id("vehicleFaults"),
     _creationTime: v.number(),
     dateReported: v.number(),
     dateLogged: v.optional(v.number()),
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(),
     shortDescription: v.string(),
     longDescription: v.string(),
     eamRequestNumber: v.optional(v.string()),
@@ -134,11 +122,7 @@ export const getVehicleFaultsByStatus = query({
     _creationTime: v.number(),
     dateReported: v.number(),
     dateLogged: v.optional(v.number()),
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(),
     shortDescription: v.string(),
     longDescription: v.string(),
     eamRequestNumber: v.optional(v.string()),
@@ -171,11 +155,7 @@ export const createVehicleFault = mutation({
   args: {
     dateReported: v.number(),
     dateLogged: v.optional(v.number()),
-    vehicle: v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    ),
+    vehicle: v.string(),
     shortDescription: v.string(),
     longDescription: v.string(),
     eamRequestNumber: v.optional(v.string()),
@@ -242,11 +222,7 @@ export const updateVehicleFault = mutation({
     faultId: v.id("vehicleFaults"),
     dateReported: v.optional(v.number()),
     dateLogged: v.optional(v.number()),
-    vehicle: v.optional(v.union(
-      v.literal("Pumper"),
-      v.literal("Tanker"),
-      v.literal("FCV")
-    )),
+    vehicle: v.optional(v.string()),
     shortDescription: v.optional(v.string()),
     longDescription: v.optional(v.string()),
     eamRequestNumber: v.optional(v.string()),
@@ -401,11 +377,7 @@ export const getVehicleFault = query({
       _creationTime: v.number(),
       dateReported: v.number(),
       dateLogged: v.optional(v.number()),
-      vehicle: v.union(
-        v.literal("Pumper"),
-        v.literal("Tanker"),
-        v.literal("FCV")
-      ),
+      vehicle: v.string(),
       shortDescription: v.string(),
       longDescription: v.string(),
       eamRequestNumber: v.optional(v.string()),
@@ -543,5 +515,151 @@ export const addVehicleFaultComment = mutation({
     });
 
     return commentId;
+  },
+});
+
+// Generate an upload URL for file attachments
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to upload files");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Query to get attachments for a specific vehicle fault
+export const getAttachments = query({
+  args: {
+    faultId: v.id("vehicleFaults"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("vehicleFaultAttachments"),
+    _creationTime: v.number(),
+    faultId: v.id("vehicleFaults"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+    url: v.union(v.string(), v.null()),
+  })),
+  handler: async (ctx, args) => {
+    const attachments = await ctx.db
+      .query("vehicleFaultAttachments")
+      .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))
+      .collect();
+
+    const attachmentsWithUrls = await Promise.all(
+      attachments.map(async (attachment) => {
+        const url = await ctx.storage.getUrl(attachment.storageId);
+        return {
+          ...attachment,
+          url,
+        };
+      })
+    );
+
+    return attachmentsWithUrls;
+  },
+});
+
+// Mutation to add an attachment to a vehicle fault
+export const addAttachment = mutation({
+  args: {
+    faultId: v.id("vehicleFaults"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileType: v.string(),
+  },
+  returns: v.id("vehicleFaultAttachments"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to add attachments");
+    }
+
+    // Verify the fault exists
+    const fault = await ctx.db.get(args.faultId);
+    if (!fault) {
+      throw new Error("Vehicle fault not found");
+    }
+
+    const attachmentId = await ctx.db.insert("vehicleFaultAttachments", {
+      faultId: args.faultId,
+      storageId: args.storageId,
+      fileName: args.fileName,
+      fileType: args.fileType,
+      uploadedBy: userId,
+      uploadedAt: Date.now(),
+    });
+
+    return attachmentId;
+  },
+});
+
+// Mutation to delete an attachment
+export const deleteAttachment = mutation({
+  args: {
+    attachmentId: v.id("vehicleFaultAttachments"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to delete attachments");
+    }
+
+    const attachment = await ctx.db.get(args.attachmentId);
+    if (!attachment) {
+      throw new Error("Attachment not found");
+    }
+
+    // Delete from storage
+    await ctx.storage.delete(attachment.storageId);
+    // Delete the record
+    await ctx.db.delete(args.attachmentId);
+  },
+});
+
+// Query to get fault history for a specific fault
+export const getFaultHistory = query({
+  args: {
+    faultId: v.id("vehicleFaults"),
+  },
+  returns: v.array(v.object({
+    _id: v.id("vehicleFaultHistory"),
+    _creationTime: v.number(),
+    faultId: v.id("vehicleFaults"),
+    timestamp: v.number(),
+    userId: v.id("users"),
+    changeType: v.string(),
+    field: v.string(),
+    oldValue: v.any(),
+    newValue: v.any(),
+    notes: v.optional(v.string()),
+    userName: v.optional(v.string()),
+  })),
+  handler: async (ctx, args) => {
+    const entries = await ctx.db
+      .query("vehicleFaultHistory")
+      .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))
+      .order("desc")
+      .collect();
+
+    const enriched = await Promise.all(
+      entries.map(async (entry) => {
+        const user = await ctx.db.get(entry.userId);
+        return {
+          ...entry,
+          userName: user?.name,
+        };
+      })
+    );
+
+    return enriched;
   },
 });

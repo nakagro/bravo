@@ -5,15 +5,13 @@ import { usePostHog } from 'posthog-js/react';
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { MAIN_STATUS_OPTIONS, NEXT_STATUS_OPTIONS } from "../../../constants/statusOptions";
+import { Users } from "lucide-react";
 
 interface YouTabProps {
   userStatus: any; // Keep for backward compatibility, but we'll use userInfo internally
   handleStatusChange: (status: string, durationHours?: number, nextStatus?: string) => void;
   isAuthenticated: boolean;
 }
-
-// Maximum duration: 1 month (approximately 730 hours)
-const MAX_DURATION_HOURS = 730;
 
 const YouTab: React.FC<YouTabProps> = ({
   userStatus,
@@ -52,7 +50,16 @@ const YouTab: React.FC<YouTabProps> = ({
   
   // Query to get all users with Officer skill
   const usersWithOfficerSkill = useQuery(api.availability.getUsersWithOfficerSkill);
-  
+
+  // Duty crew for this week
+  const allDutyCrews = useQuery(
+    api.dutyCrew.getAllDutyCrews,
+    {}
+  );
+  const userDutyCrew = currentUserId
+    ? allDutyCrews?.find((crew) => crew.members.includes(currentUserId))
+    : undefined;
+
   // State for officer selection modal
   const [showOfficerSelection, setShowOfficerSelection] = useState(false);
   
@@ -396,12 +403,12 @@ const YouTab: React.FC<YouTabProps> = ({
     <>
       {/* Current User Status */}
       <div className="mb-4 rounded overflow-hidden shadow-sm">
-        <div className="p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-medium">Your Status is:</h2>
+        <div className="px-3 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-base font-medium">Your Status is:</h2>
         </div>
         
         {isAuthenticated ? (
-          <div className={`p-3 ${getStatusBackgroundColor(effectiveUserStatus?.currentStatus)}`}>
+          <div className={`px-3 py-2 ${getStatusBackgroundColor(effectiveUserStatus?.currentStatus)}`}>
             {effectiveUserStatus?.currentStatus ? (
               <>
                 <div className={`font-medium text-lg ${getStatusTextColor(effectiveUserStatus.currentStatus)}`}>
@@ -430,12 +437,24 @@ const YouTab: React.FC<YouTabProps> = ({
             )}
           </div>
         ) : (
-          <div className="p-4 bg-gray-50 dark:bg-gray-800">
+          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800">
             <p className="text-sm text-gray-600 dark:text-gray-400">Please sign in to set your status</p>
           </div>
         )}
       </div>
       
+      {/* Duty Crew Section */}
+      {isAuthenticated && userDutyCrew && (
+        <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+          <div className="px-3 py-2 flex items-center gap-3">
+            <Users className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              You are in: <span className="font-medium text-gray-900 dark:text-gray-100">{userDutyCrew.name}</span>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Status Buttons */}
       {isAuthenticated && (
         <div className="mb-4 p-3 bg-white dark:bg-gray-800 shadow-sm rounded">

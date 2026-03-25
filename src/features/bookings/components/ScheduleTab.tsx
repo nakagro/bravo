@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { format, addDays, startOfWeek, isToday, eachDayOfInterval, parse } from "date-fns";
+import { enAU } from "date-fns/locale";
+import { formatTime, formatUserName, parseBookingDate } from "../types";
 import { BookingEditForm } from "./BookingEditForm";
+import { EmptyState } from "../../../components/shared/EmptyState";
 import {
   CalendarDaysIcon,
   ChevronLeftIcon,
@@ -14,44 +18,26 @@ import {
 } from "@heroicons/react/24/outline";
 
 interface ScheduleTabProps {
-  isAuthenticated: boolean;
   isAdmin?: boolean;
   initialDate?: string;
 }
 
-const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = false, initialDate }) => {
+export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) {
   const isMobile = useIsMobile();
   const [selectedResource, setSelectedResource] = useState<Id<"bookingResources"> | 'all'>('all');
   const [editingBookingId, setEditingBookingId] = useState<Id<"bookings"> | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // If initialDate is provided, use it to set the week
-    const targetDate = initialDate ? new Date(initialDate + 'T00:00:00') : new Date();
-    const dayOfWeek = targetDate.getDay();
-    const monday = new Date(targetDate);
-    monday.setDate(targetDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
+    const targetDate = initialDate ? parseBookingDate(initialDate) : new Date();
+    return startOfWeek(targetDate, { weekStartsOn: 1 });
   });
 
   const activeResources = useQuery(api.bookings.getActiveBookingResources);
-  
+
   // Calculate date range for the current week
-  const dateRange = useMemo(() => {
-    const start = new Date(currentWeekStart);
-    const end = new Date(currentWeekStart);
-    end.setDate(end.getDate() + 6);
-    // Format as YYYY-MM-DD in local time (not UTC)
-    const formatLocalDate = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    return {
-      startDate: formatLocalDate(start),
-      endDate: formatLocalDate(end),
-    };
-  }, [currentWeekStart]);
+  const dateRange = useMemo(() => ({
+    startDate: format(currentWeekStart, "yyyy-MM-dd"),
+    endDate: format(addDays(currentWeekStart, 6), "yyyy-MM-dd"),
+  }), [currentWeekStart]);
 
   const bookings = useQuery(
     api.bookings.getBookingsForDateRange,
@@ -64,89 +50,43 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
 
   // Generate days of the week
   const weekDays = useMemo(() => {
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(currentWeekStart);
-      date.setDate(date.getDate() + i);
-      // Format as YYYY-MM-DD in local time (not UTC) to match booking date strings
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      days.push({
-        date,
-        dateStr: `${year}-${month}-${day}`,
-        dayName: date.toLocaleDateString('en-AU', { weekday: 'short' }),
-        dayNum: date.getDate(),
-        monthName: date.toLocaleDateString('en-AU', { month: 'short' }),
-        isToday: date.toDateString() === new Date().toDateString(),
-      });
-    }
-    return days;
+    return eachDayOfInterval({
+      start: currentWeekStart,
+      end: addDays(currentWeekStart, 6),
+    }).map((date) => ({
+      date,
+      dateStr: format(date, "yyyy-MM-dd"),
+      dayName: format(date, "EEE", { locale: enAU }),
+      dayNum: date.getDate(),
+      monthName: format(date, "MMM", { locale: enAU }),
+      isToday: isToday(date),
+    }));
   }, [currentWeekStart]);
 
   // Group bookings by date
   const bookingsByDate = useMemo(() => {
     const grouped: Record<string, typeof bookings> = {};
     if (!bookings) return grouped;
-    
+
     for (const booking of bookings) {
-      const endDateStr = booking.endDate || booking.startDate;
-      // For multi-day bookings, add to each day
-      // Parse dates as local time by appending T00:00:00 to avoid timezone issues
-      const start = new Date(booking.startDate + 'T00:00:00');
-      const end = new Date(endDateStr + 'T00:00:00');
-      
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        // Format as YYYY-MM-DD in local time
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-        if (!grouped[dateStr]) {
-          grouped[dateStr] = [];
-        }
+      const start = parseBookingDate(booking.startDate);
+      const end = parseBookingDate(booking.endDate || booking.startDate);
+
+      for (const day of eachDayOfInterval({ start, end })) {
+        const dateStr = format(day, "yyyy-MM-dd");
+        if (!grouped[dateStr]) grouped[dateStr] = [];
         grouped[dateStr]!.push(booking);
       }
     }
-    
     return grouped;
   }, [bookings]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeekStart(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-      return newDate;
-    });
+    setCurrentWeekStart(prev => addDays(prev, direction === 'next' ? 7 : -7));
   };
 
   const goToToday = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    monday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(monday);
-  };
-
-  // Format time for display
-  const formatTime = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-
-  // Format user display name
-  const formatUserName = (user: any) => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    } else if (user?.name) {
-      return user.name;
-    } else {
-      return "Unknown";
-    }
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
   // Format booking display info (user or reason for blocked)
@@ -181,14 +121,6 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
         return 'text-gray-800 dark:text-gray-200';
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500 dark:text-gray-400">Please log in to view the schedule.</p>
-      </div>
-    );
-  }
 
   const weekRangeLabel = `${weekDays[0].dayNum} ${weekDays[0].monthName} - ${weekDays[6].dayNum} ${weekDays[6].monthName}`;
 
@@ -473,17 +405,12 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
           
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {!bookings || bookings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <InboxIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  No bookings scheduled for this week.
-                </p>
-              </div>
+              <EmptyState
+                icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                title="No bookings scheduled for this week"
+              />
             ) : (
-              bookings.map((booking) => {
-                const startDate = new Date(booking.startDate + 'T00:00:00');
-                
-                return (
+              bookings.map((booking) => (
                   <div
                     key={booking._id}
                     className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -492,9 +419,9 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                       <div className="flex items-center gap-3">
                         <div className="text-center min-w-[50px]">
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {startDate.toLocaleDateString('en-AU', { weekday: 'short' })}
+                            {format(parseBookingDate(booking.startDate), "EEE", { locale: enAU })}
                           </div>
-                          <div className="text-lg font-bold">{startDate.getDate()}</div>
+                          <div className="text-lg font-bold">{parseBookingDate(booking.startDate).getDate()}</div>
                         </div>
                         <div>
                           <div className="font-medium">{booking.resource?.name}</div>
@@ -528,14 +455,11 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ isAuthenticated, isAdmin = fa
                       </span>
                     </div>
                   </div>
-                );
-              })
+              ))
             )}
           </div>
         </div>
       )}
     </>
   );
-};
-
-export default ScheduleTab;
+}

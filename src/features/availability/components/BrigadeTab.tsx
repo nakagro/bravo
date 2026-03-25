@@ -1,8 +1,10 @@
 import React from 'react';
 import { useQuery } from "convex/react";
+import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { getRelativeTimeCompact } from "../../../utils/dateUtils";
+import { ChevronRight } from "lucide-react";
 import SkillBadge from "./brigadetab/SkillBadge";
 import ApplianceLocations from "./brigadetab/ApplianceLocations";
 
@@ -17,6 +19,10 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
   dutyOfficer,
   handleDutyOfficerChange
 }) => {
+  // Duty crew for this week
+  const upcomingAssignments = useQuery(api.dutyCrew.getUpcomingDutyCrewAssignments, { count: 1 });
+  const thisWeekAssignment = upcomingAssignments?.[0];
+
   // Get all user IDs that have a status set
   const usersWithStatus = statuses.filter(user => user.currentStatus);
   const userIds = usersWithStatus.map(user => user._id);
@@ -114,22 +120,41 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
 
   return (
     <>
-      {/* Duty Officer Section */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm p-3 rounded">
-        <h2 className="text-lg font-bold flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          Duty Officer:
-          <span className="ml-2 text-red-700 dark:text-red-400">
-            {dutyOfficer ? formatUserName(dutyOfficer) : 'None assigned'}
-          </span>
-        </h2>
+      {/* Top info row — Duty Officer/Crew + Appliance Locations side by side */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {/* Duty Officer + Duty Crew */}
+        <div className="bg-white dark:bg-gray-800 shadow-sm p-3 rounded space-y-2">
+          <h2 className="text-lg font-bold flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Duty Officer:
+            <span className="ml-2 text-red-700 dark:text-red-400">
+              {dutyOfficer ? formatUserName(dutyOfficer) : 'None assigned'}
+            </span>
+          </h2>
+          {thisWeekAssignment && (
+            <Link
+              to="/dutycrew"
+              className="flex items-center group border-t border-gray-100 dark:border-gray-700 pt-2 pl-7"
+            >
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                This weeks Duty Crew:
+                <span className="ml-1.5 font-semibold text-gray-700 dark:text-gray-300">
+                  {thisWeekAssignment.isSpecial ? "All Crews" : thisWeekAssignment.dutyCrew.name}
+                </span>
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 ml-2 text-gray-300 group-hover:text-gray-500 dark:text-gray-600 dark:group-hover:text-gray-400 transition-colors" />
+            </Link>
+          )}
+        </div>
+
+        {/* Appliance Locations */}
+        <div className="[&>div]:mb-0 [&>div]:h-full">
+          <ApplianceLocations />
+        </div>
       </div>
-      
-      {/* Appliance Locations Section */}
-      <ApplianceLocations />
-      
+
       {/* Brigade Members Status */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">
