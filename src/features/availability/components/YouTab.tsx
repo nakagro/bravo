@@ -7,6 +7,8 @@ import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { MAIN_STATUS_OPTIONS, NEXT_STATUS_OPTIONS } from "../../../constants/statusOptions";
 import { Users } from "lucide-react";
 
+const MAX_DURATION_HOURS = 744; // approximately 1 month (31 days)
+
 interface YouTabProps {
   userStatus: any; // Keep for backward compatibility, but we'll use userInfo internally
   handleStatusChange: (status: string, durationHours?: number, nextStatus?: string) => void;
