@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { Navigate } from 'react-router-dom';
+import { AccessDenied } from './AccessDenied';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,10 +9,9 @@ interface ProtectedRouteProps {
   fallbackPath?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  moduleId, 
-  fallbackPath = "/" 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  moduleId,
 }) => {
   // Use the batched query shared across all ProtectedRoute instances
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
@@ -29,9 +28,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Look up access for this specific module
   const hasAccess = moduleAccess[moduleId as keyof typeof moduleAccess] ?? false;
 
-  // Redirect if no access
   if (!hasAccess) {
-    return <Navigate to={fallbackPath} replace />;
+    return <AccessDenied moduleId={moduleId} />;
   }
 
   // Render the protected content
