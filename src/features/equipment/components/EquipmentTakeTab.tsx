@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Minus, Plus, X, AlertTriangle, Package, ChevronRight, Clock } from "lucide-react";
+import { Search, Minus, Plus, X, TriangleAlert, Package, ChevronRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -453,7 +453,7 @@ export function EquipmentTakeTab() {
                   )}
                   {group.hasLowStock && (
                     <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
+                      <TriangleAlert className="h-3 w-3" />
                       Low
                     </Badge>
                   )}

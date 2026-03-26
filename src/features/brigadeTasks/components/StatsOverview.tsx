@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, AlertTriangle, Sparkles } from "lucide-react";
+import { Clock, TriangleAlert, Sparkles } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TaskCounts {
@@ -82,7 +82,7 @@ export function StatsOverview({ counts, activeFilter, onFilterChange }: StatsOve
                 type="overdue"
                 count={counts.overdue}
                 label="Overdue"
-                icon={AlertTriangle}
+                icon={TriangleAlert}
                 colorClass="text-red-600 dark:text-red-400"
                 bgClass="bg-red-100 dark:bg-red-900/30"
                 activeBorderClass="border-red-500 bg-red-50 dark:bg-red-900/20"

@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.77] - 2026-03-26
+- Lots of refactoring, too many to list. Boring update to most, tons of change in the background.
+
 ## [1.0.76] - 2026-03-25
 - Vehicle Faults Module: Overhauled with a full component restructure. Fault logging, comments, attachments, audit trail, and vehicle type administration are now properly separated into dedicated components.
 - Duty Crew Module: Overhauled with a full component restructure. This week's crew, schedule view, crew management, station check templates and history are now properly separated.

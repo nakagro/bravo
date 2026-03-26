@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "../../../components/ui/button";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestEmailButtonProps {
@@ -54,7 +54,7 @@ export function TestEmailButton({ userEmail, userName }: TestEmailButtonProps) {
       >
         {isSending ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
             Sending...
           </>
         ) : (

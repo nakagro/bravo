@@ -35,7 +35,7 @@ import {
   CalendarDays,
   CircleDot,
   Layers,
-  AlertTriangle,
+  TriangleAlert,
 } from "lucide-react";
 
 function copyToClipboard(text: string, label: string) {
@@ -102,7 +102,7 @@ export function HoseDetailPanel({
         {/* Replaced warning */}
         {hose.replacedAt && (
           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
+            <TriangleAlert className="h-4 w-4" />
             <AlertDescription>
               This hose was marked as replaced on{" "}
               {new Date(hose.replacedAt).toLocaleDateString()}.

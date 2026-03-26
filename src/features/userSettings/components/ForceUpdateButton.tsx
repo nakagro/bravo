@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { RefreshCw, CircleCheck, AlertCircle } from "lucide-react";
 
 type UpdateStatus = "idle" | "updating" | "success" | "error";
 
@@ -73,7 +73,7 @@ export function ForceUpdateButton() {
             </>
           ) : status === "success" ? (
             <>
-              <CheckCircle className="h-4 w-4" />
+              <CircleCheck className="h-4 w-4" />
               Reloading...
             </>
           ) : status === "error" ? (

@@ -22,7 +22,7 @@ import {
   Check,
   Plus,
   MessageSquare,
-  Loader2,
+  LoaderCircle,
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -313,7 +313,7 @@ export function StationChecksList({
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <LoaderCircle className="h-4 w-4 animate-spin" />
               Submitting...
             </span>
           ) : (

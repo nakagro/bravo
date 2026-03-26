@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2, User } from "lucide-react";
+import { LoaderCircle, User } from "lucide-react";
 import { Task } from "./TaskCard";
 
 interface UserInfo {
@@ -184,7 +184,7 @@ export function TaskForm({
                             <Button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none h-11">
                                 {isSubmitting ? (
                                     <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
                                         {isEditing ? "Saving..." : "Creating..."}
                                     </>
                                 ) : (

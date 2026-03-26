@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Loader2,
+  LoaderCircle,
   Trash2,
   Clock,
   MapPin,
@@ -51,7 +51,7 @@ export function BASkillsRecordList() {
   if (!records || !currentUser) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -174,7 +174,7 @@ export function BASkillsRecordList() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (

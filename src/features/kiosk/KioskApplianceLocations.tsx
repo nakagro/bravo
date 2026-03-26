@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { getRelativeTimeCompact } from "../../utils/dateUtils";
-import { X, CheckCircle2, Plus, Truck, MapPin, ArrowLeft } from "lucide-react";
+import { X, CircleCheckBig, Plus, Truck, MapPin, ArrowLeft } from "lucide-react";
 
 interface KioskApplianceLocationsProps {
     onBack: () => void;
@@ -122,7 +122,7 @@ const KioskApplianceLocations: React.FC<KioskApplianceLocationsProps> = ({ onBac
                                               `}
                                             >
                                                 <span className="truncate">{location}</span>
-                                                {isActive && <CheckCircle2 className="h-8 w-8 md:h-10 md:w-10 text-white shrink-0" />}
+                                                {isActive && <CircleCheckBig className="h-8 w-8 md:h-10 md:w-10 text-white shrink-0" />}
                                             </button>
                                         );
                                     })}
@@ -146,7 +146,7 @@ const KioskApplianceLocations: React.FC<KioskApplianceLocationsProps> = ({ onBac
                                         {isCustomActive ? (
                                             <>
                                                 <span className="truncate">{currentLocation}</span>
-                                                <CheckCircle2 className="h-8 w-8 md:h-10 md:w-10 text-white shrink-0" />
+                                                <CircleCheckBig className="h-8 w-8 md:h-10 md:w-10 text-white shrink-0" />
                                             </>
                                         ) : (
                                             <div className="flex items-center gap-4 w-full justify-center">

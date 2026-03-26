@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { MessageSquare, Send, CheckCircle2, ArrowLeft } from "lucide-react";
+import { MessageSquare, Send, CircleCheckBig, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { getVersionString } from "@/utils/version";
 
@@ -71,7 +71,7 @@ export function FeedbackPage() {
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
           <div className="mb-6">
-            <CheckCircle2 className="h-20 w-20 text-green-500 mx-auto mb-4" />
+            <CircleCheckBig className="h-20 w-20 text-green-500 mx-auto mb-4" />
           </div>
           
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-6">

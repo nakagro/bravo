@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
-import { Play, ClipboardList, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { Play, ClipboardList, CircleCheckBig, Clock, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -160,7 +160,7 @@ export function InventoryTemplateSelector() {
         } else if (completedThisWeek) {
           statusBadge = (
             <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white border-0">
-              <CheckCircle2 className="w-3 h-3 mr-1" />
+              <CircleCheckBig className="w-3 h-3 mr-1" />
               Done
             </Badge>
           );
@@ -198,7 +198,7 @@ export function InventoryTemplateSelector() {
 
                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                   <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
+                    <CircleCheckBig className="w-3 h-3" />
                     {lastCompleted?.lastCompletedAt
                       ? formatRelativeTime(lastCompleted.lastCompletedAt)
                       : "Never checked"}

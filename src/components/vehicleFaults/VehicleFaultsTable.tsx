@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Clock, AlertTriangle, CheckCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Clock, TriangleAlert, CircleCheck, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Id } from '../../../convex/_generated/dataModel';
 
 type VehicleFault = {
@@ -50,12 +50,12 @@ const statusConfig = {
   pending_wydv: {
     label: 'Pending - WYDV',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: AlertTriangle,
+    icon: TriangleAlert,
   },
   resolved: {
     label: 'Resolved',
     color: 'bg-green-100 text-green-800 border-green-200',
-    icon: CheckCircle,
+    icon: CircleCheck,
   },
 };
 

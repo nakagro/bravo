@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card";
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Hash } from "lucide-react";
+import { CircleCheckBig, CircleX, TriangleAlert, FileText, Hash } from "lucide-react";
 import type { RunItemDoc, DeviationItem } from "../types/inventory.types";
 
 interface InventoryExecutiveSummaryProps {
@@ -40,7 +40,7 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/50">
-              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <CircleCheckBig className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <h3 className="font-semibold text-green-800 dark:text-green-300">All Items OK</h3>
@@ -56,7 +56,7 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
     <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
       <CardHeader className="p-4 pb-3">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <TriangleAlert className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           <h3 className="font-semibold text-amber-800 dark:text-amber-300">
             {deviations.length} Deviation{deviations.length !== 1 ? "s" : ""} Found
           </h3>
@@ -73,7 +73,7 @@ export function InventoryExecutiveSummary({ items }: InventoryExecutiveSummaryPr
                 {/* Icon based on deviation type */}
                 <div className="flex-shrink-0 mt-0.5">
                   {deviation.deviationType === "no" && (
-                    <XCircle className="w-5 h-5 text-red-500" />
+                    <CircleX className="w-5 h-5 text-red-500" />
                   )}
                   {deviation.deviationType === "quantity_mismatch" && (
                     <Hash className="w-5 h-5 text-amber-500" />

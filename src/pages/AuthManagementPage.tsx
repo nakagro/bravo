@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Users, Key, RefreshCw, Clock, Shield, AlertTriangle, CheckCircle, XCircle, Search, HelpCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Key, RefreshCw, Clock, Shield, TriangleAlert, CircleCheck, CircleX, Search, CircleHelp, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,7 +67,7 @@ export default function AuthManagementPage() {
         if (sessionCount === 0) {
             return (
                 <Badge variant="outline" className="text-xs">
-                    <XCircle className="h-3 w-3 mr-1" />
+                    <CircleX className="h-3 w-3 mr-1" />
                     No Sessions
                 </Badge>
             );
@@ -75,14 +75,14 @@ export default function AuthManagementPage() {
         if (sessionCount > 5) {
             return (
                 <Badge className="text-xs bg-amber-600 hover:bg-amber-700 text-white border-0">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    <TriangleAlert className="h-3 w-3 mr-1" />
                     {sessionCount} Sessions
                 </Badge>
             );
         }
         return (
             <Badge className="text-xs bg-green-600 hover:bg-green-700 text-white border-0">
-                <CheckCircle className="h-3 w-3 mr-1" />
+                <CircleCheck className="h-3 w-3 mr-1" />
                 {sessionCount} Session{sessionCount !== 1 ? 's' : ''}
             </Badge>
         );
@@ -124,7 +124,7 @@ export default function AuthManagementPage() {
                 <AccordionItem value="help" className="border rounded-lg bg-card">
                     <AccordionTrigger className="px-4 hover:no-underline">
                         <span className="flex items-center gap-2 text-sm font-medium">
-                            <HelpCircle className="h-4 w-4" />
+                            <CircleHelp className="h-4 w-4" />
                             Understanding Auth Data
                         </span>
                     </AccordionTrigger>
@@ -243,7 +243,7 @@ export default function AuthManagementPage() {
                     <Card>
                         <CardHeader className="pb-2 pt-4 px-4">
                             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                <AlertTriangle className="h-3.5 w-3.5" />
+                                <TriangleAlert className="h-3.5 w-3.5" />
                                 Multi-Session
                             </CardTitle>
                         </CardHeader>
@@ -265,7 +265,7 @@ export default function AuthManagementPage() {
                     <Card>
                         <CardHeader className="pb-2 pt-4 px-4">
                             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                <XCircle className="h-3.5 w-3.5" />
+                                <CircleX className="h-3.5 w-3.5" />
                                 Orphaned
                             </CardTitle>
                         </CardHeader>
@@ -400,7 +400,7 @@ export default function AuthManagementPage() {
                                 size="sm"
                                 onClick={() => setSelectedUserId(null)}
                             >
-                                <XCircle className="h-4 w-4 mr-1" />
+                                <CircleX className="h-4 w-4 mr-1" />
                                 Clear
                             </Button>
                         </div>

@@ -16,7 +16,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { CheckCircle2, Circle, X, AlertTriangle, Calendar, Trash2, Edit2, Send, Loader2 } from "lucide-react";
+import { CircleCheckBig, Circle, X, TriangleAlert, Calendar, Trash2, PenLine, Send, LoaderCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getRelativeTimeString } from "@/utils/dateUtils";
 
@@ -50,7 +50,7 @@ interface TaskCardProps {
 
 const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string }> = {
     active: { label: "Active", icon: <Circle className="h-5 w-5" />, color: "text-blue-500" },
-    completed: { label: "Completed", icon: <CheckCircle2 className="h-5 w-5" />, color: "text-emerald-500" },
+    completed: { label: "Completed", icon: <CircleCheckBig className="h-5 w-5" />, color: "text-emerald-500" },
     cancelled: { label: "Cancelled", icon: <X className="h-5 w-5" />, color: "text-gray-400" },
 };
 
@@ -158,7 +158,7 @@ export function TaskCard({
                                     isDueToday ? "text-amber-600 dark:text-amber-400" :
                                         "text-gray-500 dark:text-gray-400"
                                 }`}>
-                                {isOverdue && <AlertTriangle className="h-3 w-3" />}
+                                {isOverdue && <TriangleAlert className="h-3 w-3" />}
                                 {formatDueDate(task.dueDate)}
                             </span>
                         )}
@@ -198,7 +198,7 @@ export function TaskCard({
                     className="h-9 w-9 p-0 flex-shrink-0"
                 >
                     {isSubmittingComment ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
                     ) : (
                         <Send className="h-4 w-4" />
                     )}
@@ -290,7 +290,7 @@ export function TaskCard({
                                         onClick={handleComplete}
                                         className="w-full h-11 bg-emerald-600 hover:bg-emerald-700"
                                     >
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        <CircleCheckBig className="h-4 w-4 mr-2" />
                                         Complete Task
                                     </Button>
                                 )
@@ -307,7 +307,7 @@ export function TaskCard({
                                         }}
                                         className="flex-1 h-10"
                                     >
-                                        <Edit2 className="h-4 w-4 mr-2" />
+                                        <PenLine className="h-4 w-4 mr-2" />
                                         Edit
                                     </Button>
                                     <Button
@@ -389,7 +389,7 @@ export function TaskCard({
                                                     onEdit(task);
                                                 }}
                                             >
-                                                <Edit2 className="h-4 w-4 mr-2" />
+                                                <PenLine className="h-4 w-4 mr-2" />
                                                 Edit
                                             </Button>
                                             <Button
@@ -428,7 +428,7 @@ export function TaskCard({
                                                 onClick={handleComplete}
                                                 className="bg-emerald-600 hover:bg-emerald-700"
                                             >
-                                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                                <CircleCheckBig className="h-4 w-4 mr-2" />
                                                 Complete Task
                                             </Button>
                                         )

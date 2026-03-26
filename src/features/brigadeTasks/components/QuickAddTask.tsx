@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Send, Loader2 } from "lucide-react";
+import { Send, LoaderCircle } from "lucide-react";
 
 interface QuickAddTaskProps {
     quickAddText: string;
@@ -44,7 +44,7 @@ export function QuickAddTask({
                 `}
             >
                 {isQuickAdding ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <LoaderCircle className="h-5 w-5 animate-spin" />
                 ) : (
                     <Send className="h-5 w-5" />
                 )}

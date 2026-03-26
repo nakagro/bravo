@@ -5,24 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
-- `npm run dev` - Start local Docker development (frontend + backend)
-- `npm run dev:docker` - Docker-specific development environment
-- `npm run dev:cloud` - Development with Convex Cloud backend
-- `npm run dev:frontend` - Frontend only (Vite dev server)
-- `npm run dev:backend` - Backend only (Convex dev)
+- `npm run dev:frontend` - **Primary local dev command** — starts Vite dev server pointed at VPS backend
+- `npm run dev:vps` - Alias for dev:frontend
+- `npm run dev:docker:frontend` - Frontend pointed at Docker backend (if running locally)
 
 ### Build and Deployment
-- `npm run build` - Standard Vite build
-- `npm run build:docker` - Build for Docker deployment (grayhux.io)
-- `npm run build:cloud` - Build for Convex Cloud development
-- `npm run build:prod` - Production build (hushed-scorpion-51.convex.cloud)
-- `npm run deploy` - Full deployment (Convex Cloud + Vercel)
+- `npm run deploy:convex:vps` - **Deploy backend** — pushes Convex functions/schema to VPS (live production)
+- `npm run deploy:vps` - Deploy backend to VPS (frontend deploys automatically via GitHub → Vercel on merge to main)
+- `npm run build:vps` - Build frontend for VPS backend URL
 - `npm run lint` - TypeScript checking for both frontend and Convex code
 
 ### Preview
-- `npm run preview:docker` - Preview Docker build locally
-- `npm run preview:cloud` - Preview cloud build locally
-- `npm run preview:prod` - Preview production build locally
+- `npm run preview:vps` - Build and preview VPS frontend locally
 
 ## Architecture
 
@@ -34,11 +28,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **State Management**: Convex real-time queries/mutations
 - **PWA**: Vite PWA plugin with service worker and push notifications
 
-### Multi-Environment Setup
-The project supports three deployment environments:
-- **Local Docker**: `https://boss-convex.grayhux.io` (development)
-- **Convex Cloud Dev**: `https://whimsical-hamster-488.convex.cloud`
-- **Convex Cloud Prod**: `https://hushed-scorpion-51.convex.cloud`
+### Deployment Architecture
+- **Frontend**: Hosted on Vercel. Environment variables (`VITE_*`) are configured in the **Vercel dashboard** — not stored in this repo. Always check Vercel env vars if a frontend config issue appears in production.
+- **Backend**: Self-hosted Convex running in Docker on a VPS (`https://boss-convex.grayhux.io`). Deployed via `npm run deploy:convex:vps`.
+- **No staging backend**: Backend changes deploy directly to the live VPS instance. Test frontend changes locally via `npm run dev:frontend` which connects to the live backend.
 
 ### Feature-Driven Architecture
 ```

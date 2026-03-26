@@ -5,7 +5,7 @@ import { BASkillsForm, BASkillsRecordList, BASkillsAudit } from "@/features/baSk
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2 } from "lucide-react";
+import { CircleCheckBig } from "lucide-react";
 
 export function BASkillsPage() {
   const [activeTab, setActiveTab] = useState("submit");
@@ -66,7 +66,7 @@ export function BASkillsPage() {
       {/* Success Message */}
       {showSuccess && (
         <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <CircleCheckBig className="h-4 w-4 text-green-600 dark:text-green-400" />
           <AlertDescription className="text-green-800 dark:text-green-200">
             BA usage record submitted successfully!
           </AlertDescription>

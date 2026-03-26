@@ -5,7 +5,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, XCircle, Clock, User, History } from "lucide-react";
+import { CircleCheckBig, CircleX, Clock, User, History } from "lucide-react";
 
 interface RunSummary {
   run: {
@@ -206,12 +206,12 @@ export function InventoryRecentChecks() {
                   {/* Quick Stats */}
                   <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
                     <div className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                      <CircleCheckBig className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                       <span>{s.yes}</span>
                     </div>
                     {s.no > 0 && (
                       <div className="flex items-center gap-1">
-                        <XCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                        <CircleX className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
                         <span>{s.no}</span>
                       </div>
                     )}

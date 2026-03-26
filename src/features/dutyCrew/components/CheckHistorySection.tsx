@@ -4,8 +4,8 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import {
-  CheckCircle,
-  XCircle,
+  CircleCheck,
+  CircleX,
   ChevronDown,
   ChevronUp,
   ClipboardCheck,
@@ -144,8 +144,8 @@ export function CheckHistorySection() {
                             className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800/60"
                           >
                             {item.isCompleted
-                              ? <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                              : <XCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                              ? <CircleCheck className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                              : <CircleX className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
                             }
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-800 dark:text-gray-200">{item.name}</p>
@@ -172,8 +172,8 @@ export function CheckHistorySection() {
                             className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40"
                           >
                             {item.isCompleted
-                              ? <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                              : <XCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                              ? <CircleCheck className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                              : <CircleX className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
                             }
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-800 dark:text-gray-200">{item.name}</p>

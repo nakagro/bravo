@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { ArchiveBoxIcon, KeyIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import { FileText, Users, Wrench, Link2, AlertTriangle, Calendar } from "lucide-react";
+import { FileText, Users, Wrench, Link2, TriangleAlert, Calendar } from "lucide-react";
 import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { Card, CardContent } from "../components/ui/card";
 import { RecentNotifications } from "../components/notifications/RecentNotifications";
@@ -212,7 +212,7 @@ export function DashboardPage() {
             <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
               <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
                 <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg group-hover:bg-red-200 dark:group-hover:bg-red-900/40 transition-colors">
-                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
+                  <TriangleAlert className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Vehicle Faults</h3>
               </CardContent>

@@ -16,7 +16,7 @@ import {
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Save, User, Users } from "lucide-react";
+import { LoaderCircle, Save, User, Users } from "lucide-react";
 
 interface BASkillsFormProps {
   onSuccess?: () => void;
@@ -150,7 +150,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
   if (!currentUser || !allMembers) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -407,7 +407,7 @@ export function BASkillsForm({ onSuccess }: BASkillsFormProps) {
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
             Submitting...
           </>
         ) : (

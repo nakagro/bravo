@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import {
   EquipmentTakeTab,
   EquipmentStockTab,
@@ -42,7 +42,7 @@ export function EquipmentPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Equipment</h1>
         {lowStockCount > 0 && (
           <Badge variant="destructive" className="flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
+            <TriangleAlert className="h-3 w-3" />
             {lowStockCount} low
           </Badge>
         )}

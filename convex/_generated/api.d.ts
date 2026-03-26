@@ -8,17 +8,10 @@
  * @module
  */
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
 import type * as authManagement from "../authManagement.js";
-import type * as availability_getStatuses from "../availability/getStatuses.js";
-import type * as availability_updateStatus from "../availability/updateStatus.js";
 import type * as availability from "../availability.js";
 import type * as availabilityActions from "../availabilityActions.js";
 import type * as baSkills from "../baSkills.js";
@@ -66,32 +59,23 @@ import type * as serviceAccounts from "../serviceAccounts.js";
 import type * as shortcuts from "../shortcuts.js";
 import type * as skills from "../skills.js";
 import type * as stationChecks from "../stationChecks.js";
-import type * as users_getRoles from "../users/getRoles.js";
-import type * as users_getUsers from "../users/getUsers.js";
-import type * as users_roles from "../users/roles.js";
-import type * as users_updateUserRank from "../users/updateUserRank.js";
-import type * as users_updateUserRoles from "../users/updateUserRoles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as vehicleFaultAuditTrail from "../vehicleFaultAuditTrail.js";
 import type * as vehicleFaultVehicleTypes from "../vehicleFaultVehicleTypes.js";
 import type * as vehicleFaults from "../vehicleFaults.js";
 
-/**
- * A utility for referencing Convex functions in your app's API.
- *
- * Usage:
- * ```js
- * const myFunctionReference = api.myModule.myFunction;
- * ```
- */
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   apiKeyAuth: typeof apiKeyAuth;
   applianceLocations: typeof applianceLocations;
   auth: typeof auth;
   authManagement: typeof authManagement;
-  "availability/getStatuses": typeof availability_getStatuses;
-  "availability/updateStatus": typeof availability_updateStatus;
   availability: typeof availability;
   availabilityActions: typeof availabilityActions;
   baSkills: typeof baSkills;
@@ -139,22 +123,37 @@ declare const fullApi: ApiFromModules<{
   shortcuts: typeof shortcuts;
   skills: typeof skills;
   stationChecks: typeof stationChecks;
-  "users/getRoles": typeof users_getRoles;
-  "users/getUsers": typeof users_getUsers;
-  "users/roles": typeof users_roles;
-  "users/updateUserRank": typeof users_updateUserRank;
-  "users/updateUserRoles": typeof users_updateUserRoles;
   users: typeof users;
   utils: typeof utils;
   vehicleFaultAuditTrail: typeof vehicleFaultAuditTrail;
   vehicleFaultVehicleTypes: typeof vehicleFaultVehicleTypes;
   vehicleFaults: typeof vehicleFaults;
 }>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {};

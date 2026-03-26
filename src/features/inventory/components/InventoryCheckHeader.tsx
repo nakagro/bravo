@@ -3,7 +3,7 @@ import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardHeader } from "../../../components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
-import { ArrowLeft, CheckCheck, Ban, FileDown, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCheck, Ban, FileDown, TriangleAlert } from "lucide-react";
 import { ProgressRing } from "../../../components/common/ProgressRing";
 import type { ProgressInfo, GroupedSection } from "../types/inventory.types";
 
@@ -76,7 +76,7 @@ export function InventoryCheckHeader({
                 )}
                 {deviationCount > 0 && (
                   <Badge variant="outline" className="text-xs border-amber-400 text-amber-600 dark:text-amber-400 gap-1">
-                    <AlertTriangle className="w-3 h-3" />
+                    <TriangleAlert className="w-3 h-3" />
                     {deviationCount}
                   </Badge>
                 )}

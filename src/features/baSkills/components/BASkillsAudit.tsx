@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { Loader2, AlertTriangle, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { LoaderCircle, TriangleAlert, CircleCheckBig, Clock, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -10,7 +10,7 @@ export function BASkillsAudit() {
   if (!auditData) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -28,7 +28,7 @@ export function BASkillsAudit() {
       case "expired":
         return (
           <Badge variant="destructive" className="flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
+            <TriangleAlert className="h-3 w-3" />
             Expired
           </Badge>
         );
@@ -56,7 +56,7 @@ export function BASkillsAudit() {
       case "current":
         return (
           <Badge className="flex items-center gap-1 bg-green-600 hover:bg-green-700">
-            <CheckCircle2 className="h-3 w-3" />
+            <CircleCheckBig className="h-3 w-3" />
             Current
           </Badge>
         );

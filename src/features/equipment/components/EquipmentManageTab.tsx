@@ -38,7 +38,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Pencil, Trash2, Package, FolderPlus, Copy, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, Package, FolderPlus, Copy, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 export function EquipmentManageTab() {
@@ -287,7 +287,7 @@ export function EquipmentManageTab() {
                     </Badge>
                     {lowCount > 0 && (
                       <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
+                        <TriangleAlert className="h-3 w-3" />
                         {lowCount} low
                       </Badge>
                     )}
@@ -347,7 +347,7 @@ export function EquipmentManageTab() {
                               </p>
                               {item.isLowStock && (
                                 <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
+                                  <TriangleAlert className="h-3 w-3" />
                                   Low
                                 </Badge>
                               )}

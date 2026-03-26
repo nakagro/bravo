@@ -14,7 +14,7 @@ import {
   MapPin,
   Ruler,
   Layers,
-  AlertTriangle,
+  TriangleAlert,
   ArrowRight,
   Flame,
 } from "lucide-react";
@@ -125,7 +125,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
       {hasAttentionItems && (
         <div className="rounded-lg border-2 border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+            <TriangleAlert className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
                 Attention Required

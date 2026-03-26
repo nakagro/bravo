@@ -16,7 +16,7 @@ import {
   ShieldAlert,
   FileText,
   MessageSquare,
-  AlertTriangle,
+  TriangleAlert,
   Link2,
   Calendar,
 } from "lucide-react";
@@ -183,7 +183,7 @@ export const HamburgerMenu = () => {
               onClick={() => handleNavigation("/vehicle-faults")}
               className={location.pathname === '/vehicle-faults' ? 'bg-accent text-accent-foreground' : ''}
             >
-              <AlertTriangle className="mr-3 h-5 w-5" />
+              <TriangleAlert className="mr-3 h-5 w-5" />
               <span>Vehicle Faults</span>
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>

@@ -25,7 +25,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { AlertTriangle, Package, Search, X, ChevronRight, Plus, Minus } from "lucide-react";
+import { TriangleAlert, Package, Search, X, ChevronRight, Plus, Minus } from "lucide-react";
 import { EquipmentItemHistory } from "./EquipmentItemHistory";
 import { StepperInput } from "@/components/common/StepperInput";
 
@@ -144,7 +144,7 @@ export function EquipmentStockTab() {
             onClick={() => setShowLowStockOnly(!showLowStockOnly)}
             className="h-10 gap-1.5 shrink-0"
           >
-            <AlertTriangle className="h-4 w-4" />
+            <TriangleAlert className="h-4 w-4" />
             <span>{totalLowStock} Low</span>
           </Button>
         )}
@@ -200,7 +200,7 @@ export function EquipmentStockTab() {
                             </span>
                             {item.isLowStock && (
                               <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
+                                <TriangleAlert className="h-3 w-3" />
                                 Low
                               </Badge>
                             )}

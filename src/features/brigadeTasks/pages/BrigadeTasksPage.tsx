@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CheckCircle2 } from "lucide-react";
+import { Plus, CircleCheckBig } from "lucide-react";
 
 import { Task, TaskCard } from "../components/TaskCard";
 import { TaskFilters, FilterType } from "../components/TaskFilters";
@@ -284,7 +284,7 @@ export function BrigadeTasksPage() {
                 ) : !filteredTasks || filteredTasks.length === 0 ? (
                     <div className="bg-white dark:bg-gray-800 shadow-sm p-6 text-center">
                         <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
-                            <CheckCircle2 className="h-6 w-6 text-gray-400" />
+                            <CircleCheckBig className="h-6 w-6 text-gray-400" />
                         </div>
                         <h3 className="font-medium text-gray-900 dark:text-white mb-1">
                             {activeFilter !== "all"

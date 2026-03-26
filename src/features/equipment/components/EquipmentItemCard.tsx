@@ -4,7 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Minus, Plus, AlertTriangle } from "lucide-react";
+import { Minus, Plus, TriangleAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -93,7 +93,7 @@ export function EquipmentItemCard({ item, canManage = false }: EquipmentItemCard
             </h3>
             {item.isLowStock && (
               <Badge variant="destructive" className="flex items-center gap-1 text-xs">
-                <AlertTriangle className="h-3 w-3" />
+                <TriangleAlert className="h-3 w-3" />
                 Low
               </Badge>
             )}

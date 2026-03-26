@@ -20,7 +20,7 @@ import {
   DrawerTitle,
   DrawerFooter,
 } from "@/components/ui/drawer";
-import { Plus, Minus, X, Search, AlertTriangle, Package, ChevronRight } from "lucide-react";
+import { Plus, Minus, X, Search, TriangleAlert, Package, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 interface ReplenishVariant {
@@ -375,7 +375,7 @@ export function EquipmentReplenishTab() {
                   )}
                   {group.hasLowStock && (
                     <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
+                      <TriangleAlert className="h-3 w-3" />
                       Low
                     </Badge>
                   )}

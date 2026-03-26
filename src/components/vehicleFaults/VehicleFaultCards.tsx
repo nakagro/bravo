@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Clock, TriangleAlert, CircleCheck } from 'lucide-react';
 import { Id } from '../../../convex/_generated/dataModel';
 
 export type VehicleFault = {
@@ -53,7 +53,7 @@ const statusConfig = {
     bgColor: 'bg-blue-50 dark:bg-blue-900/20',
     hoverBgColor: 'hover:bg-blue-100 dark:hover:bg-blue-900/30',
     borderColor: 'border-blue-400 dark:border-blue-500',
-    icon: AlertTriangle,
+    icon: TriangleAlert,
   },
   resolved: {
     label: 'Resolved',
@@ -61,7 +61,7 @@ const statusConfig = {
     bgColor: 'bg-green-50 dark:bg-green-900/20',
     hoverBgColor: 'hover:bg-green-100 dark:hover:bg-green-900/30',
     borderColor: 'border-green-400 dark:border-green-500',
-    icon: CheckCircle,
+    icon: CircleCheck,
   },
 } as const;
 

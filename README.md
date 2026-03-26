@@ -6,7 +6,7 @@ This system is built using [Vite](https://vitejs.dev/) (with React and TypeScrip
 
 ## Purpose of this Document
 
-This README serves as a guide for developers, contributors, and AI assistants (like Cascade) to understand the project's architecture, features, and setup. Providing this context helps in efficiently developing, debugging, and extending the application.
+This README serves as a guide for developers, contributors, and AI assistants to understand the project's architecture, features, and setup. Providing this context helps in efficiently developing, debugging, and extending the application.
 
 ## Technology Stack
 
@@ -14,10 +14,12 @@ This README serves as a guide for developers, contributors, and AI assistants (l
 *   **Backend**: [Convex](https://convex.dev/) (Self-hosted via Docker or Convex Cloud)
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 *   **Routing**: [React Router DOM](https://reactrouter.com/)
-*   **UI Components**: [shadcn/ui](https://ui.shadcn.com/) with custom components
-*   **Icons**: [Lucide React](https://lucide.dev/)
+*   **UI Components**: [shadcn/ui](https://ui.shadcn.com/) with [Radix UI](https://www.radix-ui.com/) primitives, plus [Headless UI](https://headlessui.com/) for complex widgets (Combobox, Transition)
+*   **Icons**: [Lucide React](https://lucide.dev/) and [Heroicons](https://heroicons.com/) (`@heroicons/react`)
+*   **Form Validation**: [React Hook Form](https://react-hook-form.com/) with [Zod](https://zod.dev/) schema validation via `@hookform/resolvers` — provides type-safe form state, inline field-level error messages, and cross-field validation (e.g. end date must be after start date). Currently used in the Bookings module forms as a reference pattern for adoption in other modules (Hoses, Keys, etc.)
+*   **Date Handling**: [date-fns](https://date-fns.org/) for all date formatting, parsing, and manipulation. [react-day-picker](https://react-day-picker.js.org/) v9 powers the inline calendar date picker component.
 *   **Notifications**: [Sonner](https://sonner.emilkowal.ski/) for toasts/notifications
-*   **Authentication**: [Auth0](https://auth0.com/) via [@convex-dev/auth](https://auth.convex.dev/)
+*   **Authentication**: [Convex Auth](https://docs.convex.dev/auth) — built-in authentication system with support for multiple providers
 *   **Analytics**: [PostHog](https://posthog.com/) for notification tracking and analytics
 *   **Monitoring**: Health check endpoints with external monitoring support (Healthcheck.io, Zabbix, Uptime Kuma)
 
@@ -34,9 +36,9 @@ For detailed instructions on developing and deploying with both local Docker-bas
 │   ├── features/           # Backend logic organized by feature
 │   │   ├── auth/           # Authentication logic
 │   │   └── hoses/          # Hose management backend
-│   ├── availability/       # Availability status management
-│   ├── auth.config.ts      # Auth0 provider configuration
+│   ├── auth.config.ts      # Convex Auth provider configuration
 │   ├── auth.ts             # Custom authentication logic
+│   ├── bookings.ts         # Booking resources and reservations
 │   ├── crons.ts            # Scheduled tasks (daily availability reset)
 │   ├── dutyCrew.ts         # Duty crew management
 │   ├── fireReports.ts      # Fire report system
@@ -46,7 +48,9 @@ For detailed instructions on developing and deploying with both local Docker-bas
 │   ├── modules.ts          # Permission system and module access control
 │   ├── schema.ts           # Complete database schema
 │   ├── skills.ts           # User skills management
+│   ├── stationChecks.ts    # Station check templates and runs
 │   ├── vehicleFaults.ts    # Vehicle fault tracking
+│   ├── vehicleFaultVehicleTypes.ts  # Vehicle type administration
 │   └── ...                 # Additional backend modules
 ├── public/                 # Static assets and PWA configuration
 │   ├── icons/              # PWA icons and favicons
@@ -55,18 +59,23 @@ For detailed instructions on developing and deploying with both local Docker-bas
 ├── src/                    # Frontend application code
 │   ├── components/         # Reusable UI components
 │   │   ├── admin/          # Admin-specific components
-│   │   ├── common/         # Shared components
+│   │   ├── common/         # Shared components (DarkModeToggle, etc.)
 │   │   ├── layout/         # Layout components (MainLayout, AuthLayout)
-│   │   └── ui/             # shadcn/ui base components
+│   │   ├── shared/         # Cross-feature shared components (ResponsiveModal, DatePicker, etc.)
+│   │   └── ui/             # shadcn/ui base components (Sheet, Calendar, Form, etc.)
 │   ├── features/           # Feature-based modules
 │   │   ├── admin/          # Admin dashboard and tools
-│   │   ├── applianceChecks/ # Appliance check templates and runs
 │   │   ├── auth/           # Authentication components
 │   │   ├── availability/   # Availability status management
-│   │   ├── dutyCrew/       # Duty crew scheduling
+│   │   ├── bookings/       # Resource booking and scheduling
+│   │   ├── dutyCrew/       # Duty crew scheduling and station checks
+│   │   ├── equipment/      # Equipment stock management
 │   │   ├── fireReports/    # Fire report forms and management
 │   │   ├── hoses/          # Hose inventory management
-│   │   └── keys/           # Key register
+│   │   ├── keys/           # Key register
+│   │   ├── kiosk/          # Kiosk mode components (gate control, etc.)
+│   │   ├── qrCodes/        # QR code generation and management
+│   │   └── vehicleFaults/  # Vehicle fault tracking and management
 │   ├── hooks/              # Custom React hooks
 │   ├── lib/                # Utility functions and monitoring
 │   ├── pages/              # Top-level page components
@@ -121,6 +130,9 @@ BRAVO is built with a modular, feature-based architecture and comprehensive perm
 *   Sunday duty crew scheduling (4 crews + working bee)
 *   Automatic crew assignment by week of month
 *   Crew member and leader tracking
+*   Station check templates with customisable check items
+*   Check history tracking and reporting
+*   This week's crew shown inline on the Availability Brigade tab
 *   Minimum rank: Probationary
 
 #### **Appliance Checks**
@@ -131,11 +143,20 @@ BRAVO is built with a modular, feature-based architecture and comprehensive perm
 *   Recent runs history and reporting
 *   Minimum rank: Probationary
 
+#### **Bookings**
+*   Resource booking system for shared brigade assets (vehicles, facilities, equipment)
+*   Admin-configurable resources with optional approval workflows
+*   Weekly schedule view with conflict detection
+*   Multi-day and single-day bookings with time ranges
+*   Inline calendar date picker and form validation (React Hook Form + Zod)
+*   Minimum rank: Probationary
+
 #### **Vehicle Faults**
-*   Fault reporting for all appliances
+*   Fault reporting for all appliances with file attachments
 *   EAM request number tracking
 *   Status workflow (reported → logged → in progress → completed)
-*   Comprehensive audit trail
+*   Comments, comprehensive audit trail, and change history
+*   Vehicle type administration for managing the fleet inventory
 *   Admin-only deletion
 *   Minimum rank: Probationary
 
@@ -180,9 +201,11 @@ Comprehensive data models including:
 
 *   **User Management**: `users`, `userSkills`, `skills`, `userRoles`, `roles`
 *   **Availability**: `availabilityStatuses`, `dutyOfficer`, `applianceLocations`
-*   **Equipment**: `hoses`, `hoseHistory`, `hoseComments`, `keys`, `keyHistory`
-*   **Duty Crew**: `dutyCrew`, `dutyCrewSchedule`
-*   **Appliances**: `applianceCheckTemplates`, `applianceCheckRuns`, `applianceCheckItems`, `vehicleFaults`
+*   **Equipment**: `hoses`, `hoseHistory`, `hoseComments`, `keys`, `keyHistory`, `keyComments`
+*   **Bookings**: `bookingResources`, `bookings` with approval workflows
+*   **Duty Crew**: `dutyCrew`, `dutyCrewSchedule`, `stationCheckTemplates`, `stationCheckRuns`
+*   **Appliances**: `applianceCheckTemplates`, `applianceCheckRuns`, `applianceCheckItems`
+*   **Vehicle Faults**: `vehicleFaults`, `vehicleFaultComments`, `vehicleFaultAttachments`, `vehicleFaultVehicleTypes`
 *   **Fire Reports**: `fireReports` with comprehensive incident tracking
 *   **Permissions**: `modules` for access control
 *   **Notifications**: `pushSubscriptions` for web push
@@ -195,11 +218,11 @@ Comprehensive data models including:
 
 ### Authentication
 
-*   **Provider**: Auth0 integration via `@convex-dev/auth`
-*   **Configuration**: `convex/auth.config.ts` for Auth0 setup
-*   **Environment Variables**: 
-    *   Backend: `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`
-    *   Frontend: `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`
+*   **Provider**: [Convex Auth](https://docs.convex.dev/auth) — built-in auth system via `@convex-dev/auth`
+*   **Configuration**: `convex/auth.config.ts` defines authentication providers (currently using the self-hosted Convex domain)
+*   **Frontend Integration**: `ConvexAuthProvider` in `src/main.tsx` manages auth state across the app
+*   **Environment Variables**:
+    *   Backend: `CONVEX_SITE_URL` — the URL of your self-hosted Convex instance
 
 ## Frontend Details (Vite + React)
 
@@ -207,7 +230,7 @@ The frontend is built with Vite, React, and TypeScript, located in the `src/` di
 
 ### Architecture
 
-*   **Entry Point**: `src/main.tsx` with Auth0 and Convex providers
+*   **Entry Point**: `src/main.tsx` with Convex Auth and Convex providers
 *   **Root Component**: `src/App.tsx` with protected routing
 *   **Layouts**: 
     *   `MainLayout` - Authenticated app with navigation
@@ -222,7 +245,8 @@ The frontend is built with Vite, React, and TypeScript, located in the `src/` di
 *   **Dark Mode**: Full dark mode support with subtle input backgrounds (`dark:bg-white/5`)
 *   **Responsive Design**: Mobile-first approach with tablet and desktop optimizations
 *   **Real-time Updates**: Convex reactive queries for live data
-*   **Form Validation**: Comprehensive validation with user feedback
+*   **Form Validation**: Schema-based validation with React Hook Form + Zod — inline field-level errors, cross-field validation (e.g. date ranges), and type-safe form state. See Bookings module forms as the reference implementation.
+*   **Shared Components**: `ResponsiveModal` (Drawer on mobile, Sheet on desktop), `DatePicker` (inline collapsible calendar), `EmptyState`, `DeleteConfirmDialog`, `PageTabs` — reusable across all modules
 *   **Accessibility**: ARIA labels, keyboard navigation, screen reader support
 
 ## Progressive Web App (PWA)
@@ -272,28 +296,32 @@ Generate once with `npx web-push generate-vapid-keys` and set:
 
 ## Deployment
 
-### Backend (Convex)
+### Production Architecture
 
-Two deployment options:
+This project uses a split deployment model:
 
-1. **Self-hosted Docker**: Deploy Convex as a Docker container on your infrastructure
-   *   Local URL: `https://boss-convex.grayhux.io/http`
-   *   Full control over data and infrastructure
-   *   Requires Docker and container orchestration
+| Layer | Where | How |
+|---|---|---|
+| **Frontend** | [Vercel](https://vercel.com) | Auto-deploys on merge to `main` via GitHub integration — environment variables are managed in the **Vercel dashboard**, not in this repo |
+| **Backend** | Self-hosted VPS (BinaryLane) | Convex running in a Docker container, deployed via `npm run deploy:convex:vps` |
 
-2. **Convex Cloud**: Deploy to Convex's managed cloud service
-   *   Cloud URL: `https://whimsical-hamster-488.convex.cloud`
-   *   Simplified deployment and scaling
-   *   Managed infrastructure
+> **Important for contributors/AI assistants**: Frontend environment variables (e.g. `VITE_CONVEX_URL`, `VITE_VAPID_PUBLIC_KEY`) live in Vercel's dashboard, not in `.env` files in this repo. If the frontend isn't picking up a change, check Vercel environment variables first.
 
-See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed deployment instructions.
+### Deploy Backend to VPS
 
-### Frontend (Vite)
+```bash
+npm run deploy:convex:vps
+```
 
-*   Build: `npm run build`
-*   Output: Static assets in `dist/` directory
-*   Deploy to: Any static hosting (Vercel, Netlify, etc.) or serve via backend
-*   PWA support: Automatically generates service worker and manifest
+This pushes all Convex functions and schema changes to the self-hosted Convex instance on the VPS. **This targets the live production instance** — there is currently no separate staging backend.
+
+### Deploy Frontend to Vercel
+
+Frontend deploys are triggered automatically — Vercel is connected to the private GitHub repository and builds on every merge to `main`. There is no manual deploy step for the frontend.
+
+Vercel bakes `VITE_*` environment variables into the build at build time. After changing a Vercel env var you must trigger a redeploy for it to take effect.
+
+See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed VPS/Docker setup instructions.
 
 ## Getting Started
 
@@ -322,12 +350,7 @@ See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed deployment instructions.
     # Convex Backend
     CONVEX_DEPLOYMENT="http://localhost:YOUR_CONVEX_DOCKER_PORT"
     VITE_CONVEX_URL="http://localhost:YOUR_CONVEX_DOCKER_PORT"
-    
-    # Auth0
-    AUTH0_DOMAIN="your-domain.auth0.com"
-    AUTH0_CLIENT_ID="your-client-id"
-    VITE_AUTH0_DOMAIN="your-domain.auth0.com"
-    VITE_AUTH0_CLIENT_ID="your-client-id"
+    CONVEX_SITE_URL="http://localhost:YOUR_CONVEX_DOCKER_PORT"
     
     # VAPID Keys (for push notifications)
     VITE_VAPID_PUBLIC_KEY="your-public-key"
@@ -358,32 +381,25 @@ See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed deployment instructions.
 
 ### Running Locally
 
-1.  **Start Convex backend**:
-    *   Docker: `docker-compose up -d`
-    *   Cloud: Already running
+**Frontend only (most common):**
+```bash
+npm run dev:frontend
+```
+Starts the Vite dev server pointing at the production VPS backend (`https://boss-convex.grayhux.io`). This is the standard way to develop and test frontend changes locally.
 
-2.  **Start development servers**:
-    ```bash
-    npm run dev
-    ```
-
-    This command:
-    *   Initializes Convex connection
-    *   Runs setup scripts
-    *   Starts Vite dev server (frontend)
-    *   Watches Convex functions for changes (backend)
-
-3.  **Access the application**:
-    *   Opens automatically in your default browser
-    *   Default URL: `http://localhost:5173`
-    *   Connects to configured Convex backend
+**Backend changes:**
+```bash
+npm run deploy:convex:vps
+```
+Deploys Convex functions and schema to the VPS. Note: there is currently no separate staging backend — this deploys directly to the live instance.
 
 ### Development Workflow
 
-*   **Frontend changes**: Hot module replacement (HMR) via Vite
-*   **Backend changes**: Automatic push to Convex on save
-*   **Schema changes**: Automatically applied to Convex database
-*   **Type safety**: Full TypeScript support across frontend and backend
+*   **Frontend changes**: Run `npm run dev:frontend` — Vite HMR gives instant hot reloads, connected to the live VPS backend
+*   **Backend changes**: Edit Convex functions then run `npm run deploy:convex:vps` to push to VPS
+*   **Schema changes**: Deployed along with backend via `deploy:convex:vps`
+*   **Type safety**: Full TypeScript support — run `npx tsc --noEmit` to check before deploying
+*   **Vercel env vars**: If frontend behaviour looks wrong in production but fine locally, check Vercel dashboard environment variables — they are not stored in this repo
 
 ### Linting and Type Checking
 

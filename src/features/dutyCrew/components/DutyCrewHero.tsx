@@ -9,7 +9,7 @@ import {
   ChevronRight,
   Users,
   Crown,
-  AlertTriangle,
+  TriangleAlert,
   RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -178,7 +178,7 @@ export function DutyCrewHero({
 
               {isSpecial && (
                 <div className="flex items-center gap-1 mt-1">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                   <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
                     All Crews
                   </span>

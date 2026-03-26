@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, Crown, AlertTriangle } from "lucide-react";
+import { Calendar, Users, Crown, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort, getUserFullName } from "../types";
 
@@ -86,7 +86,7 @@ export function ScheduleCard({ assignment, isFirst }: ScheduleCardProps) {
       <div className="p-3">
         <div className="flex items-center gap-2">
           {assignment.isSpecial ? (
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <TriangleAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
           ) : (
             <Users className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           )}
