@@ -965,11 +965,27 @@ const applicationTables = {
       v.literal("completed"), // Done
       v.literal("cancelled") // No longer needed
     ),
+    priority: v.optional(v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    )), // Task priority level
+    category: v.optional(v.union(
+      v.literal("maintenance"),
+      v.literal("training"),
+      v.literal("admin"),
+      v.literal("equipment"),
+      v.literal("operations"),
+      v.literal("other")
+    )), // Task category for organisation
     dueDate: v.optional(v.string()), // ISO date string (YYYY-MM-DD)
     assignedTo: v.id("users"), // User the task is assigned to
     createdBy: v.id("users"), // User who created the task
     completedAt: v.optional(v.number()), // Timestamp when marked complete
     completedBy: v.optional(v.id("users")), // User who marked it complete
+    deletedAt: v.optional(v.number()), // Soft delete timestamp
+    deletedBy: v.optional(v.id("users")), // User who deleted
     createdAt: v.number(),
     updatedAt: v.number(),
     updatedBy: v.id("users"),
@@ -979,7 +995,9 @@ const applicationTables = {
     .index("by_status", ["status"])
     .index("by_dueDate", ["dueDate"])
     .index("by_createdAt", ["createdAt"])
-    .index("by_assignedTo_status", ["assignedTo", "status"]),
+    .index("by_assignedTo_status", ["assignedTo", "status"])
+    .index("by_priority", ["priority"])
+    .index("by_category", ["category"]),
 
   // Brigade Task Comments - Comments on tasks
   brigadeTaskComments: defineTable({

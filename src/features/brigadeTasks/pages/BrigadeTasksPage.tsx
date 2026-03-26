@@ -6,22 +6,24 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, CircleCheckBig } from "lucide-react";
+import { Plus, CircleCheckBig, TriangleAlert, Clock, Users } from "lucide-react";
 
-import { Task, TaskCard } from "../components/TaskCard";
+import { Task, TaskCard, TaskStatus, TaskPriority, TaskCategory } from "../components/TaskCard";
 import { TaskFilters, FilterType } from "../components/TaskFilters";
 import { TaskForm } from "../components/TaskForm";
 import { QuickAddTask } from "../components/QuickAddTask";
 
-type TaskStatus = "active" | "completed" | "cancelled";
+type TabType = "my-tasks" | "created" | "brigade";
 
 export function BrigadeTasksPage() {
-    const [activeTab, setActiveTab] = useState("my-tasks");
+    const [activeTab, setActiveTab] = useState<TabType>("my-tasks");
     const [showCompleted, setShowCompleted] = useState(false);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<Id<"brigadeTasks"> | null>(null);
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+    const [activeCategory, setActiveCategory] = useState("all");
+    const [searchQuery, setSearchQuery] = useState("");
     const [quickAddText, setQuickAddText] = useState("");
     const [isQuickAdding, setIsQuickAdding] = useState(false);
     const [celebratingTaskId, setCelebratingTaskId] = useState<Id<"brigadeTasks"> | null>(null);
@@ -29,12 +31,15 @@ export function BrigadeTasksPage() {
     const isMobile = useIsMobile();
     const { toast } = useToast();
 
-    // Tab animation refs
     const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
     // Queries
     const myTasks = useQuery(api.brigadeTasks.getMyTasks, { includeCompleted: showCompleted });
     const createdTasks = useQuery(api.brigadeTasks.getTasksCreatedByMe, { includeCompleted: showCompleted });
+    const allBrigadeTasks = useQuery(
+        api.brigadeTasks.getAllTasks,
+        activeTab === "brigade" ? { includeCompleted: showCompleted } : "skip"
+    );
     const taskCounts = useQuery(api.brigadeTasks.getTaskCounts);
     const currentUser = useQuery(api.auth.loggedInUser);
     const allUsers = useQuery(api.bookings.getAllUsers);
@@ -49,13 +54,30 @@ export function BrigadeTasksPage() {
     const today = new Date().toISOString().split("T")[0];
     const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
 
+    // Get raw tasks for active tab
+    const rawTasks = useMemo(() => {
+        if (activeTab === "my-tasks") return myTasks;
+        if (activeTab === "created") return createdTasks;
+        return allBrigadeTasks;
+    }, [activeTab, myTasks, createdTasks, allBrigadeTasks]);
+
     // Filter tasks
     const filteredTasks = useMemo(() => {
-        const tasks = activeTab === "my-tasks" ? myTasks : createdTasks;
-        if (!tasks) return undefined;
+        if (!rawTasks) return undefined;
 
-        let result = tasks;
+        let result = [...rawTasks];
 
+        // Search filter
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter((t) =>
+                t.title.toLowerCase().includes(q) ||
+                t.description?.toLowerCase().includes(q) ||
+                t.assigneeName?.toLowerCase().includes(q)
+            );
+        }
+
+        // Status filter
         switch (activeFilter) {
             case "overdue":
                 result = result.filter((t) => t.dueDate && t.dueDate < today && t.status !== "completed" && t.status !== "cancelled");
@@ -65,8 +87,13 @@ export function BrigadeTasksPage() {
                 break;
         }
 
+        // Category filter
+        if (activeCategory !== "all") {
+            result = result.filter((t) => t.category === activeCategory);
+        }
+
         return result;
-    }, [myTasks, createdTasks, activeTab, activeFilter, today]);
+    }, [rawTasks, activeFilter, activeCategory, searchQuery, today]);
 
     // Group tasks by date
     const groupedTasks = useMemo(() => {
@@ -86,53 +113,84 @@ export function BrigadeTasksPage() {
                 groups.completed.push(task);
                 return;
             }
-
-            if (!task.dueDate) {
-                groups.noDate.push(task);
-            } else if (task.dueDate < today) {
-                groups.overdue.push(task);
-            } else if (task.dueDate === today) {
-                groups.today.push(task);
-            } else if (task.dueDate === tomorrow) {
-                groups.tomorrow.push(task);
-            } else {
-                groups.upcoming.push(task);
-            }
+            if (!task.dueDate) groups.noDate.push(task);
+            else if (task.dueDate < today) groups.overdue.push(task);
+            else if (task.dueDate === today) groups.today.push(task);
+            else if (task.dueDate === tomorrow) groups.tomorrow.push(task);
+            else groups.upcoming.push(task);
         });
 
         return groups;
     }, [filteredTasks, today, tomorrow]);
 
-    // Filter counts for the dropdown
-    const filterCounts = useMemo(() => {
-        const tasks = activeTab === "my-tasks" ? myTasks : createdTasks;
-        if (!tasks) return { today: 0, overdue: 0 };
+    // Group brigade tasks by assignee
+    const brigadeGrouped = useMemo(() => {
+        if (activeTab !== "brigade" || !filteredTasks) return null;
 
-        const active = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled");
+        const byMember: Record<string, { name: string; tasks: Task[] }> = {};
+        filteredTasks.forEach((task) => {
+            const key = task.assignedTo;
+            if (!byMember[key]) {
+                byMember[key] = { name: task.assigneeName || "Unknown", tasks: [] };
+            }
+            byMember[key].tasks.push(task);
+        });
+
+        // Sort members by number of active tasks (most first)
+        return Object.values(byMember).sort((a, b) => {
+            const aActive = a.tasks.filter(t => t.status === "active").length;
+            const bActive = b.tasks.filter(t => t.status === "active").length;
+            return bActive - aActive;
+        });
+    }, [activeTab, filteredTasks]);
+
+    // Filter counts
+    const filterCounts = useMemo(() => {
+        if (!rawTasks) return { today: 0, overdue: 0 };
+        const active = rawTasks.filter(t => t.status !== "completed" && t.status !== "cancelled");
         return {
             today: active.filter(t => t.dueDate === today).length,
             overdue: active.filter(t => t.dueDate && t.dueDate < today).length,
         };
-    }, [myTasks, createdTasks, activeTab, today]);
+    }, [rawTasks, today]);
+
+    // Stats for overview cards
+    const stats = useMemo(() => {
+        if (!myTasks) return { active: 0, overdue: 0, dueToday: 0 };
+        const active = myTasks.filter(t => t.status !== "completed" && t.status !== "cancelled");
+        return {
+            active: active.length,
+            overdue: active.filter(t => t.dueDate && t.dueDate < today).length,
+            dueToday: active.filter(t => t.dueDate === today).length,
+        };
+    }, [myTasks, today]);
 
     // Handlers
     const handleQuickAdd = async () => {
         if (!quickAddText.trim()) return;
         setIsQuickAdding(true);
         try {
-            await createTask({
-                title: quickAddText.trim(),
-            });
+            await createTask({ title: quickAddText.trim() });
             setQuickAddText("");
             toast({ title: "Task added!", description: "Your task has been created" });
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
         } finally {
             setIsQuickAdding(false);
         }
     };
 
-    const handleSubmitTask = async (data: { title: string; description: string; dueDate: string; assignedTo: string }) => {
+    const handleSubmitTask = async (data: {
+        title: string;
+        description: string;
+        dueDate: string;
+        assignedTo: string;
+        priority: TaskPriority;
+        category: string;
+    }) => {
+        const priority = data.priority;
+        const category = data.category === "none" ? undefined : (data.category as TaskCategory);
+
         if (taskToEdit) {
             await updateTask({
                 taskId: taskToEdit._id,
@@ -140,6 +198,8 @@ export function BrigadeTasksPage() {
                 description: data.description || undefined,
                 dueDate: data.dueDate || undefined,
                 assignedTo: data.assignedTo === "self" ? currentUser?._id : (data.assignedTo as Id<"users">),
+                priority,
+                category,
             });
             toast({ title: "Task updated", description: "Your changes have been saved" });
             setTaskToEdit(null);
@@ -149,6 +209,8 @@ export function BrigadeTasksPage() {
                 description: data.description || undefined,
                 dueDate: data.dueDate || undefined,
                 assignedTo: data.assignedTo === "self" ? undefined : (data.assignedTo as Id<"users">),
+                priority,
+                category,
             });
             toast({ title: "Task created", description: data.assignedTo !== "self" ? "Task assigned successfully" : "Your task has been added" });
         }
@@ -159,10 +221,10 @@ export function BrigadeTasksPage() {
             if (newStatus === "completed") {
                 setCelebratingTaskId(taskId);
                 setTimeout(() => setCelebratingTaskId(null), 1000);
-                toast({ title: "🎉 Task completed!", description: "Great job getting that done!" });
+                toast({ title: "Task completed!", description: "Great job getting that done!" });
             }
             await updateTaskStatus({ taskId, status: newStatus });
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to update task status", variant: "destructive" });
         }
     };
@@ -173,7 +235,7 @@ export function BrigadeTasksPage() {
             await deleteTask({ taskId: taskToDelete });
             toast({ title: "Task deleted", description: "The task has been removed" });
             setTaskToDelete(null);
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to delete task", variant: "destructive" });
         }
     };
@@ -185,7 +247,6 @@ export function BrigadeTasksPage() {
 
     const isLoading = filteredTasks === undefined;
 
-    // Render a task group section
     const renderTaskGroup = (title: string, tasks: Task[], titleColor = "text-gray-900 dark:text-white") => {
         if (tasks.length === 0) return null;
         return (
@@ -197,7 +258,7 @@ export function BrigadeTasksPage() {
                             key={task._id}
                             task={task}
                             currentUserId={currentUser?._id}
-                            showAssignee={activeTab === "created"}
+                            showAssignee={activeTab === "created" || activeTab === "brigade"}
                             isCelebrating={celebratingTaskId === task._id}
                             onStatusChange={handleStatusChange}
                             onEdit={setTaskToEdit}
@@ -208,6 +269,12 @@ export function BrigadeTasksPage() {
             </div>
         );
     };
+
+    const tabs: { id: TabType; label: string; badge?: number; icon?: React.ReactNode }[] = [
+        { id: "my-tasks", label: "My Tasks", badge: taskCounts?.myTasks, icon: undefined },
+        { id: "created", label: "Created", icon: undefined },
+        { id: "brigade", label: "Brigade", icon: <Users className="h-3.5 w-3.5" /> },
+    ];
 
     return (
         <div className="space-y-4" data-component="BrigadeTasksPage">
@@ -220,34 +287,72 @@ export function BrigadeTasksPage() {
                 </Button>
             </div>
 
+            {/* Stats Overview */}
+            <div className="grid grid-cols-3 gap-3">
+                <div className={`p-3 rounded-xl border transition-all ${
+                    stats.active > 0
+                        ? "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1 rounded-md bg-blue-100 dark:bg-blue-900/30">
+                            <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                    </div>
+                    <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{stats.active}</p>
+                    <p className="text-xs text-muted-foreground">Active</p>
+                </div>
+                <div className={`p-3 rounded-xl border transition-all ${
+                    stats.overdue > 0
+                        ? "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1 rounded-md bg-red-100 dark:bg-red-900/30">
+                            <TriangleAlert className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                        </div>
+                    </div>
+                    <p className={`text-xl font-bold ${stats.overdue > 0 ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-white"}`}>{stats.overdue}</p>
+                    <p className="text-xs text-muted-foreground">Overdue</p>
+                </div>
+                <div className={`p-3 rounded-xl border transition-all ${
+                    stats.dueToday > 0
+                        ? "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1 rounded-md bg-amber-100 dark:bg-amber-900/30">
+                            <CircleCheckBig className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                    </div>
+                    <p className={`text-xl font-bold ${stats.dueToday > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-white"}`}>{stats.dueToday}</p>
+                    <p className="text-xs text-muted-foreground">Due Today</p>
+                </div>
+            </div>
+
             {/* Tabs */}
             <div className="border-b border-gray-200 dark:border-gray-700 relative">
                 <nav className="flex gap-x-1 -mb-px">
-                    <button
-                        ref={(el) => { tabRefs.current["my-tasks"] = el; }}
-                        onClick={() => setActiveTab("my-tasks")}
-                        className={`py-2.5 px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "my-tasks"
-                            ? "text-red-600 dark:text-red-400 font-bold"
-                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            ref={(el) => { tabRefs.current[tab.id] = el; }}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`py-2.5 px-3 text-sm transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                                activeTab === tab.id
+                                    ? "text-red-600 dark:text-red-400 font-bold"
+                                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
                             }`}
-                    >
-                        My Tasks
-                        {taskCounts && taskCounts.myTasks > 0 && (
-                            <span className="ml-1.5 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold">
-                                {taskCounts.myTasks}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        ref={(el) => { tabRefs.current["created"] = el; }}
-                        onClick={() => setActiveTab("created")}
-                        className={`py-2.5 px-3 text-sm transition-colors whitespace-nowrap ${activeTab === "created"
-                            ? "text-red-600 dark:text-red-400 font-bold"
-                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
-                            }`}
-                    >
-                        Created by Me
-                    </button>
+                        >
+                            {tab.icon}
+                            {tab.label}
+                            {tab.badge !== undefined && tab.badge > 0 && (
+                                <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold">
+                                    {tab.badge}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </nav>
                 <div
                     className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
@@ -255,22 +360,24 @@ export function BrigadeTasksPage() {
                 />
             </div>
 
-            {/* Quick Add + Filter - inline row */}
-            <div className="flex gap-2 items-center">
-                <div className="flex-1">
-                    <QuickAddTask
-                        quickAddText={quickAddText}
-                        isQuickAdding={isQuickAdding}
-                        onTextChange={setQuickAddText}
-                        onSubmit={handleQuickAdd}
-                    />
-                </div>
+            {/* Quick Add + Filters */}
+            <div className="space-y-2">
+                <QuickAddTask
+                    quickAddText={quickAddText}
+                    isQuickAdding={isQuickAdding}
+                    onTextChange={setQuickAddText}
+                    onSubmit={handleQuickAdd}
+                />
                 <TaskFilters
                     activeFilter={activeFilter}
                     filterCounts={filterCounts}
                     showCompleted={showCompleted}
                     onFilterChange={setActiveFilter}
                     onShowCompletedChange={setShowCompleted}
+                    activeCategory={activeCategory}
+                    onCategoryChange={setActiveCategory}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
                 />
             </div>
 
@@ -282,26 +389,66 @@ export function BrigadeTasksPage() {
                         <p className="text-sm">Loading tasks...</p>
                     </div>
                 ) : !filteredTasks || filteredTasks.length === 0 ? (
-                    <div className="bg-white dark:bg-gray-800 shadow-sm p-6 text-center">
+                    <div className="bg-white dark:bg-gray-800 shadow-sm p-6 text-center rounded-lg">
                         <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
                             <CircleCheckBig className="h-6 w-6 text-gray-400" />
                         </div>
                         <h3 className="font-medium text-gray-900 dark:text-white mb-1">
-                            {activeFilter !== "all"
+                            {searchQuery
                                 ? "No matching tasks"
-                                : activeTab === "my-tasks"
-                                    ? "You're all caught up!"
-                                    : "No tasks created yet"
+                                : activeFilter !== "all" || activeCategory !== "all"
+                                    ? "No matching tasks"
+                                    : activeTab === "my-tasks"
+                                        ? "You're all caught up!"
+                                        : activeTab === "brigade"
+                                            ? "No brigade tasks yet"
+                                            : "No tasks created yet"
                             }
                         </h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                            {activeFilter !== "all"
-                                ? "Try adjusting your filters"
-                                : "Use the quick add above to create a task"
+                            {searchQuery
+                                ? "Try a different search term"
+                                : activeFilter !== "all" || activeCategory !== "all"
+                                    ? "Try adjusting your filters"
+                                    : activeTab === "brigade"
+                                        ? "Tasks created by any member will appear here"
+                                        : "Use the quick add above or tap New Task"
                             }
                         </p>
                     </div>
+                ) : activeTab === "brigade" && brigadeGrouped ? (
+                    // Brigade view: grouped by member
+                    <div className="space-y-6">
+                        {brigadeGrouped.map((group) => (
+                            <div key={group.name}>
+                                <div className="flex items-center gap-2 mb-2 px-1">
+                                    <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
+                                        {group.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{group.name}</h3>
+                                    <span className="text-xs text-muted-foreground">
+                                        {group.tasks.filter(t => t.status === "active").length} active
+                                    </span>
+                                </div>
+                                <div className="space-y-0">
+                                    {group.tasks.map(task => (
+                                        <TaskCard
+                                            key={task._id}
+                                            task={task}
+                                            currentUserId={currentUser?._id}
+                                            showAssignee={false}
+                                            isCelebrating={celebratingTaskId === task._id}
+                                            onStatusChange={handleStatusChange}
+                                            onEdit={setTaskToEdit}
+                                            onDelete={setTaskToDelete}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 ) : (
+                    // Standard grouped view
                     <div>
                         {groupedTasks && (
                             <>

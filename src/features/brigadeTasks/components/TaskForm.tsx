@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { LoaderCircle, User } from "lucide-react";
-import { Task } from "./TaskCard";
+import { Task, TaskPriority, TaskCategory, priorityConfig, categoryConfig } from "./TaskCard";
 
 interface UserInfo {
     _id: Id<"users">;
@@ -41,6 +41,8 @@ interface TaskFormProps {
         description: string;
         dueDate: string;
         assignedTo: string;
+        priority: TaskPriority;
+        category: string;
     }) => Promise<void>;
 }
 
@@ -56,11 +58,12 @@ export function TaskForm({
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [assignedTo, setAssignedTo] = useState<string>("self");
+    const [priority, setPriority] = useState<TaskPriority>("normal");
+    const [category, setCategory] = useState<string>("none");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isEditing = !!task;
 
-    // Reset form when dialog opens/closes or task changes
     useEffect(() => {
         if (open) {
             if (task) {
@@ -68,11 +71,15 @@ export function TaskForm({
                 setDescription(task.description || "");
                 setDueDate(task.dueDate || "");
                 setAssignedTo(task.assignedTo === currentUserId ? "self" : task.assignedTo);
+                setPriority(task.priority || "normal");
+                setCategory(task.category || "none");
             } else {
                 setTitle("");
                 setDescription("");
                 setDueDate("");
                 setAssignedTo("self");
+                setPriority("normal");
+                setCategory("none");
             }
         }
     }, [open, task, currentUserId]);
@@ -95,6 +102,8 @@ export function TaskForm({
                 description: description.trim(),
                 dueDate,
                 assignedTo,
+                priority,
+                category,
             });
             onOpenChange(false);
         } finally {
@@ -136,7 +145,46 @@ export function TaskForm({
                             />
                         </div>
 
-                        {/* Due Date */}
+                        {/* Priority & Category row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Priority</Label>
+                                <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+                                    <SelectTrigger className="h-12">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(Object.entries(priorityConfig) as [TaskPriority, typeof priorityConfig.normal][]).map(([key, config]) => (
+                                            <SelectItem key={key} value={key}>
+                                                <span className={`flex items-center gap-2 ${config.color}`}>
+                                                    <span className={`w-2 h-2 rounded-full ${key === "low" ? "bg-gray-400" : key === "normal" ? "bg-blue-500" : key === "high" ? "bg-amber-500" : "bg-red-500"}`} />
+                                                    {config.label}
+                                                </span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Category</Label>
+                                <Select value={category} onValueChange={setCategory}>
+                                    <SelectTrigger className="h-12">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            <span className="text-muted-foreground">None</span>
+                                        </SelectItem>
+                                        {(Object.entries(categoryConfig) as [TaskCategory, typeof categoryConfig.maintenance][]).map(([key, config]) => (
+                                            <SelectItem key={key} value={key}>
+                                                <span className={config.color}>{config.label}</span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="dueDate">Due Date</Label>
                             <Input
@@ -149,7 +197,6 @@ export function TaskForm({
                             />
                         </div>
 
-                        {/* Assign to member */}
                         <div className="space-y-2">
                             <Label htmlFor="assignedTo">Assign to</Label>
                             <Select value={assignedTo} onValueChange={setAssignedTo}>
