@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.80] - 2026-03-26
+- Upgraded Vite from 6 to 8, build times now around 3 seconds with the new Rolldown bundler.
+- Vendor chunk splitting — main JS bundle reduced from 2.6MB to 1.3MB, with PDF, React, UI, and Convex libs in separate cacheable chunks.
+- Dev server warmup added for faster first page load during local development.
+- Upgraded React 18 to 19.2.4.
+- Removed forwardRef from all shadcn/ui components; ref is now a standard prop.
+- Converted all React.FC usage to function declarations across the codebase.
+- Upgraded jspdf 3→4.2.1 (security fix), jspdf-autotable, vite-plugin-pwa, lucide-react (7 renamed icons updated across ~46 files).
+- Upgraded Convex 1.27→1.34 and @convex-dev/auth 0.0.86→0.0.91, deployed to VPS.
+- Upgraded Zod 3→4.3.6.
+- Cleaned up dead code in convex/availability/ and convex/users/.
+
 ## [1.0.77] - 2026-03-26
 - Lots of refactoring, too many to list. Boring update to most, tons of change in the background.
 
