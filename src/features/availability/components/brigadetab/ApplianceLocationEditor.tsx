@@ -21,7 +21,7 @@ interface ApplianceLocationEditorProps {
   onClose: () => void;
 }
 
-const ApplianceLocationEditor: React.FC<ApplianceLocationEditorProps> = ({ onClose }) => {
+function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
   const isMobile = useIsMobile();
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
   const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
@@ -232,6 +232,6 @@ const ApplianceLocationEditor: React.FC<ApplianceLocationEditorProps> = ({ onClo
       </DialogContent>
     </Dialog>
   );
-};
+}
 
 export default ApplianceLocationEditor;

@@ -27,7 +27,7 @@ interface MessagePresetManagerProps {
 
 const MAX_PRESETS = 5;
 
-const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose, onSelectPreset }) => {
+function MessagePresetManager({ onClose, onSelectPreset }: MessagePresetManagerProps) {
     const isMobile = useIsMobile();
     const presets = useQuery(api.messagePresets.getPresets) || [];
     const createPreset = useMutation(api.messagePresets.createPreset);
@@ -314,6 +314,6 @@ const MessagePresetManager: React.FC<MessagePresetManagerProps> = ({ onClose, on
             </DialogContent>
         </Dialog>
     );
-};
+}
 
 export default MessagePresetManager;

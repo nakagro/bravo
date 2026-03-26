@@ -8,7 +8,7 @@ interface KioskApplianceLocationsProps {
     onBack: () => void;
 }
 
-const KioskApplianceLocations: React.FC<KioskApplianceLocationsProps> = ({ onBack }) => {
+function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
     const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
     const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
     const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
@@ -247,6 +247,6 @@ const KioskApplianceLocations: React.FC<KioskApplianceLocationsProps> = ({ onBac
             `}</style>
         </div>
     );
-};
+}
 
 export default KioskApplianceLocations;

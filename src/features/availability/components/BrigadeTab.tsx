@@ -14,11 +14,11 @@ interface BrigadeTabProps {
   handleDutyOfficerChange: (userId: string) => void;
 }
 
-const BrigadeTab: React.FC<BrigadeTabProps> = ({
+function BrigadeTab({
   statuses,
   dutyOfficer,
   handleDutyOfficerChange
-}) => {
+}: BrigadeTabProps) {
   // Duty crew for this week
   const upcomingAssignments = useQuery(api.dutyCrew.getUpcomingDutyCrewAssignments, { count: 1 });
   const thisWeekAssignment = upcomingAssignments?.[0];
@@ -331,7 +331,7 @@ const BrigadeTab: React.FC<BrigadeTabProps> = ({
       </div>
     </>
   );
-};
+}
 
 // Compact inline skills renderer - now receives skills as props instead of querying
 interface UserSkillsInlineProps {
@@ -339,7 +339,7 @@ interface UserSkillsInlineProps {
   skills: any[];
 }
 
-const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, skills }) => {
+function UserSkillsInline({ userId, skills }: UserSkillsInlineProps) {
   // Hide the special NONE skill from badges
   const filtered = (skills || []).filter((s: any) => s.code !== "NONE");
 
@@ -350,7 +350,7 @@ const UserSkillsInline: React.FC<UserSkillsInlineProps> = ({ userId, skills }) =
       ))}
     </div>
   );
-};
+}
 
 // Skill counters for crew viability (DR and BAi)
 interface SkillCountersProps {
@@ -358,7 +358,7 @@ interface SkillCountersProps {
   textColor: string;
 }
 
-const SkillCounters: React.FC<SkillCountersProps> = ({ userIds, textColor }) => {
+function SkillCounters({ userIds, textColor }: SkillCountersProps) {
   // Query skills for all users in this group
   const allUserSkills = userIds.map(userId => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -390,6 +390,6 @@ const SkillCounters: React.FC<SkillCountersProps> = ({ userIds, textColor }) => 
       </span>
     </div>
   );
-};
+}
 
 export default BrigadeTab;

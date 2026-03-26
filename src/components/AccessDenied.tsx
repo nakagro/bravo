@@ -19,7 +19,7 @@ interface AccessDeniedProps {
   moduleId?: string;
 }
 
-export const AccessDenied: React.FC<AccessDeniedProps> = ({ moduleId }) => {
+export function AccessDenied({ moduleId }: AccessDeniedProps) {
   const navigate = useNavigate();
   const [clickCount, setClickCount] = useState(0);
   const [eggIndex] = useState(() => Math.floor(Math.random() * EASTER_EGGS.length));
@@ -68,4 +68,4 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({ moduleId }) => {
       </Button>
     </div>
   );
-};
+}

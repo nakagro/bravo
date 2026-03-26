@@ -4,7 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { getRelativeTimeCompact } from "../../../../utils/dateUtils";
 import ApplianceLocationEditor from "./ApplianceLocationEditor";
 
-const ApplianceLocations: React.FC = () => {
+function ApplianceLocations() {
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
   const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
   const currentUserSkills = useQuery(api.skills.getUserSkills, {});
@@ -126,6 +126,6 @@ const ApplianceLocations: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default ApplianceLocations;

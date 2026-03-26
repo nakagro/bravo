@@ -74,7 +74,7 @@ const getStrengthText = (strength: number) => {
   return "Strong";
 };
 
-const UserManagement: React.FC = () => {
+function UserManagement() {
   // constant for no rank
   const NO_RANK_VALUE = "none";
 
@@ -632,6 +632,6 @@ const UserManagement: React.FC = () => {
       </Dialog>
     </div>
   );
-};
+}
 
 export default UserManagement;

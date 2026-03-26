@@ -3,7 +3,7 @@ import { useConvexAuth } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeGenerator, QRCodeList } from './components';
 
-const QRCodesPage: React.FC = () => {
+function QRCodesPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
 
@@ -94,6 +94,6 @@ const QRCodesPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default QRCodesPage;

@@ -9,7 +9,7 @@ import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-const AvailabilityPage: React.FC = () => {
+function AvailabilityPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
   
@@ -263,6 +263,6 @@ const AvailabilityPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AvailabilityPage;

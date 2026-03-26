@@ -19,7 +19,7 @@ interface InventoryAdminTabProps {
   isAuthenticated: boolean;
 }
 
-const InventoryAdminTab: React.FC<InventoryAdminTabProps> = ({ isAuthenticated }) => {
+function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
   const navigate = useNavigate();
 
   const recentRuns = useQuery(api.inventoryCheckRuns.listRunSummaries, { limit: 50 });
@@ -186,6 +186,6 @@ const InventoryAdminTab: React.FC<InventoryAdminTabProps> = ({ isAuthenticated }
       </div>
     </div>
   );
-};
+}
 
 export default InventoryAdminTab;

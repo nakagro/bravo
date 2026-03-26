@@ -20,7 +20,7 @@ interface DeploymentTabProps {
   isAuthenticated: boolean;
 }
 
-const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
+function DeploymentTab({ isAuthenticated }: DeploymentTabProps) {
   // State for deployment availability
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
@@ -217,6 +217,6 @@ const DeploymentTab: React.FC<DeploymentTabProps> = ({ isAuthenticated }) => {
       )}
     </>
   );
-};
+}
 
 export default DeploymentTab;

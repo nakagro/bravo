@@ -6,7 +6,7 @@ interface SkillBadgeProps {
   size?: 'sm' | 'md';
 }
 
-const SkillBadge: React.FC<SkillBadgeProps> = ({ code, name, size = 'md' }) => {
+function SkillBadge({ code, name, size = 'md' }: SkillBadgeProps) {
   const sizeClasses =
     size === 'sm'
       ? 'h-4 min-w-[1.5rem] px-1 text-[10px] mr-1 mb-1'
@@ -20,6 +20,6 @@ const SkillBadge: React.FC<SkillBadgeProps> = ({ code, name, size = 'md' }) => {
       {code}
     </div>
   );
-};
+}
 
 export default SkillBadge;

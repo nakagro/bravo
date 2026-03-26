@@ -13,11 +13,11 @@ interface PersonalViewProps {
   handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => void;
 }
 
-const PersonalView: React.FC<PersonalViewProps> = ({
+function PersonalView({
   deploymentDates,
   deploymentAvailability,
   handleDeploymentAvailabilityChange
-}) => {
+}: PersonalViewProps) {
   return (
     <>
 
@@ -182,7 +182,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({
       </div>
     </>
   );
-};
+}
 
 // MessageInput component with debouncing
 interface MessageInputProps {
@@ -199,7 +199,7 @@ interface MessageInputProps {
   handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => void;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ date, initialValue, availability, handleDeploymentAvailabilityChange, id }) => {
+function MessageInput({ date, initialValue, availability, handleDeploymentAvailabilityChange, id }: MessageInputProps) {
   // Local state for the input value
   const [inputValue, setInputValue] = useState(initialValue);
   const [showPresetManager, setShowPresetManager] = useState(false);
@@ -291,6 +291,6 @@ const MessageInput: React.FC<MessageInputProps> = ({ date, initialValue, availab
       )}
     </>
   );
-};
+}
 
 export default PersonalView;

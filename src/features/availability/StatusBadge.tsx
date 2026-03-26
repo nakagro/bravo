@@ -10,7 +10,7 @@ interface StatusBadgeProps {
 /**
  * A component that displays a user's status as a colored badge
  */
-const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '' }) => {
+function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   const getStatusColor = (status: StatusType): string => {
     switch (status) {
       case 'available':
@@ -48,6 +48,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '' }) => 
       {getStatusText(status)}
     </span>
   );
-};
+}
 
 export default StatusBadge;

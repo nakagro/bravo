@@ -17,7 +17,7 @@ interface MessagesTabProps {
   handleUpdateMessage: (messageId: Id<"availabilityMessages">, message: string) => void;
 }
 
-const MessagesTab: React.FC<MessagesTabProps> = ({
+function MessagesTab({
   isAuthenticated,
   newMessage,
   setNewMessage,
@@ -26,7 +26,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   currentUserId,
   handleDeleteMessage,
   handleUpdateMessage
-}) => {
+}: MessagesTabProps) {
   // Track the latest message ID for highlighting and previous message count
   const [latestMessageId, setLatestMessageId] = useState<string | null>(null);
   const [prevMessageCount, setPrevMessageCount] = useState(0);
@@ -234,6 +234,6 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
       )}
     </div>
   );
-};
+}
 
 export default MessagesTab;

@@ -27,10 +27,10 @@ interface DetailModalProps {
   setShowDetailModal: (show: boolean) => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({
+function DetailModal({
   selectedDetailDate,
   setShowDetailModal
-}) => {
+}: DetailModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
       <div className="bg-white dark:bg-gray-800 rounded shadow-lg max-w-3xl w-full max-h-[85vh] flex flex-col">
@@ -164,6 +164,6 @@ const DetailModal: React.FC<DetailModalProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default DetailModal;

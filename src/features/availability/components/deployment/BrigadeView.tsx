@@ -36,9 +36,9 @@ interface BrigadeViewProps {
 
 type AvailabilityType = 'local' | 'shortHaul' | 'longHaul' | 'notAvailable';
 
-const BrigadeView: React.FC<BrigadeViewProps> = ({
+function BrigadeView({
   aggregatedDeploymentAvailability,
-}) => {
+}: BrigadeViewProps) {
   // Selected day (default to first day / today)
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   
@@ -356,7 +356,7 @@ const BrigadeView: React.FC<BrigadeViewProps> = ({
       )}
     </div>
   );
-};
+}
 
 // Deployment-specific skill badges - only shows DR, BAi, PC1, TC1
 const DEPLOYMENT_SKILLS = ['DR', 'BAi', 'PC1', 'TC1'];
@@ -366,7 +366,7 @@ interface DeploymentSkillBadgesProps {
   skills: any[];
 }
 
-const DeploymentSkillBadges: React.FC<DeploymentSkillBadgesProps> = ({ userId, skills }) => {
+function DeploymentSkillBadges({ userId, skills }: DeploymentSkillBadgesProps) {
   // Filter to only show deployment-relevant skills
   const filtered = (skills || []).filter((s: any) => DEPLOYMENT_SKILLS.includes(s.code));
 
@@ -379,6 +379,6 @@ const DeploymentSkillBadges: React.FC<DeploymentSkillBadgesProps> = ({ userId, s
       ))}
     </div>
   );
-};
+}
 
 export default BrigadeView;

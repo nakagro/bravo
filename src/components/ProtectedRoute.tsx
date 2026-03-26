@@ -9,10 +9,10 @@ interface ProtectedRouteProps {
   fallbackPath?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+export function ProtectedRoute({
   children,
   moduleId,
-}) => {
+}: ProtectedRouteProps) {
   // Use the batched query shared across all ProtectedRoute instances
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
 
@@ -34,4 +34,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Render the protected content
   return <>{children}</>;
-};
+}

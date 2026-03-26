@@ -13,7 +13,7 @@ interface AdminTabProps {
   isAuthenticated: boolean;
 }
 
-const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
+function AdminTab({ isAuthenticated }: AdminTabProps) {
   const usersWithScheduledChanges = useQuery(api.availability.getUsersWithScheduledChanges) || [];
   const allSkills = useQuery(api.skills.getSkills) || [];
   const locationEditSkills = useQuery(api.applianceLocations.getLocationEditSkills) || [];
@@ -308,6 +308,6 @@ const AdminTab: React.FC<AdminTabProps> = ({ isAuthenticated }) => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminTab;

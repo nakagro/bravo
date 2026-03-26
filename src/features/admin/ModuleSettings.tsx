@@ -19,7 +19,7 @@ const rankOptions = [
   { value: "Captain", label: "Captain" },
 ];
 
-const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => {
+function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
   // Fetch module settings and roles
   const moduleSettings = useQuery(api.modules.getModuleSettings);
   const roles = useQuery(api.users.getRoles);
@@ -687,6 +687,6 @@ const ModuleSettings: React.FC<ModuleSettingsProps> = ({ showTitle = true }) => 
       </div>
     </div>
   );
-};
+}
 
 export default ModuleSettings;

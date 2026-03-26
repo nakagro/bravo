@@ -15,11 +15,11 @@ interface YouTabProps {
   isAuthenticated: boolean;
 }
 
-const YouTab: React.FC<YouTabProps> = ({
+function YouTab({
   userStatus,
   handleStatusChange,
   isAuthenticated
-}) => {
+}: YouTabProps) {
   const posthog = usePostHog();
   const [selectedDuration, setSelectedDuration] = useState<number | undefined>(undefined);
   const [showDurationSection, setShowDurationSection] = useState(false);
@@ -853,6 +853,6 @@ const YouTab: React.FC<YouTabProps> = ({
       )}
     </>
   );
-};
+}
 
 export default YouTab;

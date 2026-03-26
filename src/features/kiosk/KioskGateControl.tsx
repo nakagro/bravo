@@ -76,7 +76,7 @@ interface KioskGateControlProps {
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 
-const KioskGateControl: React.FC<KioskGateControlProps> = ({ onBack }) => {
+function KioskGateControl({ onBack }: KioskGateControlProps) {
   const [stateInt, setStateInt]     = useState<number | null>(null);
   const [stateError, setStateError] = useState(false);
   const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
@@ -253,6 +253,6 @@ const KioskGateControl: React.FC<KioskGateControlProps> = ({ onBack }) => {
       )}
     </div>
   );
-};
+}
 
 export default KioskGateControl;

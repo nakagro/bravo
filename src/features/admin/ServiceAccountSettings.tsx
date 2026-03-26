@@ -19,9 +19,9 @@ interface ServiceAccountSettingsProps {
   showTitle?: boolean;
 }
 
-const ServiceAccountSettings: React.FC<ServiceAccountSettingsProps> = ({
+function ServiceAccountSettings({
   showTitle = true,
-}) => {
+}: ServiceAccountSettingsProps) {
   const serviceAccounts = useQuery(api.serviceAccounts.listServiceAccounts);
   const moduleSettings = useQuery(api.modules.getModuleSettings);
 
@@ -694,6 +694,6 @@ const ServiceAccountSettings: React.FC<ServiceAccountSettingsProps> = ({
       </Dialog>
     </div>
   );
-};
+}
 
 export default ServiceAccountSettings;
