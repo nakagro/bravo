@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import React from 'react';
 import { MapPin, DoorOpen, X } from 'lucide-react';
 import KioskApplianceLocations from '@/features/kiosk/KioskApplianceLocations';
 import KioskGateControl from '@/features/kiosk/KioskGateControl';
+
+const KIOSK_INACTIVITY_TIMEOUT_MS = 30_000;
 
 type KioskTileId = 'appliance-locations' | 'gate-control';
 
@@ -35,6 +37,41 @@ const KIOSK_TILES: KioskTile[] = [
 export default function KioskPage() {
     const navigate = useNavigate();
     const [activeTile, setActiveTile] = useState<KioskTileId | null>(null);
+    const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const resetInactivityTimer = useCallback(() => {
+        if (inactivityTimerRef.current) {
+            clearTimeout(inactivityTimerRef.current);
+        }
+        inactivityTimerRef.current = setTimeout(() => {
+            setActiveTile(null);
+        }, KIOSK_INACTIVITY_TIMEOUT_MS);
+    }, []);
+
+    useEffect(() => {
+        const activityEvents: Array<keyof WindowEventMap> = [
+            'pointerdown',
+            'touchstart',
+            'keydown',
+            'wheel',
+        ];
+
+        resetInactivityTimer();
+        const handleActivity = () => resetInactivityTimer();
+        activityEvents.forEach((eventName) => {
+            window.addEventListener(eventName, handleActivity);
+        });
+
+        return () => {
+            activityEvents.forEach((eventName) => {
+                window.removeEventListener(eventName, handleActivity);
+            });
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+                inactivityTimerRef.current = null;
+            }
+        };
+    }, [resetInactivityTimer]);
 
     if (activeTile === 'appliance-locations') {
         return <KioskApplianceLocations onBack={() => setActiveTile(null)} />;
