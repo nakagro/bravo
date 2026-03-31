@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from "react";
 interface Tab {
   key: string;
   label: string;
+  badgeCount?: number;
 }
 
 interface PageTabsProps {
@@ -41,13 +42,21 @@ export function PageTabs({ tabs, activeTab, onChange, ariaLabel = "Page tabs" }:
             aria-selected={activeTab === tab.key}
             aria-controls={`tabpanel-${tab.key}`}
             onClick={() => onChange(tab.key)}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+            className={`relative py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? "text-red-600 dark:text-red-400 font-bold"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
             }`}
           >
             {tab.label}
+            {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
+              <span
+                className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1.5"
+                aria-label={`${tab.badgeCount > 99 ? "99+" : tab.badgeCount} unread`}
+              >
+                {tab.badgeCount > 99 ? "99+" : tab.badgeCount}
+              </span>
+            )}
           </button>
         ))}
       </nav>

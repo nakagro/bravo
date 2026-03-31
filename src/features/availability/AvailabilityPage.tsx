@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useConvexAuth } from "convex/react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import BrigadeTab from './components/BrigadeTab';
 import YouTab from './components/YouTab';
 import MessagesTab from './components/MessagesTab';
@@ -8,17 +8,14 @@ import DeploymentTab from './components/DeploymentTab';
 import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { PageTabs } from "@/components/shared/PageTabs";
+
+type AvailabilityTab = "you" | "brigade" | "messages" | "deployment" | "admin";
 
 function AvailabilityPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
-  
-  // State to track active tab
-  const [activeTab, setActiveTab] = useState('you'); // Default to the You tab
-  
-  // Refs for tab animation
-  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Get current user's status
   const userStatus = useQuery(api.availability.getCurrentUserStatus);
@@ -49,13 +46,58 @@ function AvailabilityPage() {
   // Check permission for admin tab (uses batched query shared with ProtectedRoute)
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const hasAdminTabAccess = moduleAccess?.availabilityAdmin;
-  
-  // Redirect away from admin tab if user doesn't have access
-  React.useEffect(() => {
-    if (activeTab === 'admin' && hasAdminTabAccess === false) {
-      setActiveTab('you'); // Redirect to default tab
+
+  const requestedTab = searchParams.get("tab");
+  const isKnownTab =
+    requestedTab === "you" ||
+    requestedTab === "brigade" ||
+    requestedTab === "messages" ||
+    requestedTab === "deployment" ||
+    requestedTab === "admin";
+  const activeTab: AvailabilityTab = !requestedTab || !isKnownTab
+    ? "you"
+    : requestedTab === "admin" && hasAdminTabAccess !== true
+      ? "you"
+      : (requestedTab as AvailabilityTab);
+
+  // Normalize invalid/unauthorized tab values in the URL
+  useEffect(() => {
+    if (!requestedTab) return;
+    if (isKnownTab && !(requestedTab === "admin" && hasAdminTabAccess === false)) return;
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("tab");
+      return next;
+    }, { replace: true });
+  }, [hasAdminTabAccess, isKnownTab, requestedTab, setSearchParams]);
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "you") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
+
+  const availabilityTabs = useMemo(() => {
+    const tabs: Array<{ key: AvailabilityTab; label: string; badgeCount?: number }> = [
+      { key: "you", label: "You" },
+      { key: "brigade", label: "Brigade" },
+      { key: "messages", label: "Messages", badgeCount: unreadCount > 0 ? unreadCount : undefined },
+      { key: "deployment", label: "Deployment" },
+    ];
+
+    if (hasAdminTabAccess) {
+      tabs.push({ key: "admin", label: "Admin" });
     }
-  }, [activeTab, hasAdminTabAccess]);
+
+    return tabs;
+  }, [hasAdminTabAccess, unreadCount]);
   
   // Mark messages as viewed when Messages tab is opened
   useEffect(() => {
@@ -63,17 +105,6 @@ function AvailabilityPage() {
       markMessagesAsViewed();
     }
   }, [activeTab, isAuthenticated, markMessagesAsViewed]);
-  
-  // Update indicator position when active tab changes
-  useEffect(() => {
-    const activeTabElement = tabRefs.current[activeTab];
-    if (activeTabElement) {
-      setIndicatorStyle({
-        left: activeTabElement.offsetLeft,
-        width: activeTabElement.offsetWidth,
-      });
-    }
-  }, [activeTab, hasAdminTabAccess]);
   
   // Handle status change
   const handleStatusChange = async (status: string, durationHours?: number, nextStatus?: string) => {
@@ -146,84 +177,20 @@ function AvailabilityPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Availability</h1>
       </div>
       
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 relative">
-        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
-          <button
-            ref={(el) => { tabRefs.current['you'] = el; }}
-            onClick={() => setActiveTab('you')}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === 'you' 
-                ? 'text-red-600 dark:text-red-400 font-bold' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            You
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['brigade'] = el; }}
-            onClick={() => setActiveTab('brigade')}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === 'brigade' 
-                ? 'text-red-600 dark:text-red-400 font-bold' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            Brigade
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['messages'] = el; }}
-            onClick={() => setActiveTab('messages')}
-            className={`py-2 px-2 sm:px-3 text-sm relative transition-colors whitespace-nowrap ${
-              activeTab === 'messages' 
-                ? 'text-red-600 dark:text-red-400 font-bold' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            Messages
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1.5">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['deployment'] = el; }}
-            onClick={() => setActiveTab('deployment')}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === 'deployment' 
-                ? 'text-red-600 dark:text-red-400 font-bold' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            Deployment
-          </button>
-          {hasAdminTabAccess && (
-            <button
-              ref={(el) => { tabRefs.current['admin'] = el; }}
-              onClick={() => setActiveTab('admin')}
-              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-                activeTab === 'admin' 
-                  ? 'text-red-600 dark:text-red-400 font-bold' 
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-            >
-              Admin
-            </button>
-          )}
-        </nav>
-        {/* Animated indicator */}
-        <div
-          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
-          style={{
-            left: `${indicatorStyle.left}px`,
-            width: `${indicatorStyle.width}px`,
-          }}
-        />
-      </div>
+      <PageTabs
+        tabs={availabilityTabs}
+        activeTab={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Availability tabs"
+      />
       
       {/* Tab Content */}
-      <div className="mt-4">
+      <div
+        className="mt-4"
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
         {activeTab === 'you' && isAuthenticated && (
           <YouTab
             userStatus={userStatus}

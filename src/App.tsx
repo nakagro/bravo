@@ -1,38 +1,16 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ServiceLayout } from "./components/layout/ServiceLayout";
 import { AuthLayout } from "./components/layout/AuthLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { HosesPage } from "./pages/HosesPage";
-import { KeysPage } from "./pages/KeysPage";
-import { AuthPage } from "./pages/AuthPage";
-import { DutyCrewPage } from "./pages/DutyCrewPage";
-import { VehicleFaultsPage } from "./pages/VehicleFaultsPage";
-import { InventoryPage } from "./pages/InventoryPage";
-import { InventoryChecksTab, InventoryTemplateTab } from "./features/inventory/pages";
-import { BookingsPage } from "./pages/BookingsPage";
-import { AvailabilityPage } from "./pages/AvailabilityPage";
-import { FireReportsPage } from "./pages/FireReportsPage";
-import { FeedbackPage } from "./pages/FeedbackPage";
-import { UserSettingsPage } from "./pages/UserSettingsPage";
-import { AdminSettingsPage } from "./pages/AdminPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { LinksPage } from "./pages/LinksPage";
-import AboutPage from "./pages/AboutPage";
-import { FDRPage } from "./pages/FDRPage";
-import { EquipmentPage } from "./pages/EquipmentPage";
-import { BASkillsPage } from "./pages/BASkillsPage";
-import { BrigadeTasksPage } from "./features/brigadeTasks/pages/BrigadeTasksPage";
-import ExtrasPage from "./pages/ExtrasPage";
-import ShortcutsPage from "./pages/ShortcutsPage";
-import QRCodesPage from "./features/qrCodes/QRCodesPage";
-import KioskPage from "./pages/KioskPage";
-import FeedbackManagementPage from "./pages/FeedbackManagementPage";
-import AuthManagementPage from "./pages/AuthManagementPage";
-import ServiceLoginPage from "./pages/ServiceLoginPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
@@ -43,6 +21,36 @@ import {
   hasServiceToken,
 } from "./features/serviceAccounts/ServiceAccountContext";
 
+const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
+const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
+const AuthPage = lazy(() => import("./pages/AuthPage").then((m) => ({ default: m.AuthPage })));
+const DutyCrewPage = lazy(() => import("./pages/DutyCrewPage").then((m) => ({ default: m.DutyCrewPage })));
+const VehicleFaultsPage = lazy(() => import("./pages/VehicleFaultsPage").then((m) => ({ default: m.VehicleFaultsPage })));
+const InventoryPage = lazy(() => import("./pages/InventoryPage").then((m) => ({ default: m.InventoryPage })));
+const InventoryChecksTab = lazy(() => import("./features/inventory/pages/InventoryChecksTab").then((m) => ({ default: m.InventoryChecksTab })));
+const InventoryTemplateTab = lazy(() => import("./features/inventory/pages/InventoryTemplateTab").then((m) => ({ default: m.InventoryTemplateTab })));
+const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ default: m.BookingsPage })));
+const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage").then((m) => ({ default: m.AvailabilityPage })));
+const FireReportsPage = lazy(() => import("./pages/FireReportsPage").then((m) => ({ default: m.FireReportsPage })));
+const FeedbackPage = lazy(() => import("./pages/FeedbackPage").then((m) => ({ default: m.FeedbackPage })));
+const UserSettingsPage = lazy(() => import("./pages/UserSettingsPage").then((m) => ({ default: m.UserSettingsPage })));
+const AdminSettingsPage = lazy(() => import("./pages/AdminPage").then((m) => ({ default: m.AdminSettingsPage })));
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const LinksPage = lazy(() => import("./pages/LinksPage").then((m) => ({ default: m.LinksPage })));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const FDRPage = lazy(() => import("./pages/FDRPage").then((m) => ({ default: m.FDRPage })));
+const EquipmentPage = lazy(() => import("./pages/EquipmentPage").then((m) => ({ default: m.EquipmentPage })));
+const BASkillsPage = lazy(() => import("./pages/BASkillsPage").then((m) => ({ default: m.BASkillsPage })));
+const BrigadeTasksPage = lazy(() => import("./features/brigadeTasks/pages/BrigadeTasksPage").then((m) => ({ default: m.BrigadeTasksPage })));
+const ExtrasPage = lazy(() => import("./pages/ExtrasPage"));
+const ShortcutsPage = lazy(() => import("./pages/ShortcutsPage"));
+const QRCodesPage = lazy(() => import("./features/qrCodes/QRCodesPage"));
+const KioskPage = lazy(() => import("./pages/KioskPage"));
+const FeedbackManagementPage = lazy(() => import("./pages/FeedbackManagementPage"));
+const AuthManagementPage = lazy(() => import("./pages/AuthManagementPage"));
+const ServiceLoginPage = lazy(() => import("./pages/ServiceLoginPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })));
+
 // --- Startup timing helper (reads from global set in main.tsx) ---
 const _t = (label: string) => (window as any).__BRAVO_T?.(label);
 
@@ -50,6 +58,21 @@ function TimingMarker({ label }: { label: string }) {
   _t(label);
   useEffect(() => { _t(`${label} (useEffect)`); }, []);
   return null;
+}
+
+function RouteLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
+        <p className="text-sm text-muted-foreground">Loading page...</p>
+      </div>
+    </div>
+  );
+}
+
+function RouteSuspense({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteLoading />}>{children}</Suspense>;
 }
 
 export default function App() {
@@ -120,7 +143,7 @@ function ServiceAccountApp() {
   const { allowedModules } = useServiceAccount();
 
   // Map of moduleId → route config
-  const moduleRoutes: Record<string, React.ReactNode> = {
+  const moduleRoutes: Record<string, ReactNode> = {
     dashboard: <Route key="dashboard" path="/" element={<DashboardPage />} />,
     kiosk: <Route key="kiosk" path="/kiosk" element={<KioskPage />} />,
     hoses: <Route key="hoses" path="/hoses" element={<HosesPage />} />,
@@ -157,13 +180,15 @@ function ServiceAccountApp() {
 
   return (
     <ServiceLayout>
-      <Routes>
-        {/* Render only routes for allowed modules */}
-        {allowedModules.map((moduleId) => moduleRoutes[moduleId]).filter(Boolean)}
+      <RouteSuspense>
+        <Routes>
+          {/* Render only routes for allowed modules */}
+          {allowedModules.map((moduleId) => moduleRoutes[moduleId]).filter(Boolean)}
 
-        {/* Catch-all: redirect to the default allowed page */}
-        <Route path="*" element={<Navigate to={defaultPath} replace />} />
-      </Routes>
+          {/* Catch-all: redirect to the default allowed page */}
+          <Route path="*" element={<Navigate to={defaultPath} replace />} />
+        </Routes>
+      </RouteSuspense>
     </ServiceLayout>
   );
 }
@@ -176,142 +201,160 @@ function AuthenticatedApp() {
     <MainLayout>
       <PushNotifier />
       <PWAUpdateNotification />
-      <Routes>
-        <Route path="/" element={
-          <ProtectedRoute moduleId="dashboard">
-            <DashboardPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/hoses" element={
-          <ProtectedRoute moduleId="hoses">
-            <HosesPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/keys" element={
-          <ProtectedRoute moduleId="keys">
-            <KeysPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/dutycrew" element={
-          <ProtectedRoute moduleId="dutyCrew">
-            <DutyCrewPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/inventory" element={
-          <ProtectedRoute moduleId="inventory">
-            <InventoryPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/inventory/templates/:templateId" element={
-          <ProtectedRoute moduleId="inventory">
-            <InventoryTemplateTab />
-          </ProtectedRoute>
-        } />
-        <Route path="/inventory/run/:runId" element={
-          <ProtectedRoute moduleId="inventory">
-            <InventoryChecksTab />
-          </ProtectedRoute>
-        } />
-        <Route path="/vehicle-faults" element={
-          <ProtectedRoute moduleId="vehicleFaults">
-            <VehicleFaultsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/bookings" element={
-          <ProtectedRoute moduleId="bookings">
-            <BookingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/availability" element={
-          <ProtectedRoute moduleId="availability">
-            <AvailabilityPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/fire-reports" element={
-          <ProtectedRoute moduleId="fireReports">
-            <FireReportsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/feedback" element={
-          <ProtectedRoute moduleId="feedback">
-            <FeedbackPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/links" element={
-          <ProtectedRoute moduleId="links">
-            <LinksPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute moduleId="settings">
-            <UserSettingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin" element={
-          <ProtectedRoute moduleId="admin">
-            <AdminSettingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/feedback" element={
-          <ProtectedRoute moduleId="admin">
-            <FeedbackManagementPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/auth" element={
-          <ProtectedRoute moduleId="admin">
-            <AuthManagementPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/extras" element={<ExtrasPage />} />
-        <Route path="/shortcuts" element={
-          <ProtectedRoute moduleId="availability">
-            <ShortcutsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/kiosk" element={
-          <ProtectedRoute moduleId="kiosk">
-            <KioskPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/fdr" element={<FDRPage />} />
-        <Route path="/equipment" element={
-          <ProtectedRoute moduleId="equipment">
-            <EquipmentPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/ba-skills" element={
-          <ProtectedRoute moduleId="baSkills">
-            <BASkillsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/brigade-tasks" element={
-          <ProtectedRoute moduleId="brigadeTasks">
-            <BrigadeTasksPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/qr" element={<QRCodesPage />} />
+      <RouteSuspense>
+        <Routes>
+          <Route path="/" element={
+            <ProtectedRoute moduleId="dashboard">
+              <DashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/hoses" element={
+            <ProtectedRoute moduleId="hoses">
+              <HosesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/keys" element={
+            <ProtectedRoute moduleId="keys">
+              <KeysPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/dutycrew" element={
+            <ProtectedRoute moduleId="dutyCrew">
+              <DutyCrewPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory" element={
+            <ProtectedRoute moduleId="inventory">
+              <InventoryPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory/templates/:templateId" element={
+            <ProtectedRoute moduleId="inventory">
+              <InventoryTemplateTab />
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory/run/:runId" element={
+            <ProtectedRoute moduleId="inventory">
+              <InventoryChecksTab />
+            </ProtectedRoute>
+          } />
+          <Route path="/vehicle-faults" element={
+            <ProtectedRoute moduleId="vehicleFaults">
+              <VehicleFaultsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/bookings" element={
+            <ProtectedRoute moduleId="bookings">
+              <BookingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/availability" element={
+            <ProtectedRoute moduleId="availability">
+              <AvailabilityPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/fire-reports" element={
+            <ProtectedRoute moduleId="fireReports">
+              <FireReportsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/feedback" element={
+            <ProtectedRoute moduleId="feedback">
+              <FeedbackPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/links" element={
+            <ProtectedRoute moduleId="links">
+              <LinksPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute moduleId="settings">
+              <UserSettingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute moduleId="admin">
+              <AdminSettingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/feedback" element={
+            <ProtectedRoute moduleId="admin">
+              <FeedbackManagementPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/auth" element={
+            <ProtectedRoute moduleId="admin">
+              <AuthManagementPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/extras" element={<ExtrasPage />} />
+          <Route path="/shortcuts" element={
+            <ProtectedRoute moduleId="availability">
+              <ShortcutsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/kiosk" element={
+            <ProtectedRoute moduleId="kiosk">
+              <KioskPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/fdr" element={<FDRPage />} />
+          <Route path="/equipment" element={
+            <ProtectedRoute moduleId="equipment">
+              <EquipmentPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/ba-skills" element={
+            <ProtectedRoute moduleId="baSkills">
+              <BASkillsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/brigade-tasks" element={
+            <ProtectedRoute moduleId="brigadeTasks">
+              <BrigadeTasksPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/qr" element={<QRCodesPage />} />
 
-        {/* Catch all other routes and redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch all other routes and redirect to dashboard */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </RouteSuspense>
     </MainLayout>
   );
 }
 
 function UnauthenticatedApp() {
   return (
-    <Routes>
-      {/* Service login is full-screen — must not be wrapped in AuthLayout */}
-      <Route path="/service-login" element={<ServiceLoginPage />} />
-      <Route path="*" element={
-        <AuthLayout>
-          <Routes>
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<AuthPage />} />
-          </Routes>
-        </AuthLayout>
-      } />
-    </Routes>
+    <RouteSuspense>
+      <Routes>
+        {/* Service login is full-screen — must not be wrapped in AuthLayout */}
+        <Route path="/service-login" element={<ServiceLoginPage />} />
+        {/* Kiosk devices should use service PIN login, not user sign-in */}
+        <Route path="/kiosk/*" element={<KioskToServiceLoginRedirect />} />
+        <Route path="*" element={
+          <AuthLayout>
+            <Routes>
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="*" element={<AuthPage />} />
+            </Routes>
+          </AuthLayout>
+        } />
+      </Routes>
+    </RouteSuspense>
+  );
+}
+
+function KioskToServiceLoginRedirect() {
+  const location = useLocation();
+  const nextPath = `${location.pathname}${location.search}`;
+
+  return (
+    <Navigate
+      to={`/service-login?next=${encodeURIComponent(nextPath)}`}
+      replace
+    />
   );
 }

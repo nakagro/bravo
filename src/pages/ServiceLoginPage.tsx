@@ -1,25 +1,32 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { storeServiceToken } from "@/features/serviceAccounts/ServiceAccountContext";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getVersionString } from "@/utils/version";
 import { isDevEnvironment } from "@/utils/environment";
 import { Delete, LogIn } from "lucide-react";
 
-const PIN_LENGTH = 6;
+const MIN_PIN_LENGTH = 4;
+const MAX_PIN_LENGTH = 10;
 
 export default function ServiceLoginPage() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const [searchParams] = useSearchParams();
 
   const validatePin = useMutation(api.serviceAccounts.validateServicePin);
+  const nextPath = searchParams.get("next");
+  const redirectTo =
+    nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+      ? nextPath
+      : "/";
 
   const submitPin = useCallback(
     async (pinValue: string) => {
-      if (pinValue.length < 4 || submittingRef.current) return;
+      if (pinValue.length < MIN_PIN_LENGTH || submittingRef.current) return;
 
       submittingRef.current = true;
       setSubmitting(true);
@@ -29,7 +36,7 @@ export default function ServiceLoginPage() {
         const result = await validatePin({ pin: pinValue });
 
         if (result.success) {
-          storeServiceToken(result.token);
+          storeServiceToken(result.token, redirectTo);
         } else {
           setError(result.error);
           setPin("");
@@ -42,24 +49,18 @@ export default function ServiceLoginPage() {
         setSubmitting(false);
       }
     },
-    [validatePin]
+    [redirectTo, validatePin]
   );
 
   const handleDigit = useCallback(
     (digit: string) => {
-      if (pin.length < PIN_LENGTH) {
+      if (pin.length < MAX_PIN_LENGTH) {
         setPin(pin + digit);
         setError(null);
       }
     },
     [pin]
   );
-
-  useEffect(() => {
-    if (pin.length === PIN_LENGTH) {
-      submitPin(pin);
-    }
-  }, [pin, submitPin]);
 
   const handleBackspace = useCallback(() => {
     setPin((prev) => prev.slice(0, -1));
@@ -96,17 +97,17 @@ export default function ServiceLoginPage() {
         </div>
 
         {/* PIN dots */}
-        <div className="flex justify-center gap-4 mb-4">
-          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-5 h-5 rounded-full transition-all duration-200 ${
-                i < pin.length
-                  ? "bg-red-500 scale-110 shadow-lg shadow-red-500/30"
-                  : "bg-slate-600/50 border border-slate-500/30"
-              }`}
-            />
-          ))}
+        <div className="flex justify-center gap-3 mb-4 min-h-5 items-center">
+          {pin.length === 0 ? (
+            <p className="text-sm text-slate-500">Enter PIN</p>
+          ) : (
+            Array.from({ length: pin.length }).map((_, i) => (
+              <div
+                key={i}
+                className="w-5 h-5 rounded-full bg-red-500 scale-110 shadow-lg shadow-red-500/30"
+              />
+            ))
+          )}
         </div>
 
         {/* Error / spacer */}
@@ -125,7 +126,7 @@ export default function ServiceLoginPage() {
               key={digit}
               type="button"
               onClick={() => handleDigit(digit.toString())}
-              disabled={submitting || pin.length >= PIN_LENGTH}
+              disabled={submitting || pin.length >= MAX_PIN_LENGTH}
               className="h-16 rounded-xl bg-slate-700/50 hover:bg-slate-600/60 active:bg-slate-500/40 active:scale-95 border border-slate-600/30 text-white text-2xl font-semibold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {digit}
@@ -142,7 +143,7 @@ export default function ServiceLoginPage() {
           <button
             type="button"
             onClick={() => handleDigit("0")}
-            disabled={submitting || pin.length >= PIN_LENGTH}
+            disabled={submitting || pin.length >= MAX_PIN_LENGTH}
             className="h-16 rounded-xl bg-slate-700/50 hover:bg-slate-600/60 active:bg-slate-500/40 active:scale-95 border border-slate-600/30 text-white text-2xl font-semibold transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             0
@@ -161,7 +162,7 @@ export default function ServiceLoginPage() {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={submitting || pin.length < 4}
+          disabled={submitting || pin.length < MIN_PIN_LENGTH}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:from-red-700 active:to-red-800 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {submitting ? (

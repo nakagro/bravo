@@ -62,6 +62,8 @@ export function KeyInventory() {
   // Sync state to URL params
   useEffect(() => {
     const params = new URLSearchParams();
+    const currentTab = searchParams.get("tab");
+    if (currentTab) params.set("tab", currentTab);
     if (debouncedSearch) params.set('q', debouncedSearch);
     if (sortConfig.field !== 'pegNumber') params.set('sort', sortConfig.field);
     if (sortConfig.direction !== 'asc') params.set('dir', sortConfig.direction);

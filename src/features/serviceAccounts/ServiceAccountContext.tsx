@@ -91,10 +91,10 @@ export function ServiceAccountProvider({
 /**
  * Helper: store a service account token after successful PIN login.
  */
-export function storeServiceToken(token: string) {
+export function storeServiceToken(token: string, redirectTo = "/") {
   localStorage.setItem(SERVICE_TOKEN_KEY, token);
   // Force a page reload so the provider picks it up
-  window.location.href = "/";
+  window.location.href = redirectTo;
 }
 
 /**

@@ -90,9 +90,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
   // Sync state to URL params
   useEffect(() => {
     const params = new URLSearchParams();
-    // Preserve the tab param from the parent page
-    const currentTab = searchParams.get('tab');
-    if (currentTab) params.set('tab', currentTab);
+    // This component only renders for the Inventory tab, so enforce it.
+    // Avoids a first-mount race where the URL briefly drops `tab=inventory`.
+    params.set('tab', 'inventory');
 
     if (searchTerm) params.set('q', searchTerm);
     if (filters.status) params.set('status', filters.status);

@@ -1,34 +1,51 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { KeyInventory } from "../features/keys/components/KeyInventory";
 import { KeyAuditTrail } from "../features/keys/components/KeyAuditTrail";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
+import { PageTabs } from "@/components/shared/PageTabs";
+
+type KeysTab = "inventory" | "audit";
+
+const KEY_TABS: Array<{ key: KeysTab; label: string }> = [
+  { key: "inventory", label: "Inventory" },
+  { key: "audit", label: "Audit" },
+];
 
 export function KeysPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('inventory'); // Default to inventory tab
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const isValidTab = requestedTab === "inventory" || requestedTab === "audit";
+  const activeTab: KeysTab = isValidTab ? (requestedTab as KeysTab) : "inventory";
 
   // Get key count for header summary
   const keys = useQuery(api.keys.list, {});
   const keyCount = keys?.length ?? 0;
 
-  // Refs for tab animation
-  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-
-  // Update indicator position when active tab changes
   useEffect(() => {
-    const activeTabElement = tabRefs.current[activeTab];
-    if (activeTabElement) {
-      setIndicatorStyle({
-        left: activeTabElement.offsetLeft,
-        width: activeTabElement.offsetWidth,
-      });
-    }
-  }, [activeTab]);
+    if (!requestedTab || isValidTab) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("tab");
+      return next;
+    }, { replace: true });
+  }, [isValidTab, requestedTab, setSearchParams]);
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "inventory") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
@@ -58,50 +75,22 @@ export function KeysPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-
-      <div className="border-b border-gray-200 dark:border-gray-700 relative">
-        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
-          <button
-            ref={(el) => { tabRefs.current['inventory'] = el; }}
-            onClick={() => setActiveTab('inventory')}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'inventory'
-              ? 'text-red-600 dark:text-red-400 font-bold'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-          >
-            Inventory
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['audit'] = el; }}
-            onClick={() => setActiveTab('audit')}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${activeTab === 'audit'
-              ? 'text-red-600 dark:text-red-400 font-bold'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-          >
-            Audit
-          </button>
-        </nav>
-        {/* Animated indicator */}
-        <div
-          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
-          style={{
-            left: `${indicatorStyle.left}px`,
-            width: `${indicatorStyle.width}px`,
-          }}
-        />
-      </div>
+      <PageTabs
+        tabs={KEY_TABS}
+        activeTab={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Key management tabs"
+      />
 
       {/* Tab Content */}
-      <div className="mt-4">
-        {activeTab === 'inventory' && (
-          <KeyInventory />
-        )}
-
-        {activeTab === 'audit' && (
-          <KeyAuditTrail />
-        )}
+      <div
+        className="mt-4"
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
+        {activeTab === "inventory" && <KeyInventory />}
+        {activeTab === "audit" && <KeyAuditTrail />}
       </div>
     </div>
   );
