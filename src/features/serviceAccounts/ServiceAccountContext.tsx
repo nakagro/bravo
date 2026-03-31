@@ -101,5 +101,12 @@ export function storeServiceToken(token: string, redirectTo = "/") {
  * Helper: check if there's a stored service token (synchronous check).
  */
 export function hasServiceToken(): boolean {
-  return localStorage.getItem(SERVICE_TOKEN_KEY) !== null;
+  return getServiceToken() !== null;
+}
+
+/**
+ * Helper: get the stored service token (if any).
+ */
+export function getServiceToken(): string | null {
+  return localStorage.getItem(SERVICE_TOKEN_KEY);
 }

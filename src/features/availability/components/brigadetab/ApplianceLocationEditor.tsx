@@ -57,11 +57,13 @@ function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
     return new Date(timestamp).toLocaleDateString();
   };
 
-  // Get user display name
-  const getUserName = (user?: { firstName?: string; lastName?: string; name?: string }) => {
-    if (!user) return 'Unknown';
-    if (user.firstName) return user.firstName;
-    if (user.name) return user.name;
+  const getUpdatedByLabel = (location: typeof applianceLocations[number]) => {
+    if (location.updatedBySource === 'serviceAccount') {
+      return location.updatedByServiceAccountInfo?.name ?? 'Service Account';
+    }
+    if (location.updatedByUser?.firstName) return location.updatedByUser.firstName;
+    if (location.updatedByUser?.name) return location.updatedByUser.name;
+    if (location.updatedByServiceAccountInfo?.name) return location.updatedByServiceAccountInfo.name;
     return 'Unknown';
   };
 
@@ -103,7 +105,7 @@ function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
               </h3>
               {locationDataMap[appliance]?.updatedAt && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {getUserName(locationDataMap[appliance]?.updatedByUser)}, {formatRelativeTime(locationDataMap[appliance].updatedAt)}
+                  {getUpdatedByLabel(locationDataMap[appliance])}, {formatRelativeTime(locationDataMap[appliance].updatedAt)}
                 </span>
               )}
             </div>

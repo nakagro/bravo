@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { getRelativeTimeCompact } from "../../utils/dateUtils";
+import { getServiceToken } from "@/features/serviceAccounts/ServiceAccountContext";
 import { X, CircleCheckBig, Plus, Truck, MapPin, ArrowLeft } from "lucide-react";
 
 interface KioskApplianceLocationsProps {
@@ -36,7 +37,8 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
         if (locationMap[applianceName] === newLocation) return;
         setIsUpdating(applianceName);
         try {
-            await updateApplianceLocation({ applianceName, stationLocation: newLocation });
+            const serviceToken = getServiceToken() ?? undefined;
+            await updateApplianceLocation({ applianceName, stationLocation: newLocation, serviceToken });
         } catch (error) {
             console.error('Error updating appliance location:', error);
         } finally {

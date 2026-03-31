@@ -1,6 +1,17 @@
 import { query, mutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+
+const SERVICE_MODULE_KIOSK = "kiosk";
+
+async function sha256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 // Query to get all appliance locations
 export const getApplianceLocations = query({
@@ -14,7 +25,11 @@ export const getApplianceLocations = query({
       v.literal("FCV")
     ),
     stationLocation: v.string(),
-    updatedBy: v.id("users"),
+    updatedBy: v.optional(v.id("users")),
+    updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
+    updatedBySource: v.optional(
+      v.union(v.literal("user"), v.literal("serviceAccount"))
+    ),
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
@@ -54,6 +69,7 @@ export const updateApplianceLocation = mutation({
       v.literal("FCV")
     ),
     stationLocation: v.string(), // Now accepts any string including custom locations
+    serviceToken: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -61,46 +77,82 @@ export const updateApplianceLocation = mutation({
     if (!args.stationLocation || args.stationLocation.trim() === "") {
       throw new Error("Station location cannot be empty");
     }
-    // Get the authenticated user ID using the same pattern as other mutations
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update appliance locations");
-    }
-    
-    // Get the current user data directly using the ID
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
 
-    // Check if user is admin, has Lieutenant rank or higher, or has the Driver (DR) skill
-    const rankOrder = {
-      "Probationary": 1,
-      "Firefighter": 2,
-      "Lieutenant": 3,
-      "Captain": 4
-    };
-    
-    const userRank = user.rank;
-    const hasRequiredRank = userRank && rankOrder[userRank] >= rankOrder["Lieutenant"];
-    
-    // Check if user has an authorized skill (configurable via admin settings)
-    let hasAuthorizedSkill = false;
-    if (user.skills && user.skills.length > 0) {
-      const authorizedCodes = await getLocationEditSkillCodes(ctx);
-      const authorizedSkills = await Promise.all(
-        authorizedCodes.map((code) =>
-          ctx.db.query("skills").filter((q) => q.eq(q.field("code"), code)).first()
-        )
-      );
-      const authorizedSkillIds = authorizedSkills
-        .filter((s): s is NonNullable<typeof s> => s !== null)
-        .map((s) => s._id);
-      hasAuthorizedSkill = user.skills.some((id: any) => authorizedSkillIds.includes(id));
-    }
-    
-    if (!user.isAdmin && !hasRequiredRank && !hasAuthorizedSkill) {
-      throw new Error("Not authorized to update appliance locations.");
+    const now = Date.now();
+    const stationLocation = args.stationLocation.trim();
+
+    // Try normal user auth first
+    const userId = await getAuthUserId(ctx);
+    let updatedBy: Id<"users"> | undefined;
+    let updatedByServiceAccount: Id<"serviceAccounts"> | undefined;
+    let updatedBySource: "user" | "serviceAccount";
+
+    if (userId) {
+      // Get the current user data directly using the ID
+      const user = await ctx.db.get(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check if user is admin, has Lieutenant rank or higher, or has the Driver (DR) skill
+      const rankOrder = {
+        "Probationary": 1,
+        "Firefighter": 2,
+        "Lieutenant": 3,
+        "Captain": 4
+      };
+
+      const userRank = user.rank;
+      const hasRequiredRank = userRank && rankOrder[userRank] >= rankOrder["Lieutenant"];
+
+      // Check if user has an authorized skill (configurable via admin settings)
+      let hasAuthorizedSkill = false;
+      if (user.skills && user.skills.length > 0) {
+        const authorizedCodes = await getLocationEditSkillCodes(ctx);
+        const authorizedSkills = await Promise.all(
+          authorizedCodes.map((code) =>
+            ctx.db.query("skills").filter((q) => q.eq(q.field("code"), code)).first()
+          )
+        );
+        const authorizedSkillIds = authorizedSkills
+          .filter((s): s is NonNullable<typeof s> => s !== null)
+          .map((s) => s._id);
+        hasAuthorizedSkill = user.skills.some((id: any) => authorizedSkillIds.includes(id));
+      }
+
+      if (!user.isAdmin && !hasRequiredRank && !hasAuthorizedSkill) {
+        throw new Error("Not authorized to update appliance locations.");
+      }
+
+      updatedBy = user._id;
+      updatedBySource = "user";
+    } else {
+      const serviceToken = args.serviceToken?.trim();
+      if (!serviceToken) {
+        throw new Error("You must be signed in to update appliance locations");
+      }
+
+      const tokenHash = await sha256(serviceToken);
+      const session = await ctx.db
+        .query("serviceAccountSessions")
+        .withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash))
+        .first();
+
+      if (!session || session.expiresAt < now) {
+        throw new Error("Service session expired. Please sign in again.");
+      }
+
+      const serviceAccount = await ctx.db.get(session.serviceAccountId);
+      if (!serviceAccount || !serviceAccount.isActive) {
+        throw new Error("Service account is inactive");
+      }
+
+      if (!serviceAccount.allowedModules.includes(SERVICE_MODULE_KIOSK)) {
+        throw new Error("Service account is not permitted to update appliance locations");
+      }
+
+      updatedByServiceAccount = serviceAccount._id;
+      updatedBySource = "serviceAccount";
     }
 
     // Check if appliance location already exists
@@ -112,17 +164,21 @@ export const updateApplianceLocation = mutation({
     if (existingLocation) {
       // Update existing location
       await ctx.db.patch(existingLocation._id, {
-        stationLocation: args.stationLocation,
-        updatedBy: user._id,
-        updatedAt: Date.now(),
+        stationLocation,
+        ...(updatedBy ? { updatedBy } : {}),
+        ...(updatedByServiceAccount ? { updatedByServiceAccount } : {}),
+        updatedBySource,
+        updatedAt: now,
       });
     } else {
       // Create new location entry
       await ctx.db.insert("applianceLocations", {
         applianceName: args.applianceName,
-        stationLocation: args.stationLocation,
-        updatedBy: user._id,
-        updatedAt: Date.now(),
+        stationLocation,
+        ...(updatedBy ? { updatedBy } : {}),
+        ...(updatedByServiceAccount ? { updatedByServiceAccount } : {}),
+        updatedBySource,
+        updatedAt: now,
       });
     }
   },
@@ -156,6 +212,7 @@ export const initializeApplianceLocations = mutation({
           applianceName: appliance,
           stationLocation: "Main Station", // Default to Main Station
           updatedBy: adminUser._id,
+          updatedBySource: "user",
           updatedAt: Date.now(),
         });
       }
@@ -231,13 +288,22 @@ export const getApplianceLocationsWithUsers = query({
       v.literal("FCV")
     ),
     stationLocation: v.string(),
-    updatedBy: v.id("users"),
+    updatedBy: v.optional(v.id("users")),
+    updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
+    updatedBySource: v.optional(
+      v.union(v.literal("user"), v.literal("serviceAccount"))
+    ),
     updatedAt: v.number(),
     updatedByUser: v.optional(v.object({
       _id: v.id("users"),
       name: v.optional(v.string()),
       firstName: v.optional(v.string()),
       lastName: v.optional(v.string()),
+    })),
+    updatedByServiceAccountInfo: v.optional(v.object({
+      _id: v.id("serviceAccounts"),
+      name: v.string(),
+      description: v.optional(v.string()),
     })),
   })),
   handler: async (ctx) => {
@@ -246,7 +312,12 @@ export const getApplianceLocationsWithUsers = query({
     // Fetch user details for each location
     const locationsWithUsers = await Promise.all(
       locations.map(async (location) => {
-        const user = await ctx.db.get(location.updatedBy);
+        const user = location.updatedBy
+          ? await ctx.db.get(location.updatedBy)
+          : null;
+        const serviceAccount = location.updatedByServiceAccount
+          ? await ctx.db.get(location.updatedByServiceAccount)
+          : null;
         return {
           ...location,
           updatedByUser: user ? {
@@ -254,6 +325,11 @@ export const getApplianceLocationsWithUsers = query({
             name: user.name,
             firstName: user.firstName,
             lastName: user.lastName,
+          } : undefined,
+          updatedByServiceAccountInfo: serviceAccount ? {
+            _id: serviceAccount._id,
+            name: serviceAccount.name,
+            description: serviceAccount.description,
           } : undefined,
         };
       })

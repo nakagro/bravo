@@ -393,7 +393,11 @@ const applicationTables = {
       v.literal("FCV")
     ),
     stationLocation: v.string(), // Can be "Main Station", "Satellite Station", or custom location
-    updatedBy: v.id("users"),
+    updatedBy: v.optional(v.id("users")),
+    updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
+    updatedBySource: v.optional(
+      v.union(v.literal("user"), v.literal("serviceAccount"))
+    ),
     updatedAt: v.number(),
   }),
 
