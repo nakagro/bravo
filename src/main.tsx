@@ -5,6 +5,7 @@ import { ConvexReactClient } from "convex/react";
 import { PostHogProvider } from "posthog-js/react";
 import "./index.css";
 import App from "./App";
+import { syncConvexDebugFlagFromUrl } from "./lib/debug/convexDebug";
 
 // --- Startup timing instrumentation ---
 const __BRAVO_START = performance.now();
@@ -13,7 +14,14 @@ const _t = (label: string) => console.log(`[BRAVO +${Math.round(performance.now(
 (window as any).__BRAVO_T = _t;
 _t("Module loaded");
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convexDebugEnabled = syncConvexDebugFlagFromUrl();
+if (convexDebugEnabled) {
+  _t("Convex verbose debug enabled");
+}
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
+  verbose: convexDebugEnabled,
+});
 _t("ConvexReactClient created");
 
 createRoot(document.getElementById("root")!).render(

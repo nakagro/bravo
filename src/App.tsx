@@ -20,6 +20,7 @@ import {
   useServiceAccount,
   hasServiceToken,
 } from "./features/serviceAccounts/ServiceAccountContext";
+import { ConvexDebugObserver } from "./components/debug/ConvexDebugObserver";
 
 const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
 const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
@@ -78,6 +79,7 @@ function RouteSuspense({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider>
+      <ConvexDebugObserver />
       <BrowserRouter>
         <ServiceAccountProvider>
           <ServiceAccountGate />

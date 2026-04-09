@@ -62,6 +62,37 @@ export const loggedInUser = query({
   },
 });
 
+// Query to validate signup data before creating an account
+// Checks member number and email uniqueness upfront
+export const validateSignupData = query({
+  args: {
+    memberNumber: v.string(),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existingMember = await ctx.db
+      .query("users")
+      .withIndex("by_memberNumber", (q) => q.eq("memberNumber", args.memberNumber))
+      .first();
+
+    if (existingMember) {
+      return { valid: false, error: "A member with this CFA number already exists. Please check your member number or contact an administrator." };
+    }
+
+    const normalizedEmail = args.email.toLowerCase().trim();
+    const existingEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .first();
+
+    if (existingEmail) {
+      return { valid: false, error: "An account with this email already exists." };
+    }
+
+    return { valid: true, error: null };
+  },
+});
+
 // Mutation to update user profile with additional information
 export const updateUserProfile = mutation({
   args: {
@@ -82,6 +113,32 @@ export const updateUserProfile = mutation({
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error("User not found");
+    }
+
+    // Check member number uniqueness if being updated
+    if (args.memberNumber !== undefined) {
+      const existingMember = await ctx.db
+        .query("users")
+        .withIndex("by_memberNumber", (q) => q.eq("memberNumber", args.memberNumber))
+        .first();
+
+      if (existingMember && existingMember._id !== userId) {
+        throw new Error("A member with this CFA number already exists.");
+      }
+    }
+
+    // Check email uniqueness if being updated
+    if (args.email !== undefined) {
+      const normalizedEmail = args.email.toLowerCase().trim();
+      const existingEmail = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+        .first();
+
+      if (existingEmail && existingEmail._id !== userId) {
+        throw new Error("A member with this email address already exists.");
+      }
+      args.email = normalizedEmail;
     }
 
     // Update the user with new information
@@ -113,10 +170,20 @@ export const storeSignupData = mutation({
     // Normalize email to lowercase for consistency
     const email = args.email.toLowerCase().trim();
 
+    // Check member number uniqueness before proceeding
+    const existingMember = await ctx.db
+      .query("users")
+      .withIndex("by_memberNumber", (q) => q.eq("memberNumber", args.memberNumber))
+      .first();
+
+    if (existingMember) {
+      throw new Error("A member with this CFA number already exists. Please check your member number or contact an administrator.");
+    }
+
     // Find the user by email (should be created by the auth system)
     const users = await ctx.db
       .query("users")
-      .filter(q => q.eq(q.field("email"), email))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .collect();
 
     if (users.length === 0) {

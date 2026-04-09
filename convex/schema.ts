@@ -58,6 +58,8 @@ const extendedAuthTables = {
     nextStatusAt: v.optional(v.number()), // Timestamp when to transition to next status
     isDutyOfficer: v.optional(v.boolean()),
   })
+    .index("by_email", ["email"])
+    .index("by_memberNumber", ["memberNumber"])
 };
 
 const applicationTables = {
