@@ -1,18 +1,18 @@
 import packageData from '../../package.json';
 
 export interface VersionInfo {
-  major: number;
-  minor: number;
-  patch: number;
+  year: string;
+  month: string;
+  day: string;
   version: string;
 }
 
 export const getVersion = (): VersionInfo => {
-  const [major, minor, patch] = packageData.version.split('.').map(Number);
+  const [year = '', month = '', day = ''] = packageData.version.split('.');
   return {
-    major,
-    minor,
-    patch,
+    year,
+    month,
+    day,
     version: packageData.version
   };
 };

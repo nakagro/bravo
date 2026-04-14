@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "1.0.81",
+  "version": "2026.04.15",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
@@ -17,8 +17,7 @@
     "build:cloud": "VITE_CONVEX_URL=https://precious-magpie-647.convex.cloud vite build",
     "build:prod": "VITE_CONVEX_URL=https://boss-convex.grayhux.io vite build",
     "build:vps": "VITE_CONVEX_URL=https://boss-convex.grayhux.io vite build",
-    "version:feature": "node scripts/increment-feature.js",
-    "version:major": "node scripts/increment-major.js",
+    "version:sync": "node scripts/set-build-version.js",
     "preview": "vite preview",
     "preview:docker": "npm run build:docker && vite preview",
     "preview:cloud": "npm run build:cloud && vite preview",

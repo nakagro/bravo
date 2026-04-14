@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.04.15] - 2026-04-15
+- Switched BRAVO from semantic build numbering to date-based build numbering (`YYYY.MM.DD`).
+- Local commits now sync the displayed app version to the current Australia/Melbourne date before pushing to GitHub.
+
 ## [1.0.80] - 2026-03-26
 - Upgraded Vite from 6 to 8, build times now around 3 seconds with the new Rolldown bundler.
 - Vendor chunk splitting — main JS bundle reduced from 2.6MB to 1.3MB, with PDF, React, UI, and Convex libs in separate cacheable chunks.

@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# # Increment version
-# node scripts/increment-version.js
+# Sync version to today's date before each commit
+node scripts/set-build-version.js || exit 1
 
 # Stage the updated package.json
 git add package.json

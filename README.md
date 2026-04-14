@@ -414,11 +414,11 @@ npm run format
 ### Version Management
 
 ```bash
-# Increment feature version
-npm run increment:feature
+# Sync version to today's build date (YYYY.MM.DD)
+npm run version:sync
 
-# Increment major version
-npm run increment:major
+# The local pre-commit hook also syncs and stages package.json automatically
+git commit -m "Your change"
 ```
 
 ## Documentation
