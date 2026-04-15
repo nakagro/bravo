@@ -30,3 +30,6 @@ temp
 *.sw?
 
 # Local scratch and backup artifacts
+.agents/
+.claude/
+.codex
