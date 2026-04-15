@@ -1,9 +1,49 @@
+import type { ReactNode } from "react";
 import { getVersionString } from "@/utils/version";
 import { Badge } from "@/components/ui/badge";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import changelogMd from '../../CHANGELOG.md?raw';
 import { Link } from "react-router-dom";
+
+const CHANGELOG_HEADING_PATTERN = /^\[(.*?)\](?:\s*-\s*(.*))?$/;
+const DATE_VERSION_PATTERN = /^\d{4}\.\d{2}\.\d{2}$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const extractTextContent = (children: ReactNode): string => {
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) {
+    return children.map(child => typeof child === 'string' ? child : '').join('');
+  }
+  return String(children || '');
+};
+
+const getIsoDateFromVersion = (version: string): string | null => {
+  if (!DATE_VERSION_PATTERN.test(version)) return null;
+  return version.replace(/\./g, '-');
+};
+
+const formatDisplayDate = (dateStr: string): string => {
+  if (ISO_DATE_PATTERN.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  const parsedDate = new Date(dateStr);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return dateStr;
+  }
+
+  return parsedDate.toLocaleDateString('en-AU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
 
 export default function AboutPage() {
   return (
@@ -50,28 +90,22 @@ export default function AboutPage() {
           components={{
             h1: ({ ...props }) => <h1 className="text-3xl font-bold mb-4 text-foreground border-b pb-2" {...props} />,
             h2: ({ ...props }) => {
-              // Attempt to extract text content to parse version/date
-              const text = typeof props.children === 'string'
-                ? props.children
-                : Array.isArray(props.children)
-                  ? props.children.map(child => typeof child === 'string' ? child : '').join('')
-                  : String(props.children || '');
-
-              // Match format: [Version] - Date
-              // e.g. [1.0.32] - 2025-11-15
-              const match = text.match(/^\[(.*?)\]\s*-\s*(.*)$/);
+              const text = extractTextContent(props.children);
+              const match = text.match(CHANGELOG_HEADING_PATTERN);
 
               if (match) {
-                const [, version, dateStr] = match;
-                let formattedDate = dateStr;
-                try {
-                  formattedDate = new Date(dateStr).toLocaleDateString('en-AU', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  });
-                } catch (e) {
-                  // Keep original if parsing fails
+                const [, version, explicitDate = ''] = match;
+                const versionAsDate = getIsoDateFromVersion(version);
+                const resolvedDate = explicitDate.trim() || versionAsDate || '';
+                const isDateBasedVersion = Boolean(versionAsDate && (!explicitDate.trim() || explicitDate.trim() === versionAsDate));
+                const formattedDate = resolvedDate ? formatDisplayDate(resolvedDate) : '';
+
+                if (isDateBasedVersion && formattedDate) {
+                  return (
+                    <div className="mt-6 mb-3 pb-2 border-b border-border/50 first:mt-0">
+                      <h2 className="text-xl font-semibold text-foreground">{formattedDate}</h2>
+                    </div>
+                  );
                 }
 
                 return (
@@ -79,9 +113,11 @@ export default function AboutPage() {
                     <Badge variant="default" className="text-sm px-3 py-1 h-7 font-mono">
                       v{version}
                     </Badge>
-                    <span className="text-sm text-muted-foreground font-medium">
-                      {formattedDate}
-                    </span>
+                    {formattedDate ? (
+                      <span className="text-sm text-muted-foreground font-medium">
+                        {formattedDate}
+                      </span>
+                    ) : null}
                   </div>
                 );
               }
