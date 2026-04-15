@@ -9,7 +9,10 @@ lerna-debug.log*
 
 node_modules
 dist
+dev-dist
 dist-ssr
+exports
+temp
 .env.local
 .env.docker
 .env.cloud
@@ -26,9 +29,4 @@ dist-ssr
 *.sln
 *.sw?
 
-# Ignored for the template, you probably want to remove it:
-package-lock.json
-temp/ERMA - Emergency Response Member Availability.html
-# CONVEX-SETUP.md
-
-temp/*
+# Local scratch and backup artifacts

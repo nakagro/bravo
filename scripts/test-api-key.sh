@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for API Key Authentication
-# Usage: ./test-api-key.sh [your-convex-url] [your-convex-api-key]
+# Usage: bash scripts/test-api-key.sh [your-convex-url] [your-convex-api-key]
 # Note: Set CONVEX_API_KEY in your Convex environment first
 
 # Colors for output
@@ -67,7 +67,7 @@ if [ -n "$API_KEY" ]; then
 else
     echo -e "${YELLOW}Test 3: Skipped (no API key provided)${NC}"
     echo "To test with a valid API key, run:"
-    echo "./test-api-key.sh ${CONVEX_URL} your-api-key-here"
+    echo "bash scripts/test-api-key.sh ${CONVEX_URL} your-api-key-here"
 fi
 
 echo ""
