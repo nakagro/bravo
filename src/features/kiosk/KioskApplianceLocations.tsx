@@ -153,7 +153,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
                                         ) : (
                                             <div className="flex items-center gap-4 w-full justify-center">
                                                 <Plus className="h-8 w-8 md:h-10 md:w-10" />
-                                                <span className="truncate font-medium">Custom Location</span>
+                                                <span className="truncate font-medium">Custom</span>
                                             </div>
                                         )}
                                     </button>

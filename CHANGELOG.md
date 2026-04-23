@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.04.23]
+- Added D14 Contact list to the Kiosk page.
+
 ## [2026.04.15]
 - Switched BRAVO from semantic build numbering to date-based build numbering (`YYYY.MM.DD`).
 
