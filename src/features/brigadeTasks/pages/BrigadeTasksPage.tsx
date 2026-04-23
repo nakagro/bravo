@@ -55,10 +55,10 @@ export function BrigadeTasksPage() {
     const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
 
     // Get raw tasks for active tab
-    const rawTasks = useMemo(() => {
-        if (activeTab === "my-tasks") return myTasks;
-        if (activeTab === "created") return createdTasks;
-        return allBrigadeTasks;
+    const rawTasks = useMemo<Task[] | undefined>(() => {
+        if (activeTab === "my-tasks") return myTasks as Task[] | undefined;
+        if (activeTab === "created") return createdTasks as Task[] | undefined;
+        return allBrigadeTasks as Task[] | undefined;
     }, [activeTab, myTasks, createdTasks, allBrigadeTasks]);
 
     // Filter tasks

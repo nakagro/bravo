@@ -41,7 +41,7 @@ import { toast } from '../../hooks/use-toast';
 import { Id } from '../../../convex/_generated/dataModel';
 import { VehicleFaultComments } from './VehicleFaultComments';
 
-type VehicleType = 'Pumper' | 'Tanker' | 'FCV';
+type VehicleType = string;
 type StatusType = 'pending_dmo' | 'pending_wydv' | 'resolved';
 type PriorityType = 'low' | 'medium' | 'high';
 

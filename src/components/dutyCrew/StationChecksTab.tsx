@@ -31,6 +31,17 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge } from "../ui/badge";
 
 export function StationChecksTab() {
+  type StationCheckItem = {
+    checkId?: Id<"stationChecks">;
+    name: string;
+    isCompleted: boolean;
+    notes?: string;
+    completedBy?: Id<"users">;
+    completedAt?: number;
+    isAdHoc?: boolean;
+    addedBy?: Id<"users">;
+  };
+
   // State for week navigation
   const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = last week, 1 = next week, etc.
 
@@ -74,20 +85,12 @@ export function StationChecksTab() {
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [checkItems, setCheckItems] = useState<
-    Array<{
-      checkId: Id<"stationChecks">;
-      name: string;
-      isCompleted: boolean;
-      notes?: string;
-      completedBy?: Id<"users">;
-      completedAt?: number;
-    }>
-  >([]);
+  const [checkItems, setCheckItems] = useState<StationCheckItem[]>([]);
   const [generalNotes, setGeneralNotes] = useState("");
 
   const [editingNotes, setEditingNotes] = useState<{
     type: 'item' | 'general';
+    itemIndex?: number;
     checkId?: Id<"stationChecks">;
     currentValue: string;
   } | null>(null);
@@ -119,10 +122,7 @@ export function StationChecksTab() {
   }, [stationChecks, currentWeekStatus]);
 
   // Handle checkbox change
-  const handleCheckboxChange = async (
-    checkId: Id<"stationChecks">,
-    isCompleted: boolean
-  ) => {
+  const handleCheckboxChange = async (itemIndex: number, isCompleted: boolean) => {
     if (!stationChecks || !currentWeekStatus) return;
     if (!currentWeekStatus.submission) return;
     if (!currentWeekStatus.submission.dutyCrewId) return;
@@ -134,8 +134,8 @@ export function StationChecksTab() {
     if (currentWeekStatus.submission.status === "completed") {
       await reopenStationCheck({ submissionId });
     }
-    const newItems = checkItems.map((item) =>
-      item.checkId === checkId ? { ...item, isCompleted } : item
+    const newItems = checkItems.map((item, index) =>
+      index === itemIndex ? { ...item, isCompleted } : item
     );
     setCheckItems(newItems);
     await saveDraftStationCheck({
@@ -148,10 +148,7 @@ export function StationChecksTab() {
   };
 
   // Handle notes change
-  const handleNotesChange = async (
-    checkId: Id<"stationChecks">,
-    notes: string
-  ) => {
+  const handleNotesChange = async (itemIndex: number, notes: string) => {
     if (!stationChecks || !currentWeekStatus) return;
     if (!currentWeekStatus.submission) return;
     if (!currentWeekStatus.submission.dutyCrewId) return;
@@ -163,8 +160,8 @@ export function StationChecksTab() {
     if (currentWeekStatus.submission.status === "completed") {
       await reopenStationCheck({ submissionId });
     }
-    const newItems = checkItems.map((item) =>
-      item.checkId === checkId ? { ...item, notes } : item
+    const newItems = checkItems.map((item, index) =>
+      index === itemIndex ? { ...item, notes } : item
     );
     setCheckItems(newItems);
     await saveDraftStationCheck({
@@ -484,7 +481,7 @@ export function StationChecksTab() {
           <div className="space-y-2">
             {checkItems.map((item, index) => (
               <div
-                key={item.checkId}
+                key={item.checkId ?? `station-check-${index}-${item.name}`}
                 className={`group relative overflow-hidden rounded-lg border transition-all duration-200 ${
                   item.isCompleted
                     ? "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800 shadow-sm"
@@ -495,7 +492,7 @@ export function StationChecksTab() {
                 <div
                   className="flex items-center p-3 cursor-pointer select-none active:scale-95 transition-transform duration-100"
                   onClick={() => {
-                    handleCheckboxChange(item.checkId, !item.isCompleted);
+                    handleCheckboxChange(index, !item.isCompleted);
                   }}
                 >
                   {/* Large, animated check indicator */}
@@ -558,6 +555,7 @@ export function StationChecksTab() {
                       e.stopPropagation();
                       setEditingNotes({
                         type: 'item',
+                        itemIndex: index,
                         checkId: item.checkId,
                         currentValue: item.notes || ''
                       });
@@ -721,8 +719,8 @@ export function StationChecksTab() {
                   try {
                     if (editingNotes.type === 'general') {
                       await handleGeneralNotesChange(editingNotes.currentValue);
-                    } else if (editingNotes.checkId) {
-                      await handleNotesChange(editingNotes.checkId, editingNotes.currentValue);
+                    } else if (editingNotes.itemIndex !== undefined) {
+                      await handleNotesChange(editingNotes.itemIndex, editingNotes.currentValue);
                     }
                     setEditingNotes(null);
                   } catch (error) {

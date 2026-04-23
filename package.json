@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "2026.04.15",
+  "version": "2026.04.23",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",
@@ -40,7 +40,8 @@
     "dev:cloud:frontend": "VITE_CONVEX_URL=https://precious-magpie-647.convex.cloud vite --open",
     "dev:cloud:backend": "CONVEX_DEPLOYMENT=precious-magpie-647 convex dev",
     "seed:cloud": "CONVEX_DEPLOYMENT=precious-magpie-647 npx convex run seed:seedDevDatabase",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build",
+    "typecheck": "tsc -p convex --noEmit --pretty false && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",
+    "lint": "npm run typecheck && convex dev --once && vite build",
     "prepare": "husky"
   },
   "dependencies": {
@@ -123,8 +124,8 @@
     "prettier": "^3.5.3",
     "tailwindcss": "~3",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "~5.7.2",
-    "typescript-eslint": "^8.24.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
     "vite": "^8.0.2",
     "vite-plugin-pwa": "^1.2.0"
   }
