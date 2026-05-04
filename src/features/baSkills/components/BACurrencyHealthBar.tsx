@@ -13,38 +13,44 @@ export function BACurrencyHealthBar({
   onFilterChange,
 }: BACurrencyHealthBarProps) {
   const total = counts.total || 1;
-  const currentPct = Math.round((counts.current / total) * 100);
   const atRisk = counts.expired + counts.warning;
 
   return (
     <div className="space-y-3">
-      {/* Headline */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-foreground">{currentPct}%</span>
-            <span className="text-sm text-muted-foreground">
-              currency rate · {counts.total} member{counts.total === 1 ? "" : "s"}
-            </span>
-          </div>
-        </div>
-        {atRisk > 0 ? (
-          <button
-            onClick={() => onFilterChange(counts.expired > 0 ? "expired" : "warning")}
-            className="inline-flex items-center gap-2 rounded-full border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-            {atRisk} member{atRisk === 1 ? "" : "s"} need attention
-          </button>
-        ) : counts.total > 0 ? (
-          <span className="inline-flex items-center gap-2 rounded-full border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            All members on track
+      <div className="grid gap-2 text-xs sm:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => onFilterChange(atRisk > 0 && counts.expired > 0 ? "expired" : "warning")}
+          disabled={atRisk === 0}
+          className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-red-100 disabled:cursor-default disabled:opacity-70 dark:border-red-900 dark:bg-red-950/20 dark:enabled:hover:bg-red-950/40"
+        >
+          <span className="block text-lg font-semibold text-red-700 dark:text-red-300">
+            {atRisk}
           </span>
-        ) : null}
+          <span className="text-red-700/80 dark:text-red-300/80">Need attention</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onFilterChange("current")}
+          disabled={counts.current === 0}
+          className="rounded-lg border border-green-200 bg-green-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-green-100 disabled:cursor-default disabled:opacity-70 dark:border-green-900 dark:bg-green-950/20 dark:enabled:hover:bg-green-950/40"
+        >
+          <span className="block text-lg font-semibold text-green-700 dark:text-green-300">
+            {counts.current}
+          </span>
+          <span className="text-green-700/80 dark:text-green-300/80">Current with record</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onFilterChange("never_used")}
+          disabled={counts.never_used === 0}
+          className="rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left transition-colors enabled:hover:bg-gray-100 disabled:cursor-default disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/40 dark:enabled:hover:bg-gray-900"
+        >
+          <span className="block text-lg font-semibold text-gray-700 dark:text-gray-200">
+            {counts.never_used}
+          </span>
+          <span className="text-gray-600 dark:text-gray-400">No BA record yet</span>
+        </button>
       </div>
 
       {/* Stacked bar */}
@@ -77,11 +83,11 @@ export function BACurrencyHealthBar({
       </div>
 
       {/* Legend / clickable status chips */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+      <div className="grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5">
         <button
           type="button"
           onClick={() => onFilterChange("all")}
-          className={`flex items-center gap-1.5 transition-opacity ${
+          className={`flex min-w-0 items-center gap-1.5 rounded-md py-1 transition-opacity sm:rounded-none sm:py-0 ${
             activeFilter === "all" ? "opacity-100 font-medium" : "opacity-70 hover:opacity-100"
           }`}
         >
@@ -98,7 +104,7 @@ export function BACurrencyHealthBar({
               key={status}
               type="button"
               onClick={() => onFilterChange(isActive ? "all" : status)}
-              className={`flex items-center gap-1.5 transition-opacity ${
+              className={`flex min-w-0 items-center gap-1.5 rounded-md py-1 transition-opacity sm:rounded-none sm:py-0 ${
                 isActive ? "opacity-100 font-medium" : "opacity-70 hover:opacity-100"
               }`}
             >

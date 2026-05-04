@@ -8,10 +8,11 @@ import { BASkillsLogTab } from "./components/BASkillsLogTab";
 import { BASkillsMyRecordsTab } from "./components/BASkillsMyRecordsTab";
 import { BASkillsHistoryTab } from "./components/BASkillsHistoryTab";
 import { BASkillsCurrencyTab } from "./components/BASkillsCurrencyTab";
+import { BASkillsExportTab } from "./components/BASkillsExportTab";
 
-type BASkillsTab = "log" | "mine" | "history" | "currency";
+type BASkillsTab = "log" | "mine" | "history" | "currency" | "export";
 
-const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency"];
+const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "export"];
 
 function BASkillsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,12 +21,14 @@ function BASkillsPage() {
   const canSubmit = moduleAccess?.baSkills ?? false;
   const canViewHistory = moduleAccess?.baSkillsAdmin ?? false;
   const canViewCurrency = moduleAccess?.baSkillsAdmin ?? false;
+  const canExport = moduleAccess?.baSkillsAdmin ?? false;
 
   const accessByTab: Record<BASkillsTab, boolean> = {
     log: canSubmit,
     mine: canSubmit,
     history: canViewHistory,
     currency: canViewCurrency,
+    export: canExport,
   };
 
   const requestedTab = searchParams.get("tab") as BASkillsTab | null;
@@ -57,7 +60,13 @@ function BASkillsPage() {
   useEffect(() => {
     if (moduleAccess === undefined) return;
     if (activeTab === "log" && !canSubmit) {
-      const fallback = canViewHistory ? "history" : canViewCurrency ? "currency" : null;
+      const fallback = canViewHistory
+        ? "history"
+        : canViewCurrency
+          ? "currency"
+          : canExport
+            ? "export"
+            : null;
       if (fallback) {
         setSearchParams(
           (prev) => {
@@ -69,7 +78,7 @@ function BASkillsPage() {
         );
       }
     }
-  }, [moduleAccess, activeTab, canSubmit, canViewHistory, canViewCurrency, setSearchParams]);
+  }, [moduleAccess, activeTab, canSubmit, canViewHistory, canViewCurrency, canExport, setSearchParams]);
 
   const handleTabChange = (tab: string) => {
     setSearchParams(
@@ -117,8 +126,9 @@ function BASkillsPage() {
     if (canSubmit) list.push({ key: "mine", label: "My Records" });
     if (canViewHistory) list.push({ key: "history", label: "History" });
     if (canViewCurrency) list.push({ key: "currency", label: "Currency" });
+    if (canExport) list.push({ key: "export", label: "Export" });
     return list;
-  }, [canSubmit, canViewHistory, canViewCurrency]);
+  }, [canSubmit, canViewHistory, canViewCurrency, canExport]);
 
   const showTabs = tabs.length > 1;
 
@@ -154,6 +164,7 @@ function BASkillsPage() {
         {activeTab === "currency" && canViewCurrency && (
           <BASkillsCurrencyTab onViewMemberHistory={handleViewMemberHistory} />
         )}
+        {activeTab === "export" && canExport && <BASkillsExportTab />}
       </div>
     </div>
   );
