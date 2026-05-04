@@ -939,26 +939,24 @@ const applicationTables = {
     .index("by_createdAt", ["createdAt"])
     .index("by_type", ["type"]),
 
-  // BA Skills Maintenance - Track BA cylinder usage for skills maintenance
-  baSkillsRecords: defineTable({
+  // BA Skills Maintenance - Track BA cylinder usage for skills currency
+  baRecords: defineTable({
     memberId: v.id("users"), // The member who wore the BA
     dateUsed: v.string(), // ISO date string (YYYY-MM-DD)
-    durationMinutes: v.number(), // How many minutes the BA was worn
+    durationMinutes: v.number(), // How many minutes the BA was worn (1..480)
     usageType: v.union(
-      v.literal("firecall"), // Used during a fire call
-      v.literal("drill") // Used during training/drill
+      v.literal("firecall"), // Used during an actual fire call
+      v.literal("drill") // Used during training / drill
     ),
-    location: v.string(), // Location/details of where BA was used
-    verifiedBy: v.optional(v.id("users")), // Member who can verify this use
+    notes: v.string(), // REQUIRED: free-form context (location, incident detail, etc.)
+    verifiedBy: v.id("users"), // REQUIRED: member who verifies this use (must differ from memberId)
     submittedBy: v.id("users"), // User who submitted this record (may differ from memberId)
     submittedOnBehalf: v.boolean(), // True if submitted by someone else on behalf of the member
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_member", ["memberId"])
+    .index("by_member_date", ["memberId", "dateUsed"])
     .index("by_dateUsed", ["dateUsed"])
-    .index("by_usageType", ["usageType"])
-    .index("by_submittedBy", ["submittedBy"])
     .index("by_verifiedBy", ["verifiedBy"])
     .index("by_createdAt", ["createdAt"]),
 

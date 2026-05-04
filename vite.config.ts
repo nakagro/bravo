@@ -35,6 +35,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true, // listen on 0.0.0.0 so the dev server is reachable on the LAN
     warmup: {
       // pre-transform on dev server start to speed up first page load
       clientFiles: [
