@@ -28,11 +28,10 @@ type UsageType = "firecall" | "drill";
 const USAGE_TYPES: Array<{
   key: UsageType;
   title: string;
-  subtitle: string;
   Icon: typeof Flame;
 }> = [
-  { key: "firecall", title: "Fire Call", subtitle: "Actual incident", Icon: Flame },
-  { key: "drill", title: "Drill", subtitle: "Practice / training", Icon: GraduationCap },
+  { key: "firecall", title: "Fire Call", Icon: Flame },
+  { key: "drill", title: "Training", Icon: GraduationCap },
 ];
 
 const RANK_ORDER: Record<string, number> = {
@@ -211,7 +210,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
           Type of use <span className="text-red-500">*</span>
         </Label>
         <div className="grid grid-cols-2 gap-3">
-          {USAGE_TYPES.map(({ key, title, subtitle, Icon }) => {
+          {USAGE_TYPES.map(({ key, title, Icon }) => {
             const active = usageType === key;
             return (
               <button
@@ -230,7 +229,6 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className={`font-medium ${active ? "text-red-900 dark:text-red-100" : ""}`}>{title}</div>
-                    <div className="text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</div>
                   </div>
                 </div>
               </button>

@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.05.04]
+- BA Skills page improvements and maintenance
+
 ## [2026.04.23]
 - Added D14 Contact list to the Kiosk page.
 
