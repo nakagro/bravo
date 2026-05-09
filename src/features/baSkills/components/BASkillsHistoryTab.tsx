@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoaderCircle, X } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { BARecordCard } from "./BARecordCard";
+import { isWithinBARecordDeleteWindow, useBARecordDeleteWindowNow } from "../lib/deletePermissions";
 
 type UsageType = "firecall" | "drill";
 type DateRange = "all" | "month" | "90d";
@@ -14,6 +15,7 @@ type DateRange = "all" | "month" | "90d";
 interface BASkillsHistoryTabProps {
   filterMemberId?: Id<"users"> | null;
   onClearMemberFilter?: () => void;
+  canManageRecords?: boolean;
 }
 
 const TYPE_FILTERS: Array<{ key: UsageType | "all"; label: string }> = [
@@ -28,12 +30,17 @@ const DATE_FILTERS: Array<{ key: DateRange; label: string }> = [
   { key: "90d", label: "Last 90 days" },
 ];
 
-export function BASkillsHistoryTab({ filterMemberId, onClearMemberFilter }: BASkillsHistoryTabProps) {
+export function BASkillsHistoryTab({
+  filterMemberId,
+  onClearMemberFilter,
+  canManageRecords = false,
+}: BASkillsHistoryTabProps) {
   const records = useQuery(api.baRecords.listRecords, {
     memberId: filterMemberId ?? undefined,
   });
   const me = useQuery(api.baRecords.getCurrentUser);
   const members = useQuery(api.baRecords.listMembers);
+  const now = useBARecordDeleteWindowNow();
 
   const [memberFilter, setMemberFilter] = useState<Id<"users"> | null>(null);
   const [typeFilter, setTypeFilter] = useState<UsageType | "all">("all");
@@ -151,7 +158,12 @@ export function BASkillsHistoryTab({ filterMemberId, onClearMemberFilter }: BASk
                 <BARecordCard
                   key={record._id}
                   record={record}
-                  canDelete={!!me && record.submittedBy === me._id}
+                  canDelete={
+                    canManageRecords ||
+                    (!!me &&
+                      record.submittedBy === me._id &&
+                      isWithinBARecordDeleteWindow(record.createdAt, now))
+                  }
                 />
               ))}
             </div>

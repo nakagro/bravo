@@ -21,7 +21,7 @@ interface BARecordFormProps {
   onSuccess?: () => void;
 }
 
-const DURATION_PRESETS = [15, 20, 30, 45, 60];
+const DURATION_PRESETS = [15, 20, 30, 45];
 
 type UsageType = "firecall" | "drill";
 
@@ -40,6 +40,14 @@ const RANK_ORDER: Record<string, number> = {
   Firefighter: 3,
   Probationary: 4,
 };
+
+function isBARecordMemberOption(member: { rank?: string; skills?: string[] }) {
+  return (
+    member.rank === "Captain" ||
+    member.rank === "Lieutenant" ||
+    member.skills?.some((skill) => skill === "BAe" || skill === "BAi") === true
+  );
+}
 
 export function BARecordForm({ onSuccess }: BARecordFormProps) {
   const currentUser = useQuery(api.baRecords.getCurrentUser);
@@ -74,7 +82,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
 
   const sortedMembers = useMemo(() => {
     if (!allMembers) return [];
-    return [...allMembers].sort((a, b) => {
+    return allMembers.filter(isBARecordMemberOption).sort((a, b) => {
       const ra = RANK_ORDER[a.rank ?? ""] ?? 999;
       const rb = RANK_ORDER[b.rank ?? ""] ?? 999;
       if (ra !== rb) return ra - rb;
@@ -258,7 +266,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         <Label>
           Duration on air <span className="text-red-500">*</span>
         </Label>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {DURATION_PRESETS.map((preset) => (
             <button
               key={preset}

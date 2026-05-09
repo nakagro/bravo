@@ -9,4 +9,5 @@ export { BASkillsLogTab } from "./BASkillsLogTab";
 export { BASkillsMyRecordsTab } from "./BASkillsMyRecordsTab";
 export { BASkillsHistoryTab } from "./BASkillsHistoryTab";
 export { BASkillsCurrencyTab } from "./BASkillsCurrencyTab";
+export { BASkillsLMSTab } from "./BASkillsLMSTab";
 export { BASkillsExportTab } from "./BASkillsExportTab";

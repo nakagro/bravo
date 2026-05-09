@@ -8,11 +8,12 @@ import { BASkillsLogTab } from "./components/BASkillsLogTab";
 import { BASkillsMyRecordsTab } from "./components/BASkillsMyRecordsTab";
 import { BASkillsHistoryTab } from "./components/BASkillsHistoryTab";
 import { BASkillsCurrencyTab } from "./components/BASkillsCurrencyTab";
+import { BASkillsLMSTab } from "./components/BASkillsLMSTab";
 import { BASkillsExportTab } from "./components/BASkillsExportTab";
 
-type BASkillsTab = "log" | "mine" | "history" | "currency" | "export";
+type BASkillsTab = "log" | "mine" | "history" | "currency" | "lms" | "export";
 
-const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "export"];
+const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "lms", "export"];
 
 function BASkillsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,6 +29,7 @@ function BASkillsPage() {
     mine: canSubmit,
     history: canViewHistory,
     currency: canViewCurrency,
+    lms: canViewCurrency,
     export: canExport,
   };
 
@@ -126,6 +128,7 @@ function BASkillsPage() {
     if (canSubmit) list.push({ key: "mine", label: "My Records" });
     if (canViewHistory) list.push({ key: "history", label: "History" });
     if (canViewCurrency) list.push({ key: "currency", label: "Currency" });
+    if (canViewCurrency) list.push({ key: "lms", label: "LMS" });
     if (canExport) list.push({ key: "export", label: "Export" });
     return list;
   }, [canSubmit, canViewHistory, canViewCurrency, canExport]);
@@ -154,16 +157,20 @@ function BASkillsPage() {
         aria-labelledby={`tab-${activeTab}`}
       >
         {activeTab === "log" && canSubmit && <BASkillsLogTab />}
-        {activeTab === "mine" && canSubmit && <BASkillsMyRecordsTab />}
+        {activeTab === "mine" && canSubmit && (
+          <BASkillsMyRecordsTab canManageRecords={canViewHistory} />
+        )}
         {activeTab === "history" && canViewHistory && (
           <BASkillsHistoryTab
             filterMemberId={memberFilter}
             onClearMemberFilter={handleClearMemberFilter}
+            canManageRecords={canViewHistory}
           />
         )}
         {activeTab === "currency" && canViewCurrency && (
           <BASkillsCurrencyTab onViewMemberHistory={handleViewMemberHistory} />
         )}
+        {activeTab === "lms" && canViewCurrency && <BASkillsLMSTab />}
         {activeTab === "export" && canExport && <BASkillsExportTab />}
       </div>
     </div>

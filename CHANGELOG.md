@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.05.09]
+- More BA Skills page improvements to support upcoming release.
+
 ## [2026.05.04]
 - BA Skills page improvements and maintenance
 

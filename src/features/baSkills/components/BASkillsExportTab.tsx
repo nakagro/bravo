@@ -16,6 +16,8 @@ type BAExportRecord = {
   verifierName: string;
   submitterName: string;
   submittedOnBehalf: boolean;
+  lmsEnteredAt?: number;
+  lmsEnteredByName?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -36,6 +38,9 @@ const CSV_HEADERS = [
   "verified_by",
   "submitted_by",
   "submitted_on_behalf",
+  "lms_entered",
+  "lms_entered_at",
+  "lms_entered_by",
   "record_created_at",
   "record_updated_at",
 ] as const;
@@ -63,7 +68,7 @@ function buildMemberRows(member: CurrencyMember, records: BAExportRecord[]) {
   ];
 
   if (records.length === 0) {
-    return [[...base, "", "", "", "", "", "", "", "", "", ""]];
+    return [[...base, "", "", "", "", "", "", "", "", "", "", "", "", ""]];
   }
 
   return records.map((record) => [
@@ -76,6 +81,9 @@ function buildMemberRows(member: CurrencyMember, records: BAExportRecord[]) {
     record.verifierName,
     record.submitterName,
     record.submittedOnBehalf,
+    record.lmsEnteredAt !== undefined,
+    timestampToIso(record.lmsEnteredAt),
+    record.lmsEnteredByName,
     timestampToIso(record.createdAt),
     timestampToIso(record.updatedAt),
   ]);
@@ -111,6 +119,9 @@ function buildCsv(members: CurrencyMember[], records: BAExportRecord[]) {
       record.verifierName,
       record.submitterName,
       record.submittedOnBehalf,
+      record.lmsEnteredAt !== undefined,
+      timestampToIso(record.lmsEnteredAt),
+      record.lmsEnteredByName,
       timestampToIso(record.createdAt),
       timestampToIso(record.updatedAt),
     ]);

@@ -2,10 +2,16 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { LoaderCircle } from "lucide-react";
 import { BARecordCard } from "./BARecordCard";
+import { isWithinBARecordDeleteWindow, useBARecordDeleteWindowNow } from "../lib/deletePermissions";
 
-export function BASkillsMyRecordsTab() {
+interface BASkillsMyRecordsTabProps {
+  canManageRecords?: boolean;
+}
+
+export function BASkillsMyRecordsTab({ canManageRecords = false }: BASkillsMyRecordsTabProps) {
   const records = useQuery(api.baRecords.listMyRecords, {});
   const me = useQuery(api.baRecords.getCurrentUser);
+  const now = useBARecordDeleteWindowNow();
 
   return (
     <div data-component="BASkillsMyRecordsTab">
@@ -25,7 +31,12 @@ export function BASkillsMyRecordsTab() {
                 <BARecordCard
                   key={record._id}
                   record={record}
-                  canDelete={!!me && record.submittedBy === me._id}
+                  canDelete={
+                    canManageRecords ||
+                    (!!me &&
+                      record.submittedBy === me._id &&
+                      isWithinBARecordDeleteWindow(record.createdAt, now))
+                  }
                 />
               ))}
             </div>

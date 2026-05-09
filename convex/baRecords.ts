@@ -1,4 +1,4 @@
-import { query, mutation, QueryCtx } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc } from "./_generated/dataModel";
@@ -7,6 +7,14 @@ const usageTypeValidator = v.union(
   v.literal("firecall"),
   v.literal("drill"),
 );
+
+const BA_RECORD_DELETE_WINDOW_MS = 15 * 60 * 1000;
+const RANK_ORDER = {
+  Probationary: 1,
+  Firefighter: 2,
+  Lieutenant: 3,
+  Captain: 4,
+} as const;
 
 const recordReturnValidator = v.object({
   _id: v.id("baRecords"),
@@ -22,6 +30,9 @@ const recordReturnValidator = v.object({
   submittedBy: v.id("users"),
   submitterName: v.string(),
   submittedOnBehalf: v.boolean(),
+  lmsEnteredAt: v.optional(v.number()),
+  lmsEnteredBy: v.optional(v.id("users")),
+  lmsEnteredByName: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -33,17 +44,46 @@ function userDisplayName(user: Doc<"users"> | null | undefined): string {
 }
 
 async function decorateRecord(ctx: QueryCtx, record: Doc<"baRecords">) {
-  const [member, verifier, submitter] = await Promise.all([
+  const [member, verifier, submitter, lmsEnteredBy] = await Promise.all([
     ctx.db.get(record.memberId),
     ctx.db.get(record.verifiedBy),
     ctx.db.get(record.submittedBy),
+    record.lmsEnteredBy ? ctx.db.get(record.lmsEnteredBy) : Promise.resolve(null),
   ]);
   return {
     ...record,
     memberName: userDisplayName(member),
     verifierName: userDisplayName(verifier),
     submitterName: userDisplayName(submitter),
+    lmsEnteredByName: record.lmsEnteredBy ? userDisplayName(lmsEnteredBy) : undefined,
   };
+}
+
+async function userHasModuleAccess(
+  ctx: QueryCtx | MutationCtx,
+  user: Doc<"users">,
+  moduleId: string,
+) {
+  if (user.isAdmin) return true;
+
+  const moduleSetting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
+    .first();
+
+  if (!moduleSetting || !moduleSetting.isEnabled) return false;
+  if (moduleSetting.adminOnly && !user.isAdmin) return false;
+
+  const requiredRoles = moduleSetting.requiredRoles ?? [];
+  const roleOk =
+    requiredRoles.length === 0 || requiredRoles.some((role) => (user.roles ?? []).includes(role));
+
+  const requiredRank = moduleSetting.minimumRank;
+  const rankOk =
+    requiredRank === undefined ||
+    (user.rank !== undefined && RANK_ORDER[user.rank] >= RANK_ORDER[requiredRank]);
+
+  return roleOk && rankOk;
 }
 
 /**
@@ -209,7 +249,7 @@ export const updateRecord = mutation({
 });
 
 /**
- * Delete a record. Submitter or admin only.
+ * Delete a record. BA Skills admin can delete any record; submitters can delete recent entries.
  */
 export const deleteRecord = mutation({
   args: { recordId: v.id("baRecords") },
@@ -224,11 +264,50 @@ export const deleteRecord = mutation({
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
 
-    if (record.submittedBy !== userId && !user.isAdmin) {
+    const canManageBARecords = await userHasModuleAccess(ctx, user, "baSkillsAdmin");
+
+    if (record.submittedBy !== userId && !canManageBARecords) {
       throw new Error("You can only delete records you submitted");
+    }
+    if (!canManageBARecords && Date.now() - record.createdAt > BA_RECORD_DELETE_WINDOW_MS) {
+      throw new Error("BA records can only be deleted within 15 minutes of being entered");
     }
 
     await ctx.db.delete(args.recordId);
+    return null;
+  },
+});
+
+/**
+ * Mark whether a BA usage record has been entered into CFA LMS. BA Skills admin only.
+ */
+export const setLmsEntered = mutation({
+  args: {
+    recordId: v.id("baRecords"),
+    entered: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("You must be signed in to update LMS status");
+
+    const record = await ctx.db.get(args.recordId);
+    if (!record) throw new Error("Record not found");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    const canManageBARecords = await userHasModuleAccess(ctx, user, "baSkillsAdmin");
+    if (!canManageBARecords) {
+      throw new Error("BA Skills admin access required");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.recordId, {
+      lmsEnteredAt: args.entered ? now : undefined,
+      lmsEnteredBy: args.entered ? userId : undefined,
+      updatedAt: now,
+    });
     return null;
   },
 });
@@ -252,13 +331,19 @@ export const listMembers = query({
           v.literal("Captain"),
         ),
       ),
+      skills: v.array(v.string()),
     }),
   ),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
-    const users = await ctx.db.query("users").collect();
+    const [users, skills] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("skills").collect(),
+    ]);
+    const skillMap = new Map(skills.map((skill) => [skill._id, skill.code]));
+
     return users
       .filter((u) => !u.isAnonymous && (u.firstName || u.lastName || u.name))
       .map((u) => ({
@@ -267,6 +352,9 @@ export const listMembers = query({
         firstName: u.firstName,
         lastName: u.lastName,
         rank: u.rank,
+        skills: (u.skills ?? [])
+          .map((skillId) => skillMap.get(skillId))
+          .filter((code): code is string => Boolean(code)),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   },

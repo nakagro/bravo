@@ -39,6 +39,7 @@ interface BARecord {
   submitterName: string;
   submittedBy: Id<"users">;
   submittedOnBehalf: boolean;
+  createdAt: number;
 }
 
 interface BARecordCardProps {

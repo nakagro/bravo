@@ -952,6 +952,8 @@ const applicationTables = {
     verifiedBy: v.id("users"), // REQUIRED: member who verifies this use (must differ from memberId)
     submittedBy: v.id("users"), // User who submitted this record (may differ from memberId)
     submittedOnBehalf: v.boolean(), // True if submitted by someone else on behalf of the member
+    lmsEnteredAt: v.optional(v.number()), // Timestamp when the record was entered into CFA LMS
+    lmsEnteredBy: v.optional(v.id("users")), // Training officer who marked the LMS entry complete
     createdAt: v.number(),
     updatedAt: v.number(),
   })
