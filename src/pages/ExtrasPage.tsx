@@ -53,6 +53,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/shortcuts",
     emoji: "⚡",
   },
+  {
+    title: "Action Center (Preview)",
+    description: "Static mockup of the planned Action Center — items needing your attention from every module.",
+    to: "/actions-preview",
+    emoji: "",
+  },
 ];
 
 export default function ExtrasPage() {

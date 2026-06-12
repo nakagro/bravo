@@ -146,11 +146,11 @@ export function EventDetailPage() {
     return (
       <div className="space-y-4 max-w-5xl" data-component="EventDetailPage">
         {backButton}
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-20 w-full rounded-lg" />
         <div className="grid gap-4 lg:grid-cols-3">
-          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
-          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-lg lg:col-span-2" />
+          <Skeleton className="h-64 rounded-lg" />
         </div>
       </div>
     );
@@ -277,7 +277,7 @@ export function EventDetailPage() {
       {/* Header — slim identity band. The left accent matches the list cards:
           red = active upcoming event, gray = past or cancelled */}
       <div
-        className={`bg-white dark:bg-gray-800 shadow-sm rounded-xl border-l-4 p-4 sm:p-5 ${
+        className={`bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden border-l-4 p-4 sm:p-5 ${
           isCancelled || isPast ? "border-gray-300 dark:border-gray-600" : "border-red-600"
         }`}
       >
@@ -336,7 +336,7 @@ export function EventDetailPage() {
 
       {/* RSVP — full-width card, consistent with the rest of the page */}
       {showRsvp && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div className="mb-3 sm:mb-0">
             <div className="text-sm font-bold text-gray-900 dark:text-white">Are you coming?</div>
 
@@ -350,7 +350,7 @@ export function EventDetailPage() {
       <div className="grid gap-4 lg:grid-cols-3 items-start">
         {/* Details — all the event information lives here as labelled sections */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 space-y-4">
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               {detailSection(
                 "When",
@@ -390,7 +390,7 @@ export function EventDetailPage() {
 
           {/* Who's coming — avatar chips for quick scanning */}
           {attendance && attendance.attending.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5">
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
                 Who&apos;s coming ({attendance.attending.length})
               </h3>
@@ -412,7 +412,7 @@ export function EventDetailPage() {
         </div>
 
         {/* Responses panel */}
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
               Responses
