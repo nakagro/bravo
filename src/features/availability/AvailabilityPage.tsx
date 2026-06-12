@@ -9,6 +9,7 @@ import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { PageTabs } from "@/components/shared/PageTabs";
+import { toast } from "sonner";
 
 type AvailabilityTab = "you" | "brigade" | "messages" | "deployment" | "admin";
 
@@ -112,6 +113,9 @@ function AvailabilityPage() {
       await updateStatus({ status: status as any, durationHours, nextStatus: nextStatus as any });
     } catch (error) {
       console.error("Error updating status:", error);
+      toast.error("Your status was NOT saved", {
+        description: "Check your connection and try again.",
+      });
     }
   };
   
@@ -123,6 +127,9 @@ function AvailabilityPage() {
       await updateStatus({ status: userStatus?.currentStatus || "available - station", dutyOfficerId: userId } as any);
     } catch (error) {
       console.error("Error updating duty officer:", error);
+      toast.error("Duty officer change was NOT saved", {
+        description: "Check your connection and try again.",
+      });
     }
   };
   
@@ -134,6 +141,9 @@ function AvailabilityPage() {
         setNewMessage('');
       } catch (error) {
         console.error("Error posting message:", error);
+        toast.error("Your message was NOT sent", {
+          description: "Check your connection and try again.",
+        });
       }
     }
   };
@@ -144,6 +154,9 @@ function AvailabilityPage() {
       await deleteMessage({ messageId });
     } catch (error) {
       console.error("Error deleting message:", error);
+      toast.error("Message was NOT deleted", {
+        description: "Check your connection and try again.",
+      });
     }
   };
   
@@ -153,6 +166,9 @@ function AvailabilityPage() {
       await updateMessage({ messageId, message });
     } catch (error) {
       console.error("Error updating message:", error);
+      toast.error("Message edit was NOT saved", {
+        description: "Check your connection and try again.",
+      });
     }
   };
   

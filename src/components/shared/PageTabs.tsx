@@ -24,6 +24,30 @@ export function PageTabs({ tabs, activeTab, onChange, ariaLabel = "Page tabs" }:
     }
   }, [activeTab]);
 
+  const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
+    let nextIndex: number;
+    switch (event.key) {
+      case "ArrowRight":
+        nextIndex = (index + 1) % tabs.length;
+        break;
+      case "ArrowLeft":
+        nextIndex = (index - 1 + tabs.length) % tabs.length;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const nextKey = tabs[nextIndex].key;
+    onChange(nextKey);
+    tabRefs.current[nextKey]?.focus();
+  };
+
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 relative">
       <nav
@@ -31,7 +55,7 @@ export function PageTabs({ tabs, activeTab, onChange, ariaLabel = "Page tabs" }:
         aria-label={ariaLabel}
         className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative"
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             key={tab.key}
             ref={(el) => {
@@ -41,8 +65,10 @@ export function PageTabs({ tabs, activeTab, onChange, ariaLabel = "Page tabs" }:
             id={`tab-${tab.key}`}
             aria-selected={activeTab === tab.key}
             aria-controls={`tabpanel-${tab.key}`}
+            tabIndex={activeTab === tab.key ? 0 : -1}
             onClick={() => onChange(tab.key)}
-            className={`relative py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
+            onKeyDown={(e) => handleKeyDown(e, index)}
+            className={`relative py-2 px-2 sm:px-3 min-h-[44px] text-sm transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? "text-red-600 dark:text-red-400 font-bold"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium"

@@ -26,6 +26,9 @@ export default defineConfig({
       },
       devOptions: {
         enabled: true, // enable PWA in dev for easier testing
+        // In dev, generateSW globs over dev-dist which only contains the SW
+        // itself, so workbox warns that the glob matches nothing — harmless
+        suppressWarnings: true,
       },
     }),
   ],

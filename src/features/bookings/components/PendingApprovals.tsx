@@ -21,6 +21,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
   const pendingApprovals = useQuery(api.bookings.getPendingApprovalsForMe);
   const approveBooking = useMutation(api.bookings.approveBooking);
   const rejectBooking = useMutation(api.bookings.rejectBooking);
+  const revertBooking = useMutation(api.bookings.revertBookingToPending);
 
   const [rejectingBookingId, setRejectingBookingId] = useState<Id<"bookings"> | null>(null);
   const rejectingBooking = pendingApprovals?.find((b) => b._id === rejectingBookingId);
@@ -28,7 +29,23 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
   const handleApprove = async (bookingId: Id<"bookings">) => {
     try {
       await approveBooking({ bookingId });
-      toast.success("Booking approved");
+      // One-tap approve gets an undo instead of a confirm dialog
+      toast.success("Booking approved", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            revertBooking({ bookingId })
+              .then(() => toast.info("Approval undone — booking is pending again"))
+              .catch((error) => {
+                console.error("Error undoing approval:", error);
+                toast.error("Failed to undo approval", {
+                  description:
+                    error instanceof Error ? error.message : "An unexpected error occurred.",
+                });
+              });
+          },
+        },
+      });
     } catch (error) {
       console.error("Error approving booking:", error);
       toast.error("Failed to approve booking", {
@@ -67,7 +84,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
         onConfirm={handleRejectConfirm}
       />
 
-      <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 shadow-sm rounded overflow-hidden border-l-4 border-amber-500">
+      <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 shadow-sm rounded-lg overflow-hidden border-l-4 border-amber-500">
         <div className="p-3 border-b border-amber-200 dark:border-amber-800">
           <h2 className="text-lg font-medium flex items-center text-amber-900 dark:text-amber-100">
             <ClockIcon className="h-5 w-5 mr-2" />
@@ -81,7 +98,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
           {pendingApprovals.map((booking) => (
             <div
               key={booking._id}
-              className="bg-white dark:bg-gray-800 rounded p-3 border border-amber-300 dark:border-amber-700"
+              className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-amber-300 dark:border-amber-700"
             >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1">
@@ -106,14 +123,14 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleApprove(booking._id)}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors flex items-center"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors flex items-center justify-center"
                   >
                     <CheckIcon className="h-4 w-4 mr-1" />
                     Approve
                   </button>
                   <button
                     onClick={() => setRejectingBookingId(booking._id)}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center justify-center"
                   >
                     <XMarkIcon className="h-4 w-4 mr-1" />
                     Reject

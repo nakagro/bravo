@@ -1,20 +1,30 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { format, addDays, startOfWeek, isToday, eachDayOfInterval, parse } from "date-fns";
+import { format, addDays, startOfWeek, isToday, eachDayOfInterval } from "date-fns";
 import { enAU } from "date-fns/locale";
-import { formatTime, formatUserName, parseBookingDate } from "../types";
+import { formatTime, formatUserName, formatStatus, parseBookingDate, getTodayStr } from "../types";
 import { BookingEditForm } from "./BookingEditForm";
+import { BookingRequestForm } from "./BookingRequestForm";
+import { DateBadge, StatusBadge } from "./badges";
 import { EmptyState } from "../../../components/shared/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CalendarDaysIcon,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
   InboxIcon,
   PencilSquareIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 
 interface ScheduleTabProps {
@@ -26,6 +36,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
   const isMobile = useIsMobile();
   const [selectedResource, setSelectedResource] = useState<Id<"bookingResources"> | 'all'>('all');
   const [editingBookingId, setEditingBookingId] = useState<Id<"bookings"> | null>(null);
+  const [bookingFormDate, setBookingFormDate] = useState<string | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const targetDate = initialDate ? parseBookingDate(initialDate) : new Date();
     return startOfWeek(targetDate, { weekStartsOn: 1 });
@@ -89,6 +100,22 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
+  // Swipe left/right on the calendar area changes weeks
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      navigateWeek(dx < 0 ? 'next' : 'prev');
+    }
+  };
+
   // Format booking display info (user or reason for blocked)
   const formatBookingInfo = (booking: any) => {
     if (booking.isBlocked) {
@@ -97,9 +124,16 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
     return formatUserName(booking.requestedByUser);
   };
 
+  // Stripes for blocked: the calendar idiom for "unavailable", keeping red
+  // for actions and genuine errors
+  const blockedClasses =
+    'bg-gray-100 dark:bg-gray-700/60 border-gray-400 dark:border-gray-500 ' +
+    '[background-image:repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.05)_4px,rgba(0,0,0,0.05)_8px)] ' +
+    'dark:[background-image:repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_8px)]';
+
   const getStatusClasses = (status: string, isBlocked?: boolean) => {
     if (isBlocked) {
-      return 'bg-red-50 dark:bg-red-900/30 border-red-400 dark:border-red-600';
+      return blockedClasses;
     }
     switch (status) {
       case 'pending':
@@ -111,7 +145,10 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
     }
   };
 
-  const getStatusTextClasses = (status: string) => {
+  const getStatusTextClasses = (status: string, isBlocked?: boolean) => {
+    if (isBlocked) {
+      return 'text-gray-700 dark:text-gray-200';
+    }
     switch (status) {
       case 'pending':
         return 'text-yellow-800 dark:text-yellow-200';
@@ -123,6 +160,8 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
   };
 
   const weekRangeLabel = `${weekDays[0].dayNum} ${weekDays[0].monthName} - ${weekDays[6].dayNum} ${weekDays[6].monthName}`;
+  const isLoadingBookings = bookings === undefined;
+  const today = getTodayStr();
 
   return (
     <>
@@ -134,64 +173,71 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
         />
       )}
 
-      {/* Header with navigation */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="text-lg font-medium flex items-center">
-              <CalendarDaysIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-              Booking Schedule
-            </h2>
-            
-            <div className="flex items-center gap-2">
-              <label htmlFor="resourceFilter" className="text-sm font-medium whitespace-nowrap">Filter:</label>
-              <select
-                id="resourceFilter"
-                value={selectedResource}
-                onChange={(e) => setSelectedResource(e.target.value as Id<"bookingResources"> | 'all')}
-                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-sm"
-              >
-                <option value="all">All resources</option>
-                {activeResources?.map((resource) => (
-                  <option key={resource._id} value={resource._id}>
-                    {resource.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-3">
+      {/* Booking Request Modal - opened by tapping a day */}
+      {bookingFormDate && (
+        <BookingRequestForm
+          initialDate={bookingFormDate}
+          initialResourceId={selectedResource === 'all' ? undefined : selectedResource}
+          onClose={() => setBookingFormDate(null)}
+        />
+      )}
+
+      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+        <div className="p-3 space-y-3">
           {/* Week navigation */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <button
               onClick={() => navigateWeek('prev')}
-              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm"
+              aria-label="Previous week"
+              className="px-3 py-2.5 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
-              <ChevronLeftIcon className="h-4 w-4" />
+              <ChevronLeftIcon className="h-5 w-5" />
               {!isMobile && <span className="ml-1">Previous</span>}
             </button>
-            
+
             <div className="flex items-center gap-2">
               <span className={`font-semibold ${isMobile ? 'text-sm' : 'text-base'}`}>{weekRangeLabel}</span>
               <button
                 onClick={goToToday}
-                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                className="px-3 py-2.5 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 Today
               </button>
             </div>
-            
+
             <button
               onClick={() => navigateWeek('next')}
-              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm"
+              aria-label="Next week"
+              className="px-3 py-2.5 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
               {!isMobile && <span className="mr-1">Next</span>}
-              <ChevronRightIcon className="h-4 w-4" />
+              <ChevronRightIcon className="h-5 w-5" />
             </button>
           </div>
 
+          {/* Resource filter */}
+          <Select
+            value={selectedResource}
+            onValueChange={(value) => setSelectedResource(value as Id<"bookingResources"> | 'all')}
+          >
+            <SelectTrigger
+              aria-label="Filter by resource"
+              className="w-full sm:w-72 h-11 text-base sm:text-sm rounded-lg"
+            >
+              <SelectValue placeholder="All resources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All resources</SelectItem>
+              {activeResources?.map((resource) => (
+                <SelectItem key={resource._id} value={resource._id}>
+                  {resource.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="p-3 pt-0" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {/* Desktop: Week grid */}
           {!isMobile && (
             <div className="grid grid-cols-7 gap-1">
@@ -199,7 +245,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               {weekDays.map((day) => (
                 <div
                   key={day.dateStr}
-                  className={`text-center p-2 rounded-t border-b-2 ${
+                  className={`text-center p-2 rounded-t-lg border-b-2 ${
                     day.isToday
                       ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
                       : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
@@ -215,49 +261,60 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               {/* Day content */}
               {weekDays.map((day) => {
                 const dayBookings = bookingsByDate[day.dateStr] || [];
-                
+                const isPast = day.dateStr < today;
+
                 return (
                   <div
                     key={`content-${day.dateStr}`}
-                    className={`min-h-[100px] p-1 border rounded-b ${
+                    className={`min-h-[100px] p-1 border rounded-b-lg flex flex-col ${
                       day.isToday
                         ? 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10'
                         : 'border-gray-200 dark:border-gray-700'
                     }`}
                   >
-                    {dayBookings.length === 0 ? (
-                      <div className="h-full flex items-center justify-center">
-                        <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
-                      </div>
+                    {isLoadingBookings ? (
+                      <Skeleton className="h-10 w-full rounded" />
                     ) : (
-                      <div className="space-y-1">
+                      <div className="space-y-1 flex-1">
                         {dayBookings.map((booking) => (
                           <div
                             key={`${booking._id}-${day.dateStr}`}
                             onClick={() => isAdmin && setEditingBookingId(booking._id)}
                             className={`p-1.5 rounded text-xs border-l-2 ${getStatusClasses(booking.status, booking.isBlocked)} ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-red-300 dark:hover:ring-red-700 transition-all' : ''}`}
                           >
-                            <div className={`font-medium truncate ${getStatusTextClasses(booking.status)}`}>
+                            <div className={`font-medium truncate ${getStatusTextClasses(booking.status, booking.isBlocked)}`}>
                               {booking.resource?.name}
                             </div>
+                            <div className={`text-[11px] font-semibold ${getStatusTextClasses(booking.status, booking.isBlocked)}`}>
+                              {booking.isBlocked ? 'Blocked' : formatStatus(booking.status)}
+                            </div>
                             {booking.isAllDay ? (
-                              <div className="text-[10px] opacity-75">All day</div>
+                              <div className="text-[11px] opacity-75">All day</div>
                             ) : booking.startTime && booking.endTime ? (
-                              <div className="text-[10px] opacity-75 flex items-center gap-0.5">
+                              <div className="text-[11px] opacity-75 flex items-center gap-0.5">
                                 <ClockIcon className="h-3 w-3" />
                                 {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                               </div>
                             ) : null}
-                            <div className="text-[10px] opacity-75 truncate">
+                            <div className="text-[11px] opacity-75 truncate">
                               {formatBookingInfo(booking)}
                             </div>
                             {!booking.isBlocked && booking.notes && (
-                              <div className="text-[10px] opacity-60 truncate italic">
+                              <div className="text-[11px] opacity-60 truncate italic">
                                 {booking.notes}
                               </div>
                             )}
                           </div>
                         ))}
+                        {!isPast && (
+                          <button
+                            onClick={() => setBookingFormDate(day.dateStr)}
+                            aria-label={`Book ${day.dayName} ${day.dayNum} ${day.monthName}`}
+                            className="w-full py-1 rounded text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
+                          >
+                            <PlusIcon className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -267,15 +324,23 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
           )}
 
           {/* Mobile: Day-by-day list view */}
-          {isMobile && (
+          {isMobile && isLoadingBookings && (
+            <div className="space-y-2">
+              {weekDays.map((day) => (
+                <Skeleton key={day.dateStr} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          )}
+          {isMobile && !isLoadingBookings && (
             <div className="space-y-2">
               {weekDays.map((day) => {
                 const dayBookings = bookingsByDate[day.dateStr] || [];
-                
+                const isPast = day.dateStr < today;
+
                 return (
                   <div
                     key={day.dateStr}
-                    className={`rounded border overflow-hidden ${
+                    className={`rounded-lg border overflow-hidden ${
                       day.isToday
                         ? 'border-red-300 dark:border-red-700'
                         : 'border-gray-200 dark:border-gray-700'
@@ -283,7 +348,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                   >
                     {/* Day header */}
                     <div
-                      className={`flex items-center justify-between px-3 py-2 ${
+                      className={`flex items-center justify-between pl-3 pr-1 py-1 ${
                         day.isToday
                           ? 'bg-red-50 dark:bg-red-900/20'
                           : 'bg-gray-50 dark:bg-gray-700/50'
@@ -302,28 +367,37 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {dayBookings.length} {dayBookings.length === 1 ? 'booking' : 'bookings'}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {dayBookings.length > 0 && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {dayBookings.length} {dayBookings.length === 1 ? 'booking' : 'bookings'}
+                          </span>
+                        )}
+                        {!isPast && (
+                          <button
+                            onClick={() => setBookingFormDate(day.dateStr)}
+                            aria-label={`Book ${day.dayName} ${day.dayNum} ${day.monthName}`}
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 active:bg-red-50 dark:active:bg-red-900/20 transition-colors"
+                          >
+                            <PlusIcon className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    
-                    {/* Day bookings */}
-                    <div className="p-2">
-                      {dayBookings.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                          No bookings
-                        </p>
-                      ) : (
+
+                    {/* Day bookings (collapsed entirely when empty) */}
+                    {dayBookings.length > 0 && (
+                      <div className="p-2">
                         <div className="space-y-2">
                           {dayBookings.map((booking) => (
                             <div
                               key={`${booking._id}-${day.dateStr}`}
                               onClick={() => isAdmin && setEditingBookingId(booking._id)}
-                              className={`p-3 rounded border-l-4 ${getStatusClasses(booking.status, booking.isBlocked)} ${isAdmin ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
+                              className={`p-3 rounded-lg border-l-4 ${getStatusClasses(booking.status, booking.isBlocked)} ${isAdmin ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <div className={`font-medium ${getStatusTextClasses(booking.status)}`}>
+                                  <div className={`font-medium ${getStatusTextClasses(booking.status, booking.isBlocked)}`}>
                                     {booking.resource?.name}
                                   </div>
                                   <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1 mt-0.5">
@@ -346,16 +420,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                  {booking.status === 'pending' && (
-                                    <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
-                                      Pending
-                                    </span>
-                                  )}
-                                  {booking.isBlocked && (
-                                    <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-                                      Blocked
-                                    </span>
-                                  )}
+                                  <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
                                   {isAdmin && (
                                     <PencilSquareIcon className="h-4 w-4 text-gray-400" />
                                   )}
@@ -364,8 +429,8 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -374,37 +439,29 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded p-3">
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          <span className="font-medium">Legend:</span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-green-50 dark:bg-green-900/30 border-l-2 border-green-400 dark:border-green-600"></div>
-            <span className="text-gray-600 dark:text-gray-400">Approved</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-900/30 border-l-2 border-yellow-400 dark:border-yellow-600"></div>
-            <span className="text-gray-600 dark:text-gray-400">Pending</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-red-50 dark:bg-red-900/30 border-l-2 border-red-400 dark:border-red-600"></div>
-            <span className="text-gray-600 dark:text-gray-400">Blocked</span>
-          </div>
-        </div>
-      </div>
-
       {/* Upcoming bookings list - only show on desktop */}
       {!isMobile && (
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium flex items-center">
-              <ClockIcon className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               This Week's Bookings
             </h3>
           </div>
-          
+
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {!bookings || bookings.length === 0 ? (
+            {isLoadingBookings ? (
+              <div className="p-3 space-y-4">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-14 w-[50px] rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : bookings.length === 0 ? (
               <EmptyState
                 icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
                 title="No bookings scheduled for this week"
@@ -417,12 +474,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="text-center min-w-[50px]">
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {format(parseBookingDate(booking.startDate), "EEE", { locale: enAU })}
-                          </div>
-                          <div className="text-lg font-bold">{parseBookingDate(booking.startDate).getDate()}</div>
-                        </div>
+                        <DateBadge dateStr={booking.startDate} />
                         <div>
                           <div className="font-medium">{booking.resource?.name}</div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -444,15 +496,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                           )}
                         </div>
                       </div>
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        booking.isBlocked
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-                          : booking.status === 'approved' 
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
-                      }`}>
-                        {booking.isBlocked ? 'Blocked' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                      </span>
+                      <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
                     </div>
                   </div>
               ))

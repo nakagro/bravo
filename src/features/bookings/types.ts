@@ -1,5 +1,18 @@
 import { parse, format } from "date-fns";
 import { enAU } from "date-fns/locale";
+import { ConvexError } from "convex/values";
+
+// Extract the clean conflict message from a structured booking error,
+// or null if the error is not a booking conflict
+export function getBookingConflictMessage(error: unknown): string | null {
+  if (error instanceof ConvexError) {
+    const data = error.data as { code?: string; message?: string } | string;
+    if (typeof data === "object" && data?.code === "BOOKING_CONFLICT" && data.message) {
+      return data.message;
+    }
+  }
+  return null;
+}
 
 // Booking status values
 export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
@@ -40,6 +53,12 @@ export function formatUserName(
 // Parse a YYYY-MM-DD string to a local Date (avoids timezone issues)
 export function parseBookingDate(dateStr: string): Date {
   return parse(dateStr, "yyyy-MM-dd", new Date());
+}
+
+// Today as a YYYY-MM-DD string in the user's local timezone
+// (toISOString() is UTC and lags AEST by ~10 hours)
+export function getTodayStr(): string {
+  return format(new Date(), "yyyy-MM-dd");
 }
 
 // Format a YYYY-MM-DD string for display: "Mon 1 Jan"

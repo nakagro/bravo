@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
@@ -16,30 +16,32 @@ export function BookingsPage() {
   const currentUser = useQuery(api.auth.loggedInUser);
   const isAdmin = currentUser?.isAdmin || false;
 
+  const pendingApprovals = useQuery(api.bookings.getPendingApprovalsForMe);
+  const pendingCount = pendingApprovals?.length ?? 0;
+
   const dateFromUrl = searchParams.get("date");
 
-  // Get initial tab from URL or default to bookings
-  const getInitialTab = (): BookingTab => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && bookingTabs.some((t) => t.key === urlTab)) {
-      return urlTab as BookingTab;
-    }
-    return "bookings";
-  };
+  // The URL is the single source of truth for the active tab, so in-app
+  // navigation (e.g. "View in Schedule") and back/forward both work
+  const urlTab = searchParams.get("tab");
+  const activeTab: BookingTab =
+    urlTab && bookingTabs.some((t) => t.key === urlTab) ? (urlTab as BookingTab) : "bookings";
 
-  const [activeTab, setActiveTab] = useState<BookingTab>(getInitialTab);
-
-  // Sync URL with tab state
   const handleTabChange = useCallback(
     (tab: string) => {
-      setActiveTab(tab as BookingTab);
       setSearchParams(tab === "bookings" ? {} : { tab }, { replace: true });
     },
     [setSearchParams]
   );
 
-  // Filter tabs based on admin status
-  const visibleTabs = isAdmin ? bookingTabs : bookingTabs.filter((t) => t.key !== "admin");
+  // Filter tabs based on admin status, with the approvals badge on My Bookings
+  const visibleTabs = useMemo(
+    () =>
+      bookingTabs
+        .filter((t) => isAdmin || t.key !== "admin")
+        .map((t) => (t.key === "bookings" ? { ...t, badgeCount: pendingCount } : t)),
+    [isAdmin, pendingCount]
+  );
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
@@ -77,7 +79,11 @@ export function BookingsPage() {
           {activeTab === "bookings" && <BookingsTab />}
 
           {activeTab === "schedule" && (
-            <ScheduleTab isAdmin={isAdmin} initialDate={dateFromUrl || undefined} />
+            <ScheduleTab
+              key={dateFromUrl ?? "current"}
+              isAdmin={isAdmin}
+              initialDate={dateFromUrl || undefined}
+            />
           )}
 
           {activeTab === "admin" && isAdmin && <AdminTab />}

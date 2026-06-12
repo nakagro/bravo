@@ -5,16 +5,8 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
-import {
-  formatUserName,
-  formatTime,
-  getStatusBadgeClasses,
-  formatStatus,
-  formatWeekday,
-  formatMonth,
-  getDayNum,
-  formatShortDate,
-} from "../types";
+import { formatUserName, formatTime, formatShortDate } from "../types";
+import { DateBadge, StatusBadge } from "./badges";
 import { ResourceForm } from "./ResourceForm";
 import { PendingApprovals } from "./PendingApprovals";
 import { EmptyState } from "../../../components/shared/EmptyState";
@@ -83,7 +75,7 @@ export function AdminTab() {
       <PendingApprovals title="Pending Approvals" />
 
       {/* Manage Resources Section */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 className="text-lg font-medium flex items-center">
             <ArchiveBoxIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
@@ -215,7 +207,7 @@ export function AdminTab() {
       </div>
 
       {/* Recent Bookings Section */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium flex items-center">
             <CalendarDaysIcon className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
@@ -233,27 +225,14 @@ export function AdminTab() {
               title="No bookings have been made yet"
             />
           ) : (
-            [...allBookings]
-              .sort((a, b) => b.createdAt - a.createdAt)
-              .slice(0, 10)
-              .map((booking) => (
+            allBookings.map((booking) => (
                   <div
                     key={booking._id}
                     className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       {/* Date badge */}
-                      <div className="text-center min-w-[50px] bg-gray-100 dark:bg-gray-700 rounded-lg py-1.5 px-2">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          {formatWeekday(booking.startDate)}
-                        </div>
-                        <div className="text-xl font-bold text-gray-900 dark:text-white">
-                          {getDayNum(booking.startDate)}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                          {formatMonth(booking.startDate)}
-                        </div>
-                      </div>
+                      <DateBadge dateStr={booking.startDate} />
 
                       {/* Booking details */}
                       <div className="flex-1 min-w-0">
@@ -263,11 +242,7 @@ export function AdminTab() {
                             <span className="font-semibold text-gray-900 dark:text-white">
                               {booking.resource?.name}
                             </span>
-                            <span
-                              className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadgeClasses(booking.status)}`}
-                            >
-                              {formatStatus(booking.status)}
-                            </span>
+                            <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
                           </div>
                           <button
                             onClick={() =>

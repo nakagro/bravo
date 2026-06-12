@@ -8,13 +8,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DatePicker } from "../../../components/shared/DatePicker";
-import { formatUserName, formatSummaryDate } from "../types";
+import { formatUserName, formatSummaryDate, formatTime, getBookingConflictMessage } from "../types";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  CalendarDaysIcon,
   ClockIcon,
   UserIcon,
   MagnifyingGlassIcon,
@@ -33,7 +40,8 @@ const bookingRequestSchema = z
     endTime: z.string(),
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
-    notes: z.string().min(1, "Please provide a reason for booking"),
+    // Required only for bookings that need approval; enforced in onSubmit
+    notes: z.string(),
   })
   .refine((data) => !data.isMultiDay || data.endDate.length > 0, {
     message: "Please select an end date",
@@ -53,9 +61,11 @@ type BookingRequestValues = z.infer<typeof bookingRequestSchema>;
 
 interface BookingRequestFormProps {
   onClose: () => void;
+  initialDate?: string;
+  initialResourceId?: Id<"bookingResources">;
 }
 
-export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
+export function BookingRequestForm({ onClose, initialDate, initialResourceId }: BookingRequestFormProps) {
   const isMobile = useIsMobile();
   const activeResources = useQuery(api.bookings.getActiveBookingResources);
   const allUsers = useQuery(api.bookings.getAllUsers);
@@ -66,13 +76,12 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
   const [onBehalfOf, setOnBehalfOf] = useState<Id<"users"> | "__blocked__" | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   const form = useForm<BookingRequestValues>({
     resolver: zodResolver(bookingRequestSchema),
     defaultValues: {
-      resourceId: "",
-      startDate: "",
+      resourceId: initialResourceId ?? "",
+      startDate: initialDate ?? "",
       endDate: "",
       startTime: "",
       endTime: "",
@@ -87,9 +96,6 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
   const watchStartDate = form.watch("startDate");
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
-  const watchNotes = form.watch("notes");
-  const watchStartTime = form.watch("startTime");
-  const watchEndTime = form.watch("endTime");
   const watchEndDate = form.watch("endDate");
 
   // Filter resources based on permissions
@@ -117,9 +123,28 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
     return bookableResources.find((r) => r._id === watchResourceId);
   }, [watchResourceId, bookableResources]);
 
-  const selectedResourceName = activeResources?.find((r) => r._id === watchResourceId)?.name;
+  // Bookings by approvers/admins are auto-approved, so a reason is optional for them
+  const willAutoApprove = Boolean(
+    selectedResourceInfo && (selectedResourceInfo.isApprover || selectedResourceInfo.isAdmin)
+  );
+
+  // Live availability for the selected resource and date range, so the user
+  // sees clashes before submitting instead of via a rejection error
+  const availabilityArgs =
+    watchResourceId && watchStartDate
+      ? {
+          startDate: watchStartDate,
+          endDate: (watchIsMultiDay && watchEndDate) || watchStartDate,
+          resourceId: watchResourceId as Id<"bookingResources">,
+        }
+      : "skip";
+  const existingBookingsForDate = useQuery(api.bookings.getBookingsForDateRange, availabilityArgs);
 
   const onSubmit = async (values: BookingRequestValues) => {
+    if (!willAutoApprove && !values.notes.trim()) {
+      form.setError("notes", { message: "Please provide a reason for booking" });
+      return;
+    }
     try {
       const isBlocked = onBehalfOf === "__blocked__";
       await createBooking({
@@ -129,7 +154,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
         startTime: values.isAllDay ? undefined : values.startTime,
         endTime: values.isAllDay ? undefined : values.endTime,
         isAllDay: values.isAllDay,
-        notes: values.notes.trim(),
+        notes: values.notes.trim() || undefined,
         onBehalfOf:
           onBehalfOf && onBehalfOf !== "__blocked__" ? (onBehalfOf as Id<"users">) : undefined,
         isBlocked,
@@ -154,13 +179,13 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
       onClose();
     } catch (error) {
       console.error("Error creating booking:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred.";
-      if (errorMessage.includes("already booked") || errorMessage.includes("conflict")) {
-        setConflictError(errorMessage);
-        setShowErrorDetails(false);
+      const conflictMessage = getBookingConflictMessage(error);
+      if (conflictMessage) {
+        setConflictError(conflictMessage);
       } else {
-        toast.error("Failed to create booking", { description: errorMessage });
+        toast.error("Failed to create booking", {
+          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        });
       }
     }
   };
@@ -177,22 +202,23 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 What do you want to book?
               </FormLabel>
-              <FormControl>
-                <select
-                  {...field}
-                  className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Select a resource...</option>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="h-12 px-4 text-base rounded-lg">
+                    <SelectValue placeholder="Select a resource..." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
                   {bookableResources
                     ?.filter((r) => r.canBook)
                     .map((resource) => (
-                      <option key={resource._id} value={resource._id}>
+                      <SelectItem key={resource._id} value={resource._id}>
                         {resource.name}
                         {resource.approverOnly ? " 🔒" : ""}
-                      </option>
+                      </SelectItem>
                     ))}
-                </select>
-              </FormControl>
+                </SelectContent>
+              </Select>
               <FormMessage />
               {selectedResourceInfo?.approverOnly && (
                 <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -285,30 +311,65 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
               />
             )}
 
+            {/* Existing bookings for the selected date(s) */}
+            {watchStartDate && existingBookingsForDate !== undefined && (
+              <div
+                className={`p-3 rounded-lg border text-sm ${
+                  existingBookingsForDate.length === 0
+                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300"
+                    : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                }`}
+              >
+                {existingBookingsForDate.length === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <CheckIcon className="h-4 w-4 flex-shrink-0" />
+                    <span>No existing bookings — this resource is free on the selected date{watchIsMultiDay ? "s" : ""}.</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-medium text-amber-800 dark:text-amber-200 mb-1.5">
+                      Already booked during this period:
+                    </p>
+                    <ul className="space-y-1 text-amber-700 dark:text-amber-300">
+                      {existingBookingsForDate.map((b) => (
+                        <li key={b._id} className="flex items-center gap-1.5">
+                          <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                          <span>
+                            {formatSummaryDate(b.startDate)}
+                            {b.endDate && b.endDate !== b.startDate && ` - ${formatSummaryDate(b.endDate)}`}
+                            {": "}
+                            {b.isAllDay || !b.startTime || !b.endTime
+                              ? "All day"
+                              : `${formatTime(b.startTime)} - ${formatTime(b.endTime)}`}
+                            {b.status === "pending" && " (awaiting approval)"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* All Day Toggle */}
             <FormField
               control={form.control}
               name="isAllDay"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       All day
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(!field.value)}
-                      className={`relative w-12 h-7 rounded-full transition-colors ${
-                        field.value ? "bg-red-600" : "bg-gray-300 dark:bg-gray-600"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                          field.value ? "translate-x-5" : "translate-x-0"
-                        }`}
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="All day"
+                        className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
                       />
-                    </button>
-                  </div>
+                    </FormControl>
+                  </label>
                 </FormItem>
               )}
             />
@@ -332,7 +393,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
                             setConflictError(null);
                           }}
                           type="time"
-                          className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -355,7 +416,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
                             setConflictError(null);
                           }}
                           type="time"
-                          className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -376,12 +437,7 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
             {conflictError && (
               <ConflictErrorBanner
                 conflictError={conflictError}
-                showDetails={showErrorDetails}
-                onToggleDetails={() => setShowErrorDetails(!showErrorDetails)}
-                onDismiss={() => {
-                  setConflictError(null);
-                  setShowErrorDetails(false);
-                }}
+                onDismiss={() => setConflictError(null)}
               />
             )}
           </div>
@@ -395,14 +451,14 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
             render={({ field }) => (
               <FormItem className="pt-4 border-t border-gray-100 dark:border-gray-700">
                 <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Reason for booking
+                  Reason for booking{willAutoApprove ? " (optional)" : ""}
                 </FormLabel>
                 <FormControl>
                   <textarea
                     {...field}
                     rows={3}
                     placeholder="e.g., Training exercise, Community event, Equipment transport..."
-                    className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                    className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </FormControl>
                 <FormMessage />
@@ -572,44 +628,12 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
           </div>
         )}
 
-        {/* Summary */}
-        {watchResourceId && watchStartDate && watchNotes.trim() && (
-          <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Booking Summary
-              </h4>
-              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <p>
-                  <span className="font-medium">Resource:</span> {selectedResourceName}
-                </p>
-                <p className="flex items-center gap-1">
-                  <CalendarDaysIcon className="h-4 w-4" />
-                  <span className="font-medium">Date:</span>{" "}
-                  {formatSummaryDate(watchStartDate)}
-                  {watchIsMultiDay && watchEndDate && ` - ${formatSummaryDate(watchEndDate)}`}
-                </p>
-                {!watchIsAllDay && watchStartTime && watchEndTime && (
-                  <p className="flex items-center gap-1">
-                    <ClockIcon className="h-4 w-4" />
-                    <span className="font-medium">Time:</span> {watchStartTime} - {watchEndTime}
-                  </p>
-                )}
-                {watchIsAllDay && (
-                  <p>
-                    <span className="font-medium">Duration:</span> All day
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </form>
     </Form>
   );
 
   const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <div className="flex gap-3 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
       <Button
         type="button"
         variant="outline"
@@ -646,80 +670,24 @@ export function BookingRequestForm({ onClose }: BookingRequestFormProps) {
 
 function ConflictErrorBanner({
   conflictError,
-  showDetails,
-  onToggleDetails,
   onDismiss,
 }: {
   conflictError: string;
-  showDetails: boolean;
-  onToggleDetails: () => void;
   onDismiss: () => void;
 }) {
-  // Extract clean message from Convex error
-  let cleanMessage = conflictError;
-  const uncaughtMatch = conflictError.match(/Uncaught Error:\s*(.+?)(?:\s+at\s+handler|$)/i);
-  if (uncaughtMatch) {
-    cleanMessage = uncaughtMatch[1].trim();
-  } else {
-    const alreadyBookedMatch = conflictError.match(
-      /(This resource is already booked[^.]+\.)/i
-    );
-    if (alreadyBookedMatch) {
-      cleanMessage = alreadyBookedMatch[1];
-    }
-  }
-
   return (
-    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+    <div
+      role="alert"
+      className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+    >
       <div className="flex items-start gap-2">
-        <svg
-          className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
+        <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1">
           <p className="text-sm font-medium text-red-800 dark:text-red-200">Booking Conflict</p>
-          <p className="text-sm text-red-700 dark:text-red-300 mt-1">{cleanMessage}</p>
+          <p className="text-sm text-red-700 dark:text-red-300 mt-1">{conflictError}</p>
           <p className="text-xs text-red-600 dark:text-red-400 mt-2">
             Please choose a different date or time.
           </p>
-          {conflictError !== cleanMessage && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={onToggleDetails}
-                className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
-              >
-                <svg
-                  className={`h-3 w-3 transition-transform ${showDetails ? "rotate-90" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-                {showDetails ? "Hide" : "Show"} technical details
-              </button>
-              {showDetails && (
-                <pre className="mt-2 p-2 bg-red-100 dark:bg-red-900/40 rounded text-xs text-red-600 dark:text-red-300 overflow-x-auto whitespace-pre-wrap break-all">
-                  {conflictError}
-                </pre>
-              )}
-            </div>
-          )}
         </div>
       </div>
       <button

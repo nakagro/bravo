@@ -8,10 +8,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
 import { DatePicker } from "../../../components/shared/DatePicker";
-import { formatUserName } from "../types";
+import { formatUserName, getBookingConflictMessage } from "../types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TrashIcon, UserIcon } from "@heroicons/react/24/outline";
 
@@ -50,10 +58,8 @@ interface BookingEditFormProps {
 export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
   const isMobile = useIsMobile();
   const activeResources = useQuery(api.bookings.getActiveBookingResources);
-  const allBookings = useQuery(api.bookings.getBookings);
+  const existingBooking = useQuery(api.bookings.getBooking, { bookingId });
   const updateBooking = useMutation(api.bookings.updateBooking);
-
-  const existingBooking = allBookings?.find((b) => b._id === bookingId);
 
   const form = useForm<BookingEditValues>({
     resolver: zodResolver(bookingEditSchema),
@@ -110,8 +116,11 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
       onClose();
     } catch (error) {
       console.error("Error updating booking:", error);
-      toast.error("Failed to update booking", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      const conflictMessage = getBookingConflictMessage(error);
+      toast.error(conflictMessage ? "Booking conflict" : "Failed to update booking", {
+        description:
+          conflictMessage ??
+          (error instanceof Error ? error.message : "An unexpected error occurred."),
       });
     }
   };
@@ -162,17 +171,19 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Status
               </FormLabel>
-              <FormControl>
-                <select
-                  {...field}
-                  className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </FormControl>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="h-12 px-4 text-base rounded-lg">
+                    <SelectValue placeholder="Select status..." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -187,19 +198,20 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Resource
               </FormLabel>
-              <FormControl>
-                <select
-                  {...field}
-                  className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Select a resource...</option>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger className="h-12 px-4 text-base rounded-lg">
+                    <SelectValue placeholder="Select a resource..." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
                   {activeResources?.map((resource) => (
-                    <option key={resource._id} value={resource._id}>
+                    <SelectItem key={resource._id} value={resource._id}>
                       {resource.name}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-              </FormControl>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -278,24 +290,19 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
           name="isAllDay"
           render={({ field }) => (
             <FormItem>
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   All day
                 </span>
-                <button
-                  type="button"
-                  onClick={() => field.onChange(!field.value)}
-                  className={`relative w-12 h-7 rounded-full transition-colors ${
-                    field.value ? "bg-red-600" : "bg-gray-300 dark:bg-gray-600"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                      field.value ? "translate-x-5" : "translate-x-0"
-                    }`}
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="All day"
+                    className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
                   />
-                </button>
-              </div>
+                </FormControl>
+              </label>
             </FormItem>
           )}
         />
@@ -315,7 +322,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                     <input
                       {...field}
                       type="time"
-                      className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
                   </FormControl>
                   <FormMessage />
@@ -334,7 +341,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                     <input
                       {...field}
                       type="time"
-                      className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
                   </FormControl>
                   <FormMessage />
@@ -358,7 +365,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                   {...field}
                   rows={3}
                   placeholder="e.g., Training exercise, Community event..."
-                  className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                  className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </FormControl>
               <FormMessage />
@@ -390,7 +397,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
   );
 
   const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <div className="flex gap-3 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
       <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
         Cancel
       </Button>

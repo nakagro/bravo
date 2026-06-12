@@ -21,6 +21,7 @@ import {
   hasServiceToken,
 } from "./features/serviceAccounts/ServiceAccountContext";
 import { ConvexDebugObserver } from "./components/debug/ConvexDebugObserver";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
 const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
@@ -73,19 +74,27 @@ function RouteLoading() {
 }
 
 function RouteSuspense({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<RouteLoading />}>{children}</Suspense>;
+  const location = useLocation();
+  return (
+    // Keyed by pathname so a crashed page resets when the user navigates away
+    <ErrorBoundary key={location.pathname}>
+      <Suspense fallback={<RouteLoading />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ConvexDebugObserver />
-      <BrowserRouter>
-        <ServiceAccountProvider>
-          <ServiceAccountGate />
-        </ServiceAccountProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ConvexDebugObserver />
+        <BrowserRouter>
+          <ServiceAccountProvider>
+            <ServiceAccountGate />
+          </ServiceAccountProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
