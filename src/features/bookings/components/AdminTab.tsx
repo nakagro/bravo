@@ -6,7 +6,8 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { formatUserName, formatTime, formatShortDate } from "../types";
-import { DateBadge, StatusBadge } from "./badges";
+import { DateBadge, StatusBadge, SectionHeader } from "./badges";
+import { ClampedText } from "./ClampedText";
 import { ResourceForm } from "./ResourceForm";
 import { PendingApprovals } from "./PendingApprovals";
 import { EmptyState } from "../../../components/shared/EmptyState";
@@ -14,7 +15,6 @@ import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDia
 import {
   PlusIcon,
   InboxIcon,
-  CalendarDaysIcon,
   ArchiveBoxIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -62,7 +62,7 @@ export function AdminTab() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
       {/* Resource Form Modal */}
       {showResourceForm && (
         <ResourceForm
@@ -74,114 +74,79 @@ export function AdminTab() {
       {/* Pending Approvals */}
       <PendingApprovals title="Pending Approvals" />
 
-      {/* Manage Resources Section */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-medium flex items-center">
-            <ArchiveBoxIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-            Manage Resources
-            {resources && resources.length > 0 && (
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
-                ({resources.length})
-              </span>
-            )}
-          </h2>
+      {/* Manage Resources */}
+      <section className="space-y-3" aria-label="Manage resources">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">Resources</h3>
+          {resources && resources.length > 0 && (
+            <span className="text-xs text-muted-foreground">{resources.length}</span>
+          )}
+          <span className="h-px flex-1 bg-border" aria-hidden="true" />
           <button
             onClick={handleAddResource}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
+            className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
           >
             <PlusIcon className="h-4 w-4 mr-1" />
             Add Resource
           </button>
         </div>
 
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {!resources || resources.length === 0 ? (
+        {!resources || resources.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border">
             <EmptyState
               icon={<ArchiveBoxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="No resources created yet"
               actionLabel="Add Your First Resource"
               onAction={handleAddResource}
             />
-          ) : (
-            resources.map((resource) => (
-              <div
-                key={resource._id}
-                className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                {/* Header row: Name + Desktop actions */}
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-semibold text-base">{resource.name}</h4>
-                  {/* Desktop action buttons */}
-                  <div className="hidden sm:flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleEditResource(resource._id)}
-                      className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
-                    >
-                      <PencilSquareIcon className="h-4 w-4 mr-1" />
-                      Edit
-                    </button>
-                    <DeleteConfirmDialog
-                      title="Delete Resource"
-                      description={`Are you sure you want to delete "${resource.name}"? This action cannot be undone.`}
-                      confirmLabel="Delete"
-                      destructive
-                      onConfirm={() => handleDeleteResource(resource._id)}
-                      trigger={
-                        <button className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
-                          <TrashIcon className="h-4 w-4 mr-1" />
-                          Delete
-                        </button>
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Status badges */}
-                <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                  {resource.approverOnly ? (
-                    <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                      <LockClosedIcon className="h-3 w-3" />
-                      Approver Only
-                    </span>
-                  ) : (
-                    <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
-                      <LockOpenIcon className="h-3 w-3" />
-                      Open
-                    </span>
-                  )}
-                  {!resource.isActive && (
-                    <span className="px-1.5 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-
-                {/* Description */}
-                {resource.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    {resource.description}
-                  </p>
-                )}
-
-                {/* Approvers */}
-                <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  <div className="flex items-start gap-1.5">
-                    <UsersIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-medium">Approvers:</span>{" "}
-                      <span className="break-words">
-                        {resource.approverUsers.map((u) => formatUserName(u)).join(", ")}
+          </div>
+        ) : (
+          resources.map((resource) => (
+            <div
+              key={resource._id}
+              className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4"
+            >
+              {/* Header row: name + chips + desktop actions */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-semibold text-foreground">{resource.name}</h4>
+                    {resource.approverOnly ? (
+                      <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                        <LockClosedIcon className="h-3 w-3" />
+                        Approver Only
                       </span>
-                    </div>
+                    ) : (
+                      <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
+                        <LockOpenIcon className="h-3 w-3" />
+                        Open
+                      </span>
+                    )}
+                    {!resource.isActive && (
+                      <span className="px-1.5 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+
+                  {resource.description && (
+                    <p className="text-sm text-muted-foreground">{resource.description}</p>
+                  )}
+
+                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <UsersIcon className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">
+                      <span className="font-medium">Approvers:</span>{" "}
+                      {resource.approverUsers.map((u) => formatUserName(u)).join(", ")}
+                    </span>
                   </div>
                 </div>
 
-                {/* Mobile action buttons - full width */}
-                <div className="flex sm:hidden gap-2 mt-3">
+                {/* Desktop action buttons */}
+                <div className="hidden sm:flex gap-2 flex-shrink-0">
                   <button
                     onClick={() => handleEditResource(resource._id)}
-                    className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                    className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
                   >
                     <PencilSquareIcon className="h-4 w-4 mr-1" />
                     Edit
@@ -193,7 +158,7 @@ export function AdminTab() {
                     destructive
                     onConfirm={() => handleDeleteResource(resource._id)}
                     trigger={
-                      <button className="flex-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center">
+                      <button className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
                         <TrashIcon className="h-4 w-4 mr-1" />
                         Delete
                       </button>
@@ -201,132 +166,124 @@ export function AdminTab() {
                   />
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </div>
 
-      {/* Recent Bookings Section */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium flex items-center">
-            <CalendarDaysIcon className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
-            Recent Bookings
-            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
-              (Last 10)
-            </span>
-          </h3>
-        </div>
+              {/* Mobile action buttons - full width */}
+              <div className="flex sm:hidden gap-2 mt-3">
+                <button
+                  onClick={() => handleEditResource(resource._id)}
+                  className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                >
+                  <PencilSquareIcon className="h-4 w-4 mr-1" />
+                  Edit
+                </button>
+                <DeleteConfirmDialog
+                  title="Delete Resource"
+                  description={`Are you sure you want to delete "${resource.name}"? This action cannot be undone.`}
+                  confirmLabel="Delete"
+                  destructive
+                  onConfirm={() => handleDeleteResource(resource._id)}
+                  trigger={
+                    <button className="flex-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center">
+                      <TrashIcon className="h-4 w-4 mr-1" />
+                      Delete
+                    </button>
+                  }
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </section>
 
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {!allBookings || allBookings.length === 0 ? (
+      {/* Recent Bookings */}
+      <section className="space-y-3" aria-label="Recent bookings">
+        <SectionHeader title="Recent bookings" suffix="last 10" />
+
+        {!allBookings || allBookings.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border">
             <EmptyState
               icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="No bookings have been made yet"
             />
-          ) : (
-            allBookings.map((booking) => (
-                  <div
-                    key={booking._id}
-                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Date badge */}
-                      <DateBadge dateStr={booking.startDate} />
+          </div>
+        ) : (
+          allBookings.map((booking) => (
+            <div
+              key={booking._id}
+              className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4"
+            >
+              <div className="flex items-start gap-3">
+                <DateBadge dateStr={booking.startDate} />
 
-                      {/* Booking details */}
-                      <div className="flex-1 min-w-0">
-                        {/* Resource name, status, and view link */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {booking.resource?.name}
-                            </span>
-                            <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
-                          </div>
-                          <button
-                            onClick={() =>
-                              navigate(`/bookings?tab=schedule&date=${booking.startDate}`)
-                            }
-                            className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1 flex-shrink-0"
-                          >
-                            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">View in Schedule</span>
-                            <span className="sm:hidden">View</span>
-                          </button>
-                        </div>
-
-                        {/* Time info */}
-                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {booking.isAllDay ? (
-                            <span className="font-medium">All day</span>
-                          ) : booking.startTime && booking.endTime ? (
-                            <span>
-                              {formatTime(booking.startTime)} &ndash;{" "}
-                              {formatTime(booking.endTime)}
-                            </span>
-                          ) : (
-                            <span className="font-medium">All day</span>
-                          )}
-                          {booking.endDate && booking.endDate !== booking.startDate && (
-                            <span className="ml-1 text-gray-500 dark:text-gray-400">
-                              &rarr; {formatShortDate(booking.endDate)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Requester info */}
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                          <span className="font-medium">Requested by:</span>{" "}
-                          {formatUserName(booking.requestedByUser)}
-                          <span className="mx-1.5">&bull;</span>
-                          {getRelativeTimeString(booking.createdAt)}
-                        </div>
-
-                        {/* Notes */}
-                        {booking.notes && (
-                          <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs">
-                            <span className="font-medium text-gray-600 dark:text-gray-300">
-                              Notes:
-                            </span>
-                            <span className="ml-1 text-gray-600 dark:text-gray-400">
-                              {booking.notes}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Review info */}
-                        {booking.reviewedBy && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <span className="font-medium">Reviewed by:</span>{" "}
-                            {formatUserName(booking.reviewedByUser)}
-                            {booking.reviewedAt && (
-                              <>
-                                <span className="mx-1.5">&bull;</span>
-                                {getRelativeTimeString(booking.reviewedAt)}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Review notes */}
-                        {booking.reviewNotes && (
-                          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs border-l-2 border-red-400 dark:border-red-500">
-                            <span className="font-medium text-red-700 dark:text-red-300">
-                              Review notes:
-                            </span>
-                            <span className="ml-1 text-red-600 dark:text-red-400">
-                              {booking.reviewNotes}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  {/* Resource name, status, and view link */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="font-semibold text-foreground">
+                        {booking.resource?.name}
+                      </span>
+                      <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
                     </div>
+                    <button
+                      onClick={() =>
+                        navigate(`/bookings?tab=schedule&date=${booking.startDate}`)
+                      }
+                      className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1 flex-shrink-0"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">View in Schedule</span>
+                      <span className="sm:hidden">View</span>
+                    </button>
                   </div>
-              ))
-          )}
-        </div>
-      </div>
-    </>
+
+                  {/* Time + requester metadata */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>
+                      {booking.isAllDay || !booking.startTime || !booking.endTime
+                        ? "All day"
+                        : `${formatTime(booking.startTime)} – ${formatTime(booking.endTime)}`}
+                    </span>
+                    {booking.endDate && booking.endDate !== booking.startDate && (
+                      <span>&rarr; {formatShortDate(booking.endDate)}</span>
+                    )}
+                    <span>
+                      Requested by {formatUserName(booking.requestedByUser)} &bull;{" "}
+                      {getRelativeTimeString(booking.createdAt)}
+                    </span>
+                  </div>
+
+                  {/* Notes */}
+                  {booking.notes && (
+                    <ClampedText text={booking.notes} className="text-sm text-foreground/80" />
+                  )}
+
+                  {/* Review info */}
+                  {booking.reviewedBy && (
+                    <div className="text-xs text-muted-foreground">
+                      Reviewed by {formatUserName(booking.reviewedByUser)}
+                      {booking.reviewedAt && (
+                        <> &bull; {getRelativeTimeString(booking.reviewedAt)}</>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Review notes */}
+                  {booking.reviewNotes && (
+                    <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs border-l-2 border-red-400 dark:border-red-500">
+                      <span className="font-medium text-red-700 dark:text-red-300">
+                        Review notes:
+                      </span>
+                      <span className="ml-1 text-red-600 dark:text-red-400">
+                        {booking.reviewNotes}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+    </div>
   );
 }

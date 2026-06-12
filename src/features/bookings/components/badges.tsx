@@ -5,16 +5,38 @@ import { formatWeekday, formatMonth, getDayNum, bookingStatusColors } from "../t
  */
 export function DateBadge({ dateStr }: { dateStr: string }) {
   return (
-    <div className="text-center min-w-[50px] bg-gray-100 dark:bg-gray-700 rounded-lg py-1.5 px-2">
-      <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+    <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted py-1.5">
+      <span className="text-[10px] font-medium uppercase tracking-wide leading-tight text-muted-foreground">
         {formatWeekday(dateStr)}
-      </div>
-      <div className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+      </span>
+      <span className="text-base font-bold leading-tight text-foreground tabular-nums">
         {getDayNum(dateStr)}
-      </div>
-      <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+      </span>
+      <span className="text-[10px] font-medium uppercase tracking-wide leading-tight text-muted-foreground">
         {formatMonth(dateStr)}
-      </div>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Section heading with a count and a rule line, matching the BA Skills tabs.
+ */
+export function SectionHeader({
+  title,
+  count,
+  suffix,
+}: {
+  title: string;
+  count?: number;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
+      {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+      <span className="h-px flex-1 bg-border" aria-hidden="true" />
     </div>
   );
 }

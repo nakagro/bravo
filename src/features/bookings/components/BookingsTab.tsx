@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { formatTime, formatShortDate, getTodayStr } from "../types";
 import { BookingRequestForm } from "./BookingRequestForm";
 import { PendingApprovals } from "./PendingApprovals";
-import { DateBadge, StatusBadge } from "./badges";
+import { DateBadge, StatusBadge, SectionHeader } from "./badges";
+import { ClampedText } from "./ClampedText";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,40 +66,38 @@ export function BookingsTab() {
   const renderBooking = (booking: MyBooking, allowCancel: boolean) => (
     <div
       key={booking._id}
-      className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+      className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <DateBadge dateStr={booking.startDate} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium">{booking.resource?.name}</span>
-              <StatusBadge status={booking.status} />
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {booking.isAllDay ? (
-                "All day"
-              ) : booking.startTime && booking.endTime ? (
-                `${formatTime(booking.startTime)} - ${formatTime(booking.endTime)}`
-              ) : (
-                "All day"
-              )}
-              {booking.endDate && booking.endDate !== booking.startDate && (
-                <span className="ml-1">&rarr; {formatShortDate(booking.endDate)}</span>
-              )}
-            </div>
-            {booking.notes && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate max-w-[200px] sm:max-w-none">
-                {booking.notes}
-              </div>
-            )}
-            {booking.reviewNotes && (
-              <div className="text-xs text-red-600 dark:text-red-400 mt-1">
-                Review: {booking.reviewNotes}
-              </div>
+      <div className="flex items-start gap-3">
+        <DateBadge dateStr={booking.startDate} />
+
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-foreground">{booking.resource?.name}</span>
+            <StatusBadge status={booking.status} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            <span>
+              {booking.isAllDay || !booking.startTime || !booking.endTime
+                ? "All day"
+                : `${formatTime(booking.startTime)} – ${formatTime(booking.endTime)}`}
+            </span>
+            {booking.endDate && booking.endDate !== booking.startDate && (
+              <span>&rarr; {formatShortDate(booking.endDate)}</span>
             )}
           </div>
+
+          {booking.notes && (
+            <ClampedText text={booking.notes} className="text-sm text-foreground/80" />
+          )}
+          {booking.reviewNotes && (
+            <p className="text-xs text-red-600 dark:text-red-400">
+              Review: {booking.reviewNotes}
+            </p>
+          )}
         </div>
+
         {allowCancel && (booking.status === "pending" || booking.status === "approved") && (
           <DeleteConfirmDialog
             title="Cancel Booking"
@@ -107,7 +106,7 @@ export function BookingsTab() {
             destructive
             onConfirm={() => handleCancelBooking(booking._id)}
             trigger={
-              <button className="px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
+              <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                 Cancel
               </button>
             }
@@ -118,7 +117,7 @@ export function BookingsTab() {
   );
 
   return (
-    <>
+    <div className="space-y-5 pb-20 sm:pb-0">
       {/* Booking Request Form Modal */}
       {showRequestForm && (
         <BookingRequestForm onClose={() => setShowRequestForm(false)} />
@@ -130,7 +129,7 @@ export function BookingsTab() {
       {/* Request New Booking Button — inline on desktop only */}
       <button
         onClick={() => setShowRequestForm(true)}
-        className="hidden sm:flex w-full mb-4 p-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors items-center justify-center gap-2 shadow-sm"
+        className="hidden sm:flex w-full p-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors items-center justify-center gap-2 shadow-sm"
       >
         <PlusIcon className="h-5 w-5" />
         Request a Booking
@@ -145,66 +144,59 @@ export function BookingsTab() {
         Book
       </button>
 
-      {/* Upcoming Bookings Section */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Upcoming
-          </h3>
-        </div>
-
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {isLoading ? (
-            <BookingListSkeleton />
-          ) : upcomingBookings.length === 0 ? (
+      {/* Upcoming bookings */}
+      <section className="space-y-3" aria-label="Upcoming bookings">
+        <SectionHeader title="Upcoming" count={isLoading ? undefined : upcomingBookings.length} />
+        {isLoading ? (
+          <BookingListSkeleton />
+        ) : upcomingBookings.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border">
             <EmptyState
               icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
-              title="No upcoming bookings"
+              title="You have no upcoming bookings"
               description="Need a vehicle, room or equipment? Request a booking and an approver will confirm it."
               actionLabel="Request a Booking"
               onAction={() => setShowRequestForm(true)}
             />
-          ) : (
-            upcomingBookings.map((booking) => renderBooking(booking, true))
-          )}
-        </div>
-      </div>
+          </div>
+        ) : (
+          upcomingBookings.map((booking) => renderBooking(booking, true))
+        )}
+      </section>
 
       {/* Past & inactive bookings */}
       {!isLoading && historyBookings.length > 0 && (
-        <div className="mt-4 mb-20 sm:mb-0 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+        <section className="space-y-3" aria-label="Past and inactive bookings">
           <button
             onClick={() => setShowHistory((prev) => !prev)}
-            className="w-full px-3 py-2.5 min-h-[44px] flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             aria-expanded={showHistory}
+            className="flex w-full items-center gap-2 text-left min-h-[44px]"
           >
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Past & inactive ({historyBookings.length})
-            </span>
+            <span className="text-sm font-semibold text-foreground">Past & inactive</span>
+            <span className="text-xs text-muted-foreground">{historyBookings.length}</span>
+            <span className="h-px flex-1 bg-border" aria-hidden="true" />
             <ChevronDownIcon
-              className={`h-5 w-5 text-gray-400 transition-transform ${showHistory ? "rotate-180" : ""}`}
+              className={`h-4 w-4 text-muted-foreground transition-transform ${showHistory ? "rotate-180" : ""}`}
             />
           </button>
-          {showHistory && (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
-              {historyBookings.map((booking) => renderBooking(booking, false))}
-            </div>
-          )}
-        </div>
+          {showHistory && historyBookings.map((booking) => renderBooking(booking, false))}
+        </section>
       )}
-    </>
+    </div>
   );
 }
 
 function BookingListSkeleton() {
   return (
-    <div className="p-3 space-y-4">
+    <div className="space-y-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-3">
-          <Skeleton className="h-14 w-[50px] rounded-lg" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-3 w-1/3" />
+        <div key={i} className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-14 w-12 rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
           </div>
         </div>
       ))}
