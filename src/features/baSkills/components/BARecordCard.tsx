@@ -19,13 +19,14 @@ import {
   LoaderCircle,
   Trash2,
   Clock,
-  StickyNote,
   UserCheck,
   Flame,
   GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { USAGE_TYPE_LABEL } from "../lib/currency";
+
+const NOTES_CLAMP_THRESHOLD = 140;
 
 interface BARecord {
   _id: Id<"baRecords">;
@@ -61,9 +62,11 @@ export function BARecordCard({ record, canDelete }: BARecordCardProps) {
   const deleteRecord = useMutation(api.baRecords.deleteRecord);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
 
   const Icon = USAGE_ICON[record.usageType];
-  const dateFormatted = format(new Date(record.dateUsed), "EEE, d MMM yyyy");
+  const date = new Date(record.dateUsed);
+  const notesAreLong = record.notes.length > NOTES_CLAMP_THRESHOLD;
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -81,39 +84,65 @@ export function BARecordCard({ record, canDelete }: BARecordCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+      <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="flex items-start gap-3">
+          {/* Date tile */}
+          <div
+            className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted"
+            aria-hidden="true"
+          >
+            <span className="text-base font-bold leading-tight text-foreground tabular-nums">
+              {format(date, "d")}
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {format(date, "MMM")}
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-semibold text-foreground">{record.memberName}</span>
-              <Badge variant={USAGE_BADGE_VARIANT[record.usageType]} className="flex items-center gap-1">
+              <Badge
+                variant={USAGE_BADGE_VARIANT[record.usageType]}
+                className="flex items-center gap-1"
+              >
                 <Icon className="h-3 w-3" />
                 {USAGE_TYPE_LABEL[record.usageType]}
               </Badge>
-              {record.submittedOnBehalf && (
-                <Badge variant="outline" className="text-xs">
-                  Submitted by {record.submitterName}
-                </Badge>
-              )}
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="sr-only">{format(date, "EEEE, d MMMM yyyy")}</span>
+              <span aria-hidden="true">{format(date, "EEEE")}</span>
               <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
+                <Clock className="h-3 w-3" />
                 {record.durationMinutes} min
               </span>
-              <span>{dateFormatted}</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <UserCheck className="h-3.5 w-3.5" />
-              <span>Verified by: {record.verifierName}</span>
+              <span className="flex items-center gap-1">
+                <UserCheck className="h-3 w-3" />
+                {record.verifierName}
+              </span>
+              {record.submittedOnBehalf && <span>Logged by {record.submitterName}</span>}
             </div>
 
             {record.notes && (
-              <div className="flex items-start gap-1.5 text-sm">
-                <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="text-foreground/80 whitespace-pre-wrap">{record.notes}</span>
+              <div>
+                <p
+                  className={`whitespace-pre-wrap text-sm text-foreground/80 ${
+                    notesAreLong && !notesExpanded ? "line-clamp-2" : ""
+                  }`}
+                >
+                  {record.notes}
+                </p>
+                {notesAreLong && (
+                  <button
+                    type="button"
+                    onClick={() => setNotesExpanded((prev) => !prev)}
+                    className="mt-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    {notesExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
               </div>
             )}
           </div>

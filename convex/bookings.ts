@@ -1,7 +1,56 @@
-import { query, mutation, MutationCtx } from "./_generated/server";
+import { query, mutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
+
+const RANK_ORDER = {
+  Probationary: 1,
+  Firefighter: 2,
+  Lieutenant: 3,
+  Captain: 4,
+} as const;
+
+/**
+ * Whether the user can manage booking resources (bookingsAdmin module or system admin).
+ */
+async function hasBookingsAdminAccess(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<boolean> {
+  const user = await ctx.db.get(userId);
+  if (!user) return false;
+  if (user.isAdmin) return true;
+
+  const moduleSetting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q) => q.eq("moduleId", "bookingsAdmin"))
+    .first();
+
+  if (!moduleSetting || !moduleSetting.isEnabled) return false;
+  if (moduleSetting.adminOnly && !user.isAdmin) return false;
+
+  const requiredRoles = moduleSetting.requiredRoles ?? [];
+  const roleOk =
+    requiredRoles.length === 0 || requiredRoles.some((role) => (user.roles ?? []).includes(role));
+
+  const requiredRank = moduleSetting.minimumRank;
+  const rankOk =
+    requiredRank === undefined ||
+    (user.rank !== undefined && RANK_ORDER[user.rank] >= RANK_ORDER[requiredRank]);
+
+  return roleOk && rankOk;
+}
+
+async function requireBookingsAdmin(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("You must be signed in");
+  }
+  if (!(await hasBookingsAdminAccess(ctx, userId))) {
+    throw new Error("Bookings admin access required");
+  }
+  return userId;
+}
 
 /**
  * Check a proposed booking against existing pending/approved bookings for the
@@ -135,6 +184,11 @@ export const getBookingResources = query({
     })
   ),
   handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId || !(await hasBookingsAdminAccess(ctx, userId))) {
+      return [];
+    }
+
     const resources = await ctx.db.query("bookingResources").collect();
 
     const resourcesWithUsers = await Promise.all(
@@ -210,10 +264,7 @@ export const createBookingResource = mutation({
   },
   returns: v.id("bookingResources"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to create a booking resource");
-    }
+    const userId = await requireBookingsAdmin(ctx);
 
     const now = Date.now();
 
@@ -247,10 +298,7 @@ export const updateBookingResource = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update a booking resource");
-    }
+    const userId = await requireBookingsAdmin(ctx);
 
     await ctx.db.patch(args.resourceId, {
       name: args.name,
@@ -275,10 +323,7 @@ export const deleteBookingResource = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete a booking resource");
-    }
+    await requireBookingsAdmin(ctx);
 
     // Check if there are any bookings for this resource
     const bookings = await ctx.db
@@ -353,7 +398,7 @@ export const getBookings = query({
   ),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    if (!userId || !(await hasBookingsAdminAccess(ctx, userId))) {
       return [];
     }
 

@@ -16,6 +16,9 @@ export function BookingsPage() {
   const currentUser = useQuery(api.auth.loggedInUser);
   const isAdmin = currentUser?.isAdmin || false;
 
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const isBookingsAdmin = moduleAccess?.bookingsAdmin ?? false;
+
   const pendingApprovals = useQuery(api.bookings.getPendingApprovalsForMe);
   const pendingCount = pendingApprovals?.length ?? 0;
 
@@ -34,13 +37,13 @@ export function BookingsPage() {
     [setSearchParams]
   );
 
-  // Filter tabs based on admin status, with the approvals badge on My Bookings
+  // Filter tabs based on bookings-admin access, with the approvals badge on My Bookings
   const visibleTabs = useMemo(
     () =>
       bookingTabs
-        .filter((t) => isAdmin || t.key !== "admin")
+        .filter((t) => isBookingsAdmin || t.key !== "admin")
         .map((t) => (t.key === "bookings" ? { ...t, badgeCount: pendingCount } : t)),
-    [isAdmin, pendingCount]
+    [isBookingsAdmin, pendingCount]
   );
 
   // Redirect to login if not authenticated
@@ -86,7 +89,7 @@ export function BookingsPage() {
             />
           )}
 
-          {activeTab === "admin" && isAdmin && <AdminTab />}
+          {activeTab === "admin" && isBookingsAdmin && <AdminTab />}
         </div>
       </div>
     </div>

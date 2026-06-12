@@ -155,6 +155,14 @@ export const syncModuleSettings = mutation({
         minimumRank: undefined
       },
       {
+        moduleId: "bookingsAdmin",
+        moduleName: "Bookings Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "settings",
         moduleName: "User Settings",
         isEnabled: true,
@@ -371,6 +379,14 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: undefined
+      },
+      {
+        moduleId: "bookingsAdmin",
+        moduleName: "Bookings Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "settings",
@@ -678,6 +694,7 @@ export const getAllModuleAccess = query({
     baSkillsAdmin: v.boolean(),
     brigadeTasks: v.boolean(),
     bookings: v.boolean(),
+    bookingsAdmin: v.boolean(),
     events: v.boolean(),
     eventsAdmin: v.boolean(),
     feedback: v.boolean(),
@@ -706,6 +723,7 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: false,
         brigadeTasks: false,
         bookings: false,
+        bookingsAdmin: false,
         events: false,
         eventsAdmin: false,
         feedback: false,
@@ -735,6 +753,7 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: false,
         brigadeTasks: false,
         bookings: false,
+        bookingsAdmin: false,
         events: false,
         eventsAdmin: false,
         feedback: false,
@@ -764,6 +783,7 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: true,
         brigadeTasks: true,
         bookings: true,
+        bookingsAdmin: true,
         events: true,
         eventsAdmin: true,
         feedback: true,
@@ -839,6 +859,7 @@ export const getAllModuleAccess = query({
       baSkillsAdmin: checkAccess("baSkillsAdmin"),
       brigadeTasks: checkAccess("brigadeTasks"),
       bookings: checkAccess("bookings"),
+      bookingsAdmin: checkAccess("bookingsAdmin"),
       events: checkAccess("events"),
       eventsAdmin: checkAccess("eventsAdmin"),
       feedback: checkAccess("feedback"),

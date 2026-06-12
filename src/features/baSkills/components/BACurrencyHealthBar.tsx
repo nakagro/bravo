@@ -28,17 +28,17 @@ export function BACurrencyHealthBar({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 text-xs sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 text-[11px] leading-tight sm:text-xs">
         <button
           type="button"
           onClick={() => toggle("at_risk")}
           disabled={atRisk === 0}
           aria-pressed={activeFilter === "at_risk"}
-          className={`rounded-lg border border-red-200 bg-red-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-red-100 disabled:cursor-default disabled:opacity-70 dark:border-red-900 dark:bg-red-950/20 dark:enabled:hover:bg-red-950/40 ${
+          className={`rounded-lg border border-red-200 bg-red-50/70 px-2 py-2 text-left transition-colors enabled:hover:bg-red-100 disabled:cursor-default disabled:opacity-70 dark:border-red-900 dark:bg-red-950/20 dark:enabled:hover:bg-red-950/40 sm:px-3 ${
             activeFilter === "at_risk" ? `${activeRing} ring-red-400` : ""
           }`}
         >
-          <span className="block text-lg font-semibold text-red-700 dark:text-red-300">
+          <span className="block text-base font-semibold text-red-700 dark:text-red-300 sm:text-lg">
             {atRisk}
           </span>
           <span className="text-red-700/80 dark:text-red-300/80">Need attention</span>
@@ -48,11 +48,11 @@ export function BACurrencyHealthBar({
           onClick={() => toggle("current")}
           disabled={counts.current === 0}
           aria-pressed={activeFilter === "current"}
-          className={`rounded-lg border border-green-200 bg-green-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-green-100 disabled:cursor-default disabled:opacity-70 dark:border-green-900 dark:bg-green-950/20 dark:enabled:hover:bg-green-950/40 ${
+          className={`rounded-lg border border-green-200 bg-green-50/70 px-2 py-2 text-left transition-colors enabled:hover:bg-green-100 disabled:cursor-default disabled:opacity-70 dark:border-green-900 dark:bg-green-950/20 dark:enabled:hover:bg-green-950/40 sm:px-3 ${
             activeFilter === "current" ? `${activeRing} ring-green-400` : ""
           }`}
         >
-          <span className="block text-lg font-semibold text-green-700 dark:text-green-300">
+          <span className="block text-base font-semibold text-green-700 dark:text-green-300 sm:text-lg">
             {counts.current}
           </span>
           <span className="text-green-700/80 dark:text-green-300/80">Current with record</span>
@@ -62,11 +62,11 @@ export function BACurrencyHealthBar({
           onClick={() => toggle("never_used")}
           disabled={counts.never_used === 0}
           aria-pressed={activeFilter === "never_used"}
-          className={`rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left transition-colors enabled:hover:bg-gray-100 disabled:cursor-default disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/40 dark:enabled:hover:bg-gray-900 ${
+          className={`rounded-lg border border-gray-200 bg-gray-50/80 px-2 py-2 text-left transition-colors enabled:hover:bg-gray-100 disabled:cursor-default disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/40 dark:enabled:hover:bg-gray-900 sm:px-3 ${
             activeFilter === "never_used" ? `${activeRing} ring-gray-400` : ""
           }`}
         >
-          <span className="block text-lg font-semibold text-gray-700 dark:text-gray-200">
+          <span className="block text-base font-semibold text-gray-700 dark:text-gray-200 sm:text-lg">
             {counts.never_used}
           </span>
           <span className="text-gray-600 dark:text-gray-400">No BA record yet</span>

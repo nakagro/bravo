@@ -44,7 +44,7 @@ function FilterChip({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+      className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
         active
           ? "bg-primary text-primary-foreground border-primary"
           : "border-border text-muted-foreground hover:bg-muted"
@@ -138,7 +138,7 @@ export function BASkillsHistoryTab({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {TYPE_FILTERS.map(({ key, label }) => (
             <FilterChip
               key={key}
@@ -147,7 +147,7 @@ export function BASkillsHistoryTab({
               onClick={() => setTypeFilter(key)}
             />
           ))}
-          <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
           {DATE_FILTERS.map(({ key, label }) => (
             <FilterChip
               key={key}

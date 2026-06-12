@@ -47,27 +47,30 @@ export function BACurrencyToolbar({
           emptyText="No members found."
         />
       </div>
-      <div className="flex flex-col gap-1 sm:w-56">
-        <label className="text-sm font-medium text-foreground">Sort</label>
-        <Select value={sort} onValueChange={(v) => onSortChange(v as SortKey)}>
-          <SelectTrigger className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex items-end gap-3">
+        <div className="flex flex-1 flex-col gap-1 sm:w-56 sm:flex-none">
+          <label className="text-sm font-medium text-foreground">Sort</label>
+          <Select value={sort} onValueChange={(v) => onSortChange(v as SortKey)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {onExport && (
+          <Button variant="outline" onClick={onExport} className="shrink-0">
+            <Download className="mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">CSV</span>
+          </Button>
+        )}
       </div>
-      {onExport && (
-        <Button variant="outline" onClick={onExport} className="sm:shrink-0">
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
-      )}
     </div>
   );
 }

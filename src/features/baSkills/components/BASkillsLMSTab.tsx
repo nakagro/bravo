@@ -80,22 +80,19 @@ function LMSRecordRow({
               )}
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               <span>{format(new Date(record.dateUsed), "EEE, d MMM yyyy")}</span>
               <span>{record.durationMinutes} min on air</span>
               <span>Verified by {record.verifierName}</span>
+              {record.submittedOnBehalf && <span>Logged by {record.submitterName}</span>}
             </div>
 
-            <div className="mt-1 text-sm text-muted-foreground">
-              Submitted {record.submittedOnBehalf ? `by ${record.submitterName}` : "by member"}
-              {isEntered && record.lmsEnteredAt && (
-                <>
-                  {" "}
-                  · LMS marked by {record.lmsEnteredByName ?? "Unknown"} on{" "}
-                  {format(new Date(record.lmsEnteredAt), "d MMM yyyy, h:mm a")}
-                </>
-              )}
-            </div>
+            {isEntered && record.lmsEnteredAt && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Marked by {record.lmsEnteredByName ?? "Unknown"} ·{" "}
+                {format(new Date(record.lmsEnteredAt), "d MMM yyyy, h:mm a")}
+              </div>
+            )}
           </div>
 
           <Button
