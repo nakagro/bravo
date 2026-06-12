@@ -21,6 +21,9 @@ export interface CurrencyCounts {
 
 export type SortKey = "urgency" | "name" | "daysRemaining" | "lastUsed";
 
+/** Status filter; "at_risk" combines expired + warning to match the "Need attention" stat */
+export type CurrencyFilter = CurrencyStatus | "all" | "at_risk";
+
 export const STATUS_GROUP_ORDER: CurrencyStatus[] = [
   "expired",
   "warning",

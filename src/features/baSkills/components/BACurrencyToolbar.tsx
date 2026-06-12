@@ -1,3 +1,5 @@
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,6 +17,7 @@ interface BACurrencyToolbarProps {
   onMemberFilterChange: (id: Id<"users"> | null) => void;
   sort: SortKey;
   onSortChange: (sort: SortKey) => void;
+  onExport?: () => void;
 }
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
@@ -30,6 +33,7 @@ export function BACurrencyToolbar({
   onMemberFilterChange,
   sort,
   onSortChange,
+  onExport,
 }: BACurrencyToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
@@ -58,6 +62,12 @@ export function BACurrencyToolbar({
           </SelectContent>
         </Select>
       </div>
+      {onExport && (
+        <Button variant="outline" onClick={onExport} className="sm:shrink-0">
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
+      )}
     </div>
   );
 }

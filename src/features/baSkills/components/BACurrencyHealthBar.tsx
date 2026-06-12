@@ -1,10 +1,16 @@
 import { CurrencyStatus, STATUS_META } from "../lib/currency";
-import { CurrencyCounts, STATUS_GROUP_ORDER } from "../lib/types";
+import { CurrencyCounts, CurrencyFilter, STATUS_GROUP_ORDER } from "../lib/types";
 
 interface BACurrencyHealthBarProps {
   counts: CurrencyCounts;
-  activeFilter: CurrencyStatus | "all";
-  onFilterChange: (filter: CurrencyStatus | "all") => void;
+  activeFilter: CurrencyFilter;
+  onFilterChange: (filter: CurrencyFilter) => void;
+}
+
+function statusMatchesFilter(status: CurrencyStatus, filter: CurrencyFilter) {
+  if (filter === "all") return true;
+  if (filter === "at_risk") return status === "expired" || status === "warning";
+  return status === filter;
 }
 
 export function BACurrencyHealthBar({
@@ -15,14 +21,22 @@ export function BACurrencyHealthBar({
   const total = counts.total || 1;
   const atRisk = counts.expired + counts.warning;
 
+  const toggle = (filter: CurrencyFilter) =>
+    onFilterChange(activeFilter === filter ? "all" : filter);
+
+  const activeRing = "ring-2 ring-offset-1 ring-offset-background";
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 text-xs sm:grid-cols-3">
         <button
           type="button"
-          onClick={() => onFilterChange(atRisk > 0 && counts.expired > 0 ? "expired" : "warning")}
+          onClick={() => toggle("at_risk")}
           disabled={atRisk === 0}
-          className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-red-100 disabled:cursor-default disabled:opacity-70 dark:border-red-900 dark:bg-red-950/20 dark:enabled:hover:bg-red-950/40"
+          aria-pressed={activeFilter === "at_risk"}
+          className={`rounded-lg border border-red-200 bg-red-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-red-100 disabled:cursor-default disabled:opacity-70 dark:border-red-900 dark:bg-red-950/20 dark:enabled:hover:bg-red-950/40 ${
+            activeFilter === "at_risk" ? `${activeRing} ring-red-400` : ""
+          }`}
         >
           <span className="block text-lg font-semibold text-red-700 dark:text-red-300">
             {atRisk}
@@ -31,9 +45,12 @@ export function BACurrencyHealthBar({
         </button>
         <button
           type="button"
-          onClick={() => onFilterChange("current")}
+          onClick={() => toggle("current")}
           disabled={counts.current === 0}
-          className="rounded-lg border border-green-200 bg-green-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-green-100 disabled:cursor-default disabled:opacity-70 dark:border-green-900 dark:bg-green-950/20 dark:enabled:hover:bg-green-950/40"
+          aria-pressed={activeFilter === "current"}
+          className={`rounded-lg border border-green-200 bg-green-50/70 px-3 py-2 text-left transition-colors enabled:hover:bg-green-100 disabled:cursor-default disabled:opacity-70 dark:border-green-900 dark:bg-green-950/20 dark:enabled:hover:bg-green-950/40 ${
+            activeFilter === "current" ? `${activeRing} ring-green-400` : ""
+          }`}
         >
           <span className="block text-lg font-semibold text-green-700 dark:text-green-300">
             {counts.current}
@@ -42,9 +59,12 @@ export function BACurrencyHealthBar({
         </button>
         <button
           type="button"
-          onClick={() => onFilterChange("never_used")}
+          onClick={() => toggle("never_used")}
           disabled={counts.never_used === 0}
-          className="rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left transition-colors enabled:hover:bg-gray-100 disabled:cursor-default disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/40 dark:enabled:hover:bg-gray-900"
+          aria-pressed={activeFilter === "never_used"}
+          className={`rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left transition-colors enabled:hover:bg-gray-100 disabled:cursor-default disabled:opacity-70 dark:border-gray-700 dark:bg-gray-900/40 dark:enabled:hover:bg-gray-900 ${
+            activeFilter === "never_used" ? `${activeRing} ring-gray-400` : ""
+          }`}
         >
           <span className="block text-lg font-semibold text-gray-700 dark:text-gray-200">
             {counts.never_used}
@@ -65,12 +85,12 @@ export function BACurrencyHealthBar({
           const pct = (count / total) * 100;
           const meta = STATUS_META[status];
           const isActive = activeFilter === status;
-          const dim = activeFilter !== "all" && !isActive;
+          const dim = activeFilter !== "all" && !statusMatchesFilter(status, activeFilter);
           return (
             <button
               key={status}
               type="button"
-              onClick={() => onFilterChange(isActive ? "all" : status)}
+              onClick={() => toggle(status)}
               style={{ width: `${pct}%` }}
               className={`${meta.solidClass} transition-opacity hover:opacity-80 first:rounded-l-full last:rounded-r-full ${
                 dim ? "opacity-40" : "opacity-100"
@@ -103,7 +123,7 @@ export function BACurrencyHealthBar({
             <button
               key={status}
               type="button"
-              onClick={() => onFilterChange(isActive ? "all" : status)}
+              onClick={() => toggle(status)}
               className={`flex min-w-0 items-center gap-1.5 rounded-md py-1 transition-opacity sm:rounded-none sm:py-0 ${
                 isActive ? "opacity-100 font-medium" : "opacity-70 hover:opacity-100"
               }`}

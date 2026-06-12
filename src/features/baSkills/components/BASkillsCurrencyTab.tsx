@@ -5,11 +5,13 @@ import { LoaderCircle, PartyPopper } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { CurrencyStatus } from "../lib/currency";
 import {
+  CurrencyFilter,
   CurrencyMember,
   DEFAULT_GROUP_OPEN,
   STATUS_GROUP_ORDER,
   SortKey,
 } from "../lib/types";
+import { buildCurrencyCsv, downloadCsv } from "../lib/csv";
 import { BACurrencyHealthBar } from "./BACurrencyHealthBar";
 import { BACurrencyToolbar } from "./BACurrencyToolbar";
 import { BACurrencyGroup } from "./BACurrencyGroup";
@@ -65,10 +67,16 @@ function sortMembers(members: CurrencyMember[], key: SortKey): CurrencyMember[] 
   return arr;
 }
 
+function matchesFilter(member: CurrencyMember, filter: CurrencyFilter) {
+  if (filter === "all") return true;
+  if (filter === "at_risk") return member.status === "expired" || member.status === "warning";
+  return member.status === filter;
+}
+
 export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTabProps) {
   const data = useQuery(api.baCurrency.getBrigadeCurrency);
 
-  const [filter, setFilter] = useState<CurrencyStatus | "all">("all");
+  const [filter, setFilter] = useState<CurrencyFilter>("all");
   const [memberFilter, setMemberFilter] = useState<Id<"users"> | null>(null);
   const [sort, setSort] = useState<SortKey>("urgency");
   const [groupOpen, setGroupOpen] = useState<Record<CurrencyStatus, boolean>>(DEFAULT_GROUP_OPEN);
@@ -83,7 +91,7 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
   const filteredMembers = useMemo(() => {
     let m = allMembers;
     if (memberFilter) m = m.filter((x) => x.userId === memberFilter);
-    if (filter !== "all") m = m.filter((x) => x.status === filter);
+    if (filter !== "all") m = m.filter((x) => matchesFilter(x, filter));
     return m;
   }, [allMembers, memberFilter, filter]);
 
@@ -108,6 +116,11 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
 
   const toggleGroup = (status: CurrencyStatus) =>
     setGroupOpen((prev) => ({ ...prev, [status]: !prev[status] }));
+
+  const handleExport = () => {
+    if (allMembers.length === 0) return;
+    downloadCsv(buildCurrencyCsv(sortMembers(allMembers, "urgency")), "ba-currency");
+  };
 
   if (data === undefined) {
     return (
@@ -152,21 +165,18 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
         </div>
       </div>
 
-      {/* Toolbar */}
+      {/* Members (toolbar + list) */}
       <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
-        <div className="px-3 py-3 sm:px-4 sm:py-4">
+        <div className="px-3 py-3 sm:px-4 sm:py-4 border-b border-gray-200 dark:border-gray-700">
           <BACurrencyToolbar
             memberOptions={memberOptions}
             memberFilter={memberFilter}
             onMemberFilterChange={setMemberFilter}
             sort={sort}
             onSortChange={setSort}
+            onExport={handleExport}
           />
         </div>
-      </div>
-
-      {/* Members */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
         <div className="px-2 py-2 sm:px-4 sm:py-4">
           {noResults ? (
             filter === "current" && !memberFilter ? (

@@ -9,28 +9,31 @@ import { BASkillsMyRecordsTab } from "./components/BASkillsMyRecordsTab";
 import { BASkillsHistoryTab } from "./components/BASkillsHistoryTab";
 import { BASkillsCurrencyTab } from "./components/BASkillsCurrencyTab";
 import { BASkillsLMSTab } from "./components/BASkillsLMSTab";
-import { BASkillsExportTab } from "./components/BASkillsExportTab";
 
-type BASkillsTab = "log" | "mine" | "history" | "currency" | "lms" | "export";
+type BASkillsTab = "log" | "mine" | "history" | "currency" | "lms";
 
-const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "lms", "export"];
+const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "lms"];
 
 function BASkillsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canSubmit = moduleAccess?.baSkills ?? false;
-  const canViewHistory = moduleAccess?.baSkillsAdmin ?? false;
-  const canViewCurrency = moduleAccess?.baSkillsAdmin ?? false;
-  const canExport = moduleAccess?.baSkillsAdmin ?? false;
+  const isAdmin = moduleAccess?.baSkillsAdmin ?? false;
+
+  // Pending-LMS count for the tab badge (admins only)
+  const adminRecords = useQuery(api.baRecords.listRecords, isAdmin ? {} : "skip");
+  const lmsPendingCount = useMemo(
+    () => (adminRecords ?? []).filter((r) => r.lmsEnteredAt === undefined).length,
+    [adminRecords],
+  );
 
   const accessByTab: Record<BASkillsTab, boolean> = {
     log: canSubmit,
     mine: canSubmit,
-    history: canViewHistory,
-    currency: canViewCurrency,
-    lms: canViewCurrency,
-    export: canExport,
+    history: isAdmin,
+    currency: isAdmin,
+    lms: isAdmin,
   };
 
   const requestedTab = searchParams.get("tab") as BASkillsTab | null;
@@ -61,26 +64,17 @@ function BASkillsPage() {
   // Fall back if log tab itself isn't accessible
   useEffect(() => {
     if (moduleAccess === undefined) return;
-    if (activeTab === "log" && !canSubmit) {
-      const fallback = canViewHistory
-        ? "history"
-        : canViewCurrency
-          ? "currency"
-          : canExport
-            ? "export"
-            : null;
-      if (fallback) {
-        setSearchParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("tab", fallback);
-            return next;
-          },
-          { replace: true },
-        );
-      }
+    if (activeTab === "log" && !canSubmit && isAdmin) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", "history");
+          return next;
+        },
+        { replace: true },
+      );
     }
-  }, [moduleAccess, activeTab, canSubmit, canViewHistory, canViewCurrency, canExport, setSearchParams]);
+  }, [moduleAccess, activeTab, canSubmit, isAdmin, setSearchParams]);
 
   const handleTabChange = (tab: string) => {
     setSearchParams(
@@ -99,23 +93,13 @@ function BASkillsPage() {
     );
   };
 
-  const handleViewMemberHistory = (userId: Id<"users">) => {
+  const handleMemberFilterChange = (userId: Id<"users"> | null) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("tab", "history");
-        next.set("member", userId);
-        return next;
-      },
-      { replace: true },
-    );
-  };
-
-  const handleClearMemberFilter = () => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("member");
+        if (userId) next.set("member", userId);
+        else next.delete("member");
         return next;
       },
       { replace: true },
@@ -123,15 +107,14 @@ function BASkillsPage() {
   };
 
   const tabs = useMemo(() => {
-    const list: Array<{ key: BASkillsTab; label: string }> = [];
+    const list: Array<{ key: BASkillsTab; label: string; badgeCount?: number }> = [];
     if (canSubmit) list.push({ key: "log", label: "Log" });
     if (canSubmit) list.push({ key: "mine", label: "My Records" });
-    if (canViewHistory) list.push({ key: "history", label: "History" });
-    if (canViewCurrency) list.push({ key: "currency", label: "Currency" });
-    if (canViewCurrency) list.push({ key: "lms", label: "LMS" });
-    if (canExport) list.push({ key: "export", label: "Export" });
+    if (isAdmin) list.push({ key: "history", label: "History" });
+    if (isAdmin) list.push({ key: "currency", label: "Currency" });
+    if (isAdmin) list.push({ key: "lms", label: "LMS", badgeCount: lmsPendingCount });
     return list;
-  }, [canSubmit, canViewHistory, canViewCurrency, canExport]);
+  }, [canSubmit, isAdmin, lmsPendingCount]);
 
   const showTabs = tabs.length > 1;
 
@@ -158,20 +141,19 @@ function BASkillsPage() {
       >
         {activeTab === "log" && canSubmit && <BASkillsLogTab />}
         {activeTab === "mine" && canSubmit && (
-          <BASkillsMyRecordsTab canManageRecords={canViewHistory} />
+          <BASkillsMyRecordsTab canManageRecords={isAdmin} />
         )}
-        {activeTab === "history" && canViewHistory && (
+        {activeTab === "history" && isAdmin && (
           <BASkillsHistoryTab
             filterMemberId={memberFilter}
-            onClearMemberFilter={handleClearMemberFilter}
-            canManageRecords={canViewHistory}
+            onMemberFilterChange={handleMemberFilterChange}
+            canManageRecords={isAdmin}
           />
         )}
-        {activeTab === "currency" && canViewCurrency && (
-          <BASkillsCurrencyTab onViewMemberHistory={handleViewMemberHistory} />
+        {activeTab === "currency" && isAdmin && (
+          <BASkillsCurrencyTab onViewMemberHistory={handleMemberFilterChange} />
         )}
-        {activeTab === "lms" && canViewCurrency && <BASkillsLMSTab />}
-        {activeTab === "export" && canExport && <BASkillsExportTab />}
+        {activeTab === "lms" && isAdmin && <BASkillsLMSTab />}
       </div>
     </div>
   );
