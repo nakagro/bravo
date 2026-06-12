@@ -155,6 +155,16 @@ export const HamburgerMenu = () => {
             </DropdownMenuItem>
           )}
 
+          {hasModuleAccess("bookings") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/bookings")}
+              className={location.pathname === '/bookings' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <Calendar className="mr-3 h-5 w-5" />
+              <span>Bookings</span>
+            </DropdownMenuItem>
+          )}
+
           {hasModuleAccess("links") && (
             <DropdownMenuItem
               onClick={() => handleNavigation("/links")}
@@ -199,18 +209,6 @@ export const HamburgerMenu = () => {
               <Badge variant="outline" className="ml-auto">WIP</Badge>
             </DropdownMenuItem>
           )}
-
-          {hasModuleAccess("bookings") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/bookings")}
-              className={location.pathname === '/bookings' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Calendar className="mr-3 h-5 w-5" />
-              <span>Bookings</span>
-              <Badge variant="outline" className="ml-auto">WIP</Badge>
-            </DropdownMenuItem>
-          )}
-
 
           {hasModuleAccess("fireReports") && (
             <DropdownMenuItem
