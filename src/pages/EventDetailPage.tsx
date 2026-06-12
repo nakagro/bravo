@@ -1,0 +1,504 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import {
+  formatShortDate,
+  formatTime,
+  formatUserName,
+  formatWeekday,
+  formatMonth,
+  getDayNum,
+  getInitials,
+  getTodayStr,
+} from "../features/events/types";
+import { RsvpButtons } from "../features/events/components/RsvpButtons";
+import { EventForm } from "../features/events/components/EventForm";
+import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
+import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ArrowLeftIcon,
+  CalendarDaysIcon,
+  MapPinIcon,
+  PencilSquareIcon,
+  XCircleIcon,
+  ArrowUturnLeftIcon,
+  BellAlertIcon,
+  UserIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
+
+const attendanceGroups = [
+  {
+    key: "attending",
+    label: "Going",
+    dotClass: "bg-green-500",
+    chipClass: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200",
+    defaultOpen: true,
+  },
+  {
+    key: "maybe",
+    label: "Maybe",
+    dotClass: "bg-yellow-500",
+    chipClass: "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200",
+    defaultOpen: true,
+  },
+  {
+    key: "notAttending",
+    label: "Not going",
+    dotClass: "bg-red-500",
+    chipClass: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200",
+    defaultOpen: true,
+  },
+  {
+    key: "noResponse",
+    label: "No response",
+    dotClass: "bg-gray-400",
+    chipClass: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+    // The longest list by far — collapsed so it doesn't swamp the page
+    defaultOpen: false,
+  },
+] as const;
+
+export function EventDetailPage() {
+  const navigate = useNavigate();
+  const { eventId } = useParams<{ eventId: string }>();
+
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(attendanceGroups.map((g) => [g.key, g.defaultOpen]))
+  );
+
+  const typedEventId = eventId as Id<"events"> | undefined;
+  const event = useQuery(api.events.getEvent, typedEventId ? { eventId: typedEventId } : "skip");
+  const attendance = useQuery(
+    api.events.getEventAttendance,
+    typedEventId ? { eventId: typedEventId } : "skip"
+  );
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const canManageEvents = moduleAccess?.eventsAdmin === true;
+
+  const cancelEvent = useMutation(api.events.cancelEvent);
+  const restoreEvent = useMutation(api.events.restoreEvent);
+
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const handleCancelConfirm = async (reason: string | undefined) => {
+    if (!typedEventId) return;
+    try {
+      await cancelEvent({ eventId: typedEventId, reason });
+      toast.success("Event cancelled", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            restoreEvent({ eventId: typedEventId })
+              .then(() => toast.info("Event restored"))
+              .catch((error) => {
+                console.error("Error restoring event:", error);
+                toast.error("Failed to restore event", {
+                  description:
+                    error instanceof Error ? error.message : "An unexpected error occurred.",
+                });
+              });
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error cancelling event:", error);
+      toast.error("Failed to cancel event", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setShowCancelDialog(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!typedEventId) return;
+    try {
+      await restoreEvent({ eventId: typedEventId });
+      toast.success("Event restored");
+    } catch (error) {
+      console.error("Error restoring event:", error);
+      toast.error("Failed to restore event", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  const backButton = (
+    <button
+      onClick={() => navigate("/events")}
+      className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+    >
+      <ArrowLeftIcon className="h-4 w-4" />
+      All events
+    </button>
+  );
+
+  if (event === undefined) {
+    return (
+      <div className="space-y-4 max-w-5xl" data-component="EventDetailPage">
+        {backButton}
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (event === null) {
+    return (
+      <div className="space-y-4 max-w-5xl" data-component="EventDetailPage">
+        {backButton}
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-8 text-center">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event not found</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            This event may have been removed, or the link is incorrect.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const isCancelled = event.status === "cancelled";
+  const isPast = (event.endDate ?? event.startDate) < getTodayStr();
+  const showRsvp = !isCancelled && !isPast;
+
+  const dateLine =
+    event.endDate && event.endDate !== event.startDate
+      ? `${formatShortDate(event.startDate)} – ${formatShortDate(event.endDate)}`
+      : formatShortDate(event.startDate);
+
+  const timeLine = event.isAllDay
+    ? "All day"
+    : event.startTime && event.endTime
+      ? `${formatTime(event.startTime)} – ${formatTime(event.endTime)}`
+      : event.startTime
+        ? formatTime(event.startTime)
+        : "All day";
+
+  // Stacked response-breakdown bar
+  const totalMembers = attendance
+    ? attendance.attending.length +
+      attendance.maybe.length +
+      attendance.notAttending.length +
+      attendance.noResponse.length
+    : 0;
+  const barSegments = attendance
+    ? ([
+        { count: attendance.attending.length, className: "bg-green-500" },
+        { count: attendance.maybe.length, className: "bg-yellow-400" },
+        { count: attendance.notAttending.length, className: "bg-red-500" },
+        { count: attendance.noResponse.length, className: "bg-gray-300 dark:bg-gray-600" },
+      ] as const)
+    : [];
+
+  // Labelled sub-section used inside the Details card
+  const detailSection = (label: string, content: React.ReactNode) => (
+    <div>
+      <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-1">
+        {label}
+      </h4>
+      <div className="text-[15px] text-gray-800 dark:text-gray-200">{content}</div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 max-w-5xl" data-component="EventDetailPage">
+      {showEditForm && typedEventId && (
+        <EventForm eventId={typedEventId} onClose={() => setShowEditForm(false)} />
+      )}
+      <CancelEventDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        eventTitle={event.title}
+        onConfirm={handleCancelConfirm}
+      />
+      <NotifyMembersDialog
+        open={showNotifyDialog}
+        onOpenChange={setShowNotifyDialog}
+        eventId={typedEventId ?? null}
+        eventTitle={event.title}
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        {backButton}
+
+        {/* Admin actions */}
+        {canManageEvents && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowEditForm(true)}
+              className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+            >
+              <PencilSquareIcon className="h-4 w-4 mr-1" />
+              Edit
+            </button>
+            {event.status === "active" ? (
+              <>
+                <button
+                  onClick={() => setShowNotifyDialog(true)}
+                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+                >
+                  <BellAlertIcon className="h-4 w-4 mr-1" />
+                  Notify
+                </button>
+                <button
+                  onClick={() => setShowCancelDialog(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
+                >
+                  <XCircleIcon className="h-4 w-4 mr-1" />
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleRestore}
+                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+              >
+                <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
+                Restore
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Header — slim identity band. The left accent matches the list cards:
+          red = active upcoming event, gray = past or cancelled */}
+      <div
+        className={`bg-white dark:bg-gray-800 shadow-sm rounded-xl border-l-4 p-4 sm:p-5 ${
+          isCancelled || isPast ? "border-gray-300 dark:border-gray-600" : "border-red-600"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <div
+            className={`flex-shrink-0 text-center rounded-lg px-3 py-2 min-w-[60px] ${
+              isCancelled
+                ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                : "bg-red-50 dark:bg-red-900/25 text-red-700 dark:text-red-300"
+            }`}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-[0.15em] opacity-70">
+              {formatWeekday(event.startDate)}
+            </div>
+            <div className="text-3xl font-black leading-none mt-0.5">
+              {getDayNum(event.startDate)}
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.15em] opacity-70 mt-0.5">
+              {formatMonth(event.startDate)}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {event.eventType && (
+                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 whitespace-nowrap">
+                  {event.eventType}
+                </span>
+              )}
+              {isCancelled && (
+                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                  Cancelled
+                </span>
+              )}
+              {isPast && !isCancelled && (
+                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  Past event
+                </span>
+              )}
+            </div>
+            <h1
+              className={`text-xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white mt-1 ${
+                isCancelled ? "line-through decoration-2 opacity-70" : ""
+              }`}
+            >
+              {event.title}
+            </h1>
+            {isCancelled && event.cancellationReason && (
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">
+                Cancelled: {event.cancellationReason}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* RSVP — full-width card, consistent with the rest of the page */}
+      {showRsvp && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div className="mb-3 sm:mb-0">
+            <div className="text-sm font-bold text-gray-900 dark:text-white">Are you coming?</div>
+
+          </div>
+          <div className="sm:w-auto w-full sm:min-w-[320px]">
+            <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} size="lg" />
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-3 items-start">
+        {/* Details — all the event information lives here as labelled sections */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {detailSection(
+                "When",
+                <span className="flex items-center gap-2">
+                  <CalendarDaysIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  {dateLine}
+                  <span className="text-gray-400 dark:text-gray-500">·</span>
+                  {timeLine}
+                </span>
+              )}
+              {event.location &&
+                detailSection(
+                  "Where",
+                  <span className="flex items-center gap-2">
+                    <MapPinIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    {event.location}
+                  </span>
+                )}
+              {detailSection(
+                "Organiser",
+                <span className="flex items-center gap-2">
+                  <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  {formatUserName(event.createdByUser)}
+                </span>
+              )}
+            </div>
+
+            {event.description && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                {detailSection(
+                  "Details",
+                  <p className="leading-relaxed whitespace-pre-line">{event.description}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Who's coming — avatar chips for quick scanning */}
+          {attendance && attendance.attending.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5">
+              <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
+                Who&apos;s coming ({attendance.attending.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {attendance.attending.map((member) => (
+                  <span
+                    key={member._id}
+                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200"
+                  >
+                    <span className="h-6 w-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {getInitials(member)}
+                    </span>
+                    {formatUserName(member)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Responses panel */}
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
+              Responses
+            </h3>
+            {attendance && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {totalMembers - attendance.noResponse.length}/{totalMembers} replied
+              </span>
+            )}
+          </div>
+
+          <div className="p-5 space-y-4">
+            {attendance === undefined ? (
+              <>
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </>
+            ) : attendance === null ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Sign in to see who&apos;s coming.
+              </p>
+            ) : (
+              <>
+                {/* Stacked breakdown bar */}
+                {totalMembers > 0 && (
+                  <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700">
+                    {barSegments.map(
+                      ({ count, className }, i) =>
+                        count > 0 && (
+                          <div
+                            key={i}
+                            className={`${className} transition-all`}
+                            style={{ width: `${(count / totalMembers) * 100}%` }}
+                          />
+                        )
+                    )}
+                  </div>
+                )}
+
+                {attendanceGroups.map(({ key, label, dotClass, chipClass }) => {
+                  const members = attendance[key];
+                  const isOpen = openGroups[key];
+                  return (
+                    <div key={key}>
+                      <button
+                        onClick={() => toggleGroup(key)}
+                        aria-expanded={isOpen}
+                        className="w-full flex items-center gap-2 text-left group min-h-[32px]"
+                      >
+                        <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                          {label}
+                        </span>
+                        <span className={`px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${chipClass}`}>
+                          {members.length}
+                        </span>
+                        <ChevronDownIcon
+                          className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      {isOpen &&
+                        (members.length === 0 ? (
+                          <p className="text-sm text-gray-400 dark:text-gray-500 pl-4 mt-1">
+                            Nobody yet
+                          </p>
+                        ) : (
+                          <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
+                            {members.map((member) => (
+                              <li key={member._id} className="flex items-center gap-2">
+                                <span className="h-5 w-5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                  {getInitials(member)}
+                                </span>
+                                {formatUserName(member)}
+                              </li>
+                            ))}
+                          </ul>
+                        ))}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

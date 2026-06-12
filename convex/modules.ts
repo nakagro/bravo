@@ -211,6 +211,22 @@ export const syncModuleSettings = mutation({
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "events",
+        moduleName: "Events",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "eventsAdmin",
+        moduleName: "Events Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "kiosk",
         moduleName: "Kiosk Mode",
         isEnabled: true,
@@ -411,6 +427,22 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "events",
+        moduleName: "Events",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "eventsAdmin",
+        moduleName: "Events Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "kiosk",
@@ -646,6 +678,8 @@ export const getAllModuleAccess = query({
     baSkillsAdmin: v.boolean(),
     brigadeTasks: v.boolean(),
     bookings: v.boolean(),
+    events: v.boolean(),
+    eventsAdmin: v.boolean(),
     feedback: v.boolean(),
     links: v.boolean(),
     settings: v.boolean(),
@@ -672,6 +706,8 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: false,
         brigadeTasks: false,
         bookings: false,
+        events: false,
+        eventsAdmin: false,
         feedback: false,
         links: false,
         settings: false,
@@ -699,6 +735,8 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: false,
         brigadeTasks: false,
         bookings: false,
+        events: false,
+        eventsAdmin: false,
         feedback: false,
         links: false,
         settings: false,
@@ -726,6 +764,8 @@ export const getAllModuleAccess = query({
         baSkillsAdmin: true,
         brigadeTasks: true,
         bookings: true,
+        events: true,
+        eventsAdmin: true,
         feedback: true,
         links: true,
         settings: true,
@@ -799,6 +839,8 @@ export const getAllModuleAccess = query({
       baSkillsAdmin: checkAccess("baSkillsAdmin"),
       brigadeTasks: checkAccess("brigadeTasks"),
       bookings: checkAccess("bookings"),
+      events: checkAccess("events"),
+      eventsAdmin: checkAccess("eventsAdmin"),
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),
       settings: checkAccess("settings"),

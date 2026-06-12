@@ -549,7 +549,8 @@ const applicationTables = {
   notificationSettings: defineTable({
     notificationType: v.union(
       v.literal("nightlyReset"),
-      v.literal("morningReminder")
+      v.literal("morningReminder"),
+      v.literal("eventReminder")
     ),
     enabled: v.boolean(),
     description: v.string(),
@@ -866,6 +867,61 @@ const applicationTables = {
     .index("by_createdAt", ["createdAt"])
     .index("by_startDate", ["startDate"])
     .index("by_resource_startDate", ["resourceId", "startDate"]),
+
+  // Events - Brigade events (sausage sizzles, school visits, training sessions, etc.)
+  events: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    eventType: v.optional(v.string()), // Free-text category ("Fundraiser", "Training", ...)
+    location: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("cancelled")),
+    startDate: v.string(), // ISO date string (YYYY-MM-DD)
+    endDate: v.optional(v.string()), // ISO date string, optional for single-day events
+    startTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
+    endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
+    isAllDay: v.boolean(),
+    cancelledBy: v.optional(v.id("users")),
+    cancelledAt: v.optional(v.number()),
+    cancellationReason: v.optional(v.string()),
+    reminderSentAt: v.optional(v.number()), // Guards against double-sending the pre-event reminder
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_startDate", ["startDate"])
+    .index("by_status", ["status"])
+    .index("by_status_startDate", ["status", "startDate"])
+    .index("by_createdBy", ["createdBy"]),
+
+  // Event RSVPs - one row per user per event (uniqueness enforced by upsert)
+  eventRsvps: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("attending"),
+      v.literal("notAttending"),
+      v.literal("maybe")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_user", ["userId"])
+    .index("by_event_user", ["eventId", "userId"]),
+
+  // Event history for audit trail of changes to events
+  eventHistory: defineTable({
+    eventId: v.id("events"),
+    timestamp: v.number(),
+    userId: v.id("users"),
+    changeType: v.string(), // event_created | field_change | event_cancelled | event_restored | notification_sent
+    field: v.string(),
+    oldValue: v.any(),
+    newValue: v.any(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_timestamp", ["timestamp"]),
 
   // Password reset tokens table
   passwordResetTokens: defineTable({

@@ -19,6 +19,7 @@ import {
   TriangleAlert,
   Link2,
   Calendar,
+  CalendarCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,16 @@ export const HamburgerMenu = () => {
             >
               <CalendarDays className="mr-3 h-5 w-5" />
               <span>Availability</span>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("events") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/events")}
+              className={location.pathname === '/events' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <CalendarCheck className="mr-3 h-5 w-5" />
+              <span>Events</span>
             </DropdownMenuItem>
           )}
 

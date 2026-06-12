@@ -274,6 +274,21 @@ export const seedDevDatabase = mutation({
         requiredRoles: [],
       },
       {
+        moduleId: "events",
+        moduleName: "Events",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+      },
+      {
+        moduleId: "eventsAdmin",
+        moduleName: "Events Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant",
+      },
+      {
         moduleId: "brigadeTasks",
         moduleName: "Brigade Tasks",
         isEnabled: true,

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, type ReactNode } from "react";
+import { Fragment, Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import {
   BrowserRouter,
@@ -32,6 +32,8 @@ const InventoryPage = lazy(() => import("./pages/InventoryPage").then((m) => ({ 
 const InventoryChecksTab = lazy(() => import("./features/inventory/pages/InventoryChecksTab").then((m) => ({ default: m.InventoryChecksTab })));
 const InventoryTemplateTab = lazy(() => import("./features/inventory/pages/InventoryTemplateTab").then((m) => ({ default: m.InventoryTemplateTab })));
 const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ default: m.BookingsPage })));
+const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
+const EventDetailPage = lazy(() => import("./pages/EventDetailPage").then((m) => ({ default: m.EventDetailPage })));
 const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage").then((m) => ({ default: m.AvailabilityPage })));
 const FireReportsPage = lazy(() => import("./pages/FireReportsPage").then((m) => ({ default: m.FireReportsPage })));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage").then((m) => ({ default: m.FeedbackPage })));
@@ -167,6 +169,12 @@ function ServiceAccountApp() {
       <Route key="vehicleFaults" path="/vehicle-faults" element={<VehicleFaultsPage />} />
     ),
     bookings: <Route key="bookings" path="/bookings" element={<BookingsPage />} />,
+    events: (
+      <Fragment key="events">
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/events/:eventId" element={<EventDetailPage />} />
+      </Fragment>
+    ),
     availability: (
       <Route key="availability" path="/availability" element={<AvailabilityPage />} />
     ),
@@ -257,6 +265,16 @@ function AuthenticatedApp() {
           <Route path="/bookings" element={
             <ProtectedRoute moduleId="bookings">
               <BookingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/events" element={
+            <ProtectedRoute moduleId="events">
+              <EventsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/events/:eventId" element={
+            <ProtectedRoute moduleId="events">
+              <EventDetailPage />
             </ProtectedRoute>
           } />
           <Route path="/availability" element={
