@@ -4,7 +4,6 @@ import { useLocation, Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Toaster } from "../ui/sonner";
 import { isDevEnvironment } from "@/utils/environment";
-import { ConnectionBanner } from "@/components/common/ConnectionBanner";
 
 interface ServiceLayoutProps {
   children: ReactNode;
@@ -91,7 +90,6 @@ export function ServiceLayout({ children }: ServiceLayoutProps) {
             })}
           </nav>
         )}
-        <ConnectionBanner />
       </header>
       <main className="flex-1 p-4">
         <div className="max-w-7xl mx-auto">{children}</div>

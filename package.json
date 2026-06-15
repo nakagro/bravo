@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "2026.06.13",
+  "version": "2026.06.15",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:docker:frontend dev:docker:backend",

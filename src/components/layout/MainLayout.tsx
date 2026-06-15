@@ -3,7 +3,6 @@ import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
 import { isDevEnvironment } from "@/utils/environment";
-import { ConnectionBanner } from "@/components/common/ConnectionBanner";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -30,7 +29,6 @@ export function MainLayout({ children }: MainLayoutProps) {
           </Link>
           <HamburgerMenu />
         </header>
-        <ConnectionBanner />
       </div>
       <main className="flex-1 p-4">
         <div className="max-w-7xl mx-auto">
