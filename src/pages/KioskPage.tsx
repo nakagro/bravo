@@ -5,7 +5,7 @@ import { BookOpen, DoorOpen, MapPin, X } from 'lucide-react';
 import KioskApplianceLocations from '@/features/kiosk/KioskApplianceLocations';
 import KioskGateControl from '@/features/kiosk/KioskGateControl';
 
-const KIOSK_INACTIVITY_TIMEOUT_MS = 30_000;
+const KIOSK_INACTIVITY_TIMEOUT_MS = 120_000;
 
 const KioskContactDirectory = lazy(() => import('@/features/kiosk/KioskContactDirectory'));
 
