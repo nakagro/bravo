@@ -27,7 +27,7 @@ const KIOSK_TILES: KioskTile[] = [
     },
     {
         id: 'gate-control',
-        title: 'Carpark Gate',
+        title: 'Gate & Station',
         icon: <DoorOpen className="h-16 w-16 mb-4" />,
         color: 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white border-amber-500',
     },

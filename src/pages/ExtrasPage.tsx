@@ -14,6 +14,12 @@ type ExtraLink = {
 
 const EXTRA_LINKS: ExtraLink[] = [
   {
+    title: "D14 Contact List",
+    description: "Searchable District 14 emergency contacts — mobile-friendly version of the kiosk directory.",
+    to: "/contacts",
+    emoji: "📇",
+  },
+  {
     title: "Fire Danger Ratings",
     description: "All regions Fire Danger Ratings and Total Fire Ban status in one view.",
     to: "/fdr",

@@ -45,9 +45,13 @@ const SEVERITY_RING: Record<DoorStateInfo['severity'], string> = {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+function authHeaders(extra?: Record<string, string>): HeadersInit {
+  return { 'X-API-Key': API_KEY, ...extra };
+}
+
 async function fetchState(): Promise<number> {
   const res = await fetch(`${GATE_API_BASE}/doors/${GATE_DOOR_ID}/state`, {
-    headers: { 'X-API-Key': API_KEY },
+    headers: authHeaders(),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -57,16 +61,62 @@ async function fetchState(): Promise<number> {
 }
 
 async function sendAction(action: string): Promise<void> {
-  const res = await fetch(`${GATE_API_BASE}/doors/${GATE_DOOR_ID}/control`, {
-    method: 'POST',
-    headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${res.status}`);
-  }
+  await postJson(`${GATE_API_BASE}/doors/${GATE_DOOR_ID}/control`, { action });
 }
+
+interface SceneToggles {
+  communityLockup: boolean;
+  shedSecured: boolean;
+}
+
+async function fetchSceneToggles(): Promise<SceneToggles> {
+  const res = await fetch(`${GATE_API_BASE}/scenes/state`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return {
+    communityLockup: Boolean(data.communityLockup),
+    shedSecured: Boolean(data.shedSecured),
+  };
+}
+
+async function postJson(url: string, body: unknown): Promise<unknown> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  // Scene endpoints return 207 + ok:false when a step failed but the request
+  // itself was well-formed — surface the first failing step's error.
+  if (!res.ok || (data && typeof data === 'object' && 'ok' in data && data.ok === false)) {
+    const failed = Array.isArray((data as any)?.results)
+      ? (data as any).results.find((r: any) => !r.ok)
+      : null;
+    throw new Error(failed?.error ?? (data as any)?.error ?? `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+const runFirecall = () => postJson(`${GATE_API_BASE}/scenes/firecall`, {});
+const setCommunityLockup = (engage: boolean) =>
+  postJson(`${GATE_API_BASE}/scenes/community-lockup`, { engage });
+const setShed = (secure: boolean) => postJson(`${GATE_API_BASE}/scenes/shed`, { secure });
+
+// ── Confirmation descriptor ─────────────────────────────────────────────────────
+
+interface ConfirmConfig {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  confirmTone: 'amber' | 'red' | 'slate';
+  run: () => Promise<unknown>;
+}
+
+const CONFIRM_TONE: Record<ConfirmConfig['confirmTone'], string> = {
+  amber: 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700',
+  red:   'bg-red-600 hover:bg-red-500 active:bg-red-700',
+  slate: 'bg-slate-600 hover:bg-slate-500 active:bg-slate-700',
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -79,18 +129,22 @@ type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 function KioskGateControl({ onBack }: KioskGateControlProps) {
   const [stateInt, setStateInt]     = useState<number | null>(null);
   const [stateError, setStateError] = useState(false);
+  const [scenes, setScenes]         = useState<SceneToggles | null>(null);
   const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
   const [actionError, setActionError]   = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<'Unlock' | 'Reinstate' | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadState = useCallback(async () => {
-    try {
-      const s = await fetchState();
-      setStateInt(s);
+    const [doorRes, sceneRes] = await Promise.allSettled([fetchState(), fetchSceneToggles()]);
+    if (doorRes.status === 'fulfilled') {
+      setStateInt(doorRes.value);
       setStateError(false);
-    } catch {
+    } else {
       setStateError(true);
+    }
+    if (sceneRes.status === 'fulfilled') {
+      setScenes(sceneRes.value);
     }
   }, []);
 
@@ -101,14 +155,13 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadState]);
 
-  const handleAction = useCallback(async (action: string) => {
+  const runFlow = useCallback(async (fn: () => Promise<unknown>) => {
     setActionStatus('loading');
     setActionError(null);
-    setConfirmAction(null);
+    setConfirm(null);
     try {
-      await sendAction(action);
+      await fn();
       setActionStatus('success');
-      // Refresh state immediately after action
       await loadState();
       setTimeout(() => setActionStatus('idle'), 2500);
     } catch (err) {
@@ -121,8 +174,11 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
   const stateInfo = stateInt !== null ? interpretState(stateInt) : null;
   const busy = actionStatus === 'loading';
 
+  const lockupEngaged = scenes?.communityLockup ?? false;
+  const shedSecured   = scenes?.shedSecured ?? false;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
+    <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none">
 
       {/* Header */}
       <div className="flex-none flex items-center justify-between px-8 py-6">
@@ -134,7 +190,7 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
           <ArrowLeft className="h-10 w-10" />
         </button>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-          {GATE_DOOR_NAME}
+          Gate &amp; Station Control
         </h1>
         <button
           onClick={loadState}
@@ -146,112 +202,214 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8 gap-8 max-w-2xl mx-auto w-full">
+      {/* Content (scrollable for the extra scene controls) */}
+      <div className="flex-1 overflow-y-auto px-8 pb-10">
+        <div className="flex flex-col items-center gap-8 max-w-2xl mx-auto w-full">
 
-        {/* State indicator */}
-        <div className={`flex flex-col items-center justify-center w-52 h-52 md:w-64 md:h-64 rounded-full border-8 transition-colors duration-500 bg-slate-900 ${stateInfo ? SEVERITY_RING[stateInfo.severity] : 'border-slate-700'}`}>
-          {stateError ? (
-            <>
-              <span className="text-5xl mb-2">⚠️</span>
-              <p className="text-xl font-bold text-red-400">Offline</p>
-              <p className="text-base text-slate-500 text-center px-4 mt-1">Cannot reach API</p>
-            </>
-          ) : stateInfo ? (
-            <>
-              <span className="text-6xl mb-2">{stateInfo.icon}</span>
-              <p className="text-2xl font-bold text-white">{stateInfo.label}</p>
-              <p className="text-base text-slate-400 text-center px-6 mt-1 leading-snug">{stateInfo.sub}</p>
-            </>
-          ) : (
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-600 border-t-slate-300" />
-          )}
-        </div>
-
-        {/* Action feedback */}
-        {actionStatus === 'success' && (
-          <div className="w-full px-6 py-4 bg-emerald-900/60 border-2 border-emerald-600 rounded-2xl text-center">
-            <p className="text-xl font-bold text-emerald-300">Command sent successfully</p>
-          </div>
-        )}
-        {actionStatus === 'error' && (
-          <div className="w-full px-6 py-4 bg-red-900/60 border-2 border-red-600 rounded-2xl text-center">
-            <p className="text-xl font-bold text-red-300">{actionError ?? 'Command failed'}</p>
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="w-full flex flex-col gap-4">
-          {/* Primary: Open */}
-          <button
-            onClick={() => handleAction('Open')}
-            disabled={busy}
-            className="w-full py-8 rounded-2xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-3xl md:text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
-          >
-            {busy && actionStatus === 'loading' ? (
-              <span className="flex items-center justify-center gap-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
-                Opening…
-              </span>
+          {/* Gate state indicator */}
+          <div className={`mt-2 flex flex-col items-center justify-center w-44 h-44 md:w-56 md:h-56 rounded-full border-8 transition-colors duration-500 bg-slate-900 ${stateInfo ? SEVERITY_RING[stateInfo.severity] : 'border-slate-700'}`}>
+            {stateError ? (
+              <>
+                <span className="text-5xl mb-2">⚠️</span>
+                <p className="text-xl font-bold text-red-400">Offline</p>
+                <p className="text-base text-slate-500 text-center px-4 mt-1">Cannot reach API</p>
+              </>
+            ) : stateInfo ? (
+              <>
+                <span className="text-5xl mb-2">{stateInfo.icon}</span>
+                <p className="text-2xl font-bold text-white">{stateInfo.label}</p>
+                <p className="text-sm text-slate-400 text-center px-6 mt-1 leading-snug">{stateInfo.sub}</p>
+              </>
             ) : (
-              'Open Gate'
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-600 border-t-slate-300" />
             )}
-          </button>
+          </div>
+          <p className="-mt-4 text-base text-slate-500">{GATE_DOOR_NAME}</p>
 
-          {/* Secondary: Hold Open + Reinstate */}
-          <div className="flex gap-4">
+          {/* Action feedback */}
+          {actionStatus === 'success' && (
+            <div className="w-full px-6 py-4 bg-emerald-900/60 border-2 border-emerald-600 rounded-2xl text-center">
+              <p className="text-xl font-bold text-emerald-300">Command sent successfully</p>
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="w-full px-6 py-4 bg-red-900/60 border-2 border-red-600 rounded-2xl text-center">
+              <p className="text-xl font-bold text-red-300">{actionError ?? 'Command failed'}</p>
+            </div>
+          )}
+
+          {/* Gate actions */}
+          <div className="w-full flex flex-col gap-4">
             <button
-              onClick={() => setConfirmAction('Unlock')}
+              onClick={() => runFlow(() => sendAction('Open'))}
               disabled={busy}
-              className="flex-1 py-7 rounded-2xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-xl md:text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-7 rounded-2xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-3xl md:text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
             >
-              Hold Open
+              {busy ? (
+                <span className="flex items-center justify-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+                  Working…
+                </span>
+              ) : (
+                'Open Gate'
+              )}
             </button>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setConfirm({
+                  title: 'Hold Gate Open?',
+                  body: 'The gate will remain unlocked indefinitely until Reinstate is triggered.',
+                  confirmLabel: 'Hold Open',
+                  confirmTone: 'amber',
+                  run: () => sendAction('Unlock'),
+                })}
+                disabled={busy}
+                className="flex-1 py-6 rounded-2xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-xl md:text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Hold Open
+              </button>
+              <button
+                onClick={() => setConfirm({
+                  title: 'Reinstate Gate?',
+                  body: 'Any override will be cleared and the gate will return to its normal schedule.',
+                  confirmLabel: 'Reinstate',
+                  confirmTone: 'slate',
+                  run: () => sendAction('Reinstate'),
+                })}
+                disabled={busy}
+                className="flex-1 py-6 rounded-2xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-xl md:text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Reinstate
+              </button>
+            </div>
+          </div>
+
+          {/* ── Station scenes ─────────────────────────────────────────────── */}
+          <div className="w-full border-t border-slate-800 pt-6 flex flex-col gap-4">
+            <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">Station Controls</p>
+
+            {/* Firecall */}
             <button
-              onClick={() => setConfirmAction('Reinstate')}
+              onClick={() => setConfirm({
+                title: 'Start Firecall?',
+                body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
+                confirmLabel: 'Start Firecall',
+                confirmTone: 'red',
+                run: runFirecall,
+              })}
               disabled={busy}
-              className="flex-1 py-7 rounded-2xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-xl md:text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-7 rounded-2xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-3xl md:text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
             >
-              Reinstate
+              🚒 Firecall
             </button>
+
+            {/* Community Lockup toggle */}
+            <SceneToggleButton
+              label="Community Lockup"
+              activeLabel="Lockup Active — Tap to End"
+              active={lockupEngaged}
+              disabled={busy || scenes === null}
+              onPress={() => setConfirm(
+                lockupEngaged
+                  ? {
+                      title: 'End Community Lockup?',
+                      body: 'The two public-facing doors will return to their normal unlock schedule.',
+                      confirmLabel: 'End Lockup',
+                      confirmTone: 'slate',
+                      run: () => setCommunityLockup(false),
+                    }
+                  : {
+                      title: 'Engage Community Lockup?',
+                      body: 'Locks the two doors leading to the engine and operations rooms to keep the public out during the event.',
+                      confirmLabel: 'Lock Doors',
+                      confirmTone: 'amber',
+                      run: () => setCommunityLockup(true),
+                    },
+              )}
+            />
+
+            {/* Shed toggle */}
+            <SceneToggleButton
+              label="Shed — Open Access"
+              activeLabel="Shed Secured — Tap to Open"
+              active={shedSecured}
+              disabled={busy || scenes === null}
+              onPress={() => setConfirm(
+                shedSecured
+                  ? {
+                      title: 'Open the Shed?',
+                      body: 'Disarms the shed area and unlocks the shed PA door.',
+                      confirmLabel: 'Open Shed',
+                      confirmTone: 'amber',
+                      run: () => setShed(false),
+                    }
+                  : {
+                      title: 'Secure the Shed?',
+                      body: 'Locks the shed PA door and arms the shed area. Arming will fail if the shed is not sealed.',
+                      confirmLabel: 'Secure Shed',
+                      confirmTone: 'slate',
+                      run: () => setShed(true),
+                    },
+              )}
+            />
           </div>
         </div>
       </div>
 
       {/* Confirmation modal */}
-      {confirmAction && (
+      {confirm && (
         <div className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center px-6">
           <div className="bg-slate-900 border-4 border-slate-700 rounded-[2rem] w-full max-w-xl p-8 md:p-10 flex flex-col gap-6 shadow-2xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-white text-center">
-              {confirmAction === 'Unlock' ? 'Hold Gate Open?' : 'Reinstate Gate?'}
-            </h2>
-            <p className="text-xl md:text-2xl text-slate-400 text-center leading-snug">
-              {confirmAction === 'Unlock'
-                ? 'The gate will remain unlocked indefinitely until Reinstate is triggered.'
-                : 'Any override will be cleared and the gate will return to its normal schedule.'}
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-white text-center">{confirm.title}</h2>
+            <p className="text-xl md:text-2xl text-slate-400 text-center leading-snug">{confirm.body}</p>
             <div className="flex gap-4 mt-2">
               <button
-                onClick={() => setConfirmAction(null)}
+                onClick={() => setConfirm(null)}
                 className="flex-1 py-6 rounded-2xl bg-slate-700 hover:bg-slate-600 text-white text-2xl font-bold transition-colors active:scale-[0.98]"
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleAction(confirmAction)}
-                className={`flex-[2] py-6 rounded-2xl text-white text-2xl font-bold transition-colors active:scale-[0.98] ${
-                  confirmAction === 'Unlock'
-                    ? 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700'
-                    : 'bg-slate-600 hover:bg-slate-500 active:bg-slate-700'
-                }`}
+                onClick={() => runFlow(confirm.run)}
+                className={`flex-[2] py-6 rounded-2xl text-white text-2xl font-bold transition-colors active:scale-[0.98] ${CONFIRM_TONE[confirm.confirmTone]}`}
               >
-                {confirmAction === 'Unlock' ? 'Hold Open' : 'Reinstate'}
+                {confirm.confirmLabel}
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// ── Toggle button ───────────────────────────────────────────────────────────────
+
+interface SceneToggleButtonProps {
+  label: string;
+  activeLabel: string;
+  active: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}
+
+function SceneToggleButton({ label, activeLabel, active, disabled, onPress }: SceneToggleButtonProps) {
+  return (
+    <button
+      onClick={onPress}
+      disabled={disabled}
+      className={`w-full py-6 rounded-2xl text-white text-xl md:text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
+        active
+          ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
+          : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
+      }`}
+    >
+      <span className="flex items-center justify-center gap-3">
+        {active && <span className="h-3 w-3 rounded-full bg-amber-400 animate-pulse" />}
+        {active ? activeLabel : label}
+      </span>
+    </button>
   );
 }
 

@@ -48,6 +48,7 @@ const EquipmentPage = lazy(() => import("./pages/EquipmentPage").then((m) => ({ 
 const BASkillsPage = lazy(() => import("./pages/BASkillsPage").then((m) => ({ default: m.BASkillsPage })));
 const BrigadeTasksPage = lazy(() => import("./features/brigadeTasks/pages/BrigadeTasksPage").then((m) => ({ default: m.BrigadeTasksPage })));
 const ExtrasPage = lazy(() => import("./pages/ExtrasPage"));
+const ContactDirectoryPage = lazy(() => import("./features/contacts/ContactDirectoryPage"));
 const ShortcutsPage = lazy(() => import("./pages/ShortcutsPage"));
 const QRCodesPage = lazy(() => import("./features/qrCodes/QRCodesPage"));
 const KioskPage = lazy(() => import("./pages/KioskPage"));
@@ -320,6 +321,7 @@ function AuthenticatedApp() {
           } />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/extras" element={<ExtrasPage />} />
+          <Route path="/contacts" element={<ContactDirectoryPage />} />
           <Route path="/shortcuts" element={
             <ProtectedRoute moduleId="availability">
               <ShortcutsPage />
