@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft, RefreshCw, HelpCircle, X,
   Lock, LockOpen, DoorOpen, RotateCcw, Flame, Warehouse,
@@ -11,8 +11,12 @@ import {
 // When proxied through the BRAVO server: set VITE_GATE_API_BASE=/gate-api (key
 // injected by nginx). Direct local access (current setup): VITE_GATE_API_BASE=http://192.0.2.10:3000
 const GATE_API_BASE  = import.meta.env.VITE_GATE_API_BASE ?? '/gate-api';
-const GATE_DOOR_ID   = 'c03e570f-4003-4b24-91d1-fcb216734785';
-const GATE_DOOR_NAME = 'D14 Carpark Gate';
+const GATE_DOOR_ID    = 'c03e570f-4003-4b24-91d1-fcb216734785';
+const GATE_DOOR_NAME  = 'D14 Carpark Gate';
+const TURNOUT_DOOR_ID   = 'a0637546-f427-49d1-83ab-db78ada81e09';
+const TURNOUT_DOOR_NAME = 'D11 Turnout Entry';
+const SHED_DOOR_ID      = '1c1b20b3-df08-4e83-8554-aee064cfa6bc';
+const SHED_AREA_ID      = 'a03cba71-5d8b-4c11-8f9a-a2fe9f65ac48';
 const API_KEY        = import.meta.env.VITE_GATE_API_KEY ?? '';
 const POLL_INTERVAL_MS = 5000;
 
@@ -61,8 +65,8 @@ function authHeaders(extra?: Record<string, string>): HeadersInit {
   return { 'X-API-Key': API_KEY, ...extra };
 }
 
-async function fetchState(): Promise<number> {
-  const res = await fetch(`${GATE_API_BASE}/doors/${GATE_DOOR_ID}/state`, {
+async function fetchDoorState(doorId: string): Promise<number> {
+  const res = await fetch(`${GATE_API_BASE}/doors/${doorId}/state`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -72,8 +76,36 @@ async function fetchState(): Promise<number> {
   return s;
 }
 
+async function fetchAreaState(areaId: string): Promise<number> {
+  const res = await fetch(`${GATE_API_BASE}/areas/${areaId}/state`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const s = data.state ?? data.State;
+  if (typeof s !== 'number') throw new Error('Unexpected state format');
+  return s;
+}
+
+// Inception AreaState — bit 1 (0x1) = Armed. Verify against live values if the
+// indicator looks wrong (arm the shed and compare the raw State number).
+const AREA_ARMED_BIT = 1;
+function interpretArea(s: number): { label: string; armed: boolean; severity: DoorStateInfo['severity'] } {
+  const armed = (s & AREA_ARMED_BIT) !== 0;
+  return armed
+    ? { label: 'Armed', armed: true, severity: 'alert' }
+    : { label: 'Disarmed', armed: false, severity: 'open' };
+}
+
 async function sendAction(action: string): Promise<void> {
   await postJson(`${GATE_API_BASE}/doors/${GATE_DOOR_ID}/control`, { action });
+}
+
+interface StationStatus {
+  gate: number | null;
+  turnout: number | null;
+  shedDoor: number | null;
+  shedArea: number | null;
 }
 
 interface SceneToggles {
@@ -150,8 +182,8 @@ interface KioskGateControlProps {
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 
 function KioskGateControl({ onBack }: KioskGateControlProps) {
-  const [stateInt, setStateInt]     = useState<number | null>(null);
-  const [stateError, setStateError] = useState(false);
+  const [status, setStatus] = useState<StationStatus>({ gate: null, turnout: null, shedDoor: null, shedArea: null });
+  const [gateError, setGateError] = useState(false);
   const [scenes, setScenes]         = useState<SceneToggles | null>(null);
   const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
   const [actionError, setActionError]   = useState<string | null>(null);
@@ -160,13 +192,20 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadState = useCallback(async () => {
-    const [doorRes, sceneRes] = await Promise.allSettled([fetchState(), fetchSceneToggles()]);
-    if (doorRes.status === 'fulfilled') {
-      setStateInt(doorRes.value);
-      setStateError(false);
-    } else {
-      setStateError(true);
-    }
+    const [gateRes, turnoutRes, shedDoorRes, shedAreaRes, sceneRes] = await Promise.allSettled([
+      fetchDoorState(GATE_DOOR_ID),
+      fetchDoorState(TURNOUT_DOOR_ID),
+      fetchDoorState(SHED_DOOR_ID),
+      fetchAreaState(SHED_AREA_ID),
+      fetchSceneToggles(),
+    ]);
+    setGateError(gateRes.status === 'rejected');
+    setStatus({
+      gate:     gateRes.status === 'fulfilled' ? gateRes.value : null,
+      turnout:  turnoutRes.status === 'fulfilled' ? turnoutRes.value : null,
+      shedDoor: shedDoorRes.status === 'fulfilled' ? shedDoorRes.value : null,
+      shedArea: shedAreaRes.status === 'fulfilled' ? shedAreaRes.value : null,
+    });
     if (sceneRes.status === 'fulfilled') {
       setScenes(sceneRes.value);
     }
@@ -195,11 +234,13 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
     }
   }, [loadState]);
 
-  const stateInfo = stateInt !== null ? interpretState(stateInt) : null;
   const busy = actionStatus === 'loading';
 
   const lockupEngaged = scenes?.communityLockup ?? false;
   const shedSecured   = scenes?.shedSecured ?? false;
+
+  const shedDoorInfo = status.shedDoor !== null ? interpretState(status.shedDoor) : null;
+  const shedAreaInfo = status.shedArea !== null ? interpretArea(status.shedArea) : null;
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
@@ -240,26 +281,10 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
 
         {/* ── Left: Gate ──────────────────────────────────────────────── */}
         <section className="min-h-0 flex flex-col gap-4">
-          {/* State indicator */}
-          <div className="flex-none flex items-center gap-5 px-5 py-4 rounded-3xl bg-slate-900 border border-slate-800">
-            <div className={`flex-none flex items-center justify-center w-24 h-24 rounded-full border-[6px] transition-colors duration-500 bg-slate-950 ${stateInfo ? SEVERITY_RING[stateInfo.severity] : 'border-slate-700'}`}>
-              {stateError ? (
-                <AlertTriangle className="h-12 w-12 text-red-400" />
-              ) : stateInfo ? (
-                React.createElement(stateInfo.icon, { className: `h-12 w-12 ${SEVERITY_ICON_COLOR[stateInfo.severity]}` })
-              ) : (
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-600 border-t-slate-300" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm text-slate-500">{GATE_DOOR_NAME}</p>
-              <p className="text-2xl font-bold text-white truncate">
-                {stateError ? 'Offline' : stateInfo ? stateInfo.label : '…'}
-              </p>
-              <p className="text-sm text-slate-400 truncate">
-                {stateError ? 'Cannot reach API' : stateInfo ? stateInfo.sub : ''}
-              </p>
-            </div>
+          {/* State indicators — gate + turnout, 50/50 */}
+          <div className="flex-none grid grid-cols-2 gap-4">
+            <StatusCard name={GATE_DOOR_NAME} stateInt={status.gate} error={gateError} />
+            <StatusCard name={TURNOUT_DOOR_NAME} stateInt={status.turnout} error={false} />
           </div>
 
           {/* Gate actions fill remaining height */}
@@ -354,13 +379,9 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
             )}
           />
 
-          {/* Shed toggle */}
-          <SceneToggleButton
-            label="Lock Up & Arm Shed"
-            activeLabel="Shed Locked & Armed — Tap to Open & Disarm"
-            active={shedSecured}
-            disabled={busy || scenes === null}
-            onPress={() => setConfirm(
+          {/* Shed toggle — live door + alarm status shown inside the button */}
+          <button
+            onClick={() => setConfirm(
               shedSecured
                 ? {
                     title: 'Open the Shed?',
@@ -377,7 +398,32 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
                     run: () => setShed(true),
                   },
             )}
-          />
+            disabled={busy || scenes === null}
+            className={`flex-1 min-h-0 rounded-3xl px-5 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
+              shedSecured
+                ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
+                : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
+            }`}
+          >
+            <div className="flex flex-col items-center justify-center gap-3">
+              <span className="flex items-center justify-center gap-3 text-2xl md:text-3xl font-bold text-center text-white">
+                {shedSecured && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
+                {shedSecured ? 'Shed Secured — Tap to Open' : 'Lock Up & Arm Shed'}
+              </span>
+              <div className="flex items-center gap-3">
+                <StatusPill
+                  icon={shedDoorInfo?.icon ?? Lock}
+                  text={shedDoorInfo ? `Door ${shedDoorInfo.label}` : 'Door …'}
+                  tone={shedDoorInfo?.severity ?? 'normal'}
+                />
+                <StatusPill
+                  icon={shedAreaInfo?.armed ? ShieldAlert : Lock}
+                  text={shedAreaInfo ? `Alarm ${shedAreaInfo.label}` : 'Alarm …'}
+                  tone={shedAreaInfo?.severity ?? 'normal'}
+                />
+              </div>
+            </div>
+          </button>
         </section>
       </main>
 
@@ -457,6 +503,41 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Status displays ─────────────────────────────────────────────────────────────
+
+function StatusCard({ name, stateInt, error }: { name: string; stateInt: number | null; error: boolean }) {
+  const info = stateInt !== null ? interpretState(stateInt) : null;
+  const Icon = info?.icon;
+  return (
+    <div className="flex items-center gap-4 px-4 py-4 rounded-3xl bg-slate-900 border border-slate-800 min-w-0">
+      <div className={`flex-none flex items-center justify-center w-16 h-16 rounded-full border-4 bg-slate-950 ${info ? SEVERITY_RING[info.severity] : 'border-slate-700'}`}>
+        {error ? (
+          <AlertTriangle className="h-8 w-8 text-red-400" />
+        ) : Icon ? (
+          <Icon className={`h-8 w-8 ${SEVERITY_ICON_COLOR[info!.severity]}`} />
+        ) : (
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-600 border-t-slate-300" />
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-slate-500 truncate">{name}</p>
+        <p className="text-xl md:text-2xl font-bold text-white truncate">
+          {error ? 'Offline' : info ? info.label : '…'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ icon: Icon, text, tone }: { icon: LucideIcon; text: string; tone: DoorStateInfo['severity'] }) {
+  return (
+    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/50 text-base md:text-lg font-semibold ${SEVERITY_ICON_COLOR[tone]}`}>
+      <Icon className="h-5 w-5 flex-none" />
+      {text}
+    </span>
   );
 }
 
