@@ -170,7 +170,7 @@ const HELP_ITEMS: Array<{ icon: LucideIcon; name: string; desc: string }> = [
   { icon: RotateCcw, name: 'Reinstate', desc: 'Clears any Hold Open or override and returns the gate to its normal automatic schedule.' },
   { icon: Flame, name: 'Firecall', desc: 'Holds the carpark gate and the turnout entry door open for 10 minutes, then both re-lock automatically. Use when responding to a callout.' },
   { icon: Lock, name: 'Community Lockup', desc: 'Locks the two public-facing doors (to the engine and operations rooms) to keep the public out during community events. Tap again to restore them.' },
-  { icon: Warehouse, name: 'Lock Up & Arm Shed', desc: 'Locks the shed PA door and arms the shed alarm. Tap again to open and disarm. Arming fails if the shed is not sealed.' },
+  { icon: Warehouse, name: 'Open / Secure Shed', desc: 'Open: disarms the shed and holds the PA door open so it can be propped. Secure: releases the hold, re-locks the door and arms the shed. Arming fails if the shed is not sealed.' },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
           <ArrowLeft className="h-8 w-8" />
         </button>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-          Gate &amp; Station Control
+          Station Control
         </h1>
         <div className="flex items-center gap-3">
           <button
@@ -276,85 +276,82 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
         </div>
       </header>
 
-      {/* Body — two columns that fill the remaining height, never scroll */}
-      <main className="flex-1 min-h-0 grid grid-cols-2 gap-6 px-6 pb-6">
+      {/* Body — a shared grid so button rows line up across both columns and
+          stay the same height. Row 1 (auto) holds the gate status cards on the
+          left; the three equal 1fr rows below keep the left and right action
+          buttons identical in height (Reinstate row ↔ Shed sit on the same
+          track). Never scrolls. */}
+      <main className="flex-1 min-h-0 grid grid-cols-2 grid-rows-[auto_1fr_1fr_1fr] gap-x-6 gap-y-4 px-6 pb-6">
 
-        {/* ── Left: Gate ──────────────────────────────────────────────── */}
-        <section className="min-h-0 flex flex-col gap-4">
-          {/* State indicators — gate + turnout, 50/50 */}
-          <div className="flex-none grid grid-cols-2 gap-4">
-            <StatusCard name={GATE_DOOR_NAME} stateInt={status.gate} error={gateError} />
-            <StatusCard name={TURNOUT_DOOR_NAME} stateInt={status.turnout} error={false} />
-          </div>
+        {/* ── Gate status indicators (row 1, left) ─────────────────────── */}
+        <div className="col-start-1 row-start-1 grid grid-cols-2 gap-4">
+          <StatusCard name={GATE_DOOR_NAME} stateInt={status.gate} error={gateError} />
+          <StatusCard name={TURNOUT_DOOR_NAME} stateInt={status.turnout} error={false} />
+        </div>
 
-          {/* Gate actions fill remaining height */}
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
-            <button
-              onClick={() => runFlow(() => sendAction('Open'))}
-              disabled={busy}
-              className="flex-[2] min-h-0 rounded-3xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
-            >
-              {busy ? (
-                <span className="flex items-center justify-center gap-4">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
-                  Working…
-                </span>
-              ) : (
-                'Open Gate'
-              )}
-            </button>
+        {/* ── Open Gate (rows 2–3, left) ───────────────────────────────── */}
+        <button
+          onClick={() => runFlow(() => sendAction('Open'))}
+          disabled={busy}
+          className="col-start-1 row-start-2 row-span-2 min-h-0 rounded-3xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
+        >
+          {busy ? (
+            <span className="flex items-center justify-center gap-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+              Working…
+            </span>
+          ) : (
+            'Open Gate'
+          )}
+        </button>
 
-            <div className="flex-1 min-h-0 flex gap-4">
-              <button
-                onClick={() => setConfirm({
-                  title: 'Hold Gate Open?',
-                  body: 'The gate will remain unlocked indefinitely until Reinstate is triggered.',
-                  confirmLabel: 'Hold Open',
-                  confirmTone: 'amber',
-                  run: () => sendAction('Unlock'),
-                })}
-                disabled={busy}
-                className="flex-1 min-h-0 rounded-3xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Hold Open
-              </button>
-              <button
-                onClick={() => setConfirm({
-                  title: 'Reinstate Gate?',
-                  body: 'Any override will be cleared and the gate will return to its normal schedule.',
-                  confirmLabel: 'Reinstate',
-                  confirmTone: 'slate',
-                  run: () => sendAction('Reinstate'),
-                })}
-                disabled={busy}
-                className="flex-1 min-h-0 rounded-3xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Reinstate
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Right: Station scenes ───────────────────────────────────── */}
-        <section className="min-h-0 flex flex-col gap-4">
-          <p className="flex-none text-sm font-semibold uppercase tracking-widest text-slate-500">Station Controls</p>
-
-          {/* Firecall */}
+        {/* ── Hold Open / Reinstate (row 4, left) ──────────────────────── */}
+        <div className="col-start-1 row-start-4 min-h-0 flex gap-4">
           <button
             onClick={() => setConfirm({
-              title: 'Start Firecall?',
-              body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
-              confirmLabel: 'Start Firecall',
-              confirmTone: 'red',
-              run: runFirecall,
+              title: 'Hold Gate Open?',
+              body: 'The gate will remain unlocked indefinitely until Reinstate is triggered.',
+              confirmLabel: 'Hold Open',
+              confirmTone: 'amber',
+              run: () => sendAction('Unlock'),
             })}
             disabled={busy}
-            className="flex-1 min-h-0 rounded-3xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
+            className="flex-1 min-h-0 rounded-3xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Firecall
+            Hold Open
           </button>
+          <button
+            onClick={() => setConfirm({
+              title: 'Reinstate Gate?',
+              body: 'Any override will be cleared and the gate will return to its normal schedule.',
+              confirmLabel: 'Reinstate',
+              confirmTone: 'slate',
+              run: () => sendAction('Reinstate'),
+            })}
+            disabled={busy}
+            className="flex-1 min-h-0 rounded-3xl bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-2xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Reinstate
+          </button>
+        </div>
 
-          {/* Community Lockup toggle */}
+        {/* ── Firecall (rows 1–2, right) ───────────────────────────────── */}
+        <button
+          onClick={() => setConfirm({
+            title: 'Start Firecall?',
+            body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
+            confirmLabel: 'Start Firecall',
+            confirmTone: 'red',
+            run: runFirecall,
+          })}
+          disabled={busy}
+          className="col-start-2 row-start-1 row-span-2 min-h-0 rounded-3xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
+        >
+          Firecall
+        </button>
+
+        {/* ── Community Lockup toggle (row 3, right) ───────────────────── */}
+        <div className="col-start-2 row-start-3 min-h-0 flex flex-col">
           <SceneToggleButton
             label="Community Lockup"
             activeLabel="Lockup Active — Tap to End"
@@ -378,53 +375,55 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
                   },
             )}
           />
+        </div>
 
-          {/* Shed toggle — live door + alarm status shown inside the button */}
-          <button
-            onClick={() => setConfirm(
-              shedSecured
-                ? {
-                    title: 'Open the Shed?',
-                    body: 'Disarms the shed area and unlocks the shed PA door.',
-                    confirmLabel: 'Open Shed',
-                    confirmTone: 'amber',
-                    run: () => setShed(false),
-                  }
-                : {
-                    title: 'Secure the Shed?',
-                    body: 'Locks the shed PA door and arms the shed area. Arming will fail if the shed is not sealed.',
-                    confirmLabel: 'Secure Shed',
-                    confirmTone: 'slate',
-                    run: () => setShed(true),
-                  },
-            )}
-            disabled={busy || scenes === null}
-            className={`flex-1 min-h-0 rounded-3xl px-5 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
-              shedSecured
-                ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
-                : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
-            }`}
-          >
-            <div className="flex flex-col items-center justify-center gap-3">
-              <span className="flex items-center justify-center gap-3 text-2xl md:text-3xl font-bold text-center text-white">
-                {shedSecured && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
-                {shedSecured ? 'Shed Secured — Tap to Open' : 'Lock Up & Arm Shed'}
-              </span>
-              <div className="flex items-center gap-3">
-                <StatusPill
-                  icon={shedDoorInfo?.icon ?? Lock}
-                  text={shedDoorInfo ? `Door ${shedDoorInfo.label}` : 'Door …'}
-                  tone={shedDoorInfo?.severity ?? 'normal'}
-                />
-                <StatusPill
-                  icon={shedAreaInfo?.armed ? ShieldAlert : Lock}
-                  text={shedAreaInfo ? `Alarm ${shedAreaInfo.label}` : 'Alarm …'}
-                  tone={shedAreaInfo?.severity ?? 'normal'}
-                />
-              </div>
+        {/* ── Shed toggle (row 4, right) — Access / Secure. Live door + alarm
+            status shown inside. The disarmed + held-open state glows amber as
+            the "remember to secure me" attention state; secured is calm. */}
+        <button
+          onClick={() => setConfirm(
+            shedSecured
+              ? {
+                  title: 'Open & Access Shed?',
+                  body: 'Disarms the shed and holds the PA door open so it can be propped. It stays open until you secure the shed again.',
+                  confirmLabel: 'Open Shed',
+                  confirmTone: 'amber',
+                  run: () => setShed(false),
+                }
+              : {
+                  title: 'Secure the Shed?',
+                  body: 'Releases the held-open PA door, re-locks it and arms the shed. Arming will fail if the shed is not sealed.',
+                  confirmLabel: 'Secure Shed',
+                  confirmTone: 'slate',
+                  run: () => setShed(true),
+                },
+          )}
+          disabled={busy || scenes === null}
+          className={`col-start-2 row-start-4 min-h-0 rounded-3xl px-5 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
+            shedSecured
+              ? 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
+              : 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
+          }`}
+        >
+          <div className="flex flex-col items-center justify-center gap-3">
+            <span className="flex items-center justify-center gap-3 text-2xl md:text-3xl font-bold text-center text-white">
+              {!shedSecured && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
+              {shedSecured ? 'Shed Secured — Tap to Open' : 'Shed Open — Tap to Secure'}
+            </span>
+            <div className="flex items-center gap-3">
+              <StatusPill
+                icon={shedDoorInfo?.icon ?? Lock}
+                text={shedDoorInfo ? `Door ${shedDoorInfo.label}` : 'Door …'}
+                tone={shedDoorInfo?.severity ?? 'normal'}
+              />
+              <StatusPill
+                icon={shedAreaInfo?.armed ? ShieldAlert : Lock}
+                text={shedAreaInfo ? `Alarm ${shedAreaInfo.label}` : 'Alarm …'}
+                tone={shedAreaInfo?.severity ?? 'normal'}
+              />
             </div>
-          </button>
-        </section>
+          </div>
+        </button>
       </main>
 
       {/* Action feedback — overlay toast, never affects layout height */}
