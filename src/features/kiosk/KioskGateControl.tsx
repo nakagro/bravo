@@ -111,6 +111,8 @@ interface StationStatus {
 interface SceneToggles {
   communityLockup: boolean;
   shedSecured: boolean;
+  firecallActive: boolean;
+  firecallExpiresAt: number | null;
 }
 
 async function fetchSceneToggles(): Promise<SceneToggles> {
@@ -120,6 +122,8 @@ async function fetchSceneToggles(): Promise<SceneToggles> {
   return {
     communityLockup: Boolean(data.communityLockup),
     shedSecured: Boolean(data.shedSecured),
+    firecallActive: Boolean(data.firecallActive),
+    firecallExpiresAt: typeof data.firecallExpiresAt === 'number' ? data.firecallExpiresAt : null,
   };
 }
 
@@ -142,9 +146,19 @@ async function postJson(url: string, body: unknown): Promise<unknown> {
 }
 
 const runFirecall = () => postJson(`${GATE_API_BASE}/scenes/firecall`, {});
+const cancelFirecall = () => postJson(`${GATE_API_BASE}/scenes/firecall`, { cancel: true });
 const setCommunityLockup = (engage: boolean) =>
   postJson(`${GATE_API_BASE}/scenes/community-lockup`, { engage });
 const setShed = (secure: boolean) => postJson(`${GATE_API_BASE}/scenes/shed`, { secure });
+
+// Remaining time as M:SS, derived from the shared expiry timestamp so both
+// kiosks display the same countdown (and it survives a reload / unmount).
+function formatRemaining(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 // ── Confirmation descriptor ─────────────────────────────────────────────────────
 
@@ -168,7 +182,7 @@ const HELP_ITEMS: Array<{ icon: LucideIcon; name: string; desc: string }> = [
   { icon: DoorOpen, name: 'Open Gate', desc: 'Briefly opens the carpark gate, then it closes and re-locks on its normal schedule.' },
   { icon: LockOpen, name: 'Hold Open', desc: 'Keeps the carpark gate unlocked indefinitely — stays open until you press Reinstate.' },
   { icon: RotateCcw, name: 'Reinstate', desc: 'Clears any Hold Open or override and returns the gate to its normal automatic schedule.' },
-  { icon: Flame, name: 'Firecall', desc: 'Holds the carpark gate and the turnout entry door open for 10 minutes, then both re-lock automatically. Use when responding to a callout.' },
+  { icon: Flame, name: 'Firecall', desc: 'Holds the carpark gate and the turnout entry door open for 10 minutes, then both re-lock automatically. A live countdown shows on both station tablets. Use when responding to a callout — tap again to cancel early and re-lock both doors immediately.' },
   { icon: Lock, name: 'Community Lockup', desc: 'Locks the two public-facing doors (to the engine and operations rooms) to keep the public out during community events. Tap again to restore them.' },
   { icon: Warehouse, name: 'Open / Secure Shed', desc: 'Open: disarms the shed and holds the PA door open so it can be propped. Secure: releases the hold, re-locks the door and arms the shed. Arming fails if the shed is not sealed.' },
 ];
@@ -189,6 +203,7 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
   const [actionError, setActionError]   = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadState = useCallback(async () => {
@@ -238,6 +253,20 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
 
   const lockupEngaged = scenes?.communityLockup ?? false;
   const shedSecured   = scenes?.shedSecured ?? false;
+
+  // Firecall is "active" while the shared expiry is still in the future. We lean
+  // on the timestamp rather than the server's boolean so the countdown and the
+  // toggle flip in lockstep on the same tick.
+  const firecallExpiresAt = scenes?.firecallExpiresAt ?? null;
+  const firecallRemaining = firecallExpiresAt !== null ? firecallExpiresAt - now : 0;
+  const firecallActive    = firecallRemaining > 0;
+
+  // Tick once a second only while a countdown is running.
+  useEffect(() => {
+    if (!firecallActive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [firecallActive]);
 
   const shedDoorInfo = status.shedDoor !== null ? interpretState(status.shedDoor) : null;
   const shedAreaInfo = status.shedArea !== null ? interpretArea(status.shedArea) : null;
@@ -335,19 +364,46 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
           </button>
         </div>
 
-        {/* ── Firecall (rows 1–2, right) ───────────────────────────────── */}
+        {/* ── Firecall (rows 1–2, right) — toggle with live countdown ───── */}
         <button
-          onClick={() => setConfirm({
-            title: 'Start Firecall?',
-            body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
-            confirmLabel: 'Start Firecall',
-            confirmTone: 'red',
-            run: runFirecall,
-          })}
-          disabled={busy}
-          className="col-start-2 row-start-1 row-span-2 min-h-0 rounded-3xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-4xl font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl"
+          onClick={() => setConfirm(
+            firecallActive
+              ? {
+                  title: 'Cancel Firecall?',
+                  body: 'Re-locks the carpark gate and turnout entry immediately and stops the countdown.',
+                  confirmLabel: 'Cancel Firecall',
+                  confirmTone: 'slate',
+                  run: cancelFirecall,
+                }
+              : {
+                  title: 'Start Firecall?',
+                  body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
+                  confirmLabel: 'Start Firecall',
+                  confirmTone: 'red',
+                  run: runFirecall,
+                },
+          )}
+          disabled={busy || scenes === null}
+          className={`col-start-2 row-start-1 row-span-2 min-h-0 rounded-3xl text-white font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-xl border-2 ${
+            firecallActive
+              ? 'bg-red-700/40 border-red-500 hover:bg-red-700/60 animate-pulse'
+              : 'bg-red-600 border-transparent hover:bg-red-500 active:bg-red-700'
+          }`}
         >
-          Firecall
+          {firecallActive ? (
+            <div className="flex flex-col items-center justify-center gap-2">
+              <span className="flex items-center gap-3 text-3xl md:text-4xl">
+                <Flame className="h-9 w-9 flex-none" />
+                Firecall Active
+              </span>
+              <span className="text-6xl font-mono tabular-nums tracking-tight">
+                {formatRemaining(firecallRemaining)}
+              </span>
+              <span className="text-xl font-semibold text-red-200">Tap to Cancel</span>
+            </div>
+          ) : (
+            <span className="text-4xl">Firecall</span>
+          )}
         </button>
 
         {/* ── Community Lockup toggle (row 3, right) ───────────────────── */}
