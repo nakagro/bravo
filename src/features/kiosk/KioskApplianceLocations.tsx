@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { getRelativeTimeCompact } from "../../utils/dateUtils";
 import { getServiceToken } from "@/features/serviceAccounts/ServiceAccountContext";
 import { X, CircleCheckBig, Plus, Truck, MapPin, ArrowLeft } from "lucide-react";
+import Keyboard from "react-simple-keyboard";
+import "react-simple-keyboard/build/css/index.css";
 
 interface KioskApplianceLocationsProps {
     onBack: () => void;
@@ -17,6 +19,18 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const [customLocationFor, setCustomLocationFor] = useState<string | null>(null);
     const [customLocation, setCustomLocation] = useState('');
+
+    // On-screen keyboard — this kiosk runs Edge in assigned-access mode with no
+    // physical keyboard, and Windows won't reliably auto-invoke its touch
+    // keyboard there, so we render our own inside the custom-location modal.
+    const keyboardRef = useRef<{ setInput: (v: string) => void } | null>(null);
+    const [keyboardLayout, setKeyboardLayout] = useState<'default' | 'shift'>('default');
+
+    // Keep the on-screen keyboard's internal buffer in sync with our state.
+    const setCustomLocationSynced = (value: string) => {
+        setCustomLocation(value);
+        keyboardRef.current?.setInput(value);
+    };
 
     const locationMap = applianceLocations.reduce((acc, location) => {
         acc[location.applianceName] = location.stationLocation;
@@ -51,7 +65,26 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
         if (!loc) return;
         await handleLocationUpdate(applianceName, loc);
         setCustomLocationFor(null);
-        setCustomLocation('');
+        setCustomLocationSynced('');
+    };
+
+    const handleKeyboardKeyPress = (button: string) => {
+        if (button === '{shift}' || button === '{lock}') {
+            setKeyboardLayout(prev => (prev === 'default' ? 'shift' : 'default'));
+        } else if (button === '{enter}') {
+            handleCustomLocationSubmit(customLocationFor as any);
+        }
+    };
+
+    const openCustomLocation = (appliance: typeof appliances[number]) => {
+        setCustomLocationFor(appliance);
+        setKeyboardLayout('default');
+        setCustomLocationSynced('');
+    };
+
+    const closeCustomLocation = () => {
+        setCustomLocationFor(null);
+        setCustomLocationSynced('');
     };
 
     return (
@@ -131,10 +164,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
 
                                     {/* Custom Location button */}
                                     <button
-                                        onClick={() => {
-                                            setCustomLocationFor(appliance);
-                                            setCustomLocation('');
-                                        }}
+                                        onClick={() => openCustomLocation(appliance)}
                                         disabled={updating}
                                         className={`
                                         relative flex items-center justify-between px-6 py-6 md:py-8 rounded-2xl text-2xl md:text-3xl font-semibold transition-all mt-auto
@@ -166,17 +196,14 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
 
             {/* Custom Location Modal */}
             {customLocationFor && (
-                <div className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-start justify-center pt-[15vh] px-4">
-                    <div className="bg-slate-900 border-4 border-slate-700 p-8 md:p-10 rounded-[2rem] w-full max-w-3xl shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-2">
+                <div className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-sm flex items-start justify-center pt-[4vh] px-4">
+                    <div className="bg-slate-900 border-4 border-slate-700 p-6 md:p-8 rounded-[2rem] w-full max-w-3xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center">
                             <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
                                 Custom Location: <span className="text-red-400">{customLocationFor}</span>
                             </h3>
                             <button
-                                onClick={() => {
-                                    setCustomLocationFor(null);
-                                    setCustomLocation('');
-                                }}
+                                onClick={closeCustomLocation}
                                 className="p-4 bg-slate-800 text-slate-400 hover:text-white rounded-2xl active:bg-slate-700 transition"
                             >
                                 <X className="h-8 w-8 md:h-10 md:w-10" />
@@ -187,7 +214,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
                         {customLocations.length > 0 && (
                             <div className="flex flex-col gap-3">
                                 <span className="text-xl text-slate-400 font-medium">Recent Locations:</span>
-                                <div className="flex flex-wrap gap-3">
+                                <div className="flex flex-wrap gap-3 max-h-32 overflow-y-auto">
                                     {customLocations.map(loc => (
                                         <button
                                             key={loc}
@@ -202,38 +229,58 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
                             </div>
                         )}
 
-                        <div className="relative mt-2">
+                        <div className="relative">
                             <input
                                 type="text"
                                 value={customLocation}
-                                onChange={(e) => setCustomLocation(e.target.value)}
-                                placeholder="Enter completely new location..."
-                                autoFocus
-                                className="w-full px-8 py-8 md:py-10 bg-slate-950 border-4 border-slate-700 rounded-3xl text-3xl md:text-4xl text-white placeholder-slate-600 focus:outline-none focus:border-red-500 transition-colors"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleCustomLocationSubmit(customLocationFor as any);
-                                    else if (e.key === 'Escape') {
-                                        setCustomLocationFor(null);
-                                        setCustomLocation('');
-                                    }
-                                }}
+                                onChange={(e) => setCustomLocationSynced(e.target.value)}
+                                placeholder="Tap the keys below…"
+                                readOnly
+                                className="w-full px-8 py-5 md:py-6 bg-slate-950 border-4 border-slate-700 rounded-3xl text-3xl md:text-4xl text-white placeholder-slate-600 focus:outline-none focus:border-red-500 transition-colors"
                             />
                         </div>
 
-                        <div className="flex gap-4 md:gap-6 mt-4">
+                        {/* On-screen keyboard — the kiosk has no physical keyboard */}
+                        <Keyboard
+                            keyboardRef={(r) => { keyboardRef.current = r; }}
+                            layoutName={keyboardLayout}
+                            theme="hg-theme-default kioskKeyboard"
+                            layout={{
+                                default: [
+                                    '1 2 3 4 5 6 7 8 9 0',
+                                    'q w e r t y u i o p',
+                                    'a s d f g h j k l',
+                                    '{shift} z x c v b n m {bksp}',
+                                    '{space}',
+                                ],
+                                shift: [
+                                    '1 2 3 4 5 6 7 8 9 0',
+                                    'Q W E R T Y U I O P',
+                                    'A S D F G H J K L',
+                                    '{shift} Z X C V B N M {bksp}',
+                                    '{space}',
+                                ],
+                            }}
+                            display={{
+                                '{bksp}': '⌫',
+                                '{shift}': '⇧',
+                                '{space}': 'space',
+                            }}
+                            onChange={(input: string) => setCustomLocation(input)}
+                            onKeyPress={handleKeyboardKeyPress}
+                        />
+
+                        <div className="flex gap-4 md:gap-6">
                             <button
-                                onClick={() => {
-                                    setCustomLocationFor(null);
-                                    setCustomLocation('');
-                                }}
-                                className="flex-1 py-8 bg-slate-800 text-slate-300 rounded-3xl text-2xl md:text-3xl font-semibold hover:bg-slate-700 active:bg-slate-600 transition-colors"
+                                onClick={closeCustomLocation}
+                                className="flex-1 py-5 bg-slate-800 text-slate-300 rounded-3xl text-2xl md:text-3xl font-semibold hover:bg-slate-700 active:bg-slate-600 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => handleCustomLocationSubmit(customLocationFor as any)}
                                 disabled={!customLocation.trim()}
-                                className="flex-[2] py-8 bg-red-600 text-white rounded-3xl text-2xl md:text-3xl font-bold hover:bg-red-500 active:bg-red-700 disabled:opacity-50 transition-colors"
+                                className="flex-[2] py-5 bg-red-600 text-white rounded-3xl text-2xl md:text-3xl font-bold hover:bg-red-500 active:bg-red-700 disabled:opacity-50 transition-colors"
                             >
                                 Confirm Location
                             </button>
@@ -245,6 +292,36 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
             <style>{`
                 .overflow-y-auto::-webkit-scrollbar {
                     display: none;
+                }
+
+                /* On-screen keyboard — themed to match the kiosk's big-touch dark UI */
+                .kioskKeyboard.simple-keyboard {
+                    background: transparent;
+                    padding: 0;
+                }
+                .kioskKeyboard .hg-row {
+                    margin-bottom: 8px;
+                }
+                .kioskKeyboard .hg-row:last-child {
+                    margin-bottom: 0;
+                }
+                .kioskKeyboard .hg-button {
+                    height: 56px;
+                    background: #1e293b;        /* slate-800 */
+                    color: #f1f5f9;             /* slate-100 */
+                    border: 2px solid #334155;  /* slate-700 */
+                    border-radius: 14px;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    box-shadow: none;
+                }
+                .kioskKeyboard .hg-button:active {
+                    background: #dc2626;        /* red-600 */
+                    border-color: #ef4444;      /* red-500 */
+                    color: #ffffff;
+                }
+                .kioskKeyboard .hg-button.hg-functionBtn {
+                    background: #0f172a;        /* slate-950 */
                 }
             `}</style>
         </div>

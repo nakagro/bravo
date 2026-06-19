@@ -91,6 +91,7 @@
     "react-hook-form": "^7.56.4",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.5.2",
+    "react-simple-keyboard": "^3.8.221",
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
     "resend": "^6.1.2",
