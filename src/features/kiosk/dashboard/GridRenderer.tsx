@@ -69,8 +69,8 @@ function renderWidget(p: PlacedWidget, ctx: DashboardContext) {
         <SceneToggleTile
           label="Community Lockup"
           activeLabel="Lockup Active — Tap to End"
-          sub="Engine &amp; ops-room doors on normal schedule"
-          activeSub="Engine &amp; ops-room doors locked to the public"
+          sub="Engine Bay &amp; Workhub doors on normal schedule"
+          activeSub="Engine Bay &amp; Workhub doors locked to the public"
           active={ctx.lockupEngaged}
           disabled={ctx.busy || !ctx.scenesReady}
           onPress={ctx.toggleLockup}
