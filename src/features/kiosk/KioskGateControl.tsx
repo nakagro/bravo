@@ -292,11 +292,15 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
   const shedDoorOpen     = status.shedDoor !== null && ((status.shedDoor & 1) !== 0 || (status.shedDoor & 2) !== 0);
   const shedFullySecured = shedReady && !shedDoorOpen && shedArmed;
   const shedFullyOpen    = shedReady && shedDoorOpen && !shedArmed;
-  const shedPrimaryLabel = shedFullySecured
-    ? 'Shed Secured — Tap to Open'
-    : shedFullyOpen
-      ? 'Shed Open — Tap to Secure'
-      : 'Shed Part-Secured — Tap to Secure';
+  // Amber "remember to secure me" cue only once we actually know the state.
+  const shedAttention    = shedReady && !shedFullySecured;
+  const shedPrimaryLabel = !shedReady
+    ? 'Shed …'
+    : shedFullySecured
+      ? 'Shed Secured — Tap to Open'
+      : shedFullyOpen
+        ? 'Shed Open — Tap to Secure'
+        : 'Shed Part-Secured — Tap to Secure';
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
@@ -400,8 +404,10 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
           )}
         </button>
 
-        {/* Two grouped zones */}
-        <div className="flex-1 min-h-0 grid grid-cols-2 gap-6">
+        {/* Two grouped zones — capped height and centred so the buttons stay a
+            comfortable size instead of stretching the full height of the screen. */}
+        <div className="flex-1 min-h-0 flex flex-col justify-center">
+        <div className="flex-1 min-h-0 max-h-[34rem] grid grid-cols-2 gap-6">
 
           {/* Perimeter — the daily access doors */}
           <section className="min-h-0 flex flex-col gap-2">
@@ -459,6 +465,8 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
               <SceneToggleButton
                 label="Community Lockup"
                 activeLabel="Lockup Active — Tap to End"
+                sub="Engine & ops-room doors on normal schedule"
+                activeSub="Engine & ops-room doors locked to the public"
                 active={lockupEngaged}
                 disabled={busy || scenes === null}
                 onPress={() => setConfirm(
@@ -504,15 +512,22 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
                   )}
                   disabled={busy || !shedReady}
                   className={`flex-1 min-h-0 rounded-3xl px-4 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
-                    shedFullySecured
-                      ? 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
-                      : 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
+                    shedAttention
+                      ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
+                      : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
                   }`}
                 >
-                  <span className="flex items-center justify-center gap-3 text-2xl md:text-3xl font-bold text-center text-white">
-                    {!shedFullySecured && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
-                    {shedPrimaryLabel}
-                  </span>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="flex items-center justify-center gap-3 text-2xl md:text-3xl font-bold text-center text-white">
+                      {shedAttention && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
+                      {shedPrimaryLabel}
+                    </span>
+                    {shedReady && (
+                      <span className="text-base font-semibold text-slate-300/80">
+                        {`Door ${shedDoorOpen ? 'held open' : 'locked'} · Alarm ${shedArmed ? 'armed' : 'off'}`}
+                      </span>
+                    )}
+                  </div>
                 </button>
 
                 {shedReady && !shedFullySecured && (
@@ -574,6 +589,7 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
               </div>
             </div>
           </section>
+        </div>
         </div>
       </main>
 
@@ -754,26 +770,33 @@ function StatusChip({ name, info, error }: { name: string; info: DoorStateInfo |
 interface SceneToggleButtonProps {
   label: string;
   activeLabel: string;
+  sub: string;
+  activeSub: string;
   active: boolean;
   disabled: boolean;
   onPress: () => void;
 }
 
-function SceneToggleButton({ label, activeLabel, active, disabled, onPress }: SceneToggleButtonProps) {
+function SceneToggleButton({ label, activeLabel, sub, activeSub, active, disabled, onPress }: SceneToggleButtonProps) {
   return (
     <button
       onClick={onPress}
       disabled={disabled}
-      className={`flex-1 min-h-0 rounded-3xl text-white text-3xl font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
+      className={`min-h-0 rounded-3xl text-white font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed border-2 ${
         active
           ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
           : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
       }`}
     >
-      <span className="flex items-center justify-center gap-3 px-4 text-center">
-        {active && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
-        {active ? activeLabel : label}
-      </span>
+      <div className="flex flex-col items-center justify-center gap-1 px-4 text-center">
+        <span className="flex items-center gap-3 text-3xl">
+          {active && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
+          {active ? activeLabel : label}
+        </span>
+        <span className="text-base font-semibold text-slate-300/80">
+          {active ? activeSub : sub}
+        </span>
+      </div>
     </button>
   );
 }
