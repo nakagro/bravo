@@ -4,7 +4,7 @@
 // kind = a new component here + a case in GridRenderer + an entry in WidgetSpec.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Flame, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { type Severity, SEVERITY_ICON_COLOR, SEVERITY_RING, formatRemaining } from './gateApi';
 
 export interface ResolvedState {
@@ -46,9 +46,10 @@ export function StatusTile({
 // press-and-hold duration (milliseconds).
 const FIRECALL_HOLD_MS = 1500;
 
-// The Firecall hero. STARTING requires a press-and-hold (a progress fill sweeps
-// across; releasing early aborts) to guard against accidental taps. CANCELLING
-// an active firecall is a plain tap — no hold.
+// The Firecall hero. BOTH starting and cancelling require a press-and-hold (a
+// progress fill sweeps across; releasing early aborts) — this guards the start
+// against accidental taps and, just as importantly, stops a stray tap killing an
+// active firecall mid-incident.
 export function FirecallHero({
   active, remaining, disabled, onTrigger,
 }: { active: boolean; remaining: number; disabled: boolean; onTrigger: () => void }) {
@@ -87,29 +88,6 @@ export function FirecallHero({
 
   useEffect(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); }, []);
 
-  // Active → plain tap to cancel.
-  if (active) {
-    return (
-      <button
-        onClick={onTrigger}
-        disabled={disabled}
-        className="h-full w-full rounded-3xl border-2 bg-red-700/40 border-red-500 hover:bg-red-700/60 animate-pulse shadow-xl transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
-          <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
-            <span className="h-10 w-10 flex-none" />
-            Firecall Active
-          </span>
-          <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
-            {formatRemaining(remaining)}
-          </span>
-          <span className="text-xl font-semibold text-red-200">Tap to Cancel</span>
-        </div>
-      </button>
-    );
-  }
-
-  // Idle → press and hold to start.
   return (
     <button
       onPointerDown={begin}
@@ -118,18 +96,34 @@ export function FirecallHero({
       onPointerCancel={stop}
       onContextMenu={(e) => e.preventDefault()}
       disabled={disabled}
-      className={`relative h-full w-full overflow-hidden rounded-3xl border-2 bg-red-600 border-transparent shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed ${holding ? 'scale-[0.99]' : ''}`}
+      className={`relative h-full w-full overflow-hidden rounded-3xl border-2 shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+        active ? 'bg-red-700/40 border-red-500' : 'bg-red-600 border-transparent'
+      } ${holding ? 'scale-[0.99]' : active ? 'animate-pulse' : ''}`}
     >
       {/* Progress fill sweeping across while held. */}
       <div
         className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
         style={{ width: `${progress * 100}%`, transition: holding ? 'none' : 'width 150ms ease-out' }}
       />
-      <div className="relative z-10 flex flex-col items-center justify-center gap-1 text-white">
-        <span className="text-4xl font-bold tracking-wide">Firecall</span>
-        <span className="text-base font-semibold text-red-100/70">
-          {holding ? 'Keep holding…' : 'Press & hold to start'}
-        </span>
+      <div className="relative z-10">
+        {active ? (
+          <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
+            <span className="text-3xl md:text-4xl font-bold">Firecall Active</span>
+            <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
+              {formatRemaining(remaining)}
+            </span>
+            <span className="text-xl font-semibold text-red-200">
+              {holding ? 'Keep holding…' : 'Hold to Cancel'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1 text-white">
+            <span className="text-4xl font-bold tracking-wide">Firecall</span>
+            <span className="text-base font-semibold text-red-100/70">
+              {holding ? 'Keep holding…' : 'Press & hold to start'}
+            </span>
+          </div>
+        )}
       </div>
     </button>
   );
