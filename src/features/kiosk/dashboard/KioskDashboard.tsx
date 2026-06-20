@@ -4,7 +4,7 @@
 // in Phase 3 it becomes a Convex query — nothing else here needs to change.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, DoorOpen, LockOpen, Lock, ShieldAlert } from 'lucide-react';
 import {
   fetchDoorState, fetchAreaState, fetchSceneToggles, type SceneToggles,
   controlDoor, setShedAlarm, runFirecall, cancelFirecall, setCommunityLockup,
@@ -13,6 +13,7 @@ import {
 import { DEFAULT_LAYOUT, type PlacedWidget, type KioskOverlay } from './layout';
 import { GridRenderer, type DashboardContext } from './GridRenderer';
 import { DoorControlModal, AreaControlModal, ConfirmDialog, type ConfirmConfig } from './modals';
+import { type ResolvedState } from './widgets';
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 type ActiveModal = { type: 'door' | 'area'; id: string; name: string; secureLabel?: string } | null;
@@ -49,6 +50,21 @@ export default function KioskDashboard({
   const [actionError, setActionError] = useState<string | null>(null);
   const [modal, setModal] = useState<ActiveModal>(null);
   const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
+
+  // Transient post-action feedback per element (e.g. green "Opened"). InnerRange
+  // can't reliably distinguish a momentary open from a hold, so we show the
+  // user what they just did for a few seconds rather than trusting the poll.
+  const [flash, setFlash] = useState<Record<string, ResolvedState>>({});
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const flashStatus = useCallback((id: string, info: ResolvedState, ms = 4000) => {
+    if (flashTimers.current[id]) clearTimeout(flashTimers.current[id]);
+    setFlash((prev) => ({ ...prev, [id]: info }));
+    flashTimers.current[id] = setTimeout(() => {
+      setFlash((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      delete flashTimers.current[id];
+    }, ms);
+  }, []);
+  useEffect(() => () => { Object.values(flashTimers.current).forEach(clearTimeout); }, []);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -90,7 +106,7 @@ export default function KioskDashboard({
     if (resetSignal > 0) { setModal(null); setConfirm(null); }
   }, [resetSignal]);
 
-  const runFlow = useCallback(async (fn: () => Promise<unknown>) => {
+  const runFlow = useCallback(async (fn: () => Promise<unknown>, afterSuccess?: () => void) => {
     setActionStatus('loading');
     setActionError(null);
     setConfirm(null);
@@ -98,6 +114,7 @@ export default function KioskDashboard({
     try {
       await fn();
       setActionStatus('success');
+      afterSuccess?.();
       await loadState();
       setTimeout(() => setActionStatus('idle'), 2500);
     } catch (err) {
@@ -132,6 +149,7 @@ export default function KioskDashboard({
     firecallActive,
     firecallRemaining,
     busy,
+    flashOf: (id) => flash[id] ?? null,
     openDoorControl: (id, name, secureLabel) => setModal({ type: 'door', id, name, secureLabel }),
     openAreaControl: (id, name) => setModal({ type: 'area', id, name }),
     // No confirm dialog — the Firecall hero itself requires a 3-second press and
@@ -148,14 +166,14 @@ export default function KioskDashboard({
           }
         : {
             title: 'Engage Community Lockup?',
-            body: 'Locks the two doors leading to the engine and operations rooms to keep the public out during the event.',
+            body: 'Locks the Engine Bay and Workhub doors to keep the public out during community events. Tap End Lockup to restore them.',
             confirmLabel: 'Lock Doors',
             confirmTone: 'amber',
             run: () => setCommunityLockup(true),
           },
     ),
     navigate: onNavigate,
-  }), [doorStates, areaStates, errors, scenes, lockupEngaged, firecallActive, firecallRemaining, busy, onNavigate, runFlow]);
+  }), [doorStates, areaStates, errors, scenes, lockupEngaged, firecallActive, firecallRemaining, busy, onNavigate, runFlow, flash]);
 
   const modalDoorState = modal?.type === 'door' ? doorStates[modal.id] ?? null : null;
   const modalAreaState = modal?.type === 'area' ? areaStates[modal.id] ?? null : null;
@@ -215,9 +233,18 @@ export default function KioskDashboard({
           error={modalError}
           secureLabel={modal.secureLabel}
           busy={busy}
-          onOpen={() => runFlow(() => controlDoor(modal.id, 'Open'))}
-          onHold={() => runFlow(() => controlDoor(modal.id, 'Unlock'))}
-          onReinstate={() => runFlow(() => controlDoor(modal.id, 'Reinstate'))}
+          onOpen={() => runFlow(
+            () => controlDoor(modal.id, 'Open'),
+            () => flashStatus(modal.id, { label: 'Opened', icon: DoorOpen, severity: 'open' }),
+          )}
+          onHold={() => runFlow(
+            () => controlDoor(modal.id, 'Unlock'),
+            () => flashStatus(modal.id, { label: 'Held Open', icon: LockOpen, severity: 'unlocked' }),
+          )}
+          onReinstate={() => runFlow(
+            () => controlDoor(modal.id, 'Reinstate'),
+            () => flashStatus(modal.id, { label: modal.secureLabel ?? 'Locked', icon: Lock, severity: 'normal' }),
+          )}
           onClose={() => setModal(null)}
         />
       )}
@@ -227,8 +254,14 @@ export default function KioskDashboard({
           stateInt={modalAreaState}
           error={modalError}
           busy={busy}
-          onArm={() => runFlow(() => setShedAlarm(true))}
-          onDisarm={() => runFlow(() => setShedAlarm(false))}
+          onArm={() => runFlow(
+            () => setShedAlarm(true),
+            () => flashStatus(modal.id, { label: 'Armed', icon: ShieldAlert, severity: 'alert' }),
+          )}
+          onDisarm={() => runFlow(
+            () => setShedAlarm(false),
+            () => flashStatus(modal.id, { label: 'Disarmed', icon: Lock, severity: 'open' }),
+          )}
           onClose={() => setModal(null)}
         />
       )}

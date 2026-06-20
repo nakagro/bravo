@@ -42,22 +42,23 @@ export function StatusTile({
   );
 }
 
-// The Firecall hero. There is no confirm dialog — instead the user must press
-// and HOLD for 3 seconds, with a progress fill sweeping across the button, to
-// either start or cancel a firecall. Releasing early aborts. This guards a
-// high-consequence action against accidental taps while keeping it one gesture.
+// How long the user must hold to START a firecall. Tweak this to change the
+// press-and-hold duration (milliseconds).
 const FIRECALL_HOLD_MS = 3000;
 
+// The Firecall hero. STARTING requires a press-and-hold (a progress fill sweeps
+// across; releasing early aborts) to guard against accidental taps. CANCELLING
+// an active firecall is a plain tap — no hold.
 export function FirecallHero({
-  active, remaining, disabled, onHoldComplete,
-}: { active: boolean; remaining: number; disabled: boolean; onHoldComplete: () => void }) {
+  active, remaining, disabled, onTrigger,
+}: { active: boolean; remaining: number; disabled: boolean; onTrigger: () => void }) {
   const [progress, setProgress] = useState(0); // 0 → 1 while held
   const [holding, setHolding] = useState(false);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef(0);
   // Keep the latest callback in a ref so the rAF loop never fires a stale one.
-  const completeRef = useRef(onHoldComplete);
-  completeRef.current = onHoldComplete;
+  const triggerRef = useRef(onTrigger);
+  triggerRef.current = onTrigger;
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -71,7 +72,7 @@ export function FirecallHero({
     setProgress(p);
     if (p >= 1) {
       stop();
-      completeRef.current();
+      triggerRef.current();
       return;
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -86,6 +87,29 @@ export function FirecallHero({
 
   useEffect(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); }, []);
 
+  // Active → plain tap to cancel.
+  if (active) {
+    return (
+      <button
+        onClick={onTrigger}
+        disabled={disabled}
+        className="h-full w-full rounded-3xl border-2 bg-red-700/40 border-red-500 hover:bg-red-700/60 animate-pulse shadow-xl transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
+          <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
+            <Flame className="h-10 w-10 flex-none" />
+            Firecall Active
+          </span>
+          <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
+            {formatRemaining(remaining)}
+          </span>
+          <span className="text-xl font-semibold text-red-200">Tap to Cancel</span>
+        </div>
+      </button>
+    );
+  }
+
+  // Idle → press and hold to start.
   return (
     <button
       onPointerDown={begin}
@@ -94,69 +118,47 @@ export function FirecallHero({
       onPointerCancel={stop}
       onContextMenu={(e) => e.preventDefault()}
       disabled={disabled}
-      className={`relative h-full w-full overflow-hidden rounded-3xl border-2 shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-        active
-          ? 'bg-red-700/40 border-red-500'
-          : 'bg-red-600 border-transparent'
-      } ${holding ? 'scale-[0.99]' : active ? 'animate-pulse' : ''}`}
+      className={`relative h-full w-full overflow-hidden rounded-3xl border-2 bg-red-600 border-transparent shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed ${holding ? 'scale-[0.99]' : ''}`}
     >
       {/* Progress fill sweeping across while held. */}
       <div
         className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
         style={{ width: `${progress * 100}%`, transition: holding ? 'none' : 'width 150ms ease-out' }}
       />
-
-      <div className="relative z-10">
-        {active ? (
-          <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
-            <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
-              <Flame className="h-10 w-10 flex-none" />
-              Firecall Active
-            </span>
-            <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
-              {formatRemaining(remaining)}
-            </span>
-            <span className="text-xl font-semibold text-red-200">
-              {holding ? 'Keep holding…' : 'Hold to Cancel'}
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-1 text-white">
-            <span className="text-4xl font-bold tracking-wide">Firecall</span>
-            <span className="text-base font-semibold text-red-100/70">
-              {holding ? 'Keep holding…' : 'Press & hold to start'}
-            </span>
-          </div>
-        )}
+      <div className="relative z-10 flex flex-col items-center justify-center gap-1 text-white">
+        <span className="text-4xl font-bold tracking-wide">Firecall</span>
+        <span className="text-base font-semibold text-red-100/70">
+          {holding ? 'Keep holding…' : 'Press &amp; hold to start'}
+        </span>
       </div>
     </button>
   );
 }
 
-// A station-wide scene toggle (currently just Community Lockup).
+// A station-wide scene toggle (currently just Community Lockup). Mirrors NavTile
+// (icon + title) so it sits consistently beside the launch tiles when idle; goes
+// amber with an explanatory subtitle when active.
 export function SceneToggleTile({
-  label, activeLabel, sub, activeSub, active, disabled, onPress,
+  label, activeLabel, activeSub, icon: Icon, active, disabled, onPress,
 }: {
-  label: string; activeLabel: string; sub: string; activeSub: string;
+  label: string; activeLabel: string; activeSub: string; icon: LucideIcon;
   active: boolean; disabled: boolean; onPress: () => void;
 }) {
   return (
     <button
       onClick={onPress}
       disabled={disabled}
-      className={`h-full w-full rounded-3xl border-2 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${
+      className={`h-full w-full flex flex-col items-center justify-center gap-3 rounded-3xl border-2 p-4 text-center transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${
         active
           ? 'bg-amber-700/40 border-amber-500 hover:bg-amber-700/60'
-          : 'bg-slate-700 border-transparent hover:bg-slate-600 active:bg-slate-500'
+          : 'bg-slate-800 border-slate-700 hover:bg-slate-700 active:bg-slate-600'
       }`}
     >
-      <div className="flex flex-col items-center justify-center gap-1 px-4 text-center text-white">
-        <span className="flex items-center gap-3 text-2xl font-bold">
-          {active && <span className="h-3 w-3 flex-none rounded-full bg-amber-400 animate-pulse" />}
-          {active ? activeLabel : label}
-        </span>
-        <span className="text-sm font-semibold text-slate-300/80">{active ? activeSub : sub}</span>
-      </div>
+      <Icon className={`h-12 w-12 ${active ? 'text-amber-300' : 'text-sky-400'}`} />
+      <span className="text-2xl md:text-3xl font-bold text-white leading-tight">
+        {active ? activeLabel : label}
+      </span>
+      {active && <span className="text-sm font-semibold text-amber-200/80">{activeSub}</span>}
     </button>
   );
 }

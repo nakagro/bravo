@@ -102,9 +102,6 @@ export function DoorControlModal({
         <ActionButton label="Hold Open" tone="slate" disabled={busy} onClick={onHold} />
         <ActionButton label="Lock" tone="slate" disabled={busy} onClick={onReinstate} />
       </div>
-      <p className="text-center text-base text-slate-500">
-        Open momentarily releases the door · Hold keeps it unlocked · Lock re-locks it to the normal schedule
-      </p>
     </ModalShell>
   );
 }
