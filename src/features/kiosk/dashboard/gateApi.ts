@@ -9,6 +9,7 @@ import {
   Lock, LockOpen, DoorOpen, Flame, ShieldAlert, Siren, Clock, Ban,
   AlertTriangle, WifiOff, type LucideIcon,
 } from 'lucide-react';
+import * as mock from './mockStation';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,15 @@ import {
 export const GATE_API_BASE = import.meta.env.VITE_GATE_API_BASE ?? '/gate-api';
 export const API_KEY       = import.meta.env.VITE_GATE_API_KEY ?? '';
 export const POLL_INTERVAL_MS = 5000;
+
+// Dev mock: the real endpoints are unreachable off the station LAN, so the dev
+// server swaps in an in-memory simulation (see mockStation.ts). Auto-on in dev,
+// never in production. Force real in dev with VITE_GATE_MOCK=false; force mock
+// anywhere with VITE_GATE_MOCK=true. In a production build this folds to a
+// constant `false`, so the mock is tree-shaken out entirely.
+const USE_MOCK =
+  import.meta.env.VITE_GATE_MOCK === 'true' ||
+  (import.meta.env.DEV && import.meta.env.VITE_GATE_MOCK !== 'false');
 
 export const GATE_DOOR_ID    = 'c03e570f-4003-4b24-91d1-fcb216734785';
 export const TURNOUT_DOOR_ID  = 'a0637546-f427-49d1-83ab-db78ada81e09';
@@ -94,8 +104,8 @@ async function fetchState(path: string): Promise<number> {
   return s;
 }
 
-export const fetchDoorState = (doorId: string) => fetchState(`doors/${doorId}/state`);
-export const fetchAreaState = (areaId: string) => fetchState(`areas/${areaId}/state`);
+export const fetchDoorState = USE_MOCK ? mock.fetchDoorState : (doorId: string) => fetchState(`doors/${doorId}/state`);
+export const fetchAreaState = USE_MOCK ? mock.fetchAreaState : (areaId: string) => fetchState(`areas/${areaId}/state`);
 
 async function postJson(url: string, body: unknown): Promise<unknown> {
   const res = await fetch(url, {
@@ -116,17 +126,20 @@ async function postJson(url: string, body: unknown): Promise<unknown> {
 }
 
 // Per-door control: drives the carpark gate, turnout entry, or shed PA door.
-export const controlDoor = (doorId: string, action: 'Open' | 'Unlock' | 'Reinstate') =>
-  postJson(`${GATE_API_BASE}/doors/${doorId}/control`, { action });
+export const controlDoor = USE_MOCK
+  ? mock.controlDoor
+  : (doorId: string, action: 'Open' | 'Unlock' | 'Reinstate') =>
+      postJson(`${GATE_API_BASE}/doors/${doorId}/control`, { action });
 
-export const runFirecall    = () => postJson(`${GATE_API_BASE}/scenes/firecall`, {});
-export const cancelFirecall = () => postJson(`${GATE_API_BASE}/scenes/firecall`, { cancel: true });
-export const setCommunityLockup = (engage: boolean) =>
-  postJson(`${GATE_API_BASE}/scenes/community-lockup`, { engage });
-export const setShed = (secure: boolean) => postJson(`${GATE_API_BASE}/scenes/shed`, { secure });
+export const runFirecall    = USE_MOCK ? mock.runFirecall    : () => postJson(`${GATE_API_BASE}/scenes/firecall`, {});
+export const cancelFirecall = USE_MOCK ? mock.cancelFirecall : () => postJson(`${GATE_API_BASE}/scenes/firecall`, { cancel: true });
+export const setCommunityLockup = USE_MOCK
+  ? mock.setCommunityLockup
+  : (engage: boolean) => postJson(`${GATE_API_BASE}/scenes/community-lockup`, { engage });
+export const setShed = USE_MOCK ? mock.setShed : (secure: boolean) => postJson(`${GATE_API_BASE}/scenes/shed`, { secure });
 // Alarm-only arm/disarm — leaves the PA door untouched.
 // NOTE: requires wvfb-api to expose POST /scenes/shed-alarm { arm: boolean }.
-export const setShedAlarm = (arm: boolean) => postJson(`${GATE_API_BASE}/scenes/shed-alarm`, { arm });
+export const setShedAlarm = USE_MOCK ? mock.setShedAlarm : (arm: boolean) => postJson(`${GATE_API_BASE}/scenes/shed-alarm`, { arm });
 
 // ── Scene toggles ───────────────────────────────────────────────────────────
 
@@ -137,7 +150,7 @@ export interface SceneToggles {
   firecallExpiresAt: number | null;
 }
 
-export async function fetchSceneToggles(): Promise<SceneToggles> {
+async function realFetchSceneToggles(): Promise<SceneToggles> {
   const res = await fetch(`${GATE_API_BASE}/scenes/state`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -148,6 +161,8 @@ export async function fetchSceneToggles(): Promise<SceneToggles> {
     firecallExpiresAt: typeof data.firecallExpiresAt === 'number' ? data.firecallExpiresAt : null,
   };
 }
+
+export const fetchSceneToggles = USE_MOCK ? mock.fetchSceneToggles : realFetchSceneToggles;
 
 // Remaining time as M:SS, derived from the shared expiry timestamp so both
 // kiosks display the same countdown (and it survives a reload / unmount).
