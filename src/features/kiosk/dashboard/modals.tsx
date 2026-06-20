@@ -74,17 +74,19 @@ function ActionButton({ label, tone, disabled, onClick }: {
 // ── Door control ─────────────────────────────────────────────────────────────
 
 export function DoorControlModal({
-  name, stateInt, error, busy, onOpen, onHold, onReinstate, onClose,
+  name, stateInt, error, secureLabel, busy, onOpen, onHold, onReinstate, onClose,
 }: {
-  name: string; stateInt: number | null; error: boolean; busy: boolean;
+  name: string; stateInt: number | null; error: boolean; secureLabel?: string; busy: boolean;
   onOpen: () => void; onHold: () => void; onReinstate: () => void; onClose: () => void;
 }) {
   const info = stateInt !== null ? interpretState(stateInt) : null;
+  // Override the resting/locked label for things like the boom gate ("Closed").
+  const label = info && secureLabel && info.label === 'Secured' ? secureLabel : info?.label;
   return (
     <ModalShell title={name} onClose={onClose}>
       <StateBanner
         icon={error || !info ? AlertTriangle : info.icon}
-        label={info?.label ?? '…'}
+        label={label ?? '…'}
         sub={info?.sub ?? 'Reading state…'}
         tone={info?.severity ?? 'normal'}
         error={error}
@@ -98,10 +100,10 @@ export function DoorControlModal({
       </button>
       <div className="flex gap-4">
         <ActionButton label="Hold Open" tone="slate" disabled={busy} onClick={onHold} />
-        <ActionButton label="Reinstate" tone="slate" disabled={busy} onClick={onReinstate} />
+        <ActionButton label="Lock" tone="slate" disabled={busy} onClick={onReinstate} />
       </div>
       <p className="text-center text-base text-slate-500">
-        Open momentarily releases the door · Hold keeps it unlocked · Reinstate re-locks it to the normal schedule
+        Open momentarily releases the door · Hold keeps it unlocked · Lock re-locks it to the normal schedule
       </p>
     </ModalShell>
   );

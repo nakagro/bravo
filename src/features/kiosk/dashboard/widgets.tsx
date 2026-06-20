@@ -3,6 +3,7 @@
 // job) or how the data is fetched (that's the host's job). Adding a new widget
 // kind = a new component here + a case in GridRenderer + an entry in WidgetSpec.
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Flame, type LucideIcon } from 'lucide-react';
 import { type Severity, SEVERITY_ICON_COLOR, SEVERITY_RING, formatRemaining } from './gateApi';
 
@@ -41,40 +42,93 @@ export function StatusTile({
   );
 }
 
-// The Firecall hero — one tap from the dashboard (confirmed by the host).
+// The Firecall hero. There is no confirm dialog — instead the user must press
+// and HOLD for 3 seconds, with a progress fill sweeping across the button, to
+// either start or cancel a firecall. Releasing early aborts. This guards a
+// high-consequence action against accidental taps while keeping it one gesture.
+const FIRECALL_HOLD_MS = 3000;
+
 export function FirecallHero({
-  active, remaining, disabled, onPress,
-}: { active: boolean; remaining: number; disabled: boolean; onPress: () => void }) {
+  active, remaining, disabled, onHoldComplete,
+}: { active: boolean; remaining: number; disabled: boolean; onHoldComplete: () => void }) {
+  const [progress, setProgress] = useState(0); // 0 → 1 while held
+  const [holding, setHolding] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef(0);
+  // Keep the latest callback in a ref so the rAF loop never fires a stale one.
+  const completeRef = useRef(onHoldComplete);
+  completeRef.current = onHoldComplete;
+
+  const stop = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    setHolding(false);
+    setProgress(0);
+  }, []);
+
+  const tick = useCallback((t: number) => {
+    const p = Math.min(1, (t - startRef.current) / FIRECALL_HOLD_MS);
+    setProgress(p);
+    if (p >= 1) {
+      stop();
+      completeRef.current();
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stop]);
+
+  const begin = useCallback(() => {
+    if (disabled) return;
+    setHolding(true);
+    startRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }, [disabled, tick]);
+
+  useEffect(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); }, []);
+
   return (
     <button
-      onClick={onPress}
+      onPointerDown={begin}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
       disabled={disabled}
-      className={`h-full w-full rounded-3xl border-2 shadow-xl transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed ${
+      className={`relative h-full w-full overflow-hidden rounded-3xl border-2 shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
         active
-          ? 'bg-red-700/40 border-red-500 hover:bg-red-700/60 animate-pulse'
-          : 'bg-red-600 border-transparent hover:bg-red-500 active:bg-red-700'
-      }`}
+          ? 'bg-red-700/40 border-red-500'
+          : 'bg-red-600 border-transparent'
+      } ${holding ? 'scale-[0.99]' : active ? 'animate-pulse' : ''}`}
     >
-      {active ? (
-        <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
-          <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
-            <Flame className="h-10 w-10 flex-none" />
-            Firecall Active
-          </span>
-          <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
-            {formatRemaining(remaining)}
-          </span>
-          <span className="text-xl font-semibold text-red-200">Tap to Cancel</span>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center gap-4 text-white">
-          <Flame className="h-9 w-9 flex-none" />
-          <span className="text-4xl font-bold tracking-wide">Firecall</span>
-          <span className="hidden md:inline text-lg font-semibold text-red-100/80">
-            Hold gate &amp; turnout open · 10 min
-          </span>
-        </div>
-      )}
+      {/* Progress fill sweeping across while held. */}
+      <div
+        className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
+        style={{ width: `${progress * 100}%`, transition: holding ? 'none' : 'width 150ms ease-out' }}
+      />
+
+      <div className="relative z-10">
+        {active ? (
+          <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
+            <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
+              <Flame className="h-10 w-10 flex-none" />
+              Firecall Active
+            </span>
+            <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
+              {formatRemaining(remaining)}
+            </span>
+            <span className="text-xl font-semibold text-red-200">
+              {holding ? 'Keep holding…' : 'Hold to Cancel'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-1 text-white">
+            <span className="text-4xl font-bold tracking-wide">Firecall</span>
+            <span className="text-base font-semibold text-red-100/70">
+              {holding ? 'Keep holding…' : 'Press & hold to start'}
+            </span>
+          </div>
+        )}
+      </div>
     </button>
   );
 }

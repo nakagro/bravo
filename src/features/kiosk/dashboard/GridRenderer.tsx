@@ -17,7 +17,7 @@ export interface DashboardContext {
   firecallActive: boolean;
   firecallRemaining: number;
   busy: boolean;
-  openDoorControl: (doorId: string, name: string) => void;
+  openDoorControl: (doorId: string, name: string, secureLabel?: string) => void;
   openAreaControl: (areaId: string, name: string) => void;
   toggleFirecall: () => void;
   toggleLockup: () => void;
@@ -27,15 +27,18 @@ export interface DashboardContext {
 function renderWidget(p: PlacedWidget, ctx: DashboardContext) {
   switch (p.widget.kind) {
     case 'doorStatus': {
-      const { doorId, name } = p.widget;
+      const { doorId, name, secureLabel } = p.widget;
       const s = ctx.doorState(doorId);
-      const info: ResolvedState | null = s !== null ? interpretState(s) : null;
+      const raw = s !== null ? interpretState(s) : null;
+      // Override the resting/locked label where configured (boom gate → "Closed").
+      const info: ResolvedState | null =
+        raw && secureLabel && raw.label === 'Secured' ? { ...raw, label: secureLabel } : raw;
       return (
         <StatusTile
           name={name}
           info={info}
           error={ctx.hasError(doorId)}
-          onClick={() => ctx.openDoorControl(doorId, name)}
+          onClick={() => ctx.openDoorControl(doorId, name, secureLabel)}
         />
       );
     }
@@ -58,7 +61,7 @@ function renderWidget(p: PlacedWidget, ctx: DashboardContext) {
           active={ctx.firecallActive}
           remaining={ctx.firecallRemaining}
           disabled={ctx.busy || !ctx.scenesReady}
-          onPress={ctx.toggleFirecall}
+          onHoldComplete={ctx.toggleFirecall}
         />
       );
     case 'sceneToggle':

@@ -15,7 +15,7 @@ import { GridRenderer, type DashboardContext } from './GridRenderer';
 import { DoorControlModal, AreaControlModal, ConfirmDialog, type ConfirmConfig } from './modals';
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
-type ActiveModal = { type: 'door' | 'area'; id: string; name: string } | null;
+type ActiveModal = { type: 'door' | 'area'; id: string; name: string; secureLabel?: string } | null;
 
 interface KioskDashboardProps {
   layout?: PlacedWidget[];
@@ -132,25 +132,11 @@ export default function KioskDashboard({
     firecallActive,
     firecallRemaining,
     busy,
-    openDoorControl: (id, name) => setModal({ type: 'door', id, name }),
+    openDoorControl: (id, name, secureLabel) => setModal({ type: 'door', id, name, secureLabel }),
     openAreaControl: (id, name) => setModal({ type: 'area', id, name }),
-    toggleFirecall: () => setConfirm(
-      firecallActive
-        ? {
-            title: 'Cancel Firecall?',
-            body: 'Re-locks the carpark gate and turnout entry immediately and stops the countdown.',
-            confirmLabel: 'Cancel Firecall',
-            confirmTone: 'slate',
-            run: cancelFirecall,
-          }
-        : {
-            title: 'Start Firecall?',
-            body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
-            confirmLabel: 'Start Firecall',
-            confirmTone: 'red',
-            run: runFirecall,
-          },
-    ),
+    // No confirm dialog — the Firecall hero itself requires a 3-second press and
+    // hold, so completing the hold IS the deliberate confirmation.
+    toggleFirecall: () => runFlow(firecallActive ? cancelFirecall : runFirecall),
     toggleLockup: () => setConfirm(
       lockupEngaged
         ? {
@@ -169,7 +155,7 @@ export default function KioskDashboard({
           },
     ),
     navigate: onNavigate,
-  }), [doorStates, areaStates, errors, scenes, lockupEngaged, firecallActive, firecallRemaining, busy, onNavigate]);
+  }), [doorStates, areaStates, errors, scenes, lockupEngaged, firecallActive, firecallRemaining, busy, onNavigate, runFlow]);
 
   const modalDoorState = modal?.type === 'door' ? doorStates[modal.id] ?? null : null;
   const modalAreaState = modal?.type === 'area' ? areaStates[modal.id] ?? null : null;
@@ -177,24 +163,30 @@ export default function KioskDashboard({
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
-      {/* Header */}
+      {/* Header — time top-left, date top-right; exit + refresh tucked beside them */}
       <header className="flex-none flex items-center justify-between px-6 py-4">
-        <button
-          onClick={onExit}
-          className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors"
-          aria-label="Exit kiosk"
-        >
-          <X className="h-8 w-8" />
-        </button>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">D14 Station Control</h1>
-        <button
-          onClick={loadState}
-          disabled={busy}
-          className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors disabled:opacity-40"
-          aria-label="Refresh"
-        >
-          <RefreshCw className="h-7 w-7" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onExit}
+            className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors"
+            aria-label="Exit kiosk"
+          >
+            <X className="h-8 w-8" />
+          </button>
+          <HeaderTime />
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Wyndham Vale Fire Station</h1>
+        <div className="flex items-center gap-3">
+          <HeaderDate />
+          <button
+            onClick={loadState}
+            disabled={busy}
+            className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors disabled:opacity-40"
+            aria-label="Refresh"
+          >
+            <RefreshCw className="h-7 w-7" />
+          </button>
+        </div>
       </header>
 
       {/* Dashboard grid */}
@@ -221,6 +213,7 @@ export default function KioskDashboard({
           name={modal.name}
           stateInt={modalDoorState}
           error={modalError}
+          secureLabel={modal.secureLabel}
           busy={busy}
           onOpen={() => runFlow(() => controlDoor(modal.id, 'Open'))}
           onHold={() => runFlow(() => controlDoor(modal.id, 'Unlock'))}
@@ -240,7 +233,7 @@ export default function KioskDashboard({
         />
       )}
 
-      {/* Confirm dialog (firecall / lockup) */}
+      {/* Confirm dialog (lockup) */}
       {confirm && (
         <ConfirmDialog
           config={confirm}
@@ -250,4 +243,31 @@ export default function KioskDashboard({
       )}
     </div>
   );
+}
+
+// ── Header clock ────────────────────────────────────────────────────────────
+
+function useNow(intervalMs: number): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+// 24-hour HH:MM, self-updating so the host doesn't re-render on the tick.
+function HeaderTime() {
+  const now = useNow(1000);
+  const hh = now.getHours().toString().padStart(2, '0');
+  const mm = now.getMinutes().toString().padStart(2, '0');
+  return <span className="text-2xl md:text-3xl font-bold tabular-nums text-white">{hh}:{mm}</span>;
+}
+
+// e.g. "22 Jun" — day then shorthand month.
+function HeaderDate() {
+  const now = useNow(60_000);
+  const day = now.getDate();
+  const month = now.toLocaleString('en-AU', { month: 'short' });
+  return <span className="text-2xl md:text-3xl font-bold text-white">{day} {month}</span>;
 }

@@ -14,7 +14,9 @@ import { GATE_DOOR_ID, TURNOUT_DOOR_ID, SHED_DOOR_ID, SHED_AREA_ID } from './gat
 export type KioskOverlay = 'appliance-locations' | 'contact-directory';
 
 export type WidgetSpec =
-  | { kind: 'doorStatus'; doorId: string; name: string }
+  // `secureLabel` overrides the word shown for the locked/resting state (e.g. a
+  // boom gate reads "Closed" rather than "Secured").
+  | { kind: 'doorStatus'; doorId: string; name: string; secureLabel?: string }
   | { kind: 'areaStatus'; areaId: string; name: string }
   | { kind: 'firecall' }
   | { kind: 'sceneToggle'; scene: 'communityLockup' }

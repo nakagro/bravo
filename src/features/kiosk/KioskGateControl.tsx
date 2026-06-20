@@ -395,11 +395,7 @@ function KioskGateControl({ onBack }: KioskGateControlProps) {
             </div>
           ) : (
             <div className="flex items-center justify-center gap-4 text-white">
-              <Flame className="h-9 w-9 flex-none" />
               <span className="text-4xl font-bold tracking-wide">Firecall</span>
-              <span className="hidden md:inline text-lg font-semibold text-red-100/80">
-                Hold gate &amp; turnout open · 10 min
-              </span>
             </div>
           )}
         </button>
