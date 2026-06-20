@@ -260,7 +260,7 @@ export default function KioskDashboard({
           )}
           onDisarm={() => runFlow(
             () => setShedAlarm(false),
-            () => flashStatus(modal.id, { label: 'Disarmed', icon: Lock, severity: 'open' }),
+            () => flashStatus(modal.id, { label: 'Disarmed', icon: LockOpen, severity: 'open' }),
           )}
           onClose={() => setModal(null)}
         />

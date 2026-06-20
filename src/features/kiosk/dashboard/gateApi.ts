@@ -65,7 +65,7 @@ export function interpretArea(s: number): AreaStateInfo {
   const armed = (s & AREA_ARMED_BIT) !== 0;
   return armed
     ? { label: 'Armed', armed: true, severity: 'alert', icon: ShieldAlert }
-    : { label: 'Disarmed', armed: false, severity: 'open', icon: Lock };
+    : { label: 'Disarmed', armed: false, severity: 'open', icon: LockOpen };
 }
 
 // A door state held open (or physically open) counts as "accessible".

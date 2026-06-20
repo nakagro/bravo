@@ -128,9 +128,6 @@ export function AreaControlModal({
         <ActionButton label="Disarm" tone="amber" disabled={busy} onClick={onDisarm} />
         <ActionButton label="Arm" tone="slate" disabled={busy} onClick={onArm} />
       </div>
-      <p className="text-center text-base text-slate-500">
-        Controls the shed alarm only — the PA door is left as it is. Arming fails if the shed is not sealed.
-      </p>
     </ModalShell>
   );
 }

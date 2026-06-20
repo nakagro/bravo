@@ -44,7 +44,7 @@ export function StatusTile({
 
 // How long the user must hold to START a firecall. Tweak this to change the
 // press-and-hold duration (milliseconds).
-const FIRECALL_HOLD_MS = 3000;
+const FIRECALL_HOLD_MS = 1500;
 
 // The Firecall hero. STARTING requires a press-and-hold (a progress fill sweeps
 // across; releasing early aborts) to guard against accidental taps. CANCELLING
@@ -97,7 +97,7 @@ export function FirecallHero({
       >
         <div className="flex items-center justify-center gap-6 md:gap-10 text-white">
           <span className="flex items-center gap-3 text-3xl md:text-4xl font-bold">
-            <Flame className="h-10 w-10 flex-none" />
+            <span className="h-10 w-10 flex-none" />
             Firecall Active
           </span>
           <span className="text-6xl font-mono font-bold tabular-nums tracking-tight">
@@ -128,7 +128,7 @@ export function FirecallHero({
       <div className="relative z-10 flex flex-col items-center justify-center gap-1 text-white">
         <span className="text-4xl font-bold tracking-wide">Firecall</span>
         <span className="text-base font-semibold text-red-100/70">
-          {holding ? 'Keep holding…' : 'Press &amp; hold to start'}
+          {holding ? 'Keep holding…' : 'Press & hold to start'}
         </span>
       </div>
     </button>
