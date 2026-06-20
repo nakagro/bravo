@@ -1,0 +1,253 @@
+// Kiosk dashboard host. Owns the live data (door/area polling + scene state),
+// the firecall countdown tick, and the modal/confirm orchestration. Renders the
+// layout through GridRenderer. The layout is the hardcoded DEFAULT_LAYOUT today;
+// in Phase 3 it becomes a Convex query — nothing else here needs to change.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { X, RefreshCw } from 'lucide-react';
+import {
+  fetchDoorState, fetchAreaState, fetchSceneToggles, type SceneToggles,
+  controlDoor, setShedAlarm, runFirecall, cancelFirecall, setCommunityLockup,
+  POLL_INTERVAL_MS,
+} from './gateApi';
+import { DEFAULT_LAYOUT, type PlacedWidget, type KioskOverlay } from './layout';
+import { GridRenderer, type DashboardContext } from './GridRenderer';
+import { DoorControlModal, AreaControlModal, ConfirmDialog, type ConfirmConfig } from './modals';
+
+type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
+type ActiveModal = { type: 'door' | 'area'; id: string; name: string } | null;
+
+interface KioskDashboardProps {
+  layout?: PlacedWidget[];
+  onNavigate: (target: KioskOverlay) => void;
+  onExit: () => void;
+  /** Bumped by the host page on inactivity to dismiss any open modal/confirm. */
+  resetSignal?: number;
+}
+
+export default function KioskDashboard({
+  layout = DEFAULT_LAYOUT, onNavigate, onExit, resetSignal = 0,
+}: KioskDashboardProps) {
+  // Only poll what the layout actually places.
+  const { doorIds, areaIds } = useMemo(() => {
+    const doors: string[] = [];
+    const areas: string[] = [];
+    for (const p of layout) {
+      if (p.widget.kind === 'doorStatus') doors.push(p.widget.doorId);
+      if (p.widget.kind === 'areaStatus') areas.push(p.widget.areaId);
+    }
+    return { doorIds: doors, areaIds: areas };
+  }, [layout]);
+
+  const [doorStates, setDoorStates] = useState<Record<string, number | null>>({});
+  const [areaStates, setAreaStates] = useState<Record<string, number | null>>({});
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [scenes, setScenes] = useState<SceneToggles | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [modal, setModal] = useState<ActiveModal>(null);
+  const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadState = useCallback(async () => {
+    const [doorResults, areaResults, sceneResult] = await Promise.all([
+      Promise.allSettled(doorIds.map(fetchDoorState)),
+      Promise.allSettled(areaIds.map(fetchAreaState)),
+      fetchSceneToggles().catch(() => null),
+    ]);
+
+    const nextDoors: Record<string, number | null> = {};
+    const nextAreas: Record<string, number | null> = {};
+    const nextErrors: Record<string, boolean> = {};
+    doorIds.forEach((id, i) => {
+      const r = doorResults[i];
+      nextDoors[id] = r.status === 'fulfilled' ? r.value : null;
+      nextErrors[id] = r.status === 'rejected';
+    });
+    areaIds.forEach((id, i) => {
+      const r = areaResults[i];
+      nextAreas[id] = r.status === 'fulfilled' ? r.value : null;
+      nextErrors[id] = r.status === 'rejected';
+    });
+    setDoorStates(nextDoors);
+    setAreaStates(nextAreas);
+    setErrors(nextErrors);
+    if (sceneResult) setScenes(sceneResult);
+  }, [doorIds, areaIds]);
+
+  // Poll on mount.
+  useEffect(() => {
+    loadState();
+    pollRef.current = setInterval(loadState, POLL_INTERVAL_MS);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadState]);
+
+  // Dismiss transient UI when the host page signals inactivity.
+  useEffect(() => {
+    if (resetSignal > 0) { setModal(null); setConfirm(null); }
+  }, [resetSignal]);
+
+  const runFlow = useCallback(async (fn: () => Promise<unknown>) => {
+    setActionStatus('loading');
+    setActionError(null);
+    setConfirm(null);
+    setModal(null);
+    try {
+      await fn();
+      setActionStatus('success');
+      await loadState();
+      setTimeout(() => setActionStatus('idle'), 2500);
+    } catch (err) {
+      setActionStatus('error');
+      setActionError(err instanceof Error ? err.message : 'Action failed');
+      setTimeout(() => { setActionStatus('idle'); setActionError(null); }, 4000);
+    }
+  }, [loadState]);
+
+  const busy = actionStatus === 'loading';
+
+  // Firecall: lean on the shared expiry so the countdown and the toggle flip in
+  // lockstep across both kiosks.
+  const firecallExpiresAt = scenes?.firecallExpiresAt ?? null;
+  const firecallRemaining = firecallExpiresAt !== null ? firecallExpiresAt - now : 0;
+  const firecallActive = firecallRemaining > 0;
+  const lockupEngaged = scenes?.communityLockup ?? false;
+
+  // Tick once a second only while a countdown is running.
+  useEffect(() => {
+    if (!firecallActive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [firecallActive]);
+
+  const ctx: DashboardContext = useMemo(() => ({
+    doorState: (id) => doorStates[id] ?? null,
+    areaState: (id) => areaStates[id] ?? null,
+    hasError: (id) => Boolean(errors[id]),
+    scenesReady: scenes !== null,
+    lockupEngaged,
+    firecallActive,
+    firecallRemaining,
+    busy,
+    openDoorControl: (id, name) => setModal({ type: 'door', id, name }),
+    openAreaControl: (id, name) => setModal({ type: 'area', id, name }),
+    toggleFirecall: () => setConfirm(
+      firecallActive
+        ? {
+            title: 'Cancel Firecall?',
+            body: 'Re-locks the carpark gate and turnout entry immediately and stops the countdown.',
+            confirmLabel: 'Cancel Firecall',
+            confirmTone: 'slate',
+            run: cancelFirecall,
+          }
+        : {
+            title: 'Start Firecall?',
+            body: 'Holds the carpark gate and turnout entry open for 10 minutes, then they re-lock automatically.',
+            confirmLabel: 'Start Firecall',
+            confirmTone: 'red',
+            run: runFirecall,
+          },
+    ),
+    toggleLockup: () => setConfirm(
+      lockupEngaged
+        ? {
+            title: 'End Community Lockup?',
+            body: 'The two public-facing doors will return to their normal unlock schedule.',
+            confirmLabel: 'End Lockup',
+            confirmTone: 'slate',
+            run: () => setCommunityLockup(false),
+          }
+        : {
+            title: 'Engage Community Lockup?',
+            body: 'Locks the two doors leading to the engine and operations rooms to keep the public out during the event.',
+            confirmLabel: 'Lock Doors',
+            confirmTone: 'amber',
+            run: () => setCommunityLockup(true),
+          },
+    ),
+    navigate: onNavigate,
+  }), [doorStates, areaStates, errors, scenes, lockupEngaged, firecallActive, firecallRemaining, busy, onNavigate]);
+
+  const modalDoorState = modal?.type === 'door' ? doorStates[modal.id] ?? null : null;
+  const modalAreaState = modal?.type === 'area' ? areaStates[modal.id] ?? null : null;
+  const modalError = modal ? Boolean(errors[modal.id]) : false;
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
+      {/* Header */}
+      <header className="flex-none flex items-center justify-between px-6 py-4">
+        <button
+          onClick={onExit}
+          className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors"
+          aria-label="Exit kiosk"
+        >
+          <X className="h-8 w-8" />
+        </button>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">D14 Station Control</h1>
+        <button
+          onClick={loadState}
+          disabled={busy}
+          className="p-3 rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition-colors disabled:opacity-40"
+          aria-label="Refresh"
+        >
+          <RefreshCw className="h-7 w-7" />
+        </button>
+      </header>
+
+      {/* Dashboard grid */}
+      <main className="flex-1 min-h-0 px-6 pb-6">
+        <GridRenderer layout={layout} ctx={ctx} />
+      </main>
+
+      {/* Action feedback toast */}
+      {(actionStatus === 'success' || actionStatus === 'error') && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 flex justify-center px-6 z-[110]">
+          <div className={`px-8 py-4 rounded-2xl border-2 text-center shadow-2xl ${
+            actionStatus === 'success' ? 'bg-emerald-900/90 border-emerald-600' : 'bg-red-900/90 border-red-600'
+          }`}>
+            <p className={`text-xl font-bold ${actionStatus === 'success' ? 'text-emerald-300' : 'text-red-300'}`}>
+              {actionStatus === 'success' ? 'Command sent successfully' : (actionError ?? 'Command failed')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Control modals */}
+      {modal?.type === 'door' && (
+        <DoorControlModal
+          name={modal.name}
+          stateInt={modalDoorState}
+          error={modalError}
+          busy={busy}
+          onOpen={() => runFlow(() => controlDoor(modal.id, 'Open'))}
+          onHold={() => runFlow(() => controlDoor(modal.id, 'Unlock'))}
+          onReinstate={() => runFlow(() => controlDoor(modal.id, 'Reinstate'))}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.type === 'area' && (
+        <AreaControlModal
+          name={modal.name}
+          stateInt={modalAreaState}
+          error={modalError}
+          busy={busy}
+          onArm={() => runFlow(() => setShedAlarm(true))}
+          onDisarm={() => runFlow(() => setShedAlarm(false))}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Confirm dialog (firecall / lockup) */}
+      {confirm && (
+        <ConfirmDialog
+          config={confirm}
+          onConfirm={() => runFlow(confirm.run)}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+    </div>
+  );
+}
