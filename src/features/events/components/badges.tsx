@@ -74,6 +74,20 @@ export function EventStatusBadge({ status, className = "" }: { status: string; c
 }
 
 /**
+ * Small indicator that an event collects per-shift interest rather than a
+ * simple yes/maybe/no.
+ */
+export function ShiftsBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 ${className}`}
+    >
+      Shifts
+    </span>
+  );
+}
+
+/**
  * Chip showing an RSVP status.
  */
 export function RsvpBadge({ status, className = "" }: { status: RsvpStatus; className?: string }) {

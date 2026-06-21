@@ -176,6 +176,32 @@ export function formatTime(timeStr: string): string {
   return `${hour12}:${minutes} ${ampm}`;
 }
 
+// ─── Shifts / slots ──────────────────────────────────────────────────────────
+
+export interface EventSlotLike {
+  startTime?: string;
+  endTime?: string;
+  date?: string;
+}
+
+// "Mon 1 Jan · 9:00 AM – 12:00 PM", "9:00 AM – 12:00 PM", "Mon 1 Jan", or "".
+export function formatSlotWhen(slot: EventSlotLike): string {
+  const parts: string[] = [];
+  if (slot.date) parts.push(formatShortDate(slot.date));
+  if (slot.startTime && slot.endTime) {
+    parts.push(`${formatTime(slot.startTime)} – ${formatTime(slot.endTime)}`);
+  } else if (slot.startTime) {
+    parts.push(formatTime(slot.startTime));
+  }
+  return parts.join(" · ");
+}
+
+// Coverage count for a slot: "2 of 4" when a target is set, else just "2".
+// Callers append the noun (e.g. "rostered" / "placed").
+export function slotCoverageLabel(count: number, target?: number): string {
+  return target && target > 0 ? `${count} of ${target}` : `${count}`;
+}
+
 // Format an event's date/time range for display
 export function formatEventDate(event: {
   startDate: string;

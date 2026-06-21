@@ -15,10 +15,13 @@ import {
   getTodayStr,
 } from "../features/events/types";
 import { RsvpButtons } from "../features/events/components/RsvpButtons";
+import { SlotPicker } from "../features/events/components/SlotPicker";
+import { AllocateShiftsDialog } from "../features/events/components/AllocateShiftsDialog";
 import { EventForm } from "../features/events/components/EventForm";
 import { EventTypeChip } from "../features/events/components/badges";
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
+import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -31,6 +34,8 @@ import {
   BellAlertIcon,
   ClockIcon,
   UserIcon,
+  UsersIcon,
+  TrashIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 
@@ -68,6 +73,8 @@ export function EventDetailPage() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
+  const [showAllocateDialog, setShowAllocateDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
   );
@@ -83,6 +90,7 @@ export function EventDetailPage() {
 
   const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
+  const deleteEvent = useMutation(api.events.deleteEvent);
 
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -125,6 +133,21 @@ export function EventDetailPage() {
     } catch (error) {
       console.error("Error restoring event:", error);
       toast.error("Failed to restore event", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!typedEventId) return;
+    try {
+      await deleteEvent({ eventId: typedEventId });
+      setShowDeleteDialog(false);
+      toast.success("Event deleted");
+      navigate("/events");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event", {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
@@ -228,6 +251,19 @@ export function EventDetailPage() {
         eventId={typedEventId ?? null}
         eventTitle={event.title}
       />
+      <DeleteEventDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        eventTitle={event.title}
+        onConfirm={handleDelete}
+      />
+      {event.hasShifts && typedEventId && (
+        <AllocateShiftsDialog
+          open={showAllocateDialog}
+          onClose={() => setShowAllocateDialog(false)}
+          eventId={typedEventId}
+        />
+      )}
 
       <div className="flex items-center justify-between gap-3">
         {backButton}
@@ -242,6 +278,15 @@ export function EventDetailPage() {
               <PencilSquareIcon className="h-4 w-4 mr-1" />
               Edit
             </button>
+            {event.hasShifts && event.status === "active" && (
+              <button
+                onClick={() => setShowAllocateDialog(true)}
+                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+              >
+                <UsersIcon className="h-4 w-4 mr-1" />
+                Allocate
+              </button>
+            )}
             {event.status === "active" ? (
               <>
                 <button
@@ -260,13 +305,22 @@ export function EventDetailPage() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={handleRestore}
-                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
-              >
-                <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                Restore
-              </button>
+              <>
+                <button
+                  onClick={handleRestore}
+                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+                >
+                  <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
+                  Restore
+                </button>
+                <button
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
+                >
+                  <TrashIcon className="h-4 w-4 mr-1" />
+                  Delete
+                </button>
+              </>
             )}
           </div>
         )}
@@ -334,17 +388,24 @@ export function EventDetailPage() {
       </div>
 
       {/* RSVP — full-width card, consistent with the rest of the page */}
-      {showRsvp && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
-          <div className="mb-3 sm:mb-0">
-            <div className="text-sm font-bold text-gray-900 dark:text-white">Are you coming?</div>
-
+      {showRsvp &&
+        (event.hasShifts ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
+            <div className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+              Which shifts can you do?
+            </div>
+            <SlotPicker eventId={event._id} myRsvp={event.myRsvp} />
           </div>
-          <div className="sm:w-auto w-full sm:min-w-[320px]">
-            <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} size="lg" />
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div className="mb-3 sm:mb-0">
+              <div className="text-sm font-bold text-gray-900 dark:text-white">Are you coming?</div>
+            </div>
+            <div className="sm:w-auto w-full sm:min-w-[320px]">
+              <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} size="lg" />
+            </div>
           </div>
-        </div>
-      )}
+        ))}
 
       <div className="grid gap-4 lg:grid-cols-3 items-start">
         {/* Details — all the event information lives here as labelled sections */}

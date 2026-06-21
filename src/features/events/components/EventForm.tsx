@@ -3,9 +3,10 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -21,6 +22,15 @@ import { DatePicker } from "../../../components/shared/DatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { eventTypeColors } from "../types";
 
+const slotSchema = z.object({
+  _id: z.string().optional(),
+  label: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  date: z.string(),
+  targetCount: z.string(),
+});
+
 const eventFormSchema = z
   .object({
     title: z.string().min(1, "Please enter a title"),
@@ -33,7 +43,17 @@ const eventFormSchema = z
     respondBy: z.string(),
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
+    hasShifts: z.boolean(),
+    slots: z.array(slotSchema),
     description: z.string(),
+  })
+  .refine((data) => !data.hasShifts || data.slots.length > 0, {
+    message: "Add at least one shift, or turn off shifts",
+    path: ["slots"],
+  })
+  .refine((data) => !data.hasShifts || data.slots.every((s) => s.label.trim().length > 0), {
+    message: "Every shift needs a label",
+    path: ["slots"],
   })
   .refine(
     (data) => !data.isMultiDay || data.endDate.length > 0,
@@ -63,6 +83,10 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     eventId ? { eventId } : "skip"
   );
   const eventTypes = useQuery(api.eventTypes.getEventTypes);
+  const existingSlots = useQuery(
+    api.events.getEventSlots,
+    eventId ? { eventId } : "skip"
+  );
   const createEvent = useMutation(api.events.createEvent);
   const updateEvent = useMutation(api.events.updateEvent);
 
@@ -82,17 +106,28 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       // Brigade events are typically timed (e.g. a 9–2 sausage sizzle)
       isAllDay: false,
       isMultiDay: false,
+      hasShifts: false,
+      slots: [],
       description: "",
     },
   });
 
+  const {
+    fields: slotFields,
+    append: appendSlot,
+    remove: removeSlot,
+    move: moveSlot,
+  } = useFieldArray({ control: form.control, name: "slots" });
+
   const { isSubmitting } = form.formState;
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
+  const watchHasShifts = form.watch("hasShifts");
 
-  // Load existing event data when editing
+  // Load existing event data when editing (wait for slots too, so the field
+  // array is populated in the same reset)
   useEffect(() => {
-    if (existingEvent) {
+    if (existingEvent && existingSlots !== undefined) {
       form.reset({
         title: existingEvent.title,
         eventTypeId: existingEvent.eventTypeId || "",
@@ -105,10 +140,19 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         isAllDay: existingEvent.isAllDay,
         isMultiDay:
           !!existingEvent.endDate && existingEvent.endDate !== existingEvent.startDate,
+        hasShifts: existingEvent.hasShifts ?? false,
+        slots: existingSlots.map((slot) => ({
+          _id: slot._id,
+          label: slot.label,
+          startTime: slot.startTime || "",
+          endTime: slot.endTime || "",
+          date: slot.date || "",
+          targetCount: slot.targetCount != null ? String(slot.targetCount) : "",
+        })),
         description: existingEvent.description || "",
       });
     }
-  }, [existingEvent, form]);
+  }, [existingEvent, existingSlots, form]);
 
   const onSubmit = async (values: EventFormValues) => {
     // Empty strings clear optional fields on the server
@@ -125,6 +169,18 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       description: values.description.trim(),
     };
 
+    // Slots only matter when shifts are on; an empty list on update clears them
+    const slots = values.hasShifts
+      ? values.slots.map((slot) => ({
+          _id: (slot._id || undefined) as Id<"eventSlots"> | undefined,
+          label: slot.label.trim(),
+          startTime: slot.startTime || undefined,
+          endTime: slot.endTime || undefined,
+          date: slot.date || undefined,
+          targetCount: slot.targetCount ? Number(slot.targetCount) : undefined,
+        }))
+      : [];
+
     try {
       if (isEditing && eventId) {
         await updateEvent({
@@ -132,6 +188,8 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           ...fields,
           // "" clears the category; otherwise it's an eventTypes Id
           eventTypeId: fields.eventTypeId as "" | Id<"eventTypes">,
+          hasShifts: values.hasShifts,
+          slots,
         });
         toast.success("Event updated");
       } else {
@@ -144,6 +202,8 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           endTime: fields.endTime || undefined,
           respondBy: fields.respondBy || undefined,
           description: fields.description || undefined,
+          hasShifts: values.hasShifts,
+          slots: values.hasShifts ? slots : undefined,
         });
         toast.success("Event created");
       }
@@ -408,6 +468,154 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Shifts / sessions toggle */}
+        <FormField
+          control={form.control}
+          name="hasShifts"
+          render={({ field }) => (
+            <FormItem>
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                <span>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Has shifts / sessions
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Members sign up for specific shifts instead of a simple yes/no
+                  </span>
+                </span>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      // Seed an empty shift so the editor isn't blank
+                      if (checked && slotFields.length === 0) {
+                        appendSlot({
+                          label: "",
+                          startTime: "",
+                          endTime: "",
+                          date: "",
+                          targetCount: "",
+                        });
+                      }
+                    }}
+                    aria-label="Has shifts"
+                    className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                  />
+                </FormControl>
+              </label>
+            </FormItem>
+          )}
+        />
+
+        {/* Slots editor */}
+        {watchHasShifts && (
+          <div className="space-y-3">
+            {slotFields.map((slotField, index) => (
+              <div
+                key={slotField.id}
+                className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 bg-white dark:bg-gray-800"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    Shift {index + 1}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveSlot(index, index - 1)}
+                      disabled={index === 0}
+                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                      aria-label="Move shift up"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveSlot(index, index + 1)}
+                      disabled={index === slotFields.length - 1}
+                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                      aria-label="Move shift down"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSlot(index)}
+                      className="p-1 text-gray-400 hover:text-red-500"
+                      aria-label="Remove shift"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  {...form.register(`slots.${index}.label`)}
+                  type="text"
+                  placeholder="Label (e.g. Morning shift)"
+                  className={inputClasses}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    {...form.register(`slots.${index}.startTime`)}
+                    type="time"
+                    aria-label="Shift start time"
+                    className={inputClasses}
+                  />
+                  <input
+                    {...form.register(`slots.${index}.endTime`)}
+                    type="time"
+                    aria-label="Shift end time"
+                    className={inputClasses}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name={`slots.${index}.date`}
+                    render={({ field }) => (
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Date (optional)"
+                      />
+                    )}
+                  />
+                  <input
+                    {...form.register(`slots.${index}.targetCount`)}
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    placeholder="Target #"
+                    className={inputClasses}
+                  />
+                </div>
+              </div>
+            ))}
+
+            {form.formState.errors.slots?.message && (
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                {form.formState.errors.slots.message}
+              </p>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                appendSlot({ label: "", startTime: "", endTime: "", date: "", targetCount: "" })
+              }
+              className="w-full h-11 gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Add shift
+            </Button>
+          </div>
+        )}
 
         {/* Description */}
         <FormField

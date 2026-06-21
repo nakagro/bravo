@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge, EventTypeChip } from "./badges";
+import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
 import { RsvpButtons } from "./RsvpButtons";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
@@ -57,6 +57,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
               {event.title}
             </span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
+            {event.hasShifts && <ShiftsBadge />}
             <EventStatusBadge status={event.status} />
           </div>
 

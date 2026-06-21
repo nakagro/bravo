@@ -5,11 +5,12 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { formatTime, formatShortDate, formatUserName, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge, EventTypeChip } from "./badges";
+import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
 import { EventForm } from "./EventForm";
 import { EventTypesManager } from "./EventTypesManager";
 import { CancelEventDialog } from "./CancelEventDialog";
 import { NotifyMembersDialog } from "./NotifyMembersDialog";
+import { DeleteEventDialog } from "./DeleteEventDialog";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { EventListSkeleton } from "./UpcomingTab";
 import {
@@ -22,6 +23,7 @@ import {
   UsersIcon,
   ChevronDownIcon,
   TagIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 import { FunctionReturnType } from "convex/server";
@@ -34,6 +36,7 @@ export function AdminTab() {
   const [editingEventId, setEditingEventId] = useState<Id<"events"> | null>(null);
   const [cancellingEvent, setCancellingEvent] = useState<EnrichedEvent | null>(null);
   const [notifyingEvent, setNotifyingEvent] = useState<EnrichedEvent | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState<EnrichedEvent | null>(null);
   const [showPast, setShowPast] = useState(false);
   const [showTypesManager, setShowTypesManager] = useState(false);
 
@@ -42,6 +45,7 @@ export function AdminTab() {
 
   const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
+  const deleteEvent = useMutation(api.events.deleteEvent);
 
   const handleAddEvent = () => {
     setEditingEventId(null);
@@ -102,6 +106,21 @@ export function AdminTab() {
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deletingEvent) return;
+    const eventId = deletingEvent._id;
+    setDeletingEvent(null);
+    try {
+      await deleteEvent({ eventId });
+      toast.success("Event deleted");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
   const actionButtonClasses =
     "px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center";
 
@@ -114,6 +133,7 @@ export function AdminTab() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900 dark:text-white">{event.title}</span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
+            {event.hasShifts && <ShiftsBadge />}
             <EventStatusBadge status={event.status} />
           </div>
 
@@ -173,10 +193,19 @@ export function AdminTab() {
                   </button>
                 </>
               ) : (
-                <button onClick={() => handleRestore(event._id)} className={actionButtonClasses}>
-                  <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                  Restore
-                </button>
+                <>
+                  <button onClick={() => handleRestore(event._id)} className={actionButtonClasses}>
+                    <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
+                    Restore
+                  </button>
+                  <button
+                    onClick={() => setDeletingEvent(event)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
+                  >
+                    <TrashIcon className="h-4 w-4 mr-1" />
+                    Delete
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -207,6 +236,15 @@ export function AdminTab() {
         }}
         eventId={notifyingEvent?._id ?? null}
         eventTitle={notifyingEvent?.title}
+      />
+
+      <DeleteEventDialog
+        open={deletingEvent !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingEvent(null);
+        }}
+        eventTitle={deletingEvent?.title}
+        onConfirm={handleDeleteConfirm}
       />
 
       {/* Manage Events Section */}

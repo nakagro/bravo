@@ -895,6 +895,7 @@ const applicationTables = {
     startTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
     endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
     respondBy: v.optional(v.string()), // ISO date string — optional RSVP-by date
+    hasShifts: v.optional(v.boolean()), // Opt-in: event collects per-slot interest (eventSlots)
     isAllDay: v.boolean(),
     cancelledBy: v.optional(v.id("users")),
     cancelledAt: v.optional(v.number()),
@@ -925,6 +926,46 @@ const applicationTables = {
     .index("by_event", ["eventId"])
     .index("by_user", ["userId"])
     .index("by_event_user", ["eventId", "userId"]),
+
+  // Optional per-event shifts/sessions (only present when events.hasShifts).
+  // A sausage-sizzle split into shifts, or a multi-day course's sessions.
+  eventSlots: defineTable({
+    eventId: v.id("events"),
+    label: v.string(),
+    startTime: v.optional(v.string()), // HH:MM
+    endTime: v.optional(v.string()), // HH:MM
+    date: v.optional(v.string()), // YYYY-MM-DD (multi-day sessions)
+    targetCount: v.optional(v.number()), // Soft target headcount — never enforced
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_event", ["eventId"]),
+
+  // A member's interest in a single slot (member-expressed)
+  eventSlotResponses: defineTable({
+    eventId: v.id("events"),
+    slotId: v.id("eventSlots"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_slot", ["slotId"])
+    .index("by_event", ["eventId"])
+    .index("by_event_user", ["eventId", "userId"])
+    .index("by_slot_user", ["slotId", "userId"]),
+
+  // Admin-controlled allocation of a member to a slot (the official roster).
+  // Distinct from interest — an admin can place anyone, interest is just a hint.
+  eventSlotAllocations: defineTable({
+    eventId: v.id("events"),
+    slotId: v.id("eventSlots"),
+    userId: v.id("users"),
+    assignedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_slot", ["slotId"])
+    .index("by_event", ["eventId"])
+    .index("by_event_user", ["eventId", "userId"])
+    .index("by_slot_user", ["slotId", "userId"]),
 
   // Event history for audit trail of changes to events
   eventHistory: defineTable({

@@ -114,6 +114,7 @@ const enrichedEventValidator = v.object({
   startTime: v.optional(v.string()),
   endTime: v.optional(v.string()),
   respondBy: v.optional(v.string()),
+  hasShifts: v.optional(v.boolean()),
   isAllDay: v.boolean(),
   cancelledBy: v.optional(v.id("users")),
   cancelledAt: v.optional(v.number()),
@@ -140,6 +141,31 @@ const enrichedEventValidator = v.object({
   ),
 });
 
+/**
+ * The set of users who count as "going" to a slot event — anyone who expressed
+ * interest OR was allocated by an admin (an admin may roster someone who never
+ * ticked interest).
+ */
+async function slotAttendingUserIds(
+  ctx: QueryCtx,
+  eventId: Id<"events">
+): Promise<Set<Id<"users">>> {
+  const [interest, allocations] = await Promise.all([
+    ctx.db
+      .query("eventSlotResponses")
+      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .collect(),
+    ctx.db
+      .query("eventSlotAllocations")
+      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .collect(),
+  ]);
+  const ids = new Set<Id<"users">>();
+  for (const r of interest) ids.add(r.userId);
+  for (const a of allocations) ids.add(a.userId);
+  return ids;
+}
+
 async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"users">) {
   const rsvps = await ctx.db
     .query("eventRsvps")
@@ -148,10 +174,26 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
 
   const counts = { attending: 0, notAttending: 0, maybe: 0 };
   let myRsvp: "attending" | "notAttending" | "maybe" | null = null;
-  for (const rsvp of rsvps) {
-    counts[rsvp.status]++;
-    if (rsvp.userId === userId) {
-      myRsvp = rsvp.status;
+
+  if (event.hasShifts) {
+    // Slot event: "going" = interested ∪ allocated, not a top-level attending
+    // rsvp. "Can't make it" is still a notAttending rsvp.
+    const attendingUsers = await slotAttendingUserIds(ctx, event._id);
+    counts.attending = attendingUsers.size;
+    for (const rsvp of rsvps) {
+      if (rsvp.status === "notAttending") counts.notAttending++;
+    }
+    if (attendingUsers.has(userId)) {
+      myRsvp = "attending";
+    } else if (rsvps.some((r) => r.userId === userId && r.status === "notAttending")) {
+      myRsvp = "notAttending";
+    }
+  } else {
+    for (const rsvp of rsvps) {
+      counts[rsvp.status]++;
+      if (rsvp.userId === userId) {
+        myRsvp = rsvp.status;
+      }
     }
   }
 
@@ -203,6 +245,76 @@ async function recordHistory(
     newValue: entry.newValue,
     notes: entry.notes,
   });
+}
+
+// Slot definition as sent by the event form. `_id` present = existing slot to
+// patch; absent = new slot to insert.
+const slotInputValidator = v.object({
+  _id: v.optional(v.id("eventSlots")),
+  label: v.string(),
+  startTime: v.optional(v.string()),
+  endTime: v.optional(v.string()),
+  date: v.optional(v.string()),
+  targetCount: v.optional(v.number()),
+});
+
+type SlotInput = {
+  _id?: Id<"eventSlots">;
+  label: string;
+  startTime?: string;
+  endTime?: string;
+  date?: string;
+  targetCount?: number;
+};
+
+/**
+ * Reconcile an event's slots to the desired list (insert new, patch existing by
+ * _id, delete removed). Deleting a slot cascade-deletes its responses. Slot
+ * order follows array order.
+ */
+async function reconcileSlots(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  slots: SlotInput[]
+) {
+  const existing = await ctx.db
+    .query("eventSlots")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+
+  const keepIds = new Set(slots.filter((s) => s._id).map((s) => s._id as Id<"eventSlots">));
+
+  // Delete slots the organiser removed, plus their responses
+  for (const slot of existing) {
+    if (!keepIds.has(slot._id)) {
+      const responses = await ctx.db
+        .query("eventSlotResponses")
+        .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+        .collect();
+      for (const response of responses) {
+        await ctx.db.delete(response._id);
+      }
+      await ctx.db.delete(slot._id);
+    }
+  }
+
+  const now = Date.now();
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const fields = {
+      label: slot.label,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      date: slot.date,
+      targetCount: slot.targetCount,
+      order: i,
+    };
+    if (slot._id) {
+      await ctx.db.patch(slot._id, { ...fields, updatedAt: now });
+    } else {
+      await ctx.db.insert("eventSlots", { eventId, ...fields, createdAt: now, updatedAt: now });
+    }
+  }
 }
 
 // ─── Queries ────────────────────────────────────────────────────────────────
@@ -320,10 +432,20 @@ export const getEventAttendance = query({
       name: user.name,
     });
 
+    // "Going" is interested ∪ allocated for slot events, an attending rsvp
+    // otherwise.
+    let attendingIds: Set<Id<"users">>;
+    if (event.hasShifts) {
+      attendingIds = await slotAttendingUserIds(ctx, args.eventId);
+    } else {
+      attendingIds = new Set(
+        rsvps.filter((rsvp) => rsvp.status === "attending").map((rsvp) => rsvp.userId)
+      );
+    }
+
     // Attending list — visible to all signed-in members
-    const attendingRsvps = rsvps.filter((rsvp) => rsvp.status === "attending");
     const attending = (
-      await Promise.all(attendingRsvps.map((rsvp) => ctx.db.get(rsvp.userId)))
+      await Promise.all([...attendingIds].map((id) => ctx.db.get(id)))
     )
       .filter((user): user is Doc<"users"> => user !== null)
       .map(nameOf);
@@ -343,6 +465,8 @@ export const getEventAttendance = query({
     const noResponse: Array<ReturnType<typeof nameOf>> = [];
 
     for (const user of users) {
+      // Slot responders count as "going" — never double-count them below
+      if (attendingIds.has(user._id)) continue;
       const status = rsvpByUser.get(user._id);
       if (status === "maybe") maybe.push(nameOf(user));
       else if (status === "notAttending") notAttending.push(nameOf(user));
@@ -423,6 +547,8 @@ export const createEvent = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     respondBy: v.optional(v.string()),
+    hasShifts: v.optional(v.boolean()),
+    slots: v.optional(v.array(slotInputValidator)),
     isAllDay: v.boolean(),
   },
   returns: v.id("events"),
@@ -441,11 +567,16 @@ export const createEvent = mutation({
       startTime: args.startTime,
       endTime: args.endTime,
       respondBy: args.respondBy,
+      hasShifts: args.hasShifts,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
     });
+
+    if (args.hasShifts && args.slots && args.slots.length > 0) {
+      await reconcileSlots(ctx, eventId, args.slots);
+    }
 
     await recordHistory(ctx, {
       eventId,
@@ -477,6 +608,8 @@ export const updateEvent = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     respondBy: v.optional(v.string()),
+    hasShifts: v.optional(v.boolean()),
+    slots: v.optional(v.array(slotInputValidator)),
     isAllDay: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -498,6 +631,7 @@ export const updateEvent = mutation({
       "startTime",
       "endTime",
       "respondBy",
+      "hasShifts",
       "isAllDay",
     ] as const;
 
@@ -524,6 +658,14 @@ export const updateEvent = mutation({
         oldValue: oldValue ?? null,
         newValue: newValue ?? null,
       });
+    }
+
+    // Reconcile slots whenever the form sends them (independent of column
+    // changes — a slot-only edit must still apply).
+    if (args.slots !== undefined) {
+      const hasShifts = args.hasShifts ?? event.hasShifts ?? false;
+      // Turning shifts off clears all slots; otherwise sync to the payload.
+      await reconcileSlots(ctx, args.eventId, hasShifts ? args.slots : []);
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -623,6 +765,57 @@ export const restoreEvent = mutation({
 });
 
 /**
+ * Permanently delete a cancelled event and everything attached to it. Must be
+ * cancelled first (the soft-delete stays the default; this is the explicit
+ * "remove entirely" escape hatch). Cascades rsvps, slots, slot interest,
+ * allocations, and history.
+ */
+export const deleteEvent = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEventsAdmin(ctx);
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    if (event.status !== "cancelled") {
+      throw new Error("Cancel the event before deleting it");
+    }
+
+    // Cascade-delete every child collection, all keyed by the by_event index
+    const rsvps = await ctx.db
+      .query("eventRsvps")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const slotResponses = await ctx.db
+      .query("eventSlotResponses")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const allocations = await ctx.db
+      .query("eventSlotAllocations")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const slots = await ctx.db
+      .query("eventSlots")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const history = await ctx.db
+      .query("eventHistory")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    for (const row of [...rsvps, ...slotResponses, ...allocations, ...slots, ...history]) {
+      await ctx.db.delete(row._id);
+    }
+
+    await ctx.db.delete(args.eventId);
+    return null;
+  },
+});
+
+/**
  * Set or change the caller's RSVP for an event. Any signed-in member.
  * Upserts via by_event_user so each user has at most one RSVP per event.
  */
@@ -671,6 +864,310 @@ export const setRsvp = mutation({
   },
 });
 
+// Guard shared by the slot-response mutations: event must be active and not past.
+async function requireOpenEvent(ctx: MutationCtx, eventId: Id<"events">): Promise<Doc<"events">> {
+  const event = await ctx.db.get(eventId);
+  if (!event) {
+    throw new Error("Event not found");
+  }
+  if (event.status !== "active") {
+    throw new Error("This event has been cancelled");
+  }
+  if ((event.endDate ?? event.startDate) < aestTodayStr()) {
+    throw new Error("This event has already happened");
+  }
+  return event;
+}
+
+/**
+ * Toggle the caller's interest in a single slot. Picking a slot is the RSVP for
+ * a slot event, so joining a slot also clears any "can't make it". Returns the
+ * new membership state (true = now in the slot).
+ */
+export const toggleSlotResponse = mutation({
+  args: { slotId: v.id("eventSlots") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await requireSignedIn(ctx);
+
+    const slot = await ctx.db.get(args.slotId);
+    if (!slot) {
+      throw new Error("Shift not found");
+    }
+    await requireOpenEvent(ctx, slot.eventId);
+
+    const existing = await ctx.db
+      .query("eventSlotResponses")
+      .withIndex("by_slot_user", (q) => q.eq("slotId", args.slotId).eq("userId", userId))
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return false;
+    }
+
+    await ctx.db.insert("eventSlotResponses", {
+      eventId: slot.eventId,
+      slotId: args.slotId,
+      userId,
+      createdAt: Date.now(),
+    });
+
+    // Joining a slot clears a prior "can't make it"
+    const rsvp = await ctx.db
+      .query("eventRsvps")
+      .withIndex("by_event_user", (q) => q.eq("eventId", slot.eventId).eq("userId", userId))
+      .first();
+    if (rsvp && rsvp.status === "notAttending") {
+      await ctx.db.delete(rsvp._id);
+    }
+
+    return true;
+  },
+});
+
+/**
+ * Toggle "can't make it" for a slot event. Declining clears all the caller's
+ * slot picks; toggling it off returns them to "no response". Returns the new
+ * declined state.
+ */
+export const declineSlotEvent = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const userId = await requireSignedIn(ctx);
+    await requireOpenEvent(ctx, args.eventId);
+
+    const existing = await ctx.db
+      .query("eventRsvps")
+      .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", userId))
+      .first();
+
+    // Already declined → un-decline (back to no response)
+    if (existing && existing.status === "notAttending") {
+      await ctx.db.delete(existing._id);
+      return false;
+    }
+
+    // Declining clears any slot picks
+    const myResponses = await ctx.db
+      .query("eventSlotResponses")
+      .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", userId))
+      .collect();
+    for (const response of myResponses) {
+      await ctx.db.delete(response._id);
+    }
+
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, { status: "notAttending", updatedAt: now });
+    } else {
+      await ctx.db.insert("eventRsvps", {
+        eventId: args.eventId,
+        userId,
+        status: "notAttending",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return true;
+  },
+});
+
+/**
+ * Admin: place or remove a member on a slot (the official roster). Allocation
+ * is independent of interest — anyone can be placed. Returns the new state.
+ */
+export const toggleSlotAllocation = mutation({
+  args: {
+    slotId: v.id("eventSlots"),
+    userId: v.id("users"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const adminId = await requireEventsAdmin(ctx);
+
+    const slot = await ctx.db.get(args.slotId);
+    if (!slot) {
+      throw new Error("Shift not found");
+    }
+
+    const existing = await ctx.db
+      .query("eventSlotAllocations")
+      .withIndex("by_slot_user", (q) => q.eq("slotId", args.slotId).eq("userId", args.userId))
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return false;
+    }
+
+    await ctx.db.insert("eventSlotAllocations", {
+      eventId: slot.eventId,
+      slotId: args.slotId,
+      userId: args.userId,
+      assignedBy: adminId,
+      createdAt: Date.now(),
+    });
+    return true;
+  },
+});
+
+/**
+ * Slots for an event (member-facing), ordered. Each carries the official
+ * **allocated** roster (member-visible) and coverage, plus whether the caller
+ * is interested in / allocated to it. The full "who's interested" list is
+ * admin-only — see getSlotRoster. Empty for non-slot events.
+ */
+export const getEventSlots = query({
+  args: { eventId: v.id("events") },
+  returns: v.array(
+    v.object({
+      _id: v.id("eventSlots"),
+      label: v.string(),
+      startTime: v.optional(v.string()),
+      endTime: v.optional(v.string()),
+      date: v.optional(v.string()),
+      targetCount: v.optional(v.number()),
+      order: v.number(),
+      allocatedCount: v.number(),
+      allocated: v.array(userNameValidator),
+      mineInterested: v.boolean(),
+      mineAllocated: v.boolean(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+
+    const slots = await ctx.db
+      .query("eventSlots")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    slots.sort((a, b) => a.order - b.order);
+
+    return await Promise.all(
+      slots.map(async (slot) => {
+        const allocations = await ctx.db
+          .query("eventSlotAllocations")
+          .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+          .collect();
+        const allocated = (
+          await Promise.all(allocations.map((a) => ctx.db.get(a.userId)))
+        )
+          .filter((user): user is Doc<"users"> => user !== null)
+          .map((user) => ({
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            name: user.name,
+          }));
+
+        const myInterest = await ctx.db
+          .query("eventSlotResponses")
+          .withIndex("by_slot_user", (q) => q.eq("slotId", slot._id).eq("userId", userId))
+          .first();
+
+        return {
+          _id: slot._id,
+          label: slot.label,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          date: slot.date,
+          targetCount: slot.targetCount,
+          order: slot.order,
+          allocatedCount: allocations.length,
+          allocated,
+          mineInterested: myInterest !== null,
+          mineAllocated: allocations.some((a) => a.userId === userId),
+        };
+      })
+    );
+  },
+});
+
+/**
+ * Admin roster view for the allocation UI: all members plus, per slot, who is
+ * interested and who is allocated. Returns null for non-admins.
+ */
+export const getSlotRoster = query({
+  args: { eventId: v.id("events") },
+  returns: v.union(
+    v.object({
+      members: v.array(userNameValidator),
+      slots: v.array(
+        v.object({
+          _id: v.id("eventSlots"),
+          label: v.string(),
+          startTime: v.optional(v.string()),
+          endTime: v.optional(v.string()),
+          date: v.optional(v.string()),
+          targetCount: v.optional(v.number()),
+          order: v.number(),
+          allocatedIds: v.array(v.id("users")),
+          interestedIds: v.array(v.id("users")),
+        })
+      ),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const adminId = await hasEventsAdmin(ctx);
+    if (!adminId) {
+      return null;
+    }
+
+    const users = await ctx.db.query("users").collect();
+    const members = users
+      .map((user) => ({
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: user.name,
+      }))
+      .sort((a, b) =>
+        `${a.firstName ?? a.name ?? ""}`.localeCompare(`${b.firstName ?? b.name ?? ""}`)
+      );
+
+    const slots = await ctx.db
+      .query("eventSlots")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    slots.sort((a, b) => a.order - b.order);
+
+    const slotsWithRoster = await Promise.all(
+      slots.map(async (slot) => {
+        const [allocations, interest] = await Promise.all([
+          ctx.db
+            .query("eventSlotAllocations")
+            .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+            .collect(),
+          ctx.db
+            .query("eventSlotResponses")
+            .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+            .collect(),
+        ]);
+        return {
+          _id: slot._id,
+          label: slot.label,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          date: slot.date,
+          targetCount: slot.targetCount,
+          order: slot.order,
+          allocatedIds: allocations.map((a) => a.userId),
+          interestedIds: interest.map((r) => r.userId),
+        };
+      })
+    );
+
+    return { members, slots: slotsWithRoster };
+  },
+});
+
 // ─── Internal functions for the reminder pipeline ───────────────────────────
 
 /**
@@ -713,13 +1210,30 @@ export const getReminderTargets = internalQuery({
           .query("eventRsvps")
           .withIndex("by_event", (q) => q.eq("eventId", event._id))
           .collect();
+
+        const statusByUser = new Map<Id<"users">, "attending" | "notAttending" | "maybe">(
+          rsvps.map((rsvp) => [rsvp.userId, rsvp.status])
+        );
+
+        // For slot events, interested ∪ allocated is the "attending" signal —
+        // fold each distinct user in so they're reminded (and excluded from
+        // non-responder nudges).
+        if (event.hasShifts) {
+          const attendingUsers = await slotAttendingUserIds(ctx, event._id);
+          for (const id of attendingUsers) {
+            if (!statusByUser.has(id)) {
+              statusByUser.set(id, "attending");
+            }
+          }
+        }
+
         return {
           _id: event._id,
           title: event.title,
           location: event.location,
           startTime: event.startTime,
           isAllDay: event.isAllDay,
-          rsvps: rsvps.map((rsvp) => ({ userId: rsvp.userId, status: rsvp.status })),
+          rsvps: [...statusByUser.entries()].map(([userId, status]) => ({ userId, status })),
         };
       })
     );
