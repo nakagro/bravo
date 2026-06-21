@@ -48,6 +48,12 @@ export function DatePicker({
   const selectedDate = value ? parseLocalDate(value) : undefined;
   const minDate = min ? parseLocalDate(min) : undefined;
 
+  // Bound the year dropdown to a sensible window around now (past events can be
+  // recorded a little back; events are planned a few years out).
+  const thisYear = new Date().getFullYear();
+  const startMonth = new Date(thisYear - 2, 0);
+  const endMonth = new Date(thisYear + 5, 11);
+
   return (
     <div className={cn("w-full", className)}>
       {/* Trigger button */}
@@ -82,6 +88,9 @@ export function DatePicker({
         <div className="mt-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
           <Calendar
             mode="single"
+            captionLayout="dropdown"
+            startMonth={startMonth}
+            endMonth={endMonth}
             selected={selectedDate}
             onSelect={(date) => {
               if (date) {

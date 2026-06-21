@@ -52,7 +52,7 @@ export function ResponsiveModal({
               </Button>
             </div>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 pt-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4">
             {children}
           </div>
           {footer && (
@@ -75,7 +75,7 @@ export function ResponsiveModal({
           <SheetTitle className="text-xl font-bold">{title}</SheetTitle>
           <SheetDescription className="sr-only">{title}</SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-4 pb-4">
           {children}
         </div>
         {footer && (

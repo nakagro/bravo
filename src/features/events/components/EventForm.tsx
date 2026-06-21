@@ -70,6 +70,28 @@ const eventFormSchema = z
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
+const blankDefaults: EventFormValues = {
+  title: "",
+  eventTypeId: "",
+  location: "",
+  startDate: "",
+  endDate: "",
+  startTime: "",
+  endTime: "",
+  respondBy: "",
+  // Brigade events are typically timed (e.g. a 9–2 sausage sizzle)
+  isAllDay: false,
+  isMultiDay: false,
+  hasShifts: false,
+  slots: [],
+  description: "",
+};
+
+// In-memory draft for the *new* event form, kept outside React so it survives an
+// accidental modal close. It's intentionally module-scoped: a full page reload
+// clears it, an accidental dismissal does not. Cleared once an event is created.
+let newEventDraft: EventFormValues | null = null;
+
 interface EventFormProps {
   /** When set, edits an existing event; otherwise creates a new one */
   eventId: Id<"events"> | null;
@@ -94,22 +116,8 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
-    defaultValues: {
-      title: "",
-      eventTypeId: "",
-      location: "",
-      startDate: "",
-      endDate: "",
-      startTime: "",
-      endTime: "",
-      respondBy: "",
-      // Brigade events are typically timed (e.g. a 9–2 sausage sizzle)
-      isAllDay: false,
-      isMultiDay: false,
-      hasShifts: false,
-      slots: [],
-      description: "",
-    },
+    // Restore an in-progress new-event draft if one survived a previous close.
+    defaultValues: isEditing ? blankDefaults : newEventDraft ?? blankDefaults,
   });
 
   const {
@@ -153,6 +161,16 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       });
     }
   }, [existingEvent, existingSlots, form]);
+
+  // Persist the new-event draft on every change so an accidental close doesn't
+  // lose progress. Editing an existing event doesn't touch the draft.
+  useEffect(() => {
+    if (isEditing) return;
+    const sub = form.watch((values) => {
+      newEventDraft = values as EventFormValues;
+    });
+    return () => sub.unsubscribe();
+  }, [form, isEditing]);
 
   const onSubmit = async (values: EventFormValues) => {
     // Empty strings clear optional fields on the server
@@ -205,6 +223,8 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           hasShifts: values.hasShifts,
           slots: values.hasShifts ? slots : undefined,
         });
+        // Event saved — the draft has served its purpose.
+        newEventDraft = null;
         toast.success("Event created");
       }
       onClose();
@@ -219,8 +239,10 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   // Wait for the existing event to load before showing the edit form
   if (isEditing && !existingEvent) return null;
 
+  // min-w-0 lets inputs shrink inside grid/flex columns; without it, iOS's
+  // intrinsically-wide native time inputs force the whole form to scroll sideways.
   const inputClasses =
-    "w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500";
+    "w-full min-w-0 px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500";
 
   const formContent = (
     <Form {...form}>
