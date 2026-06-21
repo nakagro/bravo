@@ -1,5 +1,6 @@
 import { query, mutation, internalQuery, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -362,6 +363,53 @@ export const getPastEvents = query({
       .take(50);
 
     return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId)));
+  },
+});
+
+/**
+ * Paginated past-events archive for the admin tab (recollection / auditing).
+ * Unlike getPastEvents (capped at 50), this reaches the full history via
+ * cursor pagination. An optional `search` term matches the title via a search
+ * index; future matches are dropped so the result stays "past only".
+ */
+export const getPastEventsPaged = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    beforeDate: v.string(),
+    search: v.optional(v.string()),
+  },
+  returns: v.object({
+    page: v.array(enrichedEventValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
+    const term = args.search?.trim();
+
+    if (term) {
+      // Search index can't express the "past only" date range, so we match on
+      // title and filter future events out of each page after the fact.
+      const result = await ctx.db
+        .query("events")
+        .withSearchIndex("search_title", (q) => q.search("title", term))
+        .paginate(args.paginationOpts);
+      const past = result.page.filter((event) => event.startDate < args.beforeDate);
+      const page = await Promise.all(past.map((event) => enrichEvent(ctx, event, userId)));
+      return { page, isDone: result.isDone, continueCursor: result.continueCursor };
+    }
+
+    const result = await ctx.db
+      .query("events")
+      .withIndex("by_startDate", (q) => q.lt("startDate", args.beforeDate))
+      .order("desc")
+      .paginate(args.paginationOpts);
+    const page = await Promise.all(result.page.map((event) => enrichEvent(ctx, event, userId)));
+    return { page, isDone: result.isDone, continueCursor: result.continueCursor };
   },
 });
 

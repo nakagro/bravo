@@ -162,6 +162,11 @@ export function formatMonth(dateStr: string): string {
   return format(parseEventDate(dateStr), "MMM", { locale: enAU });
 }
 
+// Format month + year for list grouping headers: "January 2026"
+export function formatMonthYear(dateStr: string): string {
+  return format(parseEventDate(dateStr), "MMMM yyyy", { locale: enAU });
+}
+
 // Get the day number from a YYYY-MM-DD string
 export function getDayNum(dateStr: string): number {
   return parseEventDate(dateStr).getDate();

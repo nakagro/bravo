@@ -909,7 +909,9 @@ const applicationTables = {
     .index("by_status", ["status"])
     .index("by_status_startDate", ["status", "startDate"])
     .index("by_createdBy", ["createdBy"])
-    .index("by_eventTypeId", ["eventTypeId"]),
+    .index("by_eventTypeId", ["eventTypeId"])
+    // Title search for the admin past-events archive (recollection / audit)
+    .searchIndex("search_title", { searchField: "title" }),
 
   // Event RSVPs - one row per user per event (uniqueness enforced by upsert)
   eventRsvps: defineTable({

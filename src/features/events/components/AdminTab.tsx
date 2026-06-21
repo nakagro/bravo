@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { formatTime, formatShortDate, formatUserName, getTodayStr } from "../types";
+import { formatTime, formatShortDate, formatUserName, formatMonthYear, getTodayStr } from "../types";
 import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
 import { EventForm } from "./EventForm";
 import { EventTypesManager } from "./EventTypesManager";
@@ -14,6 +14,13 @@ import { DeleteEventDialog } from "./DeleteEventDialog";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { EventListSkeleton } from "./UpcomingTab";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   PlusIcon,
   CalendarDaysIcon,
   PencilSquareIcon,
@@ -21,9 +28,11 @@ import {
   ArrowUturnLeftIcon,
   BellAlertIcon,
   UsersIcon,
-  ChevronDownIcon,
   TagIcon,
   TrashIcon,
+  EllipsisVerticalIcon,
+  MagnifyingGlassIcon,
+  ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 
 import { FunctionReturnType } from "convex/server";
@@ -37,15 +46,57 @@ export function AdminTab() {
   const [cancellingEvent, setCancellingEvent] = useState<EnrichedEvent | null>(null);
   const [notifyingEvent, setNotifyingEvent] = useState<EnrichedEvent | null>(null);
   const [deletingEvent, setDeletingEvent] = useState<EnrichedEvent | null>(null);
-  const [showPast, setShowPast] = useState(false);
   const [showTypesManager, setShowTypesManager] = useState(false);
+  // Admin tab has two jobs: managing what's coming up vs. browsing the archive.
+  const [archiveView, setArchiveView] = useState<"upcoming" | "past">("upcoming");
+  const [pastSearch, setPastSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce the archive search so we don't re-subscribe on every keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(pastSearch.trim()), 250);
+    return () => clearTimeout(id);
+  }, [pastSearch]);
 
   const upcomingEvents = useQuery(api.events.getUpcomingEvents, { fromDate: getTodayStr() });
-  const pastEvents = useQuery(api.events.getPastEvents, { beforeDate: getTodayStr() });
+
+  const pastArchive = usePaginatedQuery(
+    api.events.getPastEventsPaged,
+    archiveView === "past"
+      ? { beforeDate: getTodayStr(), search: debouncedSearch || undefined }
+      : "skip",
+    { initialNumItems: 20 }
+  );
 
   const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
   const deleteEvent = useMutation(api.events.deleteEvent);
+
+  // Group upcoming events into month buckets so the list stays scannable as it
+  // grows. Events arrive sorted ascending, so a single pass preserves order.
+  const upcomingGroups = useMemo(() => {
+    if (!upcomingEvents) return [];
+    const groups: { label: string; events: EnrichedEvent[] }[] = [];
+    for (const event of upcomingEvents) {
+      const label = formatMonthYear(event.startDate);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.events.push(event);
+      else groups.push({ label, events: [event] });
+    }
+    return groups;
+  }, [upcomingEvents]);
+
+  // Same month bucketing for the (descending) past archive results.
+  const pastGroups = useMemo(() => {
+    const groups: { label: string; events: EnrichedEvent[] }[] = [];
+    for (const event of pastArchive.results) {
+      const label = formatMonthYear(event.startDate);
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.events.push(event);
+      else groups.push({ label, events: [event] });
+    }
+    return groups;
+  }, [pastArchive.results]);
 
   const handleAddEvent = () => {
     setEditingEventId(null);
@@ -121,10 +172,7 @@ export function AdminTab() {
     }
   };
 
-  const actionButtonClasses =
-    "px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center";
-
-  const renderEvent = (event: EnrichedEvent, allowActions: boolean) => (
+  const renderEvent = (event: EnrichedEvent, mode: "upcoming" | "past") => (
     <div key={event._id} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
       <div className="flex items-start gap-3">
         <DateBadge dateStr={event.startDate} />
@@ -155,11 +203,6 @@ export function AdminTab() {
             {event.location && <span className="ml-2">&bull; {event.location}</span>}
           </div>
 
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-            <span className="font-medium">Created by:</span>{" "}
-            {formatUserName(event.createdByUser)}
-          </div>
-
           <button
             onClick={() => navigate(`/events/${event._id}`)}
             className="mt-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1.5"
@@ -168,48 +211,68 @@ export function AdminTab() {
             {event.counts.attending} going · {event.counts.maybe} maybe ·{" "}
             {event.counts.notAttending} not going
           </button>
-
-          {allowActions && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              <button onClick={() => handleEditEvent(event._id)} className={actionButtonClasses}>
-                <PencilSquareIcon className="h-4 w-4 mr-1" />
-                Edit
-              </button>
-              {event.status === "active" ? (
-                <>
-                  <button
-                    onClick={() => setNotifyingEvent(event)}
-                    className={actionButtonClasses}
-                  >
-                    <BellAlertIcon className="h-4 w-4 mr-1" />
-                    Notify
-                  </button>
-                  <button
-                    onClick={() => setCancellingEvent(event)}
-                    className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
-                  >
-                    <XCircleIcon className="h-4 w-4 mr-1" />
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => handleRestore(event._id)} className={actionButtonClasses}>
-                    <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                    Restore
-                  </button>
-                  <button
-                    onClick={() => setDeletingEvent(event)}
-                    className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-1" />
-                    Delete
-                  </button>
-                </>
-              )}
-            </div>
-          )}
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="flex-shrink-0 -mr-1 p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            aria-label={`Actions for ${event.title}`}
+          >
+            <EllipsisVerticalIcon className="h-5 w-5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            {mode === "past" ? (
+              // Past events are an immutable record — the only management action
+              // is removing one from the archive. The row links to the detail
+              // page for the full attendance/audit view.
+              <DropdownMenuItem
+                onSelect={() => setDeletingEvent(event)}
+                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            ) : (
+              <>
+                <DropdownMenuItem onSelect={() => handleEditEvent(event._id)}>
+                  <PencilSquareIcon className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                {event.status === "active" ? (
+                  <>
+                    <DropdownMenuItem onSelect={() => setNotifyingEvent(event)}>
+                      <BellAlertIcon className="h-4 w-4" />
+                      Notify
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setCancellingEvent(event)}
+                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                    >
+                      <XCircleIcon className="h-4 w-4" />
+                      Cancel
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={() => handleRestore(event._id)}>
+                      <ArrowUturnLeftIcon className="h-4 w-4" />
+                      Restore
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setDeletingEvent(event)}
+                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -249,23 +312,24 @@ export function AdminTab() {
 
       {/* Manage Events Section */}
       <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-medium flex items-center">
-            <CalendarDaysIcon className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-            Manage Events
-            {upcomingEvents && upcomingEvents.length > 0 && (
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-medium flex items-center min-w-0">
+            <CalendarDaysIcon className="h-5 w-5 mr-2 flex-shrink-0 text-red-600 dark:text-red-400" />
+            <span className="truncate">Manage Events</span>
+            {archiveView === "upcoming" && upcomingEvents && upcomingEvents.length > 0 && (
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal flex-shrink-0">
                 ({upcomingEvents.length})
               </span>
             )}
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setShowTypesManager(true)}
-              className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+              className="p-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Manage event types"
+              aria-label="Manage event types"
             >
-              <TagIcon className="h-4 w-4 mr-1" />
-              Types
+              <TagIcon className="h-4 w-4" />
             </button>
             <button
               onClick={handleAddEvent}
@@ -277,9 +341,31 @@ export function AdminTab() {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {upcomingEvents === undefined ? (
-            <EventListSkeleton />
+        {/* Upcoming / Past switch — two different jobs share one admin home */}
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="inline-flex rounded-lg bg-gray-100 dark:bg-gray-900 p-0.5">
+            {(["upcoming", "past"] as const).map((view) => (
+              <button
+                key={view}
+                onClick={() => setArchiveView(view)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  archiveView === view
+                    ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                }`}
+                aria-pressed={archiveView === view}
+              >
+                {view === "upcoming" ? "Upcoming" : "Past"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {archiveView === "upcoming" ? (
+          upcomingEvents === undefined ? (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <EventListSkeleton />
+            </div>
           ) : upcomingEvents.length === 0 ? (
             <EmptyState
               icon={<CalendarDaysIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
@@ -288,33 +374,82 @@ export function AdminTab() {
               onAction={handleAddEvent}
             />
           ) : (
-            upcomingEvents.map((event) => renderEvent(event, true))
-          )}
-        </div>
-      </div>
-
-      {/* Past events (collapsed) */}
-      {pastEvents && pastEvents.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowPast((prev) => !prev)}
-            className="w-full px-3 py-2.5 min-h-[44px] flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-            aria-expanded={showPast}
-          >
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Past events ({pastEvents.length})
-            </span>
-            <ChevronDownIcon
-              className={`h-5 w-5 text-gray-400 transition-transform ${showPast ? "rotate-180" : ""}`}
-            />
-          </button>
-          {showPast && (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
-              {pastEvents.map((event) => renderEvent(event, false))}
+            upcomingGroups.map((group) => (
+              <div key={group.label}>
+                <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {group.label}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {group.events.map((event) => renderEvent(event, "upcoming"))}
+                </div>
+              </div>
+            ))
+          )
+        ) : (
+          <>
+            {/* Archive search */}
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="search"
+                  value={pastSearch}
+                  onChange={(e) => setPastSearch(e.target.value)}
+                  placeholder="Search past events by title…"
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            {pastArchive.isLoading && pastArchive.results.length === 0 ? (
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                <EventListSkeleton />
+              </div>
+            ) : pastArchive.results.length === 0 ? (
+              <EmptyState
+                icon={<ArchiveBoxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                title={debouncedSearch ? "No matching past events" : "No past events"}
+                description={
+                  debouncedSearch
+                    ? "Try a different search term."
+                    : "Past events stay here as an attendance and audit record."
+                }
+              />
+            ) : (
+              <>
+                {pastGroups.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        {group.label}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {group.events.map((event) => renderEvent(event, "past"))}
+                    </div>
+                  </div>
+                ))}
+
+                {pastArchive.status === "CanLoadMore" && (
+                  <div className="p-3 flex justify-center">
+                    <button
+                      onClick={() => pastArchive.loadMore(20)}
+                      className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      Load more
+                    </button>
+                  </div>
+                )}
+                {pastArchive.status === "LoadingMore" && (
+                  <div className="p-3 text-center text-sm text-gray-400">Loading…</div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </>
   );
 }
