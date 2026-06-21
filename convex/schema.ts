@@ -868,17 +868,33 @@ const applicationTables = {
     .index("by_startDate", ["startDate"])
     .index("by_resource_startDate", ["resourceId", "startDate"]),
 
+  // Admin-configurable event categories with a colour, surfaced as a dropdown
+  // in the event form (replaces the old free-text eventType string).
+  eventTypes: defineTable({
+    name: v.string(),
+    color: v.string(), // Palette key — see eventTypeColors in src/features/events/types.ts
+    isActive: v.boolean(),
+    order: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_active", ["isActive"])
+    .index("by_order", ["order"]),
+
   // Events - Brigade events (sausage sizzles, school visits, training sessions, etc.)
   events: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
-    eventType: v.optional(v.string()), // Free-text category ("Fundraiser", "Training", ...)
+    eventType: v.optional(v.string()), // Legacy free-text category (pre-eventTypes); read-only fallback
+    eventTypeId: v.optional(v.id("eventTypes")), // Structured category (preferred)
     location: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("cancelled")),
     startDate: v.string(), // ISO date string (YYYY-MM-DD)
     endDate: v.optional(v.string()), // ISO date string, optional for single-day events
     startTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
     endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
+    respondBy: v.optional(v.string()), // ISO date string — optional RSVP-by date
     isAllDay: v.boolean(),
     cancelledBy: v.optional(v.id("users")),
     cancelledAt: v.optional(v.number()),
@@ -891,7 +907,8 @@ const applicationTables = {
     .index("by_startDate", ["startDate"])
     .index("by_status", ["status"])
     .index("by_status_startDate", ["status", "startDate"])
-    .index("by_createdBy", ["createdBy"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_eventTypeId", ["eventTypeId"]),
 
   // Event RSVPs - one row per user per event (uniqueness enforced by upsert)
   eventRsvps: defineTable({

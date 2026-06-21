@@ -16,7 +16,7 @@ async function requireSignedIn(ctx: QueryCtx | MutationCtx) {
  * The gate lives in moduleSettings data so admins can retune it from the
  * Admin UI without code changes. Admins always pass.
  */
-async function requireEventsAdmin(ctx: QueryCtx | MutationCtx) {
+export async function requireEventsAdmin(ctx: QueryCtx | MutationCtx) {
   const userId = await requireSignedIn(ctx);
   const user = await ctx.db.get(userId);
   if (!user) throw new Error("User not found");
@@ -73,7 +73,7 @@ async function requireEventsAdmin(ctx: QueryCtx | MutationCtx) {
  * Non-throwing variant of requireEventsAdmin for queries that should
  * return empty results rather than error when unauthorised.
  */
-async function hasEventsAdmin(ctx: QueryCtx): Promise<Id<"users"> | null> {
+export async function hasEventsAdmin(ctx: QueryCtx): Promise<Id<"users"> | null> {
   try {
     return await requireEventsAdmin(ctx);
   } catch {
@@ -106,12 +106,14 @@ const enrichedEventValidator = v.object({
   title: v.string(),
   description: v.optional(v.string()),
   eventType: v.optional(v.string()),
+  eventTypeId: v.optional(v.id("eventTypes")),
   location: v.optional(v.string()),
   status: v.union(v.literal("active"), v.literal("cancelled")),
   startDate: v.string(),
   endDate: v.optional(v.string()),
   startTime: v.optional(v.string()),
   endTime: v.optional(v.string()),
+  respondBy: v.optional(v.string()),
   isAllDay: v.boolean(),
   cancelledBy: v.optional(v.id("users")),
   cancelledAt: v.optional(v.number()),
@@ -127,6 +129,15 @@ const enrichedEventValidator = v.object({
   }),
   myRsvp: v.union(rsvpStatusValidator, v.null()),
   createdByUser: v.optional(userNameValidator),
+  // Resolved category (name + colour) from eventTypeId; null when unset/deleted
+  eventTypeInfo: v.union(
+    v.object({
+      _id: v.id("eventTypes"),
+      name: v.string(),
+      color: v.string(),
+    }),
+    v.null()
+  ),
 });
 
 async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"users">) {
@@ -146,10 +157,19 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
 
   const createdByUser = await ctx.db.get(event.createdBy);
 
+  let eventTypeInfo: { _id: Id<"eventTypes">; name: string; color: string } | null = null;
+  if (event.eventTypeId) {
+    const type = await ctx.db.get(event.eventTypeId);
+    if (type) {
+      eventTypeInfo = { _id: type._id, name: type.name, color: type.color };
+    }
+  }
+
   return {
     ...event,
     counts,
     myRsvp,
+    eventTypeInfo,
     createdByUser: createdByUser
       ? {
           _id: createdByUser._id,
@@ -255,17 +275,25 @@ export const getEvent = query({
 });
 
 /**
- * Get grouped attendance name lists for an event, including members who
- * haven't responded. Visible to all signed-in members.
+ * Attendance for an event. The *attending* list is visible to every signed-in
+ * member (it's a turnout tool). The full breakdown — maybe / not going / and
+ * especially the non-responders — is sensitive, so it's returned only to
+ * eventsAdmin (`breakdown` is null otherwise).
  */
 export const getEventAttendance = query({
   args: { eventId: v.id("events") },
   returns: v.union(
     v.object({
       attending: v.array(userNameValidator),
-      maybe: v.array(userNameValidator),
-      notAttending: v.array(userNameValidator),
-      noResponse: v.array(userNameValidator),
+      breakdown: v.union(
+        v.object({
+          maybe: v.array(userNameValidator),
+          notAttending: v.array(userNameValidator),
+          noResponse: v.array(userNameValidator),
+          totalMembers: v.number(),
+        }),
+        v.null()
+      ),
     }),
     v.null()
   ),
@@ -284,34 +312,47 @@ export const getEventAttendance = query({
       .query("eventRsvps")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
-    const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
 
+    const nameOf = (user: Doc<"users">) => ({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: user.name,
+    });
+
+    // Attending list — visible to all signed-in members
+    const attendingRsvps = rsvps.filter((rsvp) => rsvp.status === "attending");
+    const attending = (
+      await Promise.all(attendingRsvps.map((rsvp) => ctx.db.get(rsvp.userId)))
+    )
+      .filter((user): user is Doc<"users"> => user !== null)
+      .map(nameOf);
+
+    // Full breakdown (incl. non-responders) is admin-only
+    const isAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!isAdmin) {
+      return { attending, breakdown: null };
+    }
+
+    const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
     // "All members" = all users rows (no isActive flag, per bookings.getAllUsers)
     const users = await ctx.db.query("users").collect();
 
-    const groups = {
-      attending: [] as Array<{ _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>,
-      maybe: [] as Array<{ _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>,
-      notAttending: [] as Array<{ _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>,
-      noResponse: [] as Array<{ _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>,
-    };
+    const maybe: Array<ReturnType<typeof nameOf>> = [];
+    const notAttending: Array<ReturnType<typeof nameOf>> = [];
+    const noResponse: Array<ReturnType<typeof nameOf>> = [];
 
     for (const user of users) {
-      const entry = {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        name: user.name,
-      };
       const status = rsvpByUser.get(user._id);
-      if (status) {
-        groups[status].push(entry);
-      } else {
-        groups.noResponse.push(entry);
-      }
+      if (status === "maybe") maybe.push(nameOf(user));
+      else if (status === "notAttending") notAttending.push(nameOf(user));
+      else if (!status) noResponse.push(nameOf(user));
     }
 
-    return groups;
+    return {
+      attending,
+      breakdown: { maybe, notAttending, noResponse, totalMembers: users.length },
+    };
   },
 });
 
@@ -375,12 +416,13 @@ export const createEvent = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
-    eventType: v.optional(v.string()),
+    eventTypeId: v.optional(v.id("eventTypes")),
     location: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
+    respondBy: v.optional(v.string()),
     isAllDay: v.boolean(),
   },
   returns: v.id("events"),
@@ -391,13 +433,14 @@ export const createEvent = mutation({
     const eventId = await ctx.db.insert("events", {
       title: args.title,
       description: args.description,
-      eventType: args.eventType,
+      eventTypeId: args.eventTypeId,
       location: args.location,
       status: "active",
       startDate: args.startDate,
       endDate: args.endDate,
       startTime: args.startTime,
       endTime: args.endTime,
+      respondBy: args.respondBy,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
@@ -426,12 +469,14 @@ export const updateEvent = mutation({
     eventId: v.id("events"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
-    eventType: v.optional(v.string()),
+    // "" clears the category back to none (Id otherwise)
+    eventTypeId: v.optional(v.union(v.id("eventTypes"), v.literal(""))),
     location: v.optional(v.string()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
+    respondBy: v.optional(v.string()),
     isAllDay: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -446,12 +491,13 @@ export const updateEvent = mutation({
     const fields = [
       "title",
       "description",
-      "eventType",
+      "eventTypeId",
       "location",
       "startDate",
       "endDate",
       "startTime",
       "endTime",
+      "respondBy",
       "isAllDay",
     ] as const;
 

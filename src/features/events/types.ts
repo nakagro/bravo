@@ -35,6 +35,78 @@ export const rsvpStatusLabels: Record<RsvpStatus, string> = {
   notAttending: "Not going",
 };
 
+// ─── Event type colours ──────────────────────────────────────────────────────
+// Admin-chosen palette key stored on each eventType. `chip` styles the category
+// pill; `swatch` is the solid dot used in the colour picker.
+export const eventTypeColors: Record<string, { label: string; chip: string; swatch: string }> = {
+  blue: {
+    label: "Blue",
+    chip: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
+    swatch: "bg-blue-500",
+  },
+  green: {
+    label: "Green",
+    chip: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
+    swatch: "bg-green-500",
+  },
+  amber: {
+    label: "Amber",
+    chip: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
+    swatch: "bg-amber-500",
+  },
+  red: {
+    label: "Red",
+    chip: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
+    swatch: "bg-red-500",
+  },
+  purple: {
+    label: "Purple",
+    chip: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200",
+    swatch: "bg-purple-500",
+  },
+  teal: {
+    label: "Teal",
+    chip: "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200",
+    swatch: "bg-teal-500",
+  },
+  pink: {
+    label: "Pink",
+    chip: "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-200",
+    swatch: "bg-pink-500",
+  },
+  gray: {
+    label: "Gray",
+    chip: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
+    swatch: "bg-gray-500",
+  },
+};
+
+export const eventTypeColorKeys = Object.keys(eventTypeColors);
+export const defaultEventTypeColor = "blue";
+
+// Chip classes for a type's colour key, falling back to blue for unknown keys
+// (and for legacy free-text categories that have no colour).
+export function eventTypeChipClasses(color?: string | null): string {
+  return (color && eventTypeColors[color]?.chip) || eventTypeColors[defaultEventTypeColor].chip;
+}
+
+// Compact "going / maybe / not going" summary for cards, with a friendly empty
+// state when nobody has responded yet.
+export function formatCountsSummary(counts: {
+  attending: number;
+  maybe: number;
+  notAttending: number;
+}): string {
+  if (counts.attending === 0 && counts.maybe === 0 && counts.notAttending === 0) {
+    return "No responses yet";
+  }
+  return [
+    `${counts.attending} going`,
+    ...(counts.maybe > 0 ? [`${counts.maybe} maybe`] : []),
+    ...(counts.notAttending > 0 ? [`${counts.notAttending} not going`] : []),
+  ].join(" · ");
+}
+
 // Initials for avatar chips: "Shaun Gordon" → "SG"
 export function getInitials(
   user: { firstName?: string; lastName?: string; name?: string } | null | undefined

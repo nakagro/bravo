@@ -9,19 +9,28 @@ import { z } from "zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { eventTypeColors } from "../types";
 
 const eventFormSchema = z
   .object({
     title: z.string().min(1, "Please enter a title"),
-    eventType: z.string(),
+    eventTypeId: z.string(),
     location: z.string(),
     startDate: z.string().min(1, "Please select a date"),
     endDate: z.string(),
     startTime: z.string(),
     endTime: z.string(),
+    respondBy: z.string(),
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
     description: z.string(),
@@ -53,6 +62,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     api.events.getEvent,
     eventId ? { eventId } : "skip"
   );
+  const eventTypes = useQuery(api.eventTypes.getEventTypes);
   const createEvent = useMutation(api.events.createEvent);
   const updateEvent = useMutation(api.events.updateEvent);
 
@@ -62,13 +72,15 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
       title: "",
-      eventType: "",
+      eventTypeId: "",
       location: "",
       startDate: "",
       endDate: "",
       startTime: "",
       endTime: "",
-      isAllDay: true,
+      respondBy: "",
+      // Brigade events are typically timed (e.g. a 9–2 sausage sizzle)
+      isAllDay: false,
       isMultiDay: false,
       description: "",
     },
@@ -83,12 +95,13 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     if (existingEvent) {
       form.reset({
         title: existingEvent.title,
-        eventType: existingEvent.eventType || "",
+        eventTypeId: existingEvent.eventTypeId || "",
         location: existingEvent.location || "",
         startDate: existingEvent.startDate,
         endDate: existingEvent.endDate || "",
         startTime: existingEvent.startTime || "",
         endTime: existingEvent.endTime || "",
+        respondBy: existingEvent.respondBy || "",
         isAllDay: existingEvent.isAllDay,
         isMultiDay:
           !!existingEvent.endDate && existingEvent.endDate !== existingEvent.startDate,
@@ -101,28 +114,35 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     // Empty strings clear optional fields on the server
     const fields = {
       title: values.title.trim(),
-      eventType: values.eventType.trim(),
+      eventTypeId: values.eventTypeId,
       location: values.location.trim(),
       startDate: values.startDate,
       endDate: values.isMultiDay ? values.endDate : "",
       startTime: values.isAllDay ? "" : values.startTime,
       endTime: values.isAllDay ? "" : values.endTime,
+      respondBy: values.respondBy,
       isAllDay: values.isAllDay,
       description: values.description.trim(),
     };
 
     try {
       if (isEditing && eventId) {
-        await updateEvent({ eventId, ...fields });
+        await updateEvent({
+          eventId,
+          ...fields,
+          // "" clears the category; otherwise it's an eventTypes Id
+          eventTypeId: fields.eventTypeId as "" | Id<"eventTypes">,
+        });
         toast.success("Event updated");
       } else {
         await createEvent({
           ...fields,
-          eventType: fields.eventType || undefined,
+          eventTypeId: (fields.eventTypeId || undefined) as Id<"eventTypes"> | undefined,
           location: fields.location || undefined,
           endDate: fields.endDate || undefined,
           startTime: fields.startTime || undefined,
           endTime: fields.endTime || undefined,
+          respondBy: fields.respondBy || undefined,
           description: fields.description || undefined,
         });
         toast.success("Event created");
@@ -170,20 +190,42 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         {/* Event Type */}
         <FormField
           control={form.control}
-          name="eventType"
+          name="eventTypeId"
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Type (optional)
               </FormLabel>
               <FormControl>
-                <input
-                  {...field}
-                  type="text"
-                  placeholder="e.g., Fundraiser, Training, Community"
-                  className={inputClasses}
-                />
+                <Select
+                  value={field.value || "none"}
+                  onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+                >
+                  <SelectTrigger className="w-full h-auto px-4 py-3 text-base">
+                    <SelectValue placeholder="No type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No type</SelectItem>
+                    {eventTypes?.map((type) => (
+                      <SelectItem key={type._id} value={type._id}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`h-3 w-3 rounded-full ${
+                              eventTypeColors[type.color]?.swatch ?? "bg-gray-400"
+                            }`}
+                          />
+                          {type.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
+              {eventTypes && eventTypes.length === 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No types set up yet — add them from the Admin tab.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -336,6 +378,36 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             />
           </div>
         )}
+
+        {/* Respond-by date (optional) */}
+        <FormField
+          control={form.control}
+          name="respondBy"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Respond by (optional)
+              </FormLabel>
+              <FormControl>
+                <DatePicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="No deadline"
+                />
+              </FormControl>
+              {field.value && (
+                <button
+                  type="button"
+                  onClick={() => field.onChange("")}
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                >
+                  Clear deadline
+                </button>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Description */}
         <FormField

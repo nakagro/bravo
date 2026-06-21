@@ -5,8 +5,38 @@ import {
   eventStatusColors,
   rsvpStatusColors,
   rsvpStatusLabels,
+  eventTypeChipClasses,
   RsvpStatus,
 } from "../types";
+
+/**
+ * Category chip for an event. Prefers the structured type (name + colour);
+ * falls back to the legacy free-text category (default colour) for older
+ * events that predate configurable types. Renders nothing when neither is set.
+ */
+export function EventTypeChip({
+  typeInfo,
+  legacyType,
+  className = "",
+  uppercase = false,
+}: {
+  typeInfo?: { name: string; color: string } | null;
+  legacyType?: string;
+  className?: string;
+  uppercase?: boolean;
+}) {
+  const name = typeInfo?.name ?? legacyType;
+  if (!name) return null;
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${eventTypeChipClasses(
+        typeInfo?.color
+      )} ${uppercase ? "uppercase tracking-wider" : ""} ${className}`}
+    >
+      {name}
+    </span>
+  );
+}
 
 /**
  * Calendar-tile style date badge used across event lists.

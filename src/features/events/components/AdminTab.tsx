@@ -5,8 +5,9 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { formatTime, formatShortDate, formatUserName, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge } from "./badges";
+import { DateBadge, EventStatusBadge, EventTypeChip } from "./badges";
 import { EventForm } from "./EventForm";
+import { EventTypesManager } from "./EventTypesManager";
 import { CancelEventDialog } from "./CancelEventDialog";
 import { NotifyMembersDialog } from "./NotifyMembersDialog";
 import { EmptyState } from "../../../components/shared/EmptyState";
@@ -20,6 +21,7 @@ import {
   BellAlertIcon,
   UsersIcon,
   ChevronDownIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 
 import { FunctionReturnType } from "convex/server";
@@ -33,6 +35,7 @@ export function AdminTab() {
   const [cancellingEvent, setCancellingEvent] = useState<EnrichedEvent | null>(null);
   const [notifyingEvent, setNotifyingEvent] = useState<EnrichedEvent | null>(null);
   const [showPast, setShowPast] = useState(false);
+  const [showTypesManager, setShowTypesManager] = useState(false);
 
   const upcomingEvents = useQuery(api.events.getUpcomingEvents, { fromDate: getTodayStr() });
   const pastEvents = useQuery(api.events.getPastEvents, { beforeDate: getTodayStr() });
@@ -110,11 +113,7 @@ export function AdminTab() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900 dark:text-white">{event.title}</span>
-            {event.eventType && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 whitespace-nowrap">
-                {event.eventType}
-              </span>
-            )}
+            <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             <EventStatusBadge status={event.status} />
           </div>
 
@@ -190,6 +189,8 @@ export function AdminTab() {
     <>
       {showEventForm && <EventForm eventId={editingEventId} onClose={handleCloseEventForm} />}
 
+      <EventTypesManager open={showTypesManager} onOpenChange={setShowTypesManager} />
+
       <CancelEventDialog
         open={cancellingEvent !== null}
         onOpenChange={(open) => {
@@ -220,13 +221,22 @@ export function AdminTab() {
               </span>
             )}
           </h2>
-          <button
-            onClick={handleAddEvent}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            New Event
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTypesManager(true)}
+              className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+            >
+              <TagIcon className="h-4 w-4 mr-1" />
+              Types
+            </button>
+            <button
+              onClick={handleAddEvent}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-1" />
+              New Event
+            </button>
+          </div>
         </div>
 
         <div className="divide-y divide-gray-200 dark:divide-gray-700">

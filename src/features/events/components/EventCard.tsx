@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
-import { formatTime, formatShortDate, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge } from "./badges";
+import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
+import { DateBadge, EventStatusBadge, EventTypeChip } from "./badges";
 import { RsvpButtons } from "./RsvpButtons";
-import { ChevronRightIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
 
@@ -21,16 +21,24 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
   const showRsvp = !readOnly && !isCancelled && !isPast;
 
-  const countsSummary = [
-    `${event.counts.attending} going`,
-    ...(event.counts.maybe > 0 ? [`${event.counts.maybe} maybe`] : []),
-    ...(event.counts.notAttending > 0 ? [`${event.counts.notAttending} not going`] : []),
-  ].join(" · ");
+  const countsSummary = formatCountsSummary(event.counts);
+  const showRespondBy = showRsvp && !!event.respondBy && event.respondBy >= getTodayStr();
+
+  const goToEvent = () => navigate(`/events/${event._id}`);
 
   return (
     <div
-      onClick={() => navigate(`/events/${event._id}`)}
-      className={`p-3 border-l-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
+      role="button"
+      tabIndex={0}
+      onClick={goToEvent}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToEvent();
+        }
+      }}
+      aria-label={`View event: ${event.title}`}
+      className={`p-3 border-l-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset transition-colors cursor-pointer ${
         isCancelled
           ? "border-gray-300 dark:border-gray-600 opacity-70"
           : isPast
@@ -48,11 +56,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             >
               {event.title}
             </span>
-            {event.eventType && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 whitespace-nowrap">
-                {event.eventType}
-              </span>
-            )}
+            <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             <EventStatusBadge status={event.status} />
           </div>
 
@@ -84,6 +88,13 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             <UsersIcon className="h-4 w-4" />
             {countsSummary}
           </div>
+
+          {showRespondBy && (
+            <div className="mt-1 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+              <ClockIcon className="h-4 w-4" />
+              RSVP by {formatShortDate(event.respondBy!)}
+            </div>
+          )}
 
           {showRsvp && (
             // Stop clicks here from also opening the detail page

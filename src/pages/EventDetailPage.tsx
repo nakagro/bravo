@@ -16,8 +16,10 @@ import {
 } from "../features/events/types";
 import { RsvpButtons } from "../features/events/components/RsvpButtons";
 import { EventForm } from "../features/events/components/EventForm";
+import { EventTypeChip } from "../features/events/components/badges";
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
+import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeftIcon,
@@ -27,18 +29,14 @@ import {
   XCircleIcon,
   ArrowUturnLeftIcon,
   BellAlertIcon,
+  ClockIcon,
   UserIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 
-const attendanceGroups = [
-  {
-    key: "attending",
-    label: "Going",
-    dotClass: "bg-green-500",
-    chipClass: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200",
-    defaultOpen: true,
-  },
+// The admin-only breakdown groups (the attending "Going" list lives in its own
+// member-visible "Who's coming" card, so it's deliberately not repeated here).
+const breakdownGroups = [
   {
     key: "maybe",
     label: "Maybe",
@@ -71,7 +69,7 @@ export function EventDetailPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(attendanceGroups.map((g) => [g.key, g.defaultOpen]))
+    Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
   );
 
   const typedEventId = eventId as Id<"events"> | undefined;
@@ -187,19 +185,19 @@ export function EventDetailPage() {
         ? formatTime(event.startTime)
         : "All day";
 
-  // Stacked response-breakdown bar
-  const totalMembers = attendance
-    ? attendance.attending.length +
-      attendance.maybe.length +
-      attendance.notAttending.length +
-      attendance.noResponse.length
+  // The full breakdown (and its stacked bar) is admin-only; members just see
+  // the attending list in the "Who's coming" card.
+  const breakdown = attendance?.breakdown ?? null;
+  const totalMembers = breakdown ? breakdown.totalMembers : 0;
+  const repliedCount = breakdown
+    ? (attendance?.attending.length ?? 0) + breakdown.maybe.length + breakdown.notAttending.length
     : 0;
-  const barSegments = attendance
+  const barSegments = breakdown
     ? ([
-        { count: attendance.attending.length, className: "bg-green-500" },
-        { count: attendance.maybe.length, className: "bg-yellow-400" },
-        { count: attendance.notAttending.length, className: "bg-red-500" },
-        { count: attendance.noResponse.length, className: "bg-gray-300 dark:bg-gray-600" },
+        { count: attendance?.attending.length ?? 0, className: "bg-green-500" },
+        { count: breakdown.maybe.length, className: "bg-yellow-400" },
+        { count: breakdown.notAttending.length, className: "bg-red-500" },
+        { count: breakdown.noResponse.length, className: "bg-gray-300 dark:bg-gray-600" },
       ] as const)
     : [];
 
@@ -302,11 +300,12 @@ export function EventDetailPage() {
 
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {event.eventType && (
-                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 whitespace-nowrap">
-                  {event.eventType}
-                </span>
-              )}
+              <EventTypeChip
+                typeInfo={event.eventTypeInfo}
+                legacyType={event.eventType}
+                uppercase
+                className="text-[11px] font-bold"
+              />
               {isCancelled && (
                 <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap">
                   Cancelled
@@ -349,7 +348,7 @@ export function EventDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3 items-start">
         {/* Details — all the event information lives here as labelled sections */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={`space-y-4 ${breakdown ? "lg:col-span-2" : "lg:col-span-3"}`}>
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               {detailSection(
@@ -376,6 +375,15 @@ export function EventDetailPage() {
                   {formatUserName(event.createdByUser)}
                 </span>
               )}
+              {event.respondBy &&
+                showRsvp &&
+                detailSection(
+                  "Respond by",
+                  <span className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                    {formatShortDate(event.respondBy)}
+                  </span>
+                )}
             </div>
 
             {event.description && (
@@ -386,118 +394,125 @@ export function EventDetailPage() {
                 )}
               </div>
             )}
+
+            {!isCancelled && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => downloadEventIcs(event)}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <CalendarDaysIcon className="h-4 w-4" />
+                  Add to my calendar
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Who's coming — avatar chips for quick scanning */}
-          {attendance && attendance.attending.length > 0 && (
+          {/* Who's coming — avatar chips for quick scanning. Visible to all
+              members (the attending list is the turnout signal). */}
+          {attendance && (
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
                 Who&apos;s coming ({attendance.attending.length})
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {attendance.attending.map((member) => (
-                  <span
-                    key={member._id}
-                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200"
-                  >
-                    <span className="h-6 w-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      {getInitials(member)}
+              {attendance.attending.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {showRsvp ? "No responses yet — be the first to RSVP." : "Nobody marked themselves as going."}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {attendance.attending.map((member) => (
+                    <span
+                      key={member._id}
+                      className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200"
+                    >
+                      <span className="h-6 w-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">
+                        {getInitials(member)}
+                      </span>
+                      {formatUserName(member)}
                     </span>
-                    {formatUserName(member)}
-                  </span>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Responses panel */}
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
-              Responses
-            </h3>
-            {attendance && (
+        {/* Responses panel — admin-only drill-down (Maybe / Not going / No
+            response). The "Going" list isn't repeated here; it's the
+            member-visible "Who's coming" card above. */}
+        {breakdown && (
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
+                Responses
+              </h3>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {totalMembers - attendance.noResponse.length}/{totalMembers} replied
+                {repliedCount}/{totalMembers} replied
               </span>
-            )}
-          </div>
+            </div>
 
-          <div className="p-5 space-y-4">
-            {attendance === undefined ? (
-              <>
-                {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
-                ))}
-              </>
-            ) : attendance === null ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Sign in to see who&apos;s coming.
-              </p>
-            ) : (
-              <>
-                {/* Stacked breakdown bar */}
-                {totalMembers > 0 && (
-                  <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-                    {barSegments.map(
-                      ({ count, className }, i) =>
-                        count > 0 && (
-                          <div
-                            key={i}
-                            className={`${className} transition-all`}
-                            style={{ width: `${(count / totalMembers) * 100}%` }}
-                          />
-                        )
-                    )}
-                  </div>
-                )}
-
-                {attendanceGroups.map(({ key, label, dotClass, chipClass }) => {
-                  const members = attendance[key];
-                  const isOpen = openGroups[key];
-                  return (
-                    <div key={key}>
-                      <button
-                        onClick={() => toggleGroup(key)}
-                        aria-expanded={isOpen}
-                        className="w-full flex items-center gap-2 text-left group min-h-[32px]"
-                      >
-                        <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                          {label}
-                        </span>
-                        <span className={`px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${chipClass}`}>
-                          {members.length}
-                        </span>
-                        <ChevronDownIcon
-                          className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
+            <div className="p-5 space-y-4">
+              {/* Stacked breakdown bar (incl. the attending segment) */}
+              {totalMembers > 0 && (
+                <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700">
+                  {barSegments.map(
+                    ({ count, className }, i) =>
+                      count > 0 && (
+                        <div
+                          key={i}
+                          className={`${className} transition-all`}
+                          style={{ width: `${(count / totalMembers) * 100}%` }}
                         />
-                      </button>
-                      {isOpen &&
-                        (members.length === 0 ? (
-                          <p className="text-sm text-gray-400 dark:text-gray-500 pl-4 mt-1">
-                            Nobody yet
-                          </p>
-                        ) : (
-                          <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
-                            {members.map((member) => (
-                              <li key={member._id} className="flex items-center gap-2">
-                                <span className="h-5 w-5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                                  {getInitials(member)}
-                                </span>
-                                {formatUserName(member)}
-                              </li>
-                            ))}
-                          </ul>
-                        ))}
-                    </div>
-                  );
-                })}
-              </>
-            )}
+                      )
+                  )}
+                </div>
+              )}
+
+              {breakdownGroups.map(({ key, label, dotClass, chipClass }) => {
+                const members = breakdown[key];
+                const isOpen = openGroups[key];
+                return (
+                  <div key={key}>
+                    <button
+                      onClick={() => toggleGroup(key)}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center gap-2 text-left group min-h-[32px]"
+                    >
+                      <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                        {label}
+                      </span>
+                      <span className={`px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${chipClass}`}>
+                        {members.length}
+                      </span>
+                      <ChevronDownIcon
+                        className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isOpen &&
+                      (members.length === 0 ? (
+                        <p className="text-sm text-gray-400 dark:text-gray-500 pl-4 mt-1">
+                          Nobody yet
+                        </p>
+                      ) : (
+                        <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
+                          {members.map((member) => (
+                            <li key={member._id} className="flex items-center gap-2">
+                              <span className="h-5 w-5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                                {getInitials(member)}
+                              </span>
+                              {formatUserName(member)}
+                            </li>
+                          ))}
+                        </ul>
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
