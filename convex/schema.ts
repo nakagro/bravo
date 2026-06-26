@@ -1206,6 +1206,57 @@ const applicationTables = {
   })
     .index("by_ipIdentifier_attemptedAt", ["ipIdentifier", "attemptedAt"])
     .index("by_attemptedAt", ["attemptedAt"]),
+
+  // Action Center — human-created tasks (derived actions are computed, not stored)
+  actionTasks: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(v.literal("open"), v.literal("completed"), v.literal("cancelled")),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    dueDate: v.optional(v.string()),
+    assignedUserIds: v.array(v.id("users")),
+    assignedRoles: v.array(v.string()),
+    minimumRank: v.optional(v.union(
+      v.literal("Probationary"), v.literal("Firefighter"),
+      v.literal("Lieutenant"), v.literal("Captain")
+    )),
+    sourceModuleId: v.optional(v.string()),
+    sourceEntityId: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
+    completionNotes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy"])
+    .index("by_status_dueDate", ["status", "dueDate"]),
+
+  actionTaskHistory: defineTable({
+    taskId: v.id("actionTasks"),
+    timestamp: v.number(),
+    userId: v.id("users"),
+    changeType: v.string(),
+    field: v.string(),
+    oldValue: v.any(),
+    newValue: v.any(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_task", ["taskId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  // Maps a brigade-wide condition to accountable people (consumed by future Role-policy providers)
+  actionAccountability: defineTable({
+    conditionKey: v.string(),
+    roles: v.array(v.string()),
+    userIds: v.array(v.id("users")),
+    minimumRank: v.optional(v.union(
+      v.literal("Probationary"), v.literal("Firefighter"),
+      v.literal("Lieutenant"), v.literal("Captain")
+    )),
+    isEnabled: v.boolean(),
+  }).index("by_conditionKey", ["conditionKey"]),
 };
 
 export default defineSchema({

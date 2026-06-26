@@ -235,6 +235,22 @@ export const syncModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "actions",
+        moduleName: "Action Center",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "actionsAdmin",
+        moduleName: "Action Center Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "kiosk",
         moduleName: "Kiosk Mode",
         isEnabled: true,
@@ -455,6 +471,22 @@ export const initializeModuleSettings = mutation({
       {
         moduleId: "eventsAdmin",
         moduleName: "Events Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "actions",
+        moduleName: "Action Center",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "actionsAdmin",
+        moduleName: "Action Center Admin",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -702,6 +734,8 @@ export const getAllModuleAccess = query({
     settings: v.boolean(),
     kiosk: v.boolean(),
     admin: v.boolean(),
+    actions: v.boolean(),
+    actionsAdmin: v.boolean(),
   }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -731,6 +765,8 @@ export const getAllModuleAccess = query({
         settings: false,
         kiosk: false,
         admin: false,
+        actions: false,
+        actionsAdmin: false,
       };
     }
 
@@ -761,6 +797,8 @@ export const getAllModuleAccess = query({
         settings: false,
         kiosk: false,
         admin: false,
+        actions: false,
+        actionsAdmin: false,
       };
     }
 
@@ -791,6 +829,8 @@ export const getAllModuleAccess = query({
         settings: true,
         kiosk: true,
         admin: true,
+        actions: true,
+        actionsAdmin: true,
       };
     }
 
@@ -867,6 +907,8 @@ export const getAllModuleAccess = query({
       settings: checkAccess("settings"),
       kiosk: checkAccess("kiosk"),
       admin: checkAccess("admin"),
+      actions: checkAccess("actions"),
+      actionsAdmin: checkAccess("actionsAdmin"),
     };
   },
 });

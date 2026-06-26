@@ -14,7 +14,7 @@ const _t = (label: string) => (window as any).__BRAVO_T?.(label);
 
 export function DashboardPage() {
   // --- Startup timing: track query resolutions ---
-  const logged = useRef({ user: false, modules: false, actions: false });
+  const logged = useRef({ user: false, modules: false });
   useEffect(() => { _t("DashboardPage mounted"); }, []);
 
   // Fetch the current user's data
@@ -34,11 +34,6 @@ export function DashboardPage() {
   const vehicleFaultsAccess = moduleAccess?.vehicleFaults;
   const bookingsAccess = moduleAccess?.bookings;
 
-  // Fetch any pending actions or notifications
-  const rawPendingActions = useQuery(api.dashboard.getPendingActions);
-  if (rawPendingActions !== undefined && !logged.current.actions) { logged.current.actions = true; _t("pendingActions query resolved"); }
-  const pendingActions = rawPendingActions || [];
-
   // Get the user's display name (prefer firstName if available)
   const displayName = user ?
     (user.firstName) ?
@@ -52,47 +47,6 @@ export function DashboardPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome, {displayName}</h1>
       </div>
-
-      {/* Pending Actions Section */}
-      {pendingActions.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 transition-colors duration-200">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-            Actions requiring attention
-          </h2>
-          <div className="space-y-3">
-            {pendingActions.map((action) => (
-              <div
-                key={action._id}
-                className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 rounded-r-md"
-              >
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{action.title}</h3>
-                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                      <p>{action.description}</p>
-                    </div>
-                    {action.actionUrl && (
-                      <div className="mt-3">
-                        <Link
-                          to={action.actionUrl}
-                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900/40 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition-colors"
-                        >
-                          {action.actionLabel ?? "Take Action"}
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Fire Danger Rating */}
       <FireDangerRating />

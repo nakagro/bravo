@@ -35,6 +35,7 @@ const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ de
 const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage").then((m) => ({ default: m.EventDetailPage })));
 const ActionsPreviewPage = lazy(() => import("./pages/ActionsPreviewPage"));
+const ActionsPage = lazy(() => import("./pages/ActionsPage").then((m) => ({ default: m.ActionsPage })));
 const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage").then((m) => ({ default: m.AvailabilityPage })));
 const FireReportsPage = lazy(() => import("./pages/FireReportsPage").then((m) => ({ default: m.FireReportsPage })));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage").then((m) => ({ default: m.FeedbackPage })));
@@ -349,6 +350,11 @@ function AuthenticatedApp() {
             </ProtectedRoute>
           } />
           <Route path="/qr" element={<QRCodesPage />} />
+          <Route path="/actions" element={
+            <ProtectedRoute moduleId="actions">
+              <ActionsPage />
+            </ProtectedRoute>
+          } />
           {/* Static design mockup — see docs/ACTION_CENTER_PLAN.md; remove when the real module ships */}
           <Route path="/actions-preview" element={<ActionsPreviewPage />} />
 

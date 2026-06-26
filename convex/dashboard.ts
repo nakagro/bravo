@@ -18,6 +18,7 @@ interface PendingAction {
  * Checks user's availability status and other conditions to determine
  * what actions need to be taken.
  */
+// @deprecated Use api.actionCenter.getMyActions instead. Kept until the new frontend ships.
 export const getPendingActions = query({
   args: {},
   returns: v.array(

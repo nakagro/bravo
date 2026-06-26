@@ -3,6 +3,7 @@ import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
 import { isDevEnvironment } from "@/utils/environment";
+import { ActionBell } from "../../features/actionCenter/components/ActionBell";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -27,7 +28,10 @@ export function MainLayout({ children }: MainLayoutProps) {
               )}
             </h2>
           </Link>
-          <HamburgerMenu />
+          <div className="flex items-center gap-1">
+            <ActionBell />
+            <HamburgerMenu />
+          </div>
         </header>
       </div>
       <main className="flex-1 p-4">

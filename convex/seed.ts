@@ -296,6 +296,21 @@ export const seedDevDatabase = mutation({
         requiredRoles: [],
         minimumRank: "Probationary",
       },
+      {
+        moduleId: "actions",
+        moduleName: "Action Center",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+      },
+      {
+        moduleId: "actionsAdmin",
+        moduleName: "Action Center Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as const,
+      },
     ];
 
     for (const mod of moduleSettings) {

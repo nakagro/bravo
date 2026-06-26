@@ -8,6 +8,13 @@
  * @module
  */
 
+import type * as actionCenter from "../actionCenter.js";
+import type * as actionCenterProviders_availability from "../actionCenterProviders/availability.js";
+import type * as actionCenterProviders_bookings from "../actionCenterProviders/bookings.js";
+import type * as actionCenterProviders_events from "../actionCenterProviders/events.js";
+import type * as actionCenterProviders_profile from "../actionCenterProviders/profile.js";
+import type * as actionCenterProviders_tasks from "../actionCenterProviders/tasks.js";
+import type * as actionCenterProviders_types from "../actionCenterProviders/types.js";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
@@ -75,6 +82,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  actionCenter: typeof actionCenter;
+  "actionCenterProviders/availability": typeof actionCenterProviders_availability;
+  "actionCenterProviders/bookings": typeof actionCenterProviders_bookings;
+  "actionCenterProviders/events": typeof actionCenterProviders_events;
+  "actionCenterProviders/profile": typeof actionCenterProviders_profile;
+  "actionCenterProviders/tasks": typeof actionCenterProviders_tasks;
+  "actionCenterProviders/types": typeof actionCenterProviders_types;
   apiKeyAuth: typeof apiKeyAuth;
   applianceLocations: typeof applianceLocations;
   auth: typeof auth;
