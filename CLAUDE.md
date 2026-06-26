@@ -5,9 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
-- `npm run dev:frontend` - **Primary local dev command** — starts Vite dev server pointed at VPS backend
-- `npm run dev:vps` - Alias for dev:frontend
-- `npm run dev:docker:frontend` - Frontend pointed at Docker backend (if running locally)
+- `npm run dev:vps:frontend` - **Primary local dev command** — Vite dev server pointed at the VPS backend
+- `npm run dev` / `npm run dev:frontend` / `npm run dev:vps` - Aliases for `dev:vps:frontend`
+- `npm run dev:cloud` - Frontend + Convex Cloud dev backend (`precious-magpie-647`, the SaaS dev DB)
 
 ### Build and Deployment
 - `npm run deploy:convex:vps` - **Deploy backend** — pushes Convex functions/schema to VPS (live production)
