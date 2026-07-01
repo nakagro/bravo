@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { ArchiveBoxIcon, KeyIcon, CalendarIcon } from "@heroicons/react/24/outline";
 import { FileText, Users, Wrench, Link2, TriangleAlert, Calendar } from "lucide-react";
+import { FaMaskVentilator } from "react-icons/fa6";
 import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { Card, CardContent } from "../components/ui/card";
 import { RecentNotifications } from "../components/notifications/RecentNotifications";
@@ -33,6 +34,7 @@ export function DashboardPage() {
   const linksAccess = moduleAccess?.links;
   const vehicleFaultsAccess = moduleAccess?.vehicleFaults;
   const bookingsAccess = moduleAccess?.bookings;
+  const baSkillsAccess = moduleAccess?.baSkills;
 
   // Get the user's display name (prefer firstName if available)
   const displayName = user ?
@@ -183,6 +185,20 @@ export function DashboardPage() {
                   <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">Bookings</h3>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        {/* BA Skills */}
+        {baSkillsAccess && (
+          <Link to="/ba-skills" className="group">
+            <Card className="h-full hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+              <CardContent className="p-3 flex flex-col items-center text-center space-y-1.5">
+                <div className="p-2 bg-teal-100 dark:bg-teal-900/20 rounded-lg group-hover:bg-teal-200 dark:group-hover:bg-teal-900/40 transition-colors">
+                  <FaMaskVentilator className="h-5 w-5 sm:h-6 sm:w-6 text-teal-600 dark:text-teal-400" />
+                </div>
+                <h3 className="text-sm sm:text-base font-medium text-card-foreground leading-tight">BA Skills</h3>
               </CardContent>
             </Card>
           </Link>

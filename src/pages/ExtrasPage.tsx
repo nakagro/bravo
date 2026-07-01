@@ -33,13 +33,6 @@ const EXTRA_LINKS: ExtraLink[] = [
     moduleId: "equipment",
   },
   {
-    title: "BA Skills Maintenance",
-    description: "Log BA cylinder usage for skills maintenance tracking.",
-    to: "/ba-skills",
-    emoji: "",
-    moduleId: "baSkills",
-  },
-  {
     title: "Brigade Tasks",
     description: "Track your personal todo list and brigade activities.",
     to: "/brigade-tasks",

@@ -22,6 +22,7 @@ import {
   CalendarCheck,
   BellRing,
 } from "lucide-react";
+import { FaMaskVentilator } from "react-icons/fa6";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -171,6 +172,16 @@ export const HamburgerMenu = () => {
             >
               <Calendar className="mr-3 h-5 w-5" />
               <span>Bookings</span>
+            </DropdownMenuItem>
+          )}
+
+          {hasModuleAccess("baSkills") && (
+            <DropdownMenuItem
+              onClick={() => handleNavigation("/ba-skills")}
+              className={location.pathname === '/ba-skills' ? 'bg-accent text-accent-foreground' : ''}
+            >
+              <FaMaskVentilator className="mr-3 h-5 w-5" />
+              <span>BA Skills</span>
             </DropdownMenuItem>
           )}
 
