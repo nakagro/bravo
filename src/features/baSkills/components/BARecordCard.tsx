@@ -5,6 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,18 +16,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  LoaderCircle,
-  Trash2,
-  Clock,
-  UserCheck,
-  Flame,
-  GraduationCap,
-} from "lucide-react";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { CheckCircle2, ChevronRight, Clock, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { USAGE_TYPE_LABEL } from "../lib/currency";
-
-const NOTES_CLAMP_THRESHOLD = 140;
 
 interface BARecord {
   _id: Id<"baRecords">;
@@ -41,125 +34,259 @@ interface BARecord {
   submittedBy: Id<"users">;
   submittedOnBehalf: boolean;
   createdAt: number;
+  lmsEnteredAt?: number;
+  lmsEnteredByName?: string;
 }
 
 interface BARecordCardProps {
   record: BARecord;
-  canDelete: boolean;
+  /** History / My Records mode: allow deleting this record from the detail view. */
+  canDelete?: boolean;
+  /** LMS mode: allow toggling the LMS-entered status from the detail view. */
+  onSetEntered?: (recordId: Id<"baRecords">, entered: boolean) => void;
+  isUpdating?: boolean;
+  /** LMS mode: bulk-select checkbox for the pending queue. */
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
 }
-
-const USAGE_ICON = {
-  firecall: Flame,
-  drill: GraduationCap,
-} as const;
 
 const USAGE_BADGE_VARIANT: Record<BARecord["usageType"], "destructive" | "secondary"> = {
   firecall: "destructive",
   drill: "secondary",
 };
 
-export function BARecordCard({ record, canDelete }: BARecordCardProps) {
+export function BARecordCard({
+  record,
+  canDelete = false,
+  onSetEntered,
+  isUpdating = false,
+  selected,
+  onSelectedChange,
+}: BARecordCardProps) {
   const deleteRecord = useMutation(api.baRecords.deleteRecord);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [notesExpanded, setNotesExpanded] = useState(false);
 
-  const Icon = USAGE_ICON[record.usageType];
+  const lmsMode = onSetEntered !== undefined;
+  const isEntered = record.lmsEnteredAt !== undefined;
+  const selectable = onSelectedChange !== undefined;
   const date = new Date(record.dateUsed);
-  const notesAreLong = record.notes.length > NOTES_CLAMP_THRESHOLD;
+
+  const wrapperClasses =
+    lmsMode && isEntered
+      ? "border-border/60 bg-muted/30 p-3 shadow-none"
+      : lmsMode && selected
+        ? "border-primary/50 bg-primary/5 border-l-4 border-l-primary p-4 shadow-sm"
+        : lmsMode
+          ? "border-border bg-card border-l-4 border-l-amber-400 dark:border-l-amber-500 p-4 shadow-sm"
+          : "border-border bg-card p-3 shadow-sm sm:p-4";
+
+  const tileSizeClasses = lmsMode && isEntered ? "h-10 w-10" : "h-12 w-12";
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await deleteRecord({ recordId: record._id });
       toast.success("Record deleted");
+      setConfirmOpen(false);
+      setDetailOpen(false);
     } catch (err) {
       console.error("Failed to delete record:", err);
       toast.error(err instanceof Error ? err.message : "Failed to delete record");
     } finally {
       setIsDeleting(false);
-      setConfirmOpen(false);
     }
+  };
+
+  const handleToggleEntered = () => {
+    onSetEntered?.(record._id, !isEntered);
+    setDetailOpen(false);
   };
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
-        <div className="flex items-start gap-3">
-          {/* Date tile */}
-          <div
-            className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted"
-            aria-hidden="true"
-          >
-            <span className="text-base font-bold leading-tight text-foreground tabular-nums">
-              {format(date, "d")}
-            </span>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {format(date, "MMM")}
-            </span>
+      <div className={`flex gap-3 rounded-lg border transition-colors ${wrapperClasses}`}>
+        {selectable && (
+          <label className="-m-1.5 flex shrink-0 items-start p-1.5">
+            <Checkbox
+              checked={selected}
+              onCheckedChange={(checked) => onSelectedChange?.(checked === true)}
+              disabled={isUpdating}
+              aria-label={`Select record for ${record.memberName}`}
+              className="mt-0.5 h-5 w-5"
+            />
+          </label>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          className="flex min-w-0 flex-1 gap-3 text-left"
+        >
+          {/* Date tile + type badge, grouped as one glanceable unit */}
+          <div className="flex w-14 shrink-0 flex-col items-center gap-1">
+            <div
+              className={`flex flex-col items-center justify-center rounded-md bg-muted ${tileSizeClasses}`}
+              aria-hidden="true"
+            >
+              <span className="text-base font-bold leading-tight text-foreground tabular-nums">
+                {format(date, "d")}
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {format(date, "MMM")}
+              </span>
+            </div>
+            <span className="sr-only">{format(date, "EEEE, d MMMM yyyy")}</span>
+            <Badge
+              variant={USAGE_BADGE_VARIANT[record.usageType]}
+              className="h-5 px-1.5 text-[10px]"
+            >
+              {USAGE_TYPE_LABEL[record.usageType]}
+            </Badge>
           </div>
 
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
               <span className="font-semibold text-foreground">{record.memberName}</span>
-              <Badge
-                variant={USAGE_BADGE_VARIANT[record.usageType]}
-                className="flex items-center gap-1"
-              >
-                <Icon className="h-3 w-3" />
-                {USAGE_TYPE_LABEL[record.usageType]}
-              </Badge>
+              {lmsMode &&
+                (isEntered ? (
+                  <Badge variant="outline" className="shrink-0 gap-1 text-green-700 dark:text-green-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    LMS entered
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="shrink-0 gap-1 text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    Pending LMS
+                  </Badge>
+                ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-              <span className="sr-only">{format(date, "EEEE, d MMMM yyyy")}</span>
-              <span aria-hidden="true">{format(date, "EEEE")}</span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {record.durationMinutes} min
-              </span>
-              <span className="flex items-center gap-1">
-                <UserCheck className="h-3 w-3" />
-                {record.verifierName}
-              </span>
-              {record.submittedOnBehalf && <span>Logged by {record.submitterName}</span>}
-            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {record.durationMinutes} min &middot; verified by {record.verifierName}
+              {record.submittedOnBehalf && <> &middot; logged by {record.submitterName}</>}
+            </p>
 
-            {record.notes && (
-              <div>
-                <p
-                  className={`whitespace-pre-wrap text-sm text-foreground/80 ${
-                    notesAreLong && !notesExpanded ? "line-clamp-2" : ""
-                  }`}
-                >
-                  {record.notes}
-                </p>
-                {notesAreLong && (
-                  <button
-                    type="button"
-                    onClick={() => setNotesExpanded((prev) => !prev)}
-                    className="mt-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    {notesExpanded ? "Show less" : "Show more"}
-                  </button>
-                )}
+            {lmsMode && isEntered && record.lmsEnteredAt && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Marked by {record.lmsEnteredByName ?? "Unknown"} ·{" "}
+                {format(new Date(record.lmsEnteredAt), "d MMM yyyy, h:mm a")}
               </div>
+            )}
+
+            {!lmsMode && record.notes && (
+              <p className="mt-1.5 line-clamp-2 whitespace-pre-wrap text-sm text-foreground/80">
+                {record.notes}
+              </p>
             )}
           </div>
 
-          {canDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
-              onClick={() => setConfirmOpen(true)}
-              aria-label="Delete record"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <ChevronRight
+            className="mt-1 h-4 w-4 shrink-0 self-center text-muted-foreground/60"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+
+      <ResponsiveModal open={detailOpen} onClose={() => setDetailOpen(false)} title="BA record">
+        <div className="space-y-4 pb-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-lg font-semibold text-foreground">{record.memberName}</p>
+              <p className="text-sm text-muted-foreground">
+                {format(date, "EEEE, d MMMM yyyy")}
+              </p>
+            </div>
+            <Badge variant={USAGE_BADGE_VARIANT[record.usageType]}>
+              {USAGE_TYPE_LABEL[record.usageType]}
+            </Badge>
+          </div>
+
+          {lmsMode && (
+            <div>
+              {isEntered ? (
+                <Badge variant="outline" className="gap-1 text-green-700 dark:text-green-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  LMS entered
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Pending LMS
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-muted/40 p-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">Duration</dt>
+              <dd className="font-medium text-foreground">{record.durationMinutes} min</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Verified by</dt>
+              <dd className="font-medium text-foreground">{record.verifierName}</dd>
+            </div>
+            {record.submittedOnBehalf && (
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">Logged by</dt>
+                <dd className="font-medium text-foreground">{record.submitterName}</dd>
+              </div>
+            )}
+            {lmsMode && isEntered && record.lmsEnteredAt && (
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">Marked entered</dt>
+                <dd className="font-medium text-foreground">
+                  {record.lmsEnteredByName ?? "Unknown"} ·{" "}
+                  {format(new Date(record.lmsEnteredAt), "d MMM yyyy, h:mm a")}
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {record.notes && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Notes</p>
+              <p className="whitespace-pre-wrap text-sm text-foreground/80">{record.notes}</p>
+            </div>
+          )}
+
+          {(canDelete || lmsMode) && (
+            <div className="space-y-2 border-t border-border pt-4">
+              {lmsMode && (
+                <Button
+                  type="button"
+                  variant={isEntered ? "outline" : "default"}
+                  className="w-full"
+                  disabled={isUpdating}
+                  onClick={handleToggleEntered}
+                >
+                  {isUpdating ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : isEntered ? (
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  {isEntered ? "Mark pending" : "Mark entered"}
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete record
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      </ResponsiveModal>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

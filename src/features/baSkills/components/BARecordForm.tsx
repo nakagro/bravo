@@ -168,28 +168,25 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         </Label>
         <div className="grid grid-cols-2 gap-3">
           {([
-            { active: !isOnBehalf, onClick: () => setIsOnBehalf(false), Icon: User, title: "For myself", subtitle: currentUser.name },
-            { active: isOnBehalf, onClick: () => setIsOnBehalf(true), Icon: Users, title: "Another member", subtitle: undefined },
-          ] as const).map(({ active, onClick, Icon, title, subtitle }, i) => (
+            { active: !isOnBehalf, onClick: () => setIsOnBehalf(false), Icon: User, title: "For myself" },
+            { active: isOnBehalf, onClick: () => setIsOnBehalf(true), Icon: Users, title: "Another member" },
+          ] as const).map(({ active, onClick, Icon, title }, i) => (
             <button
               key={i}
               type="button"
               onClick={onClick}
-              className={`relative px-3 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[76px] ${
+              className={`relative px-2 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[64px] ${
                 active
                   ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                   : "border-border hover:border-gray-400 dark:hover:border-gray-600"
               }`}
             >
-              <div className="flex items-center gap-3 h-full">
+              <div className="flex items-center gap-2 h-full">
                 <div className={`shrink-0 rounded-full p-2 ${active ? "bg-red-100 dark:bg-red-900/30" : "bg-muted"}`}>
                   <Icon className={`h-5 w-5 ${active ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={`font-medium ${active ? "text-red-900 dark:text-red-100" : ""}`}>{title}</div>
-                  {subtitle && (
-                    <div className="text-sm text-muted-foreground truncate mt-0.5">{subtitle}</div>
-                  )}
+                  <div className={`font-medium text-sm sm:text-base whitespace-nowrap ${active ? "text-red-900 dark:text-red-100" : ""}`}>{title}</div>
                 </div>
                 {active && checkmark}
               </div>
@@ -225,18 +222,18 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
                 key={key}
                 type="button"
                 onClick={() => setUsageType(key)}
-                className={`relative px-3 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[76px] ${
+                className={`relative px-2 py-3 sm:px-4 sm:py-4 rounded-lg border-2 transition-all text-left min-h-[64px] ${
                   active
                     ? "border-red-500 bg-red-50 dark:bg-red-950/20"
                     : "border-border hover:border-gray-400 dark:hover:border-gray-600"
                 }`}
               >
-                <div className="flex items-center gap-3 h-full">
+                <div className="flex items-center gap-2 h-full">
                   <div className={`shrink-0 rounded-full p-2 ${active ? "bg-red-100 dark:bg-red-900/30" : "bg-muted"}`}>
                     <Icon className={`h-5 w-5 ${active ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`font-medium ${active ? "text-red-900 dark:text-red-100" : ""}`}>{title}</div>
+                    <div className={`font-medium text-sm sm:text-base whitespace-nowrap ${active ? "text-red-900 dark:text-red-100" : ""}`}>{title}</div>
                   </div>
                 </div>
               </button>

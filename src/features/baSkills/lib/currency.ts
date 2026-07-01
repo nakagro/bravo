@@ -72,5 +72,5 @@ export function statusMessage(
 
 export const USAGE_TYPE_LABEL: Record<"firecall" | "drill", string> = {
   firecall: "Fire Call",
-  drill: "Training / Drill",
+  drill: "Drill",
 };
