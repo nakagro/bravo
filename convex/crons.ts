@@ -42,6 +42,16 @@ crons.interval(
   {}
 );
 
+// "Living sandbox" simulator — churns member statuses so the cloud dev board
+// looks actively used. No-ops on any deployment without SIMULATION_ENABLED=true
+// (so this is inert on the live VPS even though the cron ships there).
+crons.interval(
+  "simulate member availability", // identifier
+  { minutes: 12 },
+  internal.simulation.tick,
+  {}
+);
+
 // Daily auth cleanup: purge expired sessions, expired tokens, and orphaned tokens
 crons.daily(
   "auth cleanup", // identifier

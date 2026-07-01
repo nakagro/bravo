@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "2026.06.26",
+  "version": "2026.07.01",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:vps:frontend",
@@ -22,6 +22,7 @@
     "deploy:convex:cloud": "CONVEX_DEPLOYMENT=precious-magpie-647 convex dev --once",
     "export:vps": "convex export --env-file .env.vps --path ./exports/convex/vps-export-$(date +%Y%m%d-%H%M%S).zip",
     "import:vps": "convex import --env-file .env.vps --replace-all",
+    "import:cloud": "CONVEX_DEPLOYMENT=precious-magpie-647 convex import --replace-all",
     "seed:cloud": "CONVEX_DEPLOYMENT=precious-magpie-647 npx convex run seed:seedDevDatabase",
     "keys:generate": "node scripts/generate-keys.mjs",
     "serve:dist": "node scripts/serve-app.js",

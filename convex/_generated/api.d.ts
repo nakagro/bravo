@@ -67,6 +67,7 @@ import type * as qrCodes from "../qrCodes.js";
 import type * as seed from "../seed.js";
 import type * as serviceAccounts from "../serviceAccounts.js";
 import type * as shortcuts from "../shortcuts.js";
+import type * as simulation from "../simulation.js";
 import type * as skills from "../skills.js";
 import type * as stationChecks from "../stationChecks.js";
 import type * as users from "../users.js";
@@ -141,6 +142,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   serviceAccounts: typeof serviceAccounts;
   shortcuts: typeof shortcuts;
+  simulation: typeof simulation;
   skills: typeof skills;
   stationChecks: typeof stationChecks;
   users: typeof users;
