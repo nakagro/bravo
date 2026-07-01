@@ -7,8 +7,10 @@
 // array from a constant to a Convex query — without changing any widget.
 // See docs/KIOSK_DASHBOARD_PLAN.md.
 
-import { MapPin, BookOpen, Wind, type LucideIcon } from 'lucide-react';
+import { MapPin, BookOpen } from 'lucide-react';
+import { FaMaskVentilator } from 'react-icons/fa6';
 import { GATE_DOOR_ID, TURNOUT_DOOR_ID, SHED_DOOR_ID, SHED_AREA_ID } from './gateApi';
+import type { NavIcon } from './widgets';
 
 // Full-screen views the kiosk can launch from the dashboard (handled by KioskPage).
 export type KioskOverlay = 'appliance-locations' | 'contact-directory' | 'ba-usage';
@@ -20,7 +22,7 @@ export type WidgetSpec =
   | { kind: 'areaStatus'; areaId: string; name: string }
   | { kind: 'firecall' }
   | { kind: 'sceneToggle'; scene: 'communityLockup' }
-  | { kind: 'nav'; target: KioskOverlay; title: string; icon: LucideIcon };
+  | { kind: 'nav'; target: KioskOverlay; title: string; icon: NavIcon };
 
 export interface PlacedWidget {
   /** Stable key — also the future persistence key. */
@@ -49,5 +51,5 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { id: 'appliances',x: 0, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'appliance-locations', title: 'Appliance Locations', icon: MapPin } },
   { id: 'contacts',  x: 3, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'contact-directory',   title: 'D14 Contact List',   icon: BookOpen } },
   { id: 'lockup',    x: 6, y: 4, w: 3, h: 2, widget: { kind: 'sceneToggle', scene: 'communityLockup' } },
-  { id: 'ba-usage',  x: 9, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'ba-usage', title: 'Log BA Usage', icon: Wind } },
+  { id: 'ba-usage',  x: 9, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'ba-usage', title: 'Log BA Usage', icon: FaMaskVentilator } },
 ];

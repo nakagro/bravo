@@ -3,9 +3,14 @@
 // job) or how the data is fetched (that's the host's job). Adding a new widget
 // kind = a new component here + a case in GridRenderer + an entry in WidgetSpec.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { type Severity, SEVERITY_ICON_COLOR, SEVERITY_RING, formatRemaining } from './gateApi';
+
+// NavTile/SceneToggleTile icons come from either lucide-react (LucideIcon) or
+// react-icons (e.g. FaMaskVentilator, to match the hamburger menu) — both are
+// just components that accept a className.
+export type NavIcon = ComponentType<{ className?: string }>;
 
 export interface ResolvedState {
   label: string;
@@ -160,7 +165,7 @@ export function SceneToggleTile({
 // Launches a full-screen kiosk view (handled by KioskPage).
 export function NavTile({
   title, icon: Icon, onClick,
-}: { title: string; icon: LucideIcon; onClick: () => void }) {
+}: { title: string; icon: NavIcon; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
