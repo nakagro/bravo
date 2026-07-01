@@ -7,6 +7,7 @@ import { profileProvider } from "./actionCenterProviders/profile";
 import { bookingApprovalsProvider } from "./actionCenterProviders/bookings";
 import { eventRsvpProvider } from "./actionCenterProviders/events";
 import { tasksProvider } from "./actionCenterProviders/tasks";
+import { baSkillsLmsProvider } from "./actionCenterProviders/baSkills";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCenterProviders/types";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ const providers: ActionProvider[] = [
   bookingApprovalsProvider,
   eventRsvpProvider,
   tasksProvider,
+  baSkillsLmsProvider,
 ];
 
 // ─── Validators ───────────────────────────────────────────────────────────────
