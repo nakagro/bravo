@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import Keyboard from 'react-simple-keyboard';
 import 'react-simple-keyboard/build/css/index.css';
 import { RANK_ORDER, isBARecordMemberOption } from '@/features/baSkills/memberEligibility';
+import { getServiceToken } from '@/features/serviceAccounts/ServiceAccountContext';
 
 interface KioskBAUsageProps {
     onBack: () => void;
@@ -345,7 +346,7 @@ function NumberPadModal({
 }
 
 function KioskBAUsage({ onBack }: KioskBAUsageProps) {
-    const allMembers = useQuery(api.baRecords.listMembers);
+    const allMembers = useQuery(api.baRecords.listMembers, { serviceToken: getServiceToken() ?? undefined });
     const createRecord = useMutation(api.baRecords.createRecord);
 
     const [usageType, setUsageType] = useState<UsageType>('firecall');
@@ -440,6 +441,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
                         usageType,
                         notes: notes.trim(),
                         verifiedBy: verifiedBy!,
+                        serviceToken: getServiceToken() ?? undefined,
                     });
                 }),
             );

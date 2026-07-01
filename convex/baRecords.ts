@@ -1,12 +1,48 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 const usageTypeValidator = v.union(
   v.literal("firecall"),
   v.literal("drill"),
 );
+
+const SERVICE_MODULE_KIOSK = "kiosk";
+
+async function sha256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Resolve a kiosk-authorized service account from a token, if valid.
+ * Mirrors the pattern used in applianceLocations.ts for kiosk tablets that
+ * authenticate via a PIN-derived token rather than @convex-dev/auth.
+ */
+async function resolveKioskServiceAccount(
+  ctx: QueryCtx | MutationCtx,
+  serviceToken: string | undefined,
+): Promise<Id<"serviceAccounts"> | null> {
+  const token = serviceToken?.trim();
+  if (!token) return null;
+
+  const tokenHash = await sha256(token);
+  const session = await ctx.db
+    .query("serviceAccountSessions")
+    .withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash))
+    .first();
+  if (!session || session.expiresAt < Date.now()) return null;
+
+  const serviceAccount = await ctx.db.get(session.serviceAccountId);
+  if (!serviceAccount || !serviceAccount.isActive) return null;
+  if (!serviceAccount.allowedModules.includes(SERVICE_MODULE_KIOSK)) return null;
+
+  return serviceAccount._id;
+}
 
 const BA_RECORD_DELETE_WINDOW_MS = 15 * 60 * 1000;
 const RANK_ORDER = {
@@ -147,11 +183,18 @@ export const createRecord = mutation({
     usageType: usageTypeValidator,
     notes: v.string(),
     verifiedBy: v.id("users"),
+    serviceToken: v.optional(v.string()),
   },
   returns: v.id("baRecords"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in to log BA usage");
+    let userId = await getAuthUserId(ctx);
+    if (!userId) {
+      const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
+      if (!serviceAccountId) throw new Error("You must be signed in to log BA usage");
+      // Kiosk tablets authenticate as a service account, not a real user —
+      // attribute the record to the verifier, who confirmed it on the device.
+      userId = args.verifiedBy;
+    }
 
     if (args.durationMinutes < 1 || args.durationMinutes > 480) {
       throw new Error("Duration must be between 1 and 480 minutes");
@@ -316,7 +359,9 @@ export const setLmsEntered = mutation({
  * List members for member/verifier dropdowns.
  */
 export const listMembers = query({
-  args: {},
+  args: {
+    serviceToken: v.optional(v.string()),
+  },
   returns: v.array(
     v.object({
       _id: v.id("users"),
@@ -334,9 +379,12 @@ export const listMembers = query({
       skills: v.array(v.string()),
     }),
   ),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
+    if (!userId) {
+      const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
+      if (!serviceAccountId) return [];
+    }
 
     const [users, skills] = await Promise.all([
       ctx.db.query("users").collect(),
