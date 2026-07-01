@@ -16,6 +16,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RANK_ORDER, isBARecordMemberOption } from "../memberEligibility";
 
 interface BARecordFormProps {
   onSuccess?: () => void;
@@ -33,21 +34,6 @@ const USAGE_TYPES: Array<{
   { key: "firecall", title: "Fire Call", Icon: Flame },
   { key: "drill", title: "Training", Icon: GraduationCap },
 ];
-
-const RANK_ORDER: Record<string, number> = {
-  Captain: 1,
-  Lieutenant: 2,
-  Firefighter: 3,
-  Probationary: 4,
-};
-
-function isBARecordMemberOption(member: { rank?: string; skills?: string[] }) {
-  return (
-    member.rank === "Captain" ||
-    member.rank === "Lieutenant" ||
-    member.skills?.some((skill) => skill === "BAe" || skill === "BAi") === true
-  );
-}
 
 export function BARecordForm({ onSuccess }: BARecordFormProps) {
   const currentUser = useQuery(api.baRecords.getCurrentUser);

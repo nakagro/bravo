@@ -7,6 +7,7 @@ import type { KioskOverlay } from '@/features/kiosk/dashboard/layout';
 const KIOSK_INACTIVITY_TIMEOUT_MS = 120_000;
 
 const KioskContactDirectory = lazy(() => import('@/features/kiosk/KioskContactDirectory'));
+const KioskBAUsage = lazy(() => import('@/features/kiosk/KioskBAUsage'));
 
 function KioskLoadingState({ title }: { title: string }) {
     return (
@@ -72,6 +73,14 @@ export default function KioskPage() {
         return (
             <Suspense fallback={<KioskLoadingState title="Loading contact list" />}>
                 <KioskContactDirectory onBack={() => setOverlay(null)} />
+            </Suspense>
+        );
+    }
+
+    if (overlay === 'ba-usage') {
+        return (
+            <Suspense fallback={<KioskLoadingState title="Loading BA usage" />}>
+                <KioskBAUsage onBack={() => setOverlay(null)} />
             </Suspense>
         );
     }

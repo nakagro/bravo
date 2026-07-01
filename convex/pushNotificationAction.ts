@@ -1,9 +1,10 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import webpush from "web-push";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { trackNotificationDelivery } from "./posthogAnalytics";
 
 // Configure web-push with VAPID keys from environment variables
@@ -23,6 +24,7 @@ export const sendNotification = action({
     notificationType: v.optional(v.string()),
     source: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     if (!PUBLIC_KEY || !PRIVATE_KEY) {
       throw new Error("VAPID keys are not configured on the server");
@@ -92,8 +94,8 @@ export const sendNotification = action({
           browser: undefined,
         });
       }
-      
-      return;
+
+      return null;
     }
 
     for (const sub of subs) {
@@ -163,5 +165,91 @@ export const sendNotification = action({
         });
       }
     }
+
+    return null;
+  },
+});
+
+// Self-service test send, for the user settings page. Unlike sendNotification
+// (admin-only UI, can target any user or broadcast), this always sends to the
+// caller's own device(s), optionally narrowed to one specific device — used
+// to help a user troubleshoot "why isn't this device getting notifications."
+export const sendTestNotificationToSelf = action({
+  args: {
+    subscriptionId: v.optional(v.id("pushSubscriptions")),
+  },
+  returns: v.object({
+    sentCount: v.number(),
+    failedCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    if (!PUBLIC_KEY || !PRIVATE_KEY) {
+      throw new Error("VAPID keys are not configured on the server");
+    }
+
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const allSubs = await ctx.runQuery(internal.pushNotifications.getMySubscriptionsRaw, {});
+    const targetSubs = args.subscriptionId
+      ? allSubs.filter((sub) => sub._id === args.subscriptionId)
+      : allSubs;
+
+    if (args.subscriptionId && targetSubs.length === 0) {
+      throw new Error("Device not found");
+    }
+
+    const payload = JSON.stringify({
+      title: "BRAVO test notification",
+      body: "If you can see this, push notifications are working on this device.",
+    });
+    const now = Date.now();
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const sub of targetSubs) {
+      try {
+        await webpush.sendNotification(sub.subscription, payload);
+        sentCount++;
+        await ctx.runMutation(api.notificationAudit.logAttempt, {
+          userId,
+          subscriptionId: sub._id,
+          endpoint: sub.subscription?.endpoint,
+          notificationType: "test",
+          source: "userSettings:selfTest",
+          title: "BRAVO test notification",
+          body: "If you can see this, push notifications are working on this device.",
+          success: true,
+          sentAt: now,
+        });
+      } catch (err: any) {
+        failedCount++;
+
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await ctx.runMutation(api.pushNotifications.deleteSubscription, {
+            id: sub._id,
+          });
+        }
+
+        const errorMessage = typeof err?.message === "string" ? err.message : String(err);
+        await ctx.runMutation(api.notificationAudit.logAttempt, {
+          userId,
+          subscriptionId: sub._id,
+          endpoint: sub.subscription?.endpoint,
+          notificationType: "test",
+          source: "userSettings:selfTest",
+          title: "BRAVO test notification",
+          body: "If you can see this, push notifications are working on this device.",
+          success: false,
+          error: errorMessage,
+          sentAt: now,
+        });
+      }
+    }
+
+    return { sentCount, failedCount };
   },
 });

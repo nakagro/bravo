@@ -7,11 +7,11 @@
 // array from a constant to a Convex query — without changing any widget.
 // See docs/KIOSK_DASHBOARD_PLAN.md.
 
-import { MapPin, BookOpen, type LucideIcon } from 'lucide-react';
+import { MapPin, BookOpen, Wind, type LucideIcon } from 'lucide-react';
 import { GATE_DOOR_ID, TURNOUT_DOOR_ID, SHED_DOOR_ID, SHED_AREA_ID } from './gateApi';
 
 // Full-screen views the kiosk can launch from the dashboard (handled by KioskPage).
-export type KioskOverlay = 'appliance-locations' | 'contact-directory';
+export type KioskOverlay = 'appliance-locations' | 'contact-directory' | 'ba-usage';
 
 export type WidgetSpec =
   // `secureLabel` overrides the word shown for the locked/resting state (e.g. a
@@ -37,7 +37,7 @@ export const GRID_COLS = 12;
 export const GRID_ROWS = 6;
 
 // Default dashboard: 4 status tiles (row 0–1), Firecall hero (row 2–3),
-// and the bottom section of 3 — Appliances, Contacts, Community Lockup (row 4–5).
+// and the bottom section of 4 — Appliances, Contacts, Community Lockup, BA Usage (row 4–5).
 export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { id: 'gate',      x: 0, y: 0, w: 3, h: 2, widget: { kind: 'doorStatus', doorId: GATE_DOOR_ID,    name: 'Carpark Gate' } },
   { id: 'turnout',   x: 3, y: 0, w: 3, h: 2, widget: { kind: 'doorStatus', doorId: TURNOUT_DOOR_ID, name: 'Turnout Entry' } },
@@ -46,7 +46,8 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
 
   { id: 'firecall',  x: 0, y: 2, w: 12, h: 2, widget: { kind: 'firecall' } },
 
-  { id: 'appliances',x: 0, y: 4, w: 4, h: 2, widget: { kind: 'nav', target: 'appliance-locations', title: 'Appliance Locations', icon: MapPin } },
-  { id: 'contacts',  x: 4, y: 4, w: 4, h: 2, widget: { kind: 'nav', target: 'contact-directory',   title: 'D14 Contact List',   icon: BookOpen } },
-  { id: 'lockup',    x: 8, y: 4, w: 4, h: 2, widget: { kind: 'sceneToggle', scene: 'communityLockup' } },
+  { id: 'appliances',x: 0, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'appliance-locations', title: 'Appliance Locations', icon: MapPin } },
+  { id: 'contacts',  x: 3, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'contact-directory',   title: 'D14 Contact List',   icon: BookOpen } },
+  { id: 'lockup',    x: 6, y: 4, w: 3, h: 2, widget: { kind: 'sceneToggle', scene: 'communityLockup' } },
+  { id: 'ba-usage',  x: 9, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'ba-usage', title: 'Log BA Usage', icon: Wind } },
 ];

@@ -1,5 +1,177 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, BellOff, Check, X } from 'lucide-react';
+import { useAction, useMutation, useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
+import { Id } from '../../../../convex/_generated/dataModel';
+import { Button } from '../../../components/ui/button';
+import { toast } from 'sonner';
+import {
+  Bell,
+  BellOff,
+  Check,
+  X,
+  Smartphone,
+  Tablet,
+  Monitor,
+  LoaderCircle,
+  Trash2,
+  Send,
+} from 'lucide-react';
+
+const DEVICE_ICONS = {
+  mobile: Smartphone,
+  tablet: Tablet,
+  desktop: Monitor,
+} as const;
+
+function DeviceList() {
+  const subscriptions = useQuery(api.pushNotifications.getMySubscriptions);
+  const sendTest = useAction(api.pushNotificationAction.sendTestNotificationToSelf);
+  const removeSubscription = useMutation(api.pushNotifications.deleteMySubscription);
+
+  const [testingId, setTestingId] = useState<Id<"pushSubscriptions"> | "all" | null>(null);
+  const [removingId, setRemovingId] = useState<Id<"pushSubscriptions"> | null>(null);
+
+  const handleTest = async (subscriptionId?: Id<"pushSubscriptions">) => {
+    setTestingId(subscriptionId ?? "all");
+    try {
+      const result = await sendTest(subscriptionId ? { subscriptionId } : {});
+      if (result.sentCount > 0) {
+        toast.success(
+          result.sentCount === 1
+            ? "Test notification sent — check this device."
+            : `Test notification sent to ${result.sentCount} device(s).`
+        );
+      }
+      if (result.failedCount > 0) {
+        toast.error(
+          `Failed to send to ${result.failedCount} device(s). They may need to be removed and re-registered.`
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to send test notification", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const handleRemove = async (subscriptionId: Id<"pushSubscriptions">) => {
+    setRemovingId(subscriptionId);
+    try {
+      await removeSubscription({ id: subscriptionId });
+      toast.success("Device removed");
+    } catch (error) {
+      toast.error("Failed to remove device", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (subscriptions === undefined) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Loading registered devices...
+      </p>
+    );
+  }
+
+  if (subscriptions.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        No devices are currently registered for push notifications on this account.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+          Registered Devices
+        </h4>
+        {subscriptions.length > 1 && (
+          <Button
+            onClick={() => handleTest(undefined)}
+            disabled={testingId !== null}
+            variant="outline"
+            size="sm"
+          >
+            {testingId === "all" ? (
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Test All Devices
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {subscriptions.map((sub) => {
+          const Icon = DEVICE_ICONS[sub.deviceType ?? "desktop"] ?? Monitor;
+          const label = [sub.platform, sub.browser].filter(Boolean).join(" · ") || "Unknown device";
+
+          return (
+            <div
+              key={sub._id}
+              className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Icon className="h-5 w-5 text-gray-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {label}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Registered {new Date(sub.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  onClick={() => handleTest(sub._id)}
+                  disabled={testingId !== null}
+                  variant="outline"
+                  size="sm"
+                >
+                  {testingId === sub._id ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline ml-2">Test</span>
+                </Button>
+                <Button
+                  onClick={() => handleRemove(sub._id)}
+                  disabled={removingId !== null}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 dark:text-red-400"
+                >
+                  {removingId === sub._id ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline ml-2">Remove</span>
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        If a device isn't receiving notifications, try removing it here and re-enabling
+        notifications on that device to re-register it.
+      </p>
+    </div>
+  );
+}
 
 export function NotificationSettings() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -147,6 +319,11 @@ export function NotificationSettings() {
           </p>
         </div>
       )}
+
+      {/* Registered devices, testing, and removal */}
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <DeviceList />
+      </div>
     </div>
   );
 }
