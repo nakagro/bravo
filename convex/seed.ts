@@ -298,14 +298,14 @@ export const seedDevDatabase = mutation({
       },
       {
         moduleId: "actions",
-        moduleName: "Action Center",
+        moduleName: "Action Centre",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
       },
       {
         moduleId: "actionsAdmin",
-        moduleName: "Action Center Admin",
+        moduleName: "Action Centre Admin",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],

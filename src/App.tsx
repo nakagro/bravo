@@ -355,7 +355,7 @@ function AuthenticatedApp() {
               <ActionsPage />
             </ProtectedRoute>
           } />
-          {/* Static design mockup — see docs/ACTION_CENTER_PLAN.md; remove when the real module ships */}
+          {/* Static design mockup — see docs/ACTION_CENTRE_PLAN.md; remove when the real module ships */}
           <Route path="/actions-preview" element={<ActionsPreviewPage />} />
 
           {/* Catch all other routes and redirect to dashboard */}

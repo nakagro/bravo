@@ -236,7 +236,7 @@ export const syncModuleSettings = mutation({
       },
       {
         moduleId: "actions",
-        moduleName: "Action Center",
+        moduleName: "Action Centre",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -244,7 +244,7 @@ export const syncModuleSettings = mutation({
       },
       {
         moduleId: "actionsAdmin",
-        moduleName: "Action Center Admin",
+        moduleName: "Action Centre Admin",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -478,7 +478,7 @@ export const initializeModuleSettings = mutation({
       },
       {
         moduleId: "actions",
-        moduleName: "Action Center",
+        moduleName: "Action Centre",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -486,7 +486,7 @@ export const initializeModuleSettings = mutation({
       },
       {
         moduleId: "actionsAdmin",
-        moduleName: "Action Center Admin",
+        moduleName: "Action Centre Admin",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],

@@ -50,7 +50,7 @@ export const HamburgerMenu = () => {
 
   // Use single optimized query instead of 12 separate queries
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
-  const pendingActions = useQuery(api.actionCenter.getMyActions);
+  const pendingActions = useQuery(api.actionCentre.getMyActions);
 
   const hasModuleAccess = (moduleId: string): boolean => {
     if (!moduleAccess) return false;
@@ -117,7 +117,7 @@ export const HamburgerMenu = () => {
             className={location.pathname === '/actions' ? 'bg-accent text-accent-foreground' : ''}
           >
             <BellRing className="mr-3 h-5 w-5" />
-            <span>Action Center</span>
+            <span>Action Centre</span>
             {pendingActions && pendingActions.length > 0 && (
               <Badge variant="destructive" className="ml-auto">
                 {pendingActions.length > 9 ? "9+" : pendingActions.length}

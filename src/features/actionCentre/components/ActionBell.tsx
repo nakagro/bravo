@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function ActionBell() {
-  const actions = useQuery(api.actionCenter.getMyActions);
+  const actions = useQuery(api.actionCentre.getMyActions);
 
   // Show the bell to all signed-in users — the /actions page is already gated
   // by ProtectedRoute. Only hide while actions are still loading.
@@ -16,7 +16,7 @@ export function ActionBell() {
     <Link
       to="/actions"
       className="relative inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      aria-label={`Action Center${count > 0 ? ` (${count} items)` : ""}`}
+      aria-label={`Action Centre${count > 0 ? ` (${count} items)` : ""}`}
     >
       <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
       {count > 0 && (

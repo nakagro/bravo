@@ -17,7 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 /**
- * STATIC PREVIEW — Action Center mockup (docs/ACTION_CENTER_PLAN.md).
+ * STATIC PREVIEW — Action Centre mockup (docs/ACTION_CENTRE_PLAN.md).
  * No backend: hardcoded actions in the plan's envelope shape. Fully
  * interactive so the self-clearing "drain the list" behaviour can be felt:
  * handle an action and it animates out; clear everything for inbox zero.
@@ -131,7 +131,7 @@ function relativeAge(createdAt: number): string {
   return `${Math.round(hours / 24)}d`;
 }
 
-/** Inline RSVP — answer without leaving the Action Center */
+/** Inline RSVP — answer without leaving the Action Centre */
 function InlineRsvpButtons({ onAnswered }: { onAnswered: () => void }) {
   const [choice, setChoice] = useState<string | null>(null);
 
@@ -343,7 +343,7 @@ export default function ActionsPreviewPage() {
               </span>
             )}
           </span>
-          Action Center
+          Action Centre
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {allDone

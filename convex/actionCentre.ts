@@ -2,13 +2,13 @@ import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
-import { availabilityProvider } from "./actionCenterProviders/availability";
-import { profileProvider } from "./actionCenterProviders/profile";
-import { bookingApprovalsProvider } from "./actionCenterProviders/bookings";
-import { eventRsvpProvider } from "./actionCenterProviders/events";
-import { tasksProvider } from "./actionCenterProviders/tasks";
-import { baSkillsLmsProvider } from "./actionCenterProviders/baSkills";
-import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCenterProviders/types";
+import { availabilityProvider } from "./actionCentreProviders/availability";
+import { profileProvider } from "./actionCentreProviders/profile";
+import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";
+import { eventRsvpProvider } from "./actionCentreProviders/events";
+import { tasksProvider } from "./actionCentreProviders/tasks";
+import { baSkillsLmsProvider } from "./actionCentreProviders/baSkills";
+import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
 

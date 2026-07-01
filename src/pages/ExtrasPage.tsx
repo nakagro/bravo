@@ -53,8 +53,8 @@ const EXTRA_LINKS: ExtraLink[] = [
     emoji: "⚡",
   },
   {
-    title: "Action Center (Preview)",
-    description: "Static mockup of the planned Action Center — items needing your attention from every module.",
+    title: "Action Centre (Preview)",
+    description: "Static mockup of the planned Action Centre — items needing your attention from every module.",
     to: "/actions-preview",
     emoji: "",
   },

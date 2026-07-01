@@ -8,14 +8,14 @@
  * @module
  */
 
-import type * as actionCenter from "../actionCenter.js";
-import type * as actionCenterProviders_availability from "../actionCenterProviders/availability.js";
-import type * as actionCenterProviders_baSkills from "../actionCenterProviders/baSkills.js";
-import type * as actionCenterProviders_bookings from "../actionCenterProviders/bookings.js";
-import type * as actionCenterProviders_events from "../actionCenterProviders/events.js";
-import type * as actionCenterProviders_profile from "../actionCenterProviders/profile.js";
-import type * as actionCenterProviders_tasks from "../actionCenterProviders/tasks.js";
-import type * as actionCenterProviders_types from "../actionCenterProviders/types.js";
+import type * as actionCentre from "../actionCentre.js";
+import type * as actionCentreProviders_availability from "../actionCentreProviders/availability.js";
+import type * as actionCentreProviders_baSkills from "../actionCentreProviders/baSkills.js";
+import type * as actionCentreProviders_bookings from "../actionCentreProviders/bookings.js";
+import type * as actionCentreProviders_events from "../actionCentreProviders/events.js";
+import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
+import type * as actionCentreProviders_tasks from "../actionCentreProviders/tasks.js";
+import type * as actionCentreProviders_types from "../actionCentreProviders/types.js";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
@@ -84,14 +84,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  actionCenter: typeof actionCenter;
-  "actionCenterProviders/availability": typeof actionCenterProviders_availability;
-  "actionCenterProviders/baSkills": typeof actionCenterProviders_baSkills;
-  "actionCenterProviders/bookings": typeof actionCenterProviders_bookings;
-  "actionCenterProviders/events": typeof actionCenterProviders_events;
-  "actionCenterProviders/profile": typeof actionCenterProviders_profile;
-  "actionCenterProviders/tasks": typeof actionCenterProviders_tasks;
-  "actionCenterProviders/types": typeof actionCenterProviders_types;
+  actionCentre: typeof actionCentre;
+  "actionCentreProviders/availability": typeof actionCentreProviders_availability;
+  "actionCentreProviders/baSkills": typeof actionCentreProviders_baSkills;
+  "actionCentreProviders/bookings": typeof actionCentreProviders_bookings;
+  "actionCentreProviders/events": typeof actionCentreProviders_events;
+  "actionCentreProviders/profile": typeof actionCentreProviders_profile;
+  "actionCentreProviders/tasks": typeof actionCentreProviders_tasks;
+  "actionCentreProviders/types": typeof actionCentreProviders_types;
   apiKeyAuth: typeof apiKeyAuth;
   applianceLocations: typeof applianceLocations;
   auth: typeof auth;

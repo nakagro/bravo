@@ -24,8 +24,8 @@ interface CompleteTaskDialogProps {
 export function CompleteTaskDialog({ taskId, taskTitle, open, onClose }: CompleteTaskDialogProps) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const completeTask = useMutation(api.actionCenter.completeTask);
-  const reopenTask = useMutation(api.actionCenter.reopenTask);
+  const completeTask = useMutation(api.actionCentre.completeTask);
+  const reopenTask = useMutation(api.actionCentre.reopenTask);
 
   const handleComplete = async () => {
     setLoading(true);

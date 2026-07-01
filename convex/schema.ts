@@ -1207,7 +1207,7 @@ const applicationTables = {
     .index("by_ipIdentifier_attemptedAt", ["ipIdentifier", "attemptedAt"])
     .index("by_attemptedAt", ["attemptedAt"]),
 
-  // Action Center — human-created tasks (derived actions are computed, not stored)
+  // Action Centre — human-created tasks (derived actions are computed, not stored)
   actionTasks: defineTable({
     title: v.string(),
     description: v.optional(v.string()),

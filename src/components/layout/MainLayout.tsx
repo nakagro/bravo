@@ -3,7 +3,7 @@ import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
 import { isDevEnvironment } from "@/utils/environment";
-import { ActionBell } from "../../features/actionCenter/components/ActionBell";
+import { ActionBell } from "../../features/actionCentre/components/ActionBell";
 
 interface MainLayoutProps {
   children: ReactNode;
