@@ -1,5 +1,34 @@
 # Changelog
 
+## [2026.07.01]
+- Kiosk: Added a BA Usage logging screen, log a BA wear with member, verifier, date, duration (custom keypad) and notes, right from the kiosk dashboard.
+- Action Centre: Renamed from "Action Center" across the app, and added a BA Skills provider so expiring/overdue BA records now surface as actions.
+- Dashboard/Menu: BA Skills is now linked from the Hamburger Menu and Dashboard.
+- Backend: Added a simulation mode for member availability, used for testing only (disabled in production).
+
+## [2026.06.26]
+- Action Centre: New unified hub for outstanding tasks. BA Skills, Bookings, Events and more all report into one place, with priority handling and a bell/notification indicator.
+
+## [2026.06.21]
+- Events: Added shifts/slots support, members can express interest in specific shifts on an event, and admins can allocate them via a new dialog. Added an event delete confirmation dialog.
+- Events: Admins can now manage event types (add, rename, recolour, reorder, activate/deactivate), download events as .ics calendar files, and members get an "Add to my calendar" button.
+- Date picker and modal polish across the app (bounded year dropdown, no more horizontal overflow in side panels).
+
+## [2026.06.20]
+- Kiosk: Consolidated the three-tile launcher into a single live dashboard. Gate/door/shed status is now visible with zero taps, Firecall is one tap, and each element opens a focused control modal. Built as layout-as-data so future drag-and-drop editing can be added later.
+- Kiosk: Firecall is now a press-and-hold action with a live countdown and cancel option; various layout and wording polish across Station Control, Community Lockup and gate screens.
+
+## [2026.06.19]
+- Added a mobile-friendly D14 Contact List, sharing its data layer with the Kiosk version.
+- Kiosk: Inactivity timeout extended to 120 seconds, added an on-screen keyboard for custom location entry.
+
+## [2026.06.13]
+- Bookings: Admin access control added, plus UI polish to the Admin and Bookings tabs.
+- BA Skills: Added CSV export for records and currency data, and a "My Currency" card showing your BA currency status at a glance.
+
+## [2026.06.12]
+- Bookings: Approving a booking now has an undo option. Added touch-friendly week navigation, a booking form that opens straight from the schedule, and a connection banner for WebSocket disconnections (later removed in favour of a simpler approach).
+
 ## [2026.05.09]
 - More BA Skills page improvements to support upcoming release.
 
@@ -14,7 +43,7 @@
 
 ## [1.0.80] - 2026-03-26
 - Upgraded Vite from 6 to 8, build times now around 3 seconds with the new Rolldown bundler.
-- Vendor chunk splitting — main JS bundle reduced from 2.6MB to 1.3MB, with PDF, React, UI, and Convex libs in separate cacheable chunks.
+- Vendor chunk splitting: main JS bundle reduced from 2.6MB to 1.3MB, with PDF, React, UI, and Convex libs in separate cacheable chunks.
 - Dev server warmup added for faster first page load during local development.
 - Upgraded React 18 to 19.2.4.
 - Removed forwardRef from all shadcn/ui components; ref is now a standard prop.
@@ -32,7 +61,7 @@
 - Duty Crew Module: Overhauled with a full component restructure. This week's crew, schedule view, crew management, station check templates and history are now properly separated.
 - Availability - Brigade Tab: Now shows this week's duty crew assignment inline and fetches member skills in a single query (no more N+1 per member).
 - Availability - You Tab: Duration input improvements with time, hours, and datetime entry modes.
-- Bookings Module: Full UX overhaul — booking and edit forms rebuilt with proper inline validation (React Hook Form + Zod). Rejection now uses a dedicated dialog instead of a browser prompt. Pending approvals extracted into its own reusable component shared across tabs.
+- Bookings Module: Full UX overhaul. Booking and edit forms rebuilt with proper inline validation (React Hook Form + Zod). Rejection now uses a dedicated dialog instead of a browser prompt. Pending approvals extracted into its own reusable component shared across tabs.
 - Bookings Module: New inline calendar date picker replacing the native date input, fixing compatibility issues across browsers and inside side panels.
 - Shared: New ResponsiveModal component (Drawer on mobile, Sheet on desktop) standardising all form modals across the app.
 
