@@ -65,8 +65,8 @@ export const HamburgerMenu = () => {
       <button
         key={item.id}
         onClick={() => handleNavigation(item.path)}
-        className={`group relative flex flex-col items-center text-center gap-1.5 rounded-lg border p-3 transition-colors ${isActive
-          ? 'bg-accent text-accent-foreground border-accent'
+        className={`group relative flex flex-col items-center text-center gap-1 rounded-lg border p-2 transition-colors ${isActive
+          ? 'bg-primary/10 ring-2 ring-primary border-transparent'
           : 'bg-card hover:bg-accent/50 border-border dark:border-neutral-700'
           }`}
       >
@@ -124,7 +124,7 @@ export const HamburgerMenu = () => {
         </div>
 
         {/* Module grid */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-2.5 space-y-3">
           {NAV_GROUPS.map((group) => {
             const items = NAV_ITEMS.filter(
               (item) => item.group === group.id && isVisible(item)
@@ -132,10 +132,10 @@ export const HamburgerMenu = () => {
             if (items.length === 0) return null;
             return (
               <div key={group.id}>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                   {group.label}
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   {items.map(renderTile)}
                 </div>
               </div>
@@ -144,44 +144,46 @@ export const HamburgerMenu = () => {
         </div>
 
         {/* Pinned footer */}
-        <div className="border-t border-border dark:border-neutral-700 px-4 py-3 space-y-1">
-          {hasModuleAccess("settings") && (
-            <button
-              onClick={() => handleNavigation("/settings")}
-              className={`flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors ${location.pathname === '/settings'
-                ? 'bg-accent text-accent-foreground'
-                : 'hover:bg-accent/50'
-                }`}
-            >
-              <Cog className="mr-3 h-5 w-5" />
-              <span>User Settings</span>
-            </button>
-          )}
+        <div className="border-t border-border dark:border-neutral-700 px-4 py-2 space-y-1">
+          <div className="flex gap-1.5">
+            {hasModuleAccess("settings") && (
+              <button
+                onClick={() => handleNavigation("/settings")}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-xs transition-colors ${location.pathname === '/settings'
+                  ? 'bg-primary/10 ring-1 ring-primary'
+                  : 'hover:bg-accent/50'
+                  }`}
+              >
+                <Cog className="h-5 w-5" />
+                <span>Settings</span>
+              </button>
+            )}
 
-          {(hasModuleAccess("admin") || user?.isAdmin) && (
-            <button
-              onClick={() => handleNavigation("/admin")}
-              className={`flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors ${location.pathname === '/admin'
-                ? 'bg-accent text-accent-foreground'
-                : 'hover:bg-accent/50'
-                }`}
-            >
-              <ShieldAlert className="mr-3 h-5 w-5" />
-              <span>Admin Settings</span>
-            </button>
-          )}
+            {(hasModuleAccess("admin") || user?.isAdmin) && (
+              <button
+                onClick={() => handleNavigation("/admin")}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-xs transition-colors ${location.pathname === '/admin'
+                  ? 'bg-primary/10 ring-1 ring-primary'
+                  : 'hover:bg-accent/50'
+                  }`}
+              >
+                <ShieldAlert className="h-5 w-5" />
+                <span>Admin</span>
+              </button>
+            )}
 
-          <button
-            onClick={() => { void signOut(); }}
-            className="flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/50"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            <span>Sign out</span>
-          </button>
+            <button
+              onClick={() => { void signOut(); }}
+              className="flex flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-xs transition-colors hover:bg-accent/50"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sign out</span>
+            </button>
+          </div>
 
           <button
             onClick={() => handleNavigation("/about")}
-            className="flex w-full justify-center rounded-md px-2 py-2 transition-colors hover:bg-accent/50"
+            className="flex w-full justify-center rounded-md px-2 py-1.5 transition-colors hover:bg-accent/50"
           >
             <span className="text-xs text-muted-foreground flex items-center gap-2">
               <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
