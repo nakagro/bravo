@@ -12,7 +12,7 @@ export function AnimatedHamburger({ isOpen }: AnimatedHamburgerProps) {
         className={`
           block absolute h-[4px] w-full rounded-[4px] left-0
           transition-all duration-250 ease-in-out
-          ${isOpen ? 'top-[13px] rotate-[135deg] bg-white opacity-100' : 'top-[4px] rotate-0 bg-foreground opacity-100'}
+          ${isOpen ? 'top-[13px] rotate-[135deg] bg-foreground opacity-100' : 'top-[4px] rotate-0 bg-foreground opacity-100'}
         `}
       />
       <span 
@@ -28,7 +28,7 @@ export function AnimatedHamburger({ isOpen }: AnimatedHamburgerProps) {
         className={`
           block absolute h-[4px] w-full rounded-[4px] left-0
           transition-all duration-250 ease-in-out
-          ${isOpen ? 'top-[13px] rotate-[-135deg] bg-white opacity-100' : 'top-[22px] rotate-0 bg-foreground opacity-100'}
+          ${isOpen ? 'top-[13px] rotate-[-135deg] bg-foreground opacity-100' : 'top-[22px] rotate-0 bg-foreground opacity-100'}
         `}
       />
     </div>

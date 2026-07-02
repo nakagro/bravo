@@ -9,6 +9,7 @@ import { Cog, LogOut, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetTitle,
   SheetTrigger,
@@ -106,11 +107,23 @@ export const HamburgerMenu = () => {
       </SheetTrigger>
       <SheetContent
         side="right"
+        hideCloseButton
         className="w-full sm:max-w-sm p-0 flex flex-col gap-0 dark:border-neutral-700"
       >
+        {/* Close button aligned with the header hamburger trigger (header: px-4 py-2, h-12 w-12) */}
+        <SheetClose asChild>
+          <Button
+            variant="ghost"
+            className="absolute right-4 top-2 h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent"
+            aria-label="Close menu"
+          >
+            <AnimatedHamburger isOpen={true} />
+          </Button>
+        </SheetClose>
+
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-border dark:border-neutral-700">
-          <div className="flex items-start justify-between gap-3 pr-8">
+          <div className="flex items-start justify-between gap-3 pr-16">
             <div className="flex flex-col space-y-2 flex-1 min-w-0">
               <SheetTitle className="text-base font-medium leading-none">
                 {displayName}
