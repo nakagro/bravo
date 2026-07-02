@@ -121,18 +121,20 @@ export const HamburgerMenu = () => {
           </Button>
         </SheetClose>
 
+        {/* Theme toggle aligned with the header ActionBell (40px square at right-[68px] top-3) */}
+        <div className="absolute right-[68px] top-3">
+          <DarkModeToggle />
+        </div>
+
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-border dark:border-neutral-700">
-          <div className="flex items-start justify-between gap-3 pr-16">
-            <div className="flex flex-col space-y-2 flex-1 min-w-0">
-              <SheetTitle className="text-base font-medium leading-none">
-                {displayName}
-              </SheetTitle>
-              <p className="text-sm leading-none text-muted-foreground truncate">
-                {user?.email}
-              </p>
-            </div>
-            <DarkModeToggle />
+          <div className="flex flex-col space-y-2 pr-28 min-w-0">
+            <SheetTitle className="text-base font-medium leading-none">
+              {displayName}
+            </SheetTitle>
+            <p className="text-sm leading-none text-muted-foreground truncate">
+              {user?.email}
+            </p>
           </div>
         </div>
 
