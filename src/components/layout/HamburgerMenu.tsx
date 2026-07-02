@@ -4,40 +4,20 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useQuery, useConvexConnectionState } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Archive,
-  KeyRound,
-  CalendarDays,
-  Cog,
-  LogOut,
-  Home,
-  Users,
-  Wrench,
-  ShieldAlert,
-  FileText,
-  MessageSquare,
-  TriangleAlert,
-  Link2,
-  Calendar,
-  CalendarCheck,
-  BellRing,
-} from "lucide-react";
-import { FaMaskVentilator } from "react-icons/fa6";
+import { Cog, LogOut, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { getVersionString } from "@/utils/version";
 import { AnimatedHamburger } from "@/components/common/AnimatedHamburger";
 import { DarkModeToggle } from "@/components/common/DarkModeToggle";
+import { NAV_GROUPS, NAV_ITEMS, type NavItem } from "@/config/navigation";
 
 export const HamburgerMenu = () => {
   const { isAuthenticated } = useConvexAuth();
@@ -68,13 +48,51 @@ export const HamburgerMenu = () => {
   }
 
   const handleNavigation = (path: string) => {
+    setIsOpen(false);
     navigate(path);
     window.scrollTo(0, 0);
   };
 
+  const isVisible = (item: NavItem) => item.alwaysVisible || hasModuleAccess(item.id);
+
+  const renderTile = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive = location.pathname === item.path;
+    const pendingCount =
+      item.badge === "pendingActions" && pendingActions ? pendingActions.length : 0;
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleNavigation(item.path)}
+        className={`group relative flex flex-col items-center text-center gap-1.5 rounded-lg border p-3 transition-colors ${isActive
+          ? 'bg-accent text-accent-foreground border-accent'
+          : 'bg-card hover:bg-accent/50 border-border dark:border-neutral-700'
+          }`}
+      >
+        <div className={`p-2 rounded-lg transition-colors ${item.color.bg} ${item.color.bgHover}`}>
+          <Icon className={`h-5 w-5 ${item.color.fg}`} />
+        </div>
+        <span className="text-sm font-medium leading-tight">
+          {item.shortLabel ?? item.label}
+        </span>
+        {item.wip && (
+          <Badge variant="outline" className="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0">
+            WIP
+          </Badge>
+        )}
+        {pendingCount > 0 && (
+          <Badge variant="destructive" className="absolute top-1.5 right-1.5">
+            {pendingCount > 9 ? "9+" : pendingCount}
+          </Badge>
+        )}
+      </button>
+    );
+  };
+
   return (
-    <DropdownMenu onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         <Button
           variant="ghost"
           className={`h-12 w-12 p-2 transition-all duration-200 active:scale-95 hover:bg-transparent ${isOpen
@@ -85,231 +103,105 @@ export const HamburgerMenu = () => {
         >
           <AnimatedHamburger isOpen={isOpen} />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-72 text-base dark:border-neutral-700" align="end">
-        <DropdownMenuLabel className="font-normal py-3">
-          <div className="flex items-start justify-between gap-3">
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-sm p-0 flex flex-col gap-0 dark:border-neutral-700"
+      >
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-border dark:border-neutral-700">
+          <div className="flex items-start justify-between gap-3 pr-8">
             <div className="flex flex-col space-y-2 flex-1 min-w-0">
-              <p className="text-base font-medium leading-none">{displayName}</p>
+              <SheetTitle className="text-base font-medium leading-none">
+                {displayName}
+              </SheetTitle>
               <p className="text-sm leading-none text-muted-foreground truncate">
                 {user?.email}
               </p>
             </div>
             <DarkModeToggle />
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </div>
 
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-sm font-semibold py-2">Navigation</DropdownMenuLabel>
-          {hasModuleAccess("dashboard") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/")}
-              className={location.pathname === '/' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Home className="mr-3 h-5 w-5" />
-              <span>Dashboard</span>
-            </DropdownMenuItem>
-          )}
+        {/* Module grid */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {NAV_GROUPS.map((group) => {
+            const items = NAV_ITEMS.filter(
+              (item) => item.group === group.id && isVisible(item)
+            );
+            if (items.length === 0) return null;
+            return (
+              <div key={group.id}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  {group.label}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {items.map(renderTile)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-          <DropdownMenuItem
-            onClick={() => handleNavigation("/actions")}
-            className={location.pathname === '/actions' ? 'bg-accent text-accent-foreground' : ''}
-          >
-            <BellRing className="mr-3 h-5 w-5" />
-            <span>Action Centre</span>
-            {pendingActions && pendingActions.length > 0 && (
-              <Badge variant="destructive" className="ml-auto">
-                {pendingActions.length > 9 ? "9+" : pendingActions.length}
-              </Badge>
-            )}
-          </DropdownMenuItem>
-
-          {hasModuleAccess("availability") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/availability")}
-              className={location.pathname === '/availability' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <CalendarDays className="mr-3 h-5 w-5" />
-              <span>Availability</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("events") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/events")}
-              className={location.pathname === '/events' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <CalendarCheck className="mr-3 h-5 w-5" />
-              <span>Events</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("hoses") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/hoses")}
-              className={location.pathname === '/hoses' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Archive className="mr-3 h-5 w-5" />
-              <span>Hose Management</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("keys") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/keys")}
-              className={location.pathname === '/keys' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <KeyRound className="mr-3 h-5 w-5" />
-              <span>Key Management</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("bookings") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/bookings")}
-              className={location.pathname === '/bookings' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Calendar className="mr-3 h-5 w-5" />
-              <span>Bookings</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("baSkills") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/ba-skills")}
-              className={location.pathname === '/ba-skills' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <FaMaskVentilator className="mr-3 h-5 w-5" />
-              <span>BA Skills</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("links") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/links")}
-              className={location.pathname === '/links' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Link2 className="mr-3 h-5 w-5" />
-              <span>Links</span>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("dutyCrew") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/dutycrew")}
-              className={location.pathname === '/dutycrew' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Users className="mr-3 h-5 w-5" />
-              <span>Duty Crew</span>
-              <Badge variant="outline" className="ml-auto">WIP</Badge>
-            </DropdownMenuItem>
-          )}
-
-
-
-          {hasModuleAccess("inventory") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/inventory")}
-              className={location.pathname === '/inventory' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <Wrench className="mr-3 h-5 w-5" />
-              <span>Inventory</span>
-              <Badge variant="outline" className="ml-auto">WIP</Badge>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("vehicleFaults") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/vehicle-faults")}
-              className={location.pathname === '/vehicle-faults' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <TriangleAlert className="mr-3 h-5 w-5" />
-              <span>Vehicle Faults</span>
-              <Badge variant="outline" className="ml-auto">WIP</Badge>
-            </DropdownMenuItem>
-          )}
-
-          {hasModuleAccess("fireReports") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/fire-reports")}
-              className={location.pathname === '/fire-reports' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <FileText className="mr-3 h-5 w-5" />
-              <span>Fire Reports</span>
-              <Badge variant="outline" className="ml-auto">WIP</Badge>
-            </DropdownMenuItem>
-          )}
-
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-sm font-semibold py-2">Support</DropdownMenuLabel>
-          {hasModuleAccess("feedback") && (
-            <DropdownMenuItem
-              onClick={() => handleNavigation("/feedback")}
-              className={location.pathname === '/feedback' ? 'bg-accent text-accent-foreground' : ''}
-            >
-              <MessageSquare className="mr-3 h-5 w-5" />
-              <span>Feedback</span>
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-sm font-semibold py-2">Settings</DropdownMenuLabel>
+        {/* Pinned footer */}
+        <div className="border-t border-border dark:border-neutral-700 px-4 py-3 space-y-1">
           {hasModuleAccess("settings") && (
-            <DropdownMenuItem
+            <button
               onClick={() => handleNavigation("/settings")}
-              className={location.pathname === '/settings' ? 'bg-accent text-accent-foreground' : ''}
+              className={`flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors ${location.pathname === '/settings'
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent/50'
+                }`}
             >
               <Cog className="mr-3 h-5 w-5" />
               <span>User Settings</span>
-            </DropdownMenuItem>
+            </button>
           )}
 
           {(hasModuleAccess("admin") || user?.isAdmin) && (
-            <DropdownMenuItem
+            <button
               onClick={() => handleNavigation("/admin")}
-              className={location.pathname === '/admin' ? 'bg-accent text-accent-foreground' : ''}
+              className={`flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors ${location.pathname === '/admin'
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent/50'
+                }`}
             >
               <ShieldAlert className="mr-3 h-5 w-5" />
               <span>Admin Settings</span>
-            </DropdownMenuItem>
+            </button>
           )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => { void signOut(); }}>
-          <LogOut className="mr-3 h-5 w-5" />
-          <span>Sign out</span>
-        </DropdownMenuItem>
+          <button
+            onClick={() => { void signOut(); }}
+            className="flex w-full items-center rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/50"
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            <span>Sign out</span>
+          </button>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => handleNavigation("/about")}
-          className="justify-center"
-        >
-          <span className="text-xs text-muted-foreground flex items-center gap-2">
-            <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
-            {" · "}
-            <span>v{getVersionString()}</span>
-            <span className={`inline-block h-2 w-2 rounded-full ${connectionState.isWebSocketConnected
-              ? 'bg-green-600 dark:bg-green-500'
-              : 'bg-amber-600 dark:bg-amber-500'
-              }`} title={
-                connectionState.isWebSocketConnected
-                  ? 'Connected'
-                  : connectionState.connectionRetries > 0
-                    ? 'Reconnecting...'
-                    : 'Disconnected'
-              } />
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <button
+            onClick={() => handleNavigation("/about")}
+            className="flex w-full justify-center rounded-md px-2 py-2 transition-colors hover:bg-accent/50"
+          >
+            <span className="text-xs text-muted-foreground flex items-center gap-2">
+              <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
+              {" · "}
+              <span>v{getVersionString()}</span>
+              <span className={`inline-block h-2 w-2 rounded-full ${connectionState.isWebSocketConnected
+                ? 'bg-green-600 dark:bg-green-500'
+                : 'bg-amber-600 dark:bg-amber-500'
+                }`} title={
+                  connectionState.isWebSocketConnected
+                    ? 'Connected'
+                    : connectionState.connectionRetries > 0
+                      ? 'Reconnecting...'
+                      : 'Disconnected'
+                } />
+            </span>
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
