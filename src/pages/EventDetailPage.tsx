@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { FunctionReturnType } from "convex/server";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import {
   formatShortDate,
+  formatSlotWhen,
   formatTime,
   formatUserName,
   formatWeekday,
@@ -37,6 +39,7 @@ import {
   UsersIcon,
   TrashIcon,
   ChevronDownIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 // The admin-only breakdown groups (the attending "Going" list lives in its own
@@ -84,6 +87,11 @@ export function EventDetailPage() {
   const attendance = useQuery(
     api.events.getEventAttendance,
     typedEventId ? { eventId: typedEventId } : "skip"
+  );
+  // Per-shift breakdown for the "Who's coming" card (shift events only)
+  const slots = useQuery(
+    api.events.getEventSlots,
+    typedEventId && event?.hasShifts ? { eventId: typedEventId } : "skip"
   );
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canManageEvents = moduleAccess?.eventsAdmin === true;
@@ -470,13 +478,17 @@ export function EventDetailPage() {
           </div>
 
           {/* Who's coming — avatar chips for quick scanning. Visible to all
-              members (the attending list is the turnout signal). */}
+              members (the attending list is the turnout signal). For shift
+              events this is per-shift: interest while nothing is allocated,
+              the official roster once allocation has started. */}
           {attendance && (
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
                 Who&apos;s coming ({attendance.attending.length})
               </h3>
-              {attendance.attending.length === 0 ? (
+              {event.hasShifts && slots && slots.length > 0 ? (
+                <ShiftTurnout slots={slots} showRsvp={showRsvp} />
+              ) : attendance.attending.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {showRsvp
                     ? event.hasShifts
@@ -487,15 +499,7 @@ export function EventDetailPage() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {attendance.attending.map((member) => (
-                    <span
-                      key={member._id}
-                      className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200"
-                    >
-                      <span className="h-6 w-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {getInitials(member)}
-                      </span>
-                      {formatUserName(member)}
-                    </span>
+                    <MemberChip key={member._id} member={member} tone="green" />
                   ))}
                 </div>
               )}
@@ -583,6 +587,147 @@ export function EventDetailPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type EventSlot = FunctionReturnType<typeof api.events.getEventSlots>[number];
+
+interface ChipMember {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  /** Rostered but marked "can't make it" */
+  declined?: boolean;
+}
+
+/** Avatar name chip. Green = interest/going, indigo = official roster. */
+function MemberChip({
+  member,
+  tone,
+  muted = false,
+}: {
+  member: ChipMember;
+  tone: "green" | "indigo";
+  muted?: boolean;
+}) {
+  if (member.declined) {
+    return (
+      <span
+        title={`${formatUserName(member)} — can't make it`}
+        className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400 line-through"
+      >
+        <span className="h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center">
+          <XMarkIcon className="h-3.5 w-3.5" />
+        </span>
+        {formatUserName(member)}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 ${
+        muted ? "opacity-75" : ""
+      }`}
+    >
+      <span
+        className={`h-6 w-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
+          tone === "indigo" ? "bg-indigo-600" : "bg-green-600"
+        }`}
+      >
+        {getInitials(member)}
+      </span>
+      {formatUserName(member)}
+    </span>
+  );
+}
+
+/**
+ * Per-shift turnout for the "Who's coming" card. While nothing has been
+ * allocated it shows interest per shift (who put their hand up for what);
+ * once allocation starts it shows the official roster instead, with anyone
+ * who offered but wasn't placed listed underneath so they don't disappear.
+ */
+function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boolean }) {
+  const rosterStarted = slots.some((slot) => slot.allocatedCount > 0);
+  const anyInterest = slots.some((slot) => slot.interested.length > 0);
+
+  if (!rosterStarted && !anyInterest) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {showRsvp
+          ? "No responses yet — be the first to pick a shift."
+          : "Nobody put their hand up for a shift."}
+      </p>
+    );
+  }
+
+  // Roster mode: members who offered to help but weren't placed anywhere
+  const allocatedAnywhere = new Set(
+    slots.flatMap((slot) => slot.allocated.map((member) => member._id))
+  );
+  const alsoOffered = rosterStarted
+    ? [
+        ...new Map(
+          slots
+            .flatMap((slot) => slot.interested)
+            .filter((member) => !allocatedAnywhere.has(member._id))
+            .map((member) => [member._id, member] as const)
+        ).values(),
+      ]
+    : [];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+        {rosterStarted
+          ? "The rostered crew for each shift."
+          : "Interest so far — shifts haven't been rostered yet."}
+      </p>
+
+      {slots.map((slot) => {
+        const members = rosterStarted ? slot.allocated : slot.interested;
+        const when = formatSlotWhen(slot);
+        return (
+          <div key={slot._id}>
+            <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {slot.label}
+              {when && (
+                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                  {when}
+                </span>
+              )}
+            </div>
+            {members.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Nobody yet</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {members.map((member) => (
+                  <MemberChip
+                    key={member._id}
+                    member={member}
+                    tone={rosterStarted ? "indigo" : "green"}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {alsoOffered.length > 0 && (
+        <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60">
+          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+            Also offered to help
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {alsoOffered.map((member) => (
+              <MemberChip key={member._id} member={member} tone="green" muted />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

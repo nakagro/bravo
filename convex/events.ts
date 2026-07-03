@@ -1077,9 +1077,10 @@ export const toggleSlotAllocation = mutation({
 
 /**
  * Slots for an event (member-facing), ordered. Each carries the official
- * **allocated** roster (member-visible) and coverage, plus whether the caller
- * is interested in / allocated to it. The full "who's interested" list is
- * admin-only — see getSlotRoster. Empty for non-slot events.
+ * **allocated** roster and the **interested** members (both member-visible —
+ * before allocation starts, interest per shift IS the turnout picture), plus
+ * whether the caller is interested in / allocated to it. Empty for non-slot
+ * events.
  */
 export const getEventSlots = query({
   args: { eventId: v.id("events") },
@@ -1103,6 +1104,7 @@ export const getEventSlots = query({
           declined: v.boolean(),
         })
       ),
+      interested: v.array(userNameValidator),
       mineInterested: v.boolean(),
       mineAllocated: v.boolean(),
     })
@@ -1130,10 +1132,16 @@ export const getEventSlots = query({
 
     return await Promise.all(
       slots.map(async (slot) => {
-        const allocations = await ctx.db
-          .query("eventSlotAllocations")
-          .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
-          .collect();
+        const [allocations, interestRows] = await Promise.all([
+          ctx.db
+            .query("eventSlotAllocations")
+            .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+            .collect(),
+          ctx.db
+            .query("eventSlotResponses")
+            .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+            .collect(),
+        ]);
         const allocated = (
           await Promise.all(allocations.map((a) => ctx.db.get(a.userId)))
         )
@@ -1146,10 +1154,18 @@ export const getEventSlots = query({
             declined: declinedIds.has(user._id),
           }));
 
-        const myInterest = await ctx.db
-          .query("eventSlotResponses")
-          .withIndex("by_slot_user", (q) => q.eq("slotId", slot._id).eq("userId", userId))
-          .first();
+        const interested = (
+          await Promise.all(interestRows.map((r) => ctx.db.get(r.userId)))
+        )
+          .filter((user): user is Doc<"users"> => user !== null)
+          .map((user) => ({
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            name: user.name,
+          }));
+
+        const myInterest = interestRows.find((r) => r.userId === userId) ?? null;
 
         return {
           _id: slot._id,
@@ -1161,6 +1177,7 @@ export const getEventSlots = query({
           order: slot.order,
           allocatedCount: allocations.length,
           allocated,
+          interested,
           mineInterested: myInterest !== null,
           mineAllocated: allocations.some((a) => a.userId === userId),
         };

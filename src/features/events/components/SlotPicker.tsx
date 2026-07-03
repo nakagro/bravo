@@ -98,25 +98,44 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
         {slots.map((slot) => {
           const when = formatSlotWhen(slot);
           const underfilled = !!slot.targetCount && slot.allocatedCount < slot.targetCount;
+          // Once you're rostered anywhere, the roster is what you're doing:
+          // rostered shifts take the strong styling and leftover interest
+          // picks demote to a muted hint so they can't be misread as "my
+          // shifts". Rostered cards don't toggle — removing interest there
+          // would silently erase your standing if the roster later changes.
+          const cardState: "rostered" | "interested" | "offered" | "idle" = slot.mineAllocated
+            ? "rostered"
+            : slot.mineInterested
+              ? myRostered.length > 0
+                ? "offered"
+                : "interested"
+              : "idle";
+          const cardClasses = {
+            rostered:
+              "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-500 cursor-default",
+            interested: "border-green-500 bg-green-50 dark:bg-green-900/20 ring-1 ring-green-500",
+            offered:
+              "border-green-300 dark:border-green-900 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+            idle: "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+          }[cardState];
+          const checkClasses = {
+            rostered: "bg-indigo-600 border-indigo-600 text-white",
+            interested: "bg-green-600 border-green-600 text-white",
+            offered: "bg-green-600 border-green-600 text-white opacity-60",
+            idle: "border-gray-300 dark:border-gray-500 text-transparent",
+          }[cardState];
           return (
             <button
               key={slot._id}
               type="button"
-              onClick={() => handleToggle(slot._id)}
+              onClick={slot.mineAllocated ? undefined : () => handleToggle(slot._id)}
               aria-pressed={slot.mineInterested}
-              className={`w-full text-left rounded-xl border p-4 transition-all ${
-                slot.mineInterested
-                  ? "border-green-500 bg-green-50 dark:bg-green-900/20 ring-1 ring-green-500"
-                  : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              }`}
+              aria-disabled={slot.mineAllocated}
+              className={`w-full text-left rounded-xl border p-4 transition-all ${cardClasses}`}
             >
               <div className="flex items-start gap-3">
                 <span
-                  className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${
-                    slot.mineInterested
-                      ? "bg-green-600 border-green-600 text-white"
-                      : "border-gray-300 dark:border-gray-500 text-transparent"
-                  }`}
+                  className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${checkClasses}`}
                 >
                   <CheckIcon className="h-4 w-4" />
                 </span>
@@ -175,12 +194,21 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                     </div>
                   )}
 
-                  <div className="text-xs font-medium mt-2 text-gray-500 dark:text-gray-400">
-                    {slot.mineInterested
-                      ? "You can do this shift — tap to remove"
-                      : slot.mineAllocated
-                        ? "You're on the roster for this shift"
-                        : "Tap if you can do this shift"}
+                  <div
+                    className={`text-xs font-medium mt-2 ${
+                      cardState === "rostered"
+                        ? "text-indigo-700 dark:text-indigo-300"
+                        : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    {
+                      {
+                        rostered: "You're rostered on this shift",
+                        interested: "You can do this shift — tap to remove",
+                        offered: "You offered to help, not rostered on this one. Tap to withdraw.",
+                        idle: "Tap if you can do this shift",
+                      }[cardState]
+                    }
                   </div>
                 </div>
               </div>
