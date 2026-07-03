@@ -42,26 +42,40 @@ export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
 
     if (existing) continue;
 
+    // Shift events: picking a slot IS the response, so a slot pick counts as
+    // having responded even though there is no eventRsvps row.
+    if (event.hasShifts) {
+      const slotResponse = await ctx.db
+        .query("eventSlotResponses")
+        .withIndex("by_event_user", (q) =>
+          q.eq("eventId", event._id).eq("userId", userId)
+        )
+        .first();
+      if (slotResponse) continue;
+    }
+
     // High priority if the event itself or the respondBy deadline is within 2 days
     const isUrgent =
       event.startDate <= twoDaysFromNow ||
       (!!event.respondBy && event.respondBy <= twoDaysFromNow);
 
+    const hasShifts = event.hasShifts === true;
+
     const desc = event.respondBy
-      ? `RSVP by ${event.respondBy} · Event on ${event.startDate}`
+      ? `${hasShifts ? "Respond" : "RSVP"} by ${event.respondBy} · Event on ${event.startDate}`
       : `Event on ${event.startDate}${event.startTime ? ` at ${event.startTime}` : ""}`;
 
     actions.push({
       id: `events:rsvp:${event._id}`,
       moduleId: "events",
       kind: "rsvp",
-      title: `RSVP: ${event.title}`,
+      title: hasShifts ? `Pick a shift: ${event.title}` : `RSVP: ${event.title}`,
       description: desc,
       url: `/events/${event._id}`,
-      actionLabel: "RSVP",
+      actionLabel: hasShifts ? "Pick a shift" : "RSVP",
       priority: isUrgent ? ("high" as const) : ("medium" as const),
       createdAt: event.createdAt,
-      meta: { eventId: event._id, startDate: event.startDate },
+      meta: { eventId: event._id, startDate: event.startDate, hasShifts },
     });
   }
 

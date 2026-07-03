@@ -33,20 +33,25 @@ interface ActionCardProps {
   action: ActionItem;
 }
 
-function rsvpEventId(action: ActionItem): Id<"events"> | undefined {
+type RsvpMeta = { eventId: Id<"events">; hasShifts?: boolean };
+
+function rsvpMeta(action: ActionItem): RsvpMeta | undefined {
   if (action.kind !== "rsvp") return undefined;
   const meta = action.meta;
   if (!meta || typeof meta !== "object" || !("eventId" in meta)) return undefined;
-  return (meta as { eventId: Id<"events"> }).eventId;
+  return meta as RsvpMeta;
 }
 
 export function ActionCard({ action }: ActionCardProps) {
   const Icon = moduleIcons[action.moduleId] ?? Bell;
   const colorClass = priorityColors[action.priority];
   const setRsvp = useMutation(api.events.setRsvp);
+  const declineSlotEvent = useMutation(api.events.declineSlotEvent);
   const [submitting, setSubmitting] = useState<RsvpStatus | null>(null);
 
-  const eventId = rsvpEventId(action);
+  const meta = rsvpMeta(action);
+  const eventId = meta?.eventId;
+  const hasShifts = meta?.hasShifts === true;
 
   const handleRsvp = async (status: RsvpStatus) => {
     if (!eventId) return;
@@ -62,6 +67,19 @@ export function ActionCard({ action }: ActionCardProps) {
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update RSVP");
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!eventId) return;
+    setSubmitting("notAttending");
+    try {
+      await declineSlotEvent({ eventId });
+      toast.success("Marked as can't make it");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update response");
     } finally {
       setSubmitting(null);
     }
@@ -104,7 +122,27 @@ export function ActionCard({ action }: ActionCardProps) {
         content
       )}
 
-      {eventId && (
+      {eventId && hasShifts && (
+        <div className="flex gap-2 px-3 pb-3 pl-11">
+          <Link
+            to={action.url}
+            className="flex flex-[2] items-center justify-center gap-1.5 rounded-md border bg-white py-2 text-xs font-medium transition-colors dark:bg-gray-800 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-900/20"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Pick a shift
+          </Link>
+          <RsvpButton
+            label="Can't make it"
+            icon={X}
+            tone="red"
+            pending={submitting === "notAttending"}
+            disabled={submitting !== null}
+            onClick={handleDecline}
+          />
+        </div>
+      )}
+
+      {eventId && !hasShifts && (
         <div className="flex gap-2 px-3 pb-3 pl-11">
           <RsvpButton
             label="Yes"

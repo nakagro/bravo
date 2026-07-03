@@ -3,7 +3,7 @@ import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
 import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
-import { RsvpButtons } from "./RsvpButtons";
+import { RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
@@ -93,14 +93,18 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
           {showRespondBy && (
             <div className="mt-1 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
               <ClockIcon className="h-4 w-4" />
-              RSVP by {formatShortDate(event.respondBy!)}
+              {event.hasShifts ? "Respond" : "RSVP"} by {formatShortDate(event.respondBy!)}
             </div>
           )}
 
           {showRsvp && (
             // Stop clicks here from also opening the detail page
             <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-              <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+              {event.hasShifts ? (
+                <ShiftRsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+              ) : (
+                <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+              )}
             </div>
           )}
         </div>

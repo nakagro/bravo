@@ -886,6 +886,11 @@ export const setRsvp = mutation({
     if ((event.endDate ?? event.startDate) < aestTodayStr()) {
       throw new Error("This event has already happened");
     }
+    // Shift events don't take yes/maybe RSVPs — picking a slot is the response
+    // (declineSlotEvent handles "can't make it").
+    if (event.hasShifts && args.status !== "notAttending") {
+      throw new Error("This event uses shifts — pick a shift on the event page instead");
+    }
 
     const existing = await ctx.db
       .query("eventRsvps")

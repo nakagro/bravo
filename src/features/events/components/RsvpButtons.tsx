@@ -1,9 +1,15 @@
 import { useMutation } from "convex/react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { RsvpStatus } from "../types";
-import { CheckIcon, QuestionMarkCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  ClockIcon,
+  QuestionMarkCircleIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 interface RsvpButtonsProps {
   eventId: Id<"events">;
@@ -84,6 +90,70 @@ export function RsvpButtons({ eventId, myRsvp, disabled = false, size = "md" }: 
           </button>
         );
       })}
+    </div>
+  );
+}
+
+interface ShiftRsvpButtonsProps {
+  eventId: Id<"events">;
+  /** "attending" = has a slot pick/allocation, "notAttending" = declined */
+  myRsvp: RsvpStatus | null;
+  disabled?: boolean;
+}
+
+/**
+ * List-card response controls for a shift event, where picking a slot is the
+ * RSVP. "Pick a shift" navigates to the detail page (the slot list lives
+ * there); "Can't make it" toggles the notAttending rsvp via declineSlotEvent.
+ */
+export function ShiftRsvpButtons({ eventId, myRsvp, disabled = false }: ShiftRsvpButtonsProps) {
+  const navigate = useNavigate();
+  const declineEvent = useMutation(api.events.declineSlotEvent);
+
+  const onShift = myRsvp === "attending";
+  const declined = myRsvp === "notAttending";
+
+  const handleDecline = async () => {
+    try {
+      await declineEvent({ eventId });
+    } catch (error) {
+      console.error("Error declining event:", error);
+      toast.error("Failed to save your response", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  const baseClasses =
+    "flex-1 sm:flex-initial sm:px-4 px-3 py-2 min-h-[40px] text-sm font-medium rounded-lg border transition-all flex items-center justify-center gap-1.5";
+  const idleClasses =
+    "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700";
+
+  return (
+    <div className="flex gap-2" role="group" aria-label="Shift response">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => navigate(`/events/${eventId}`)}
+        className={`${baseClasses} ${
+          onShift ? "bg-green-600 text-white border-green-600 shadow-md scale-[1.02]" : idleClasses
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        {onShift ? <CheckIcon className="h-4 w-4" /> : <ClockIcon className="h-4 w-4" />}
+        {onShift ? "On a shift" : "Pick a shift"}
+      </button>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={handleDecline}
+        aria-pressed={declined}
+        className={`${baseClasses} ${
+          declined ? "bg-red-600 text-white border-red-600 shadow-md scale-[1.02]" : idleClasses
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        <XMarkIcon className="h-4 w-4" />
+        Can&apos;t make it
+      </button>
     </div>
   );
 }
