@@ -75,15 +75,15 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
           {roster.slots.map((slot) => {
             const allocatedSet = new Set(slot.allocatedIds);
             const interestedSet = new Set(slot.interestedIds);
+            const declinedSet = new Set(roster.declinedIds);
             const when = formatSlotWhen(slot);
             const underfilled = !!slot.targetCount && slot.allocatedIds.length < slot.targetCount;
 
-            // Interested members first, then the rest — both already name-sorted
-            const ordered = [...filteredMembers].sort((a, b) => {
-              const ai = interestedSet.has(a._id) ? 0 : 1;
-              const bi = interestedSet.has(b._id) ? 0 : 1;
-              return ai - bi;
-            });
+            // Rostered decliners (conflicts) first, then interested members,
+            // then the rest — all already name-sorted
+            const rank = (id: Id<"users">) =>
+              allocatedSet.has(id) && declinedSet.has(id) ? 0 : interestedSet.has(id) ? 1 : 2;
+            const ordered = [...filteredMembers].sort((a, b) => rank(a._id) - rank(b._id));
 
             return (
               <div
@@ -119,18 +119,27 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                     ordered.map((member) => {
                       const isAllocated = allocatedSet.has(member._id);
                       const isInterested = interestedSet.has(member._id);
+                      const isDeclined = declinedSet.has(member._id);
+                      // Rostered but declined — the conflict the admin must fix
+                      const needsReplacing = isAllocated && isDeclined;
                       return (
                         <button
                           key={member._id}
                           type="button"
                           onClick={() => handleToggle(slot._id, member._id)}
                           aria-pressed={isAllocated}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                            needsReplacing
+                              ? "bg-red-50 dark:bg-red-900/15 hover:bg-red-100 dark:hover:bg-red-900/25"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                          }`}
                         >
                           <span
                             className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${
                               isAllocated
-                                ? "bg-indigo-600 border-indigo-600 text-white"
+                                ? needsReplacing
+                                  ? "bg-red-600 border-red-600 text-white"
+                                  : "bg-indigo-600 border-indigo-600 text-white"
                                 : "border-gray-300 dark:border-gray-500 text-transparent"
                             }`}
                           >
@@ -139,13 +148,25 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                           <span className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                             {getInitials(member)}
                           </span>
-                          <span className="flex-1 min-w-0 truncate text-sm text-gray-800 dark:text-gray-200">
+                          <span
+                            className={`flex-1 min-w-0 truncate text-sm ${
+                              isDeclined
+                                ? "text-gray-500 dark:text-gray-400"
+                                : "text-gray-800 dark:text-gray-200"
+                            }`}
+                          >
                             {formatUserName(member)}
                           </span>
-                          {isInterested && (
-                            <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                              interested
+                          {isDeclined ? (
+                            <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                              {needsReplacing ? "can't make it — replace" : "can't make it"}
                             </span>
+                          ) : (
+                            isInterested && (
+                              <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                interested
+                              </span>
+                            )
                           )}
                         </button>
                       );

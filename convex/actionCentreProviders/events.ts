@@ -43,15 +43,24 @@ export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
     if (existing) continue;
 
     // Shift events: picking a slot IS the response, so a slot pick counts as
-    // having responded even though there is no eventRsvps row.
+    // having responded even though there is no eventRsvps row. An admin
+    // allocation also counts — the member is already on the roster.
     if (event.hasShifts) {
-      const slotResponse = await ctx.db
-        .query("eventSlotResponses")
-        .withIndex("by_event_user", (q) =>
-          q.eq("eventId", event._id).eq("userId", userId)
-        )
-        .first();
-      if (slotResponse) continue;
+      const [slotResponse, allocation] = await Promise.all([
+        ctx.db
+          .query("eventSlotResponses")
+          .withIndex("by_event_user", (q) =>
+            q.eq("eventId", event._id).eq("userId", userId)
+          )
+          .first(),
+        ctx.db
+          .query("eventSlotAllocations")
+          .withIndex("by_event_user", (q) =>
+            q.eq("eventId", event._id).eq("userId", userId)
+          )
+          .first(),
+      ]);
+      if (slotResponse || allocation) continue;
     }
 
     // High priority if the event itself or the respondBy deadline is within 2 days

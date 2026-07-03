@@ -178,16 +178,20 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
 
   if (event.hasShifts) {
     // Slot event: "going" = interested ∪ allocated, not a top-level attending
-    // rsvp. "Can't make it" is still a notAttending rsvp.
+    // rsvp. "Can't make it" is still a notAttending rsvp, and it wins: a
+    // rostered member who declines shouldn't count (or see themselves) as
+    // going — the lingering allocation is a conflict for the admin to resolve.
     const attendingUsers = await slotAttendingUserIds(ctx, event._id);
+    const declinedUsers = new Set(
+      rsvps.filter((r) => r.status === "notAttending").map((r) => r.userId)
+    );
+    for (const id of declinedUsers) attendingUsers.delete(id);
     counts.attending = attendingUsers.size;
-    for (const rsvp of rsvps) {
-      if (rsvp.status === "notAttending") counts.notAttending++;
-    }
-    if (attendingUsers.has(userId)) {
-      myRsvp = "attending";
-    } else if (rsvps.some((r) => r.userId === userId && r.status === "notAttending")) {
+    counts.notAttending = declinedUsers.size;
+    if (declinedUsers.has(userId)) {
       myRsvp = "notAttending";
+    } else if (attendingUsers.has(userId)) {
+      myRsvp = "attending";
     }
   } else {
     for (const rsvp of rsvps) {
@@ -481,10 +485,14 @@ export const getEventAttendance = query({
     });
 
     // "Going" is interested ∪ allocated for slot events, an attending rsvp
-    // otherwise.
+    // otherwise. A "can't make it" always removes someone from going — a
+    // rostered decliner surfaces under Not going, not Who's coming.
     let attendingIds: Set<Id<"users">>;
     if (event.hasShifts) {
       attendingIds = await slotAttendingUserIds(ctx, args.eventId);
+      for (const rsvp of rsvps) {
+        if (rsvp.status === "notAttending") attendingIds.delete(rsvp.userId);
+      }
     } else {
       attendingIds = new Set(
         rsvps.filter((rsvp) => rsvp.status === "attending").map((rsvp) => rsvp.userId)
@@ -1085,7 +1093,16 @@ export const getEventSlots = query({
       targetCount: v.optional(v.number()),
       order: v.number(),
       allocatedCount: v.number(),
-      allocated: v.array(userNameValidator),
+      allocated: v.array(
+        v.object({
+          _id: v.id("users"),
+          firstName: v.optional(v.string()),
+          lastName: v.optional(v.string()),
+          name: v.optional(v.string()),
+          // Rostered but has marked "can't make it" — a conflict to surface
+          declined: v.boolean(),
+        })
+      ),
       mineInterested: v.boolean(),
       mineAllocated: v.boolean(),
     })
@@ -1102,6 +1119,15 @@ export const getEventSlots = query({
       .collect();
     slots.sort((a, b) => a.order - b.order);
 
+    // Event-wide "can't make it" set, used to flag rostered decliners
+    const eventRsvps = await ctx.db
+      .query("eventRsvps")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const declinedIds = new Set(
+      eventRsvps.filter((r) => r.status === "notAttending").map((r) => r.userId)
+    );
+
     return await Promise.all(
       slots.map(async (slot) => {
         const allocations = await ctx.db
@@ -1117,6 +1143,7 @@ export const getEventSlots = query({
             firstName: user.firstName,
             lastName: user.lastName,
             name: user.name,
+            declined: declinedIds.has(user._id),
           }));
 
         const myInterest = await ctx.db
@@ -1151,6 +1178,9 @@ export const getSlotRoster = query({
   returns: v.union(
     v.object({
       members: v.array(userNameValidator),
+      // Members who marked "can't make it" (event-wide) — flag them in the
+      // allocation UI, especially when they're still on the roster
+      declinedIds: v.array(v.id("users")),
       slots: v.array(
         v.object({
           _id: v.id("eventSlots"),
@@ -1217,7 +1247,15 @@ export const getSlotRoster = query({
       })
     );
 
-    return { members, slots: slotsWithRoster };
+    const rsvps = await ctx.db
+      .query("eventRsvps")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const declinedIds = rsvps
+      .filter((r) => r.status === "notAttending")
+      .map((r) => r.userId);
+
+    return { members, declinedIds, slots: slotsWithRoster };
   },
 });
 

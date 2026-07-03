@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import {
   formatSlotWhen,
   slotCoverageLabel,
@@ -74,12 +74,25 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
 
   return (
     <div className="space-y-3">
-      {myRostered.length > 0 && (
-        <div className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200">
-          <span className="font-semibold">You&apos;re rostered on:</span>{" "}
-          {myRostered.map((slot) => slot.label).join(", ")}
-        </div>
-      )}
+      {myRostered.length > 0 &&
+        (declined ? (
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 px-3 py-2 text-sm text-amber-800 dark:text-amber-200 flex gap-2">
+            <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold">
+                You&apos;re rostered on {myRostered.map((slot) => slot.label).join(", ")} but
+                marked yourself as can&apos;t make it.
+              </span>{" "}
+              The organiser will see this and re-roster the shift. Made a mistake? Tap
+              &ldquo;Can&apos;t make it&rdquo; below to undo.
+            </span>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-200">
+            <span className="font-semibold">You&apos;re rostered on:</span>{" "}
+            {myRostered.map((slot) => slot.label).join(", ")}
+          </div>
+        ))}
 
       <div className="space-y-2.5">
         {slots.map((slot) => {
@@ -138,11 +151,23 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                       {slot.allocated.map((member) => (
                         <span
                           key={member._id}
-                          title={formatUserName(member)}
-                          className="inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300"
+                          title={
+                            member.declined
+                              ? `${formatUserName(member)} — can't make it`
+                              : formatUserName(member)
+                          }
+                          className={`inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full border text-xs ${
+                            member.declined
+                              ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 line-through"
+                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                          }`}
                         >
-                          <span className="h-5 w-5 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">
-                            {getInitials(member)}
+                          <span
+                            className={`h-5 w-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${
+                              member.declined ? "bg-red-500" : "bg-indigo-600"
+                            }`}
+                          >
+                            {member.declined ? <XMarkIcon className="h-3 w-3" /> : getInitials(member)}
                           </span>
                           {formatUserName(member)}
                         </span>
@@ -153,7 +178,9 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                   <div className="text-xs font-medium mt-2 text-gray-500 dark:text-gray-400">
                     {slot.mineInterested
                       ? "You can do this shift — tap to remove"
-                      : "Tap if you can do this shift"}
+                      : slot.mineAllocated
+                        ? "You're on the roster for this shift"
+                        : "Tap if you can do this shift"}
                   </div>
                 </div>
               </div>

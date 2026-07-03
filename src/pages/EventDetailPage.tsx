@@ -478,7 +478,11 @@ export function EventDetailPage() {
               </h3>
               {attendance.attending.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {showRsvp ? "No responses yet — be the first to RSVP." : "Nobody marked themselves as going."}
+                  {showRsvp
+                    ? event.hasShifts
+                      ? "No responses yet — be the first to pick a shift."
+                      : "No responses yet — be the first to RSVP."
+                    : "Nobody marked themselves as going."}
                 </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
@@ -530,7 +534,11 @@ export function EventDetailPage() {
                 </div>
               )}
 
-              {breakdownGroups.map(({ key, label, dotClass, chipClass }) => {
+              {breakdownGroups
+                // Shift events have no "maybe" — picking a shift or declining
+                // are the only responses, so hide the impossible group
+                .filter(({ key }) => !(event.hasShifts && key === "maybe"))
+                .map(({ key, label, dotClass, chipClass }) => {
                 const members = breakdown[key];
                 const isOpen = openGroups[key];
                 return (
