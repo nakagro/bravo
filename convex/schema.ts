@@ -300,6 +300,7 @@ const applicationTables = {
   stationChecks: defineTable({
     name: v.string(), // Name of the check item (e.g., "Clean multipurpose room")
     description: v.optional(v.string()), // Optional detailed description of the check
+    area: v.optional(v.string()), // Optional area/room grouping (e.g., "Kitchen", "Toilets")
     isActive: v.boolean(), // Whether this check is currently active
     order: v.number(), // Order in which the check should appear in the list
     createdBy: v.id("users"),
@@ -325,6 +326,7 @@ const applicationTables = {
       v.object({
         checkId: v.optional(v.id("stationChecks")), // Reference to the check item (optional for ad-hoc items)
         name: v.string(), // Name of the check at the time of submission (in case it changes later)
+        area: v.optional(v.string()), // Area snapshot at time of submission (like name)
         isCompleted: v.boolean(), // Whether this specific check was completed
         notes: v.optional(v.string()), // Optional notes for this specific check
         completedBy: v.optional(v.id("users")), // User who completed this specific check
@@ -338,7 +340,11 @@ const applicationTables = {
     .index("by_date", ["date"])
     .index("by_dutyCrew", ["dutyCrewId"])
     .index("by_completedBy", ["completedBy"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_date_and_dutyCrew", ["date", "dutyCrewId"])
+    .index("by_dutyCrew_and_status", ["dutyCrewId", "status"])
+    .index("by_status_and_date", ["status", "date"])
+    .index("by_dutyCrew_and_status_and_date", ["dutyCrewId", "status", "date"]),
 
   // Push subscriptions for web push notifications
   pushSubscriptions: defineTable({

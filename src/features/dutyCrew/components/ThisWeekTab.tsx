@@ -5,7 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { DutyCrewHero } from "./DutyCrewHero";
 import { StationChecksList } from "./StationChecksList";
-import type { CheckItemData } from "../types";
+import type { CheckItemData, ItemUser } from "../types";
 
 interface ThisWeekTabProps {
   isAdmin: boolean;
@@ -83,6 +83,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
           stationChecks.map((check) => ({
             checkId: check._id,
             name: check.name,
+            area: check.area,
             isCompleted: false,
           }))
         );
@@ -227,6 +228,12 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const submissionStatus: "draft" | "completed" | "not_started" =
     currentWeekStatus?.submission?.status ?? "not_started";
 
+  // Map of user id -> user info for per-item "checked by" attribution
+  const itemUsersById: Record<string, ItemUser> = {};
+  for (const user of currentWeekStatus?.itemUsers ?? []) {
+    itemUsersById[user._id] = user;
+  }
+
   // Loading state
   if (!stationChecks) {
     return (
@@ -270,6 +277,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         submissionStatus={submissionStatus}
         isLeader={isLeader === true}
         isAdmin={isAdmin}
+        itemUsersById={itemUsersById}
       />
     </div>
   );

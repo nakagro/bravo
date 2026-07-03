@@ -1,8 +1,63 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
+import { Doc, Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
-// Get all station checks
+type SubmissionCheckItem = {
+  checkId?: Id<"stationChecks">;
+  name: string;
+  area?: string;
+  isCompleted: boolean;
+  notes?: string;
+  completedBy?: Id<"users">;
+  completedAt?: number;
+  isAdHoc?: boolean;
+  addedBy?: Id<"users">;
+};
+
+// Reusable validator for a single submission check item
+const checkItemValidator = v.object({
+  checkId: v.optional(v.id("stationChecks")),
+  name: v.string(),
+  area: v.optional(v.string()),
+  isCompleted: v.boolean(),
+  notes: v.optional(v.string()),
+  completedBy: v.optional(v.id("users")),
+  completedAt: v.optional(v.number()),
+  isAdHoc: v.optional(v.boolean()),
+  addedBy: v.optional(v.id("users")),
+});
+
+// Stamp per-item completedBy/completedAt server-side. Attribution set when an
+// item is newly completed, preserved when it was already completed in the
+// existing submission, and cleared when unchecked. Ad-hoc items (no checkId)
+// match by name.
+function applyItemAttribution(
+  incoming: SubmissionCheckItem[],
+  existing: SubmissionCheckItem[] | undefined,
+  userId: Id<"users">,
+  now: number
+): SubmissionCheckItem[] {
+  return incoming.map((item) => {
+    if (!item.isCompleted) {
+      return { ...item, completedBy: undefined, completedAt: undefined };
+    }
+    const prev = existing?.find((e) =>
+      item.checkId ? e.checkId === item.checkId : !e.checkId && e.name === item.name
+    );
+    if (prev?.isCompleted && prev.completedBy) {
+      return {
+        ...item,
+        completedBy: prev.completedBy,
+        completedAt: prev.completedAt ?? now,
+      };
+    }
+    return { ...item, completedBy: userId, completedAt: now };
+  });
+}
+
+// Get all station checks, sorted by display order
 export const getAllStationChecks = query({
   args: {
     includeInactive: v.optional(v.boolean()),
@@ -13,6 +68,7 @@ export const getAllStationChecks = query({
       _creationTime: v.number(),
       name: v.string(),
       description: v.optional(v.string()),
+      area: v.optional(v.string()),
       isActive: v.boolean(),
       order: v.number(),
       createdBy: v.id("users"),
@@ -22,14 +78,15 @@ export const getAllStationChecks = query({
   ),
   handler: async (ctx, args) => {
     const includeInactive = args.includeInactive ?? false;
-    
-    let query = ctx.db.query("stationChecks");
-    
-    if (!includeInactive) {
-      query = query.filter((q) => q.eq(q.field("isActive"), true));
-    }
-    
-    return await query.order("asc").collect();
+
+    const checks = includeInactive
+      ? await ctx.db.query("stationChecks").collect()
+      : await ctx.db
+          .query("stationChecks")
+          .withIndex("by_isActive", (q) => q.eq("isActive", true))
+          .collect();
+
+    return checks.sort((a, b) => a.order - b.order);
   },
 });
 
@@ -42,6 +99,7 @@ export const getStationCheck = query({
     _id: v.id("stationChecks"),
     name: v.string(),
     description: v.optional(v.string()),
+    area: v.optional(v.string()),
     isActive: v.boolean(),
     order: v.number(),
     createdBy: v.id("users"),
@@ -53,7 +111,17 @@ export const getStationCheck = query({
     if (!check) {
       throw new Error("Station check not found");
     }
-    return check;
+    return {
+      _id: check._id,
+      name: check.name,
+      description: check.description,
+      area: check.area,
+      isActive: check.isActive,
+      order: check.order,
+      createdBy: check.createdBy,
+      createdAt: check.createdAt,
+      updatedAt: check.updatedAt,
+    };
   },
 });
 
@@ -62,6 +130,7 @@ export const createStationCheck = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
+    area: v.optional(v.string()),
     isActive: v.boolean(),
     order: v.optional(v.number()),
   },
@@ -72,28 +141,30 @@ export const createStationCheck = mutation({
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
     if (!currentUser) {
       throw new Error("User not found");
     }
-    
+
     // If order is not provided, get the highest order and add 10
     let order = args.order;
     if (order === undefined) {
-      const checks = await ctx.db
+      const highest = await ctx.db
         .query("stationChecks")
+        .withIndex("by_order")
         .order("desc")
         .first();
-      
-      order = checks ? checks.order + 10 : 10;
+
+      order = highest ? highest.order + 10 : 10;
     }
-    
+
     const now = Date.now();
     return await ctx.db.insert("stationChecks", {
       name: args.name,
       description: args.description,
+      area: args.area,
       isActive: args.isActive,
       order,
       // Use the current user ID
@@ -110,6 +181,7 @@ export const updateStationCheck = mutation({
     id: v.id("stationChecks"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
+    area: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     order: v.optional(v.number()),
   },
@@ -119,38 +191,43 @@ export const updateStationCheck = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    
+
     const check = await ctx.db.get(args.id);
     if (!check) {
       throw new Error("Station check not found");
     }
-    
+
     const updates: {
       name?: string;
       description?: string | undefined;
+      area?: string | undefined;
       isActive?: boolean;
       order?: number;
       updatedAt: number;
     } = {
       updatedAt: Date.now(),
     };
-    
+
     if (args.name !== undefined) {
       updates.name = args.name;
     }
-    
+
     if (args.description !== undefined) {
       updates.description = args.description;
     }
-    
+
+    if (args.area !== undefined) {
+      updates.area = args.area;
+    }
+
     if (args.isActive !== undefined) {
       updates.isActive = args.isActive;
     }
-    
+
     if (args.order !== undefined) {
       updates.order = args.order;
     }
-    
+
     await ctx.db.patch(args.id, updates);
     return args.id;
   },
@@ -193,18 +270,7 @@ export const getCurrentWeekCheckStatus = query({
         status: v.union(v.literal("draft"), v.literal("completed")),
         lastUpdatedBy: v.optional(v.id("users")),
         lastUpdatedAt: v.optional(v.number()),
-        checkItems: v.array(
-          v.object({
-            checkId: v.optional(v.id("stationChecks")),
-            name: v.string(),
-            isCompleted: v.boolean(),
-            notes: v.optional(v.string()),
-            completedBy: v.optional(v.id("users")),
-            completedAt: v.optional(v.number()),
-            isAdHoc: v.optional(v.boolean()),
-            addedBy: v.optional(v.id("users")),
-          })
-        ),
+        checkItems: v.array(checkItemValidator),
         notes: v.optional(v.string()),
       }),
       dutyCrew: v.object({
@@ -226,6 +292,15 @@ export const getCurrentWeekCheckStatus = query({
           lastName: v.optional(v.string()),
         })
       ),
+      // Users referenced by per-item completedBy, for attribution display
+      itemUsers: v.array(
+        v.object({
+          _id: v.id("users"),
+          name: v.string(),
+          firstName: v.optional(v.string()),
+          lastName: v.optional(v.string()),
+        })
+      ),
     }),
     v.null()
   ),
@@ -233,40 +308,40 @@ export const getCurrentWeekCheckStatus = query({
     // Use the provided date or default to current date
     const baseDate = args.date ? new Date(args.date) : new Date();
     baseDate.setHours(0, 0, 0, 0);
-    
+
     // Calculate the week's boundaries (Monday to Sunday) for the given date
     const calculateWeekBoundaries = (date: Date) => {
       const currentDay = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      
+
       // Find the week's Sunday (end of week)
       const weekSunday = new Date(date);
       const daysUntilSunday = currentDay === 0 ? 0 : 7 - currentDay;
       weekSunday.setDate(date.getDate() + daysUntilSunday);
-      
+
       // Find the week's Monday (start of week)
       const weekMonday = new Date(date);
       const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
       weekMonday.setDate(date.getDate() - daysSinceMonday);
-      
+
       return {
         sunday: weekSunday,
         monday: weekMonday
       };
     };
-    
+
     const { sunday: currentWeekSunday, monday: currentWeekMonday } = calculateWeekBoundaries(baseDate);
     const sundayTimestamp = currentWeekSunday.getTime();
-    
+
     // If dutyCrewId is provided, use it; otherwise, find the duty crew for the current week's Sunday
     let dutyCrewId = args.dutyCrewId;
-    
+
     if (!dutyCrewId) {
       // Check if there's a manual assignment for this date
       const schedule = await ctx.db
         .query("dutyCrewSchedule")
-        .filter((q) => q.eq(q.field("date"), sundayTimestamp))
+        .withIndex("by_date", (q) => q.eq("date", sundayTimestamp))
         .first();
-      
+
       if (schedule) {
         dutyCrewId = schedule.dutyCrewId;
       } else {
@@ -274,7 +349,7 @@ export const getCurrentWeekCheckStatus = query({
         // Duty Crew 1 - 1st Sunday, Duty Crew 2 - 2nd Sunday, etc.
         const month = currentWeekSunday.getMonth();
         const year = currentWeekSunday.getFullYear();
-        
+
         // Calculate which Sunday of the month this is
         let sundayCount = 0;
         for (let i = 1; i <= currentWeekSunday.getDate(); i++) {
@@ -283,95 +358,100 @@ export const getCurrentWeekCheckStatus = query({
             sundayCount++;
           }
         }
-        
+
         // For 5th Sunday, we consider it a special case (all duty crews)
         const isSpecial = sundayCount === 5;
-        
-        // Determine the duty crew based on which Sunday of the month
-        if (!isSpecial) {
-          // For normal Sundays, get the corresponding duty crew
-          const dutyCrewNumber = sundayCount;
-          const dutyCrew = await ctx.db
-            .query("dutyCrew")
-            .filter((q) => q.eq(q.field("number"), dutyCrewNumber))
-            .first();
-          
-          if (dutyCrew) {
-            dutyCrewId = dutyCrew._id;
-          }
-        } else {
-          // For 5th Sunday, get all duty crews (for now, just use the first one)
-          const firstDutyCrew = await ctx.db
-            .query("dutyCrew")
-            .filter((q) => q.eq(q.field("number"), 1))
-            .first();
-          
-          if (firstDutyCrew) {
-            dutyCrewId = firstDutyCrew._id;
-          }
+
+        // Determine the duty crew based on which Sunday of the month.
+        // For the special 5th Sunday, fall back to crew number 1.
+        const dutyCrewNumber = isSpecial ? 1 : sundayCount;
+        const dutyCrew = await ctx.db
+          .query("dutyCrew")
+          .withIndex("by_number", (q) => q.eq("number", dutyCrewNumber))
+          .first();
+
+        if (dutyCrew) {
+          dutyCrewId = dutyCrew._id;
         }
       }
     }
-    
+
     if (!dutyCrewId) {
       return null;
     }
-    
+    const crewId = dutyCrewId;
+
     // Find an existing submission for this week and duty crew
     // We'll look for both draft and completed submissions
     // We'll also look for submissions created anytime during the current week
     const mondayTimestamp = currentWeekMonday.getTime();
-    
+
     // First, try to find a submission specifically for this Sunday
     let submission = await ctx.db
       .query("stationCheckSubmissions")
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("date"), sundayTimestamp),
-          q.eq(q.field("dutyCrewId"), dutyCrewId)
-        )
+      .withIndex("by_date_and_dutyCrew", (q) =>
+        q.eq("date", sundayTimestamp).eq("dutyCrewId", crewId)
       )
       .order("desc") // Get the most recent one first
       .first();
-    
+
     // If no submission is found for this Sunday specifically,
     // look for any submission created during the current week
     if (!submission) {
       submission = await ctx.db
         .query("stationCheckSubmissions")
-        .filter((q) => 
-          q.and(
-            q.eq(q.field("dutyCrewId"), dutyCrewId),
-            q.gte(q.field("_creationTime"), mondayTimestamp),
-            q.lte(q.field("_creationTime"), sundayTimestamp + 24 * 60 * 60 * 1000) // Include all of Sunday
-          )
+        .withIndex("by_dutyCrew", (q) =>
+          q
+            .eq("dutyCrewId", crewId)
+            .gte("_creationTime", mondayTimestamp)
+            .lte("_creationTime", sundayTimestamp + 24 * 60 * 60 * 1000) // Include all of Sunday
         )
         .order("desc") // Get the most recent one first
         .first();
     }
-    
+
     if (!submission) {
       return null;
     }
-    
+
     // Get the duty crew information
-    const dutyCrew = await ctx.db.get(dutyCrewId);
+    const dutyCrew = await ctx.db.get(crewId);
     if (!dutyCrew) {
       return null;
     }
-    
+
     // Get the user who completed the submission
     const user = await ctx.db.get(submission.completedBy);
     if (!user) {
       return null;
     }
-    
+
     // Get the user who last updated the submission (if applicable)
     let lastUpdatedByUser = null;
     if (submission.lastUpdatedBy) {
       lastUpdatedByUser = await ctx.db.get(submission.lastUpdatedBy);
     }
-    
+
+    // Resolve users referenced by per-item attribution (deduped)
+    const itemUserIds = new Set<Id<"users">>();
+    for (const item of submission.checkItems) {
+      if (item.completedBy) {
+        itemUserIds.add(item.completedBy);
+      }
+    }
+    const itemUsers = [];
+    for (const itemUserId of itemUserIds) {
+      const itemUser = await ctx.db.get(itemUserId);
+      if (itemUser) {
+        itemUsers.push({
+          _id: itemUser._id,
+          name: itemUser.name || "",
+          firstName: itemUser.firstName,
+          lastName: itemUser.lastName,
+        });
+      }
+    }
+
     // Properly format the response to match the validator types
     return {
       submission,
@@ -392,29 +472,17 @@ export const getCurrentWeekCheckStatus = query({
         firstName: lastUpdatedByUser.firstName,
         lastName: lastUpdatedByUser.lastName,
       } : undefined,
+      itemUsers,
     };
   },
 });
 
-import { getAuthUserId } from "@convex-dev/auth/server";
-
-// Save a draft station check (in-progress)  
+// Save a draft station check (in-progress)
 export const saveDraftStationCheck = mutation({
   args: {
     date: v.number(), // Timestamp for the date of submission
     dutyCrewId: v.id("dutyCrew"),
-    checkItems: v.array(
-      v.object({
-        checkId: v.optional(v.id("stationChecks")),
-        name: v.string(),
-        isCompleted: v.boolean(),
-        notes: v.optional(v.string()),
-        completedBy: v.optional(v.id("users")),
-        completedAt: v.optional(v.number()),
-        isAdHoc: v.optional(v.boolean()),
-        addedBy: v.optional(v.id("users")),
-      })
-    ),
+    checkItems: v.array(checkItemValidator),
     notes: v.optional(v.string()),
     existingSubmissionId: v.optional(v.id("stationCheckSubmissions")),
   },
@@ -425,53 +493,66 @@ export const saveDraftStationCheck = mutation({
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
     if (!currentUser) {
       throw new Error("User not found");
     }
-    
+
     const now = Date.now();
-    
+
     if (args.existingSubmissionId) {
       // Update the existing draft submission
+      const existing = await ctx.db.get(args.existingSubmissionId);
       await ctx.db.patch(args.existingSubmissionId, {
-        checkItems: args.checkItems,
+        checkItems: applyItemAttribution(
+          args.checkItems,
+          existing?.checkItems,
+          currentUser._id,
+          now
+        ),
         notes: args.notes,
         lastUpdatedBy: currentUser._id,
         lastUpdatedAt: now,
       });
-      
+
       return args.existingSubmissionId;
     } else {
       // Check if there's already a submission for this date and duty crew
       const existingSubmission = await ctx.db
         .query("stationCheckSubmissions")
-        .filter((q) => 
-          q.and(
-            q.eq(q.field("date"), args.date),
-            q.eq(q.field("dutyCrewId"), args.dutyCrewId)
-          )
+        .withIndex("by_date_and_dutyCrew", (q) =>
+          q.eq("date", args.date).eq("dutyCrewId", args.dutyCrewId)
         )
         .first();
-        
+
       if (existingSubmission) {
         // Update the existing submission
         await ctx.db.patch(existingSubmission._id, {
-          checkItems: args.checkItems,
+          checkItems: applyItemAttribution(
+            args.checkItems,
+            existingSubmission.checkItems,
+            currentUser._id,
+            now
+          ),
           notes: args.notes,
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
         });
-        
+
         return existingSubmission._id;
       } else {
         // Create a new draft submission
         return await ctx.db.insert("stationCheckSubmissions", {
           date: args.date,
           dutyCrewId: args.dutyCrewId,
-          checkItems: args.checkItems,
+          checkItems: applyItemAttribution(
+            args.checkItems,
+            undefined,
+            currentUser._id,
+            now
+          ),
           notes: args.notes,
           completedBy: currentUser._id,
           completedAt: now,
@@ -489,18 +570,7 @@ export const submitStationCheck = mutation({
   args: {
     date: v.number(), // Timestamp for the date of submission
     dutyCrewId: v.id("dutyCrew"),
-    checkItems: v.array(
-      v.object({
-        checkId: v.optional(v.id("stationChecks")),
-        name: v.string(),
-        isCompleted: v.boolean(),
-        notes: v.optional(v.string()),
-        completedBy: v.optional(v.id("users")),
-        completedAt: v.optional(v.number()),
-        isAdHoc: v.optional(v.boolean()),
-        addedBy: v.optional(v.id("users")),
-      })
-    ),
+    checkItems: v.array(checkItemValidator),
     notes: v.optional(v.string()),
     existingSubmissionId: v.optional(v.id("stationCheckSubmissions")),
   },
@@ -511,26 +581,32 @@ export const submitStationCheck = mutation({
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
     if (!currentUser) {
       throw new Error("User not found");
     }
-    
+
     // Validate that all check items are completed
     const incompleteItems = args.checkItems.filter(item => !item.isCompleted);
     if (incompleteItems.length > 0) {
       const incompleteNames = incompleteItems.map(item => item.name).join(", ");
       throw new Error(`Cannot complete station check: The following items are not completed: ${incompleteNames}`);
     }
-    
+
     const now = Date.now();
-    
+
     if (args.existingSubmissionId) {
       // Update the existing submission and mark as completed
+      const existing = await ctx.db.get(args.existingSubmissionId);
       await ctx.db.patch(args.existingSubmissionId, {
-        checkItems: args.checkItems,
+        checkItems: applyItemAttribution(
+          args.checkItems,
+          existing?.checkItems,
+          currentUser._id,
+          now
+        ),
         notes: args.notes,
         completedBy: currentUser._id,
         completedAt: now,
@@ -538,24 +614,26 @@ export const submitStationCheck = mutation({
         lastUpdatedBy: currentUser._id,
         lastUpdatedAt: now,
       });
-      
+
       return args.existingSubmissionId;
     } else {
       // Check if there's already a submission for this date and duty crew
       const existingSubmission = await ctx.db
         .query("stationCheckSubmissions")
-        .filter((q) => 
-          q.and(
-            q.eq(q.field("date"), args.date),
-            q.eq(q.field("dutyCrewId"), args.dutyCrewId)
-          )
+        .withIndex("by_date_and_dutyCrew", (q) =>
+          q.eq("date", args.date).eq("dutyCrewId", args.dutyCrewId)
         )
         .first();
-      
+
       if (existingSubmission) {
         // Update the existing submission and mark as completed
         await ctx.db.patch(existingSubmission._id, {
-          checkItems: args.checkItems,
+          checkItems: applyItemAttribution(
+            args.checkItems,
+            existingSubmission.checkItems,
+            currentUser._id,
+            now
+          ),
           notes: args.notes,
           completedBy: currentUser._id,
           completedAt: now,
@@ -563,14 +641,19 @@ export const submitStationCheck = mutation({
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
         });
-        
+
         return existingSubmission._id;
       } else {
         // Create a new completed submission
         return await ctx.db.insert("stationCheckSubmissions", {
           date: args.date,
           dutyCrewId: args.dutyCrewId,
-          checkItems: args.checkItems,
+          checkItems: applyItemAttribution(
+            args.checkItems,
+            undefined,
+            currentUser._id,
+            now
+          ),
           notes: args.notes,
           completedBy: currentUser._id,
           completedAt: now,
@@ -595,90 +678,131 @@ export const reopenStationCheck = mutation({
     if (!userId) {
       throw new Error("Not authenticated");
     }
-    
+
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
     if (!currentUser) {
       throw new Error("User not found");
     }
-    
+
     // Get the submission
     const submission = await ctx.db.get(args.submissionId);
     if (!submission) {
       throw new Error("Station check submission not found");
     }
-    
+
     // Check if the submission is already in draft status
     if (submission.status === "draft") {
       throw new Error("Station check is already in draft status");
     }
-    
+
     const now = Date.now();
-    
+
     // Update the submission status to draft
     await ctx.db.patch(args.submissionId, {
       status: "draft",
       lastUpdatedBy: currentUser._id,
       lastUpdatedAt: now,
     });
-    
+
     return args.submissionId;
   },
 });
 
-// Get station check history for a specific duty crew
-export const getStationCheckHistory = query({
+// Paginated station check history, newest first, optionally filtered to one crew
+export const getStationCheckHistoryPage = query({
   args: {
-    dutyCrewId: v.id("dutyCrew"),
-    limit: v.optional(v.number()),
+    dutyCrewId: v.optional(v.id("dutyCrew")),
+    paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(
-    v.object({
-      _id: v.id("stationCheckSubmissions"),
-      date: v.number(),
-      completedBy: v.object({
-        _id: v.id("users"),
-        name: v.string(),
-        firstName: v.optional(v.string()),
-        lastName: v.optional(v.string()),
-      }),
-      completedAt: v.number(),
-      checkItems: v.array(
-        v.object({
-          checkId: v.optional(v.id("stationChecks")),
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("stationCheckSubmissions"),
+        date: v.number(),
+        completedAt: v.number(),
+        dutyCrew: v.union(
+          v.object({ _id: v.id("dutyCrew"), name: v.string() }),
+          v.null()
+        ),
+        completedBy: v.object({
+          _id: v.id("users"),
           name: v.string(),
-          isCompleted: v.boolean(),
-          notes: v.optional(v.string()),
-          isAdHoc: v.optional(v.boolean()),
-          addedBy: v.optional(v.id("users")),
-        })
-      ),
-      notes: v.optional(v.string()),
-    })
-  ),
+          firstName: v.optional(v.string()),
+          lastName: v.optional(v.string()),
+        }),
+        checkItems: v.array(
+          v.object({
+            checkId: v.optional(v.id("stationChecks")),
+            name: v.string(),
+            area: v.optional(v.string()),
+            isCompleted: v.boolean(),
+            notes: v.optional(v.string()),
+            isAdHoc: v.optional(v.boolean()),
+            addedBy: v.optional(v.id("users")),
+          })
+        ),
+        notes: v.optional(v.string()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRecommended"),
+        v.literal("SplitRequired"),
+        v.null()
+      )
+    ),
+  }),
   handler: async (ctx, args) => {
-    const limit = args.limit ?? 10;
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
 
-    // Only surface completed submissions; use the index for efficiency
-    const submissions = await ctx.db
-      .query("stationCheckSubmissions")
-      .withIndex("by_dutyCrew", (q) => q.eq("dutyCrewId", args.dutyCrewId))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .order("desc")
-      .take(limit);
+    // Only surface completed submissions; use the date-ordered indexes
+    const result = args.dutyCrewId
+      ? await ctx.db
+          .query("stationCheckSubmissions")
+          .withIndex("by_dutyCrew_and_status_and_date", (q) =>
+            q.eq("dutyCrewId", args.dutyCrewId!).eq("status", "completed")
+          )
+          .order("desc")
+          .paginate(args.paginationOpts)
+      : await ctx.db
+          .query("stationCheckSubmissions")
+          .withIndex("by_status_and_date", (q) => q.eq("status", "completed"))
+          .order("desc")
+          .paginate(args.paginationOpts);
 
-    const results = [];
+    const userCache = new Map<Id<"users">, Doc<"users"> | null>();
+    const crewCache = new Map<Id<"dutyCrew">, Doc<"dutyCrew"> | null>();
 
-    for (const submission of submissions) {
-      const user = await ctx.db.get(submission.completedBy);
+    const page = [];
+    for (const submission of result.page) {
+      let user = userCache.get(submission.completedBy);
+      if (user === undefined) {
+        user = await ctx.db.get(submission.completedBy);
+        userCache.set(submission.completedBy, user);
+      }
+      let crew = crewCache.get(submission.dutyCrewId);
+      if (crew === undefined) {
+        crew = await ctx.db.get(submission.dutyCrewId);
+        crewCache.set(submission.dutyCrewId, crew);
+      }
       if (!user) continue;
 
       // Explicitly construct the return object — never spread the raw document
-      // to avoid leaking undeclared fields (_creationTime, dutyCrewId, status, etc.)
-      results.push({
+      // to avoid leaking undeclared fields (_creationTime, status, etc.)
+      page.push({
         _id: submission._id,
         date: submission.date,
         completedAt: submission.completedAt,
+        dutyCrew: crew
+          ? { _id: crew._id, name: crew.name }
+          : null,
         completedBy: {
           _id: user._id,
           name: user.name || "",
@@ -688,6 +812,7 @@ export const getStationCheckHistory = query({
         checkItems: submission.checkItems.map((item) => ({
           checkId: item.checkId,
           name: item.name,
+          area: item.area,
           isCompleted: item.isCompleted,
           notes: item.notes,
           isAdHoc: item.isAdHoc,
@@ -697,6 +822,6 @@ export const getStationCheckHistory = query({
       });
     }
 
-    return results;
+    return { ...result, page };
   },
 });

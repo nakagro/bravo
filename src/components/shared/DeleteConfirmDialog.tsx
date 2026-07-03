@@ -14,10 +14,14 @@ import {
 interface DeleteConfirmDialogProps {
   title: string;
   description: string;
-  trigger: ReactNode;
+  /** Omit when controlling the dialog via open/onOpenChange */
+  trigger?: ReactNode;
   onConfirm: () => void;
   confirmLabel?: string;
   destructive?: boolean;
+  /** Controlled mode (e.g. opened from a dropdown menu item) */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function DeleteConfirmDialog({
@@ -27,10 +31,12 @@ export function DeleteConfirmDialog({
   onConfirm,
   confirmLabel = "Delete",
   destructive = true,
+  open,
+  onOpenChange,
 }: DeleteConfirmDialogProps) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

@@ -3,6 +3,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 export type CheckItemData = {
   checkId?: Id<"stationChecks">;
   name: string;
+  area?: string;
   isCompleted: boolean;
   notes?: string;
   completedBy?: Id<"users">;
@@ -12,6 +13,13 @@ export type CheckItemData = {
 };
 
 export type SubmissionStatus = "draft" | "completed";
+
+export type ItemUser = {
+  _id: Id<"users">;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+};
 
 export const statusConfig = {
   completed: {
@@ -37,7 +45,10 @@ export const statusConfig = {
   },
 } as const;
 
-export type TabType = "thisWeek" | "schedule" | "admin";
+export type TabType = "thisWeek" | "schedule" | "history" | "admin";
+
+export const ordinalSuffix = (n: number) =>
+  n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
 
 export const formatDate = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -55,6 +66,14 @@ export const formatDateShort = (timestamp: number) => {
     weekday: "short",
     day: "numeric",
     month: "short",
+  });
+};
+
+export const formatMonthYear = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-AU", {
+    month: "long",
+    year: "numeric",
   });
 };
 

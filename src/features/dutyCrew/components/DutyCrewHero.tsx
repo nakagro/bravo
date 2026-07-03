@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -52,6 +53,7 @@ export function DutyCrewHero({
   onReopen,
   canReopen,
 }: DutyCrewHeroProps) {
+  const [showMemberNames, setShowMemberNames] = useState(false);
   const dutyCrewMembers = useQuery(
     api.dutyCrewMembers.getDutyCrewMembers,
     assignment && !assignment.isSpecial ? { dutyCrewId: assignment.dutyCrew._id } : "skip"
@@ -194,10 +196,16 @@ export function DutyCrewHero({
               ) : dutyCrewMembers && dutyCrewMembers.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {dutyCrewMembers.map((member) => (
-                    <div
+                    <button
                       key={member._id}
+                      onClick={() => setShowMemberNames((v) => !v)}
+                      aria-label={
+                        showMemberNames
+                          ? "Hide member names"
+                          : `Show member names (${getUserFullName(member)})`
+                      }
                       className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs",
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors",
                         member.isLeader
                           ? "bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700"
                           : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -209,10 +217,12 @@ export function DutyCrewHero({
                       <span className="font-medium">
                         {getUserInitials(member)}
                       </span>
-                      <span className="hidden sm:inline">
+                      <span
+                        className={showMemberNames ? "inline" : "hidden sm:inline"}
+                      >
                         {getUserFullName(member)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : !isSpecial && !dutyCrewMembers ? (

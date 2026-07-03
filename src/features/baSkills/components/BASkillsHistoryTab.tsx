@@ -64,7 +64,7 @@ export function BASkillsHistoryTab({
     memberId: filterMemberId ?? undefined,
   });
   const me = useQuery(api.baRecords.getCurrentUser);
-  const members = useQuery(api.baRecords.listMembers);
+  const members = useQuery(api.baRecords.listMembers, {});
   const now = useBARecordDeleteWindowNow();
 
   const [typeFilter, setTypeFilter] = useState<UsageType | "all">("all");

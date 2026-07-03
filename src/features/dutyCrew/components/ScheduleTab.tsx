@@ -1,23 +1,30 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Users } from "lucide-react";
-import { ScheduleCard } from "./ScheduleCard";
+import { ScheduleCard, ScheduleRow } from "./ScheduleCard";
+import {
+  ScheduleOverridePanel,
+  type OverrideAssignment,
+} from "./ScheduleOverridePanel";
 
-export function ScheduleTab() {
+interface ScheduleTabProps {
+  isAdmin: boolean;
+}
+
+export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
   const upcomingAssignments = useQuery(
     api.dutyCrew.getUpcomingDutyCrewAssignments,
     { count: 8 }
   );
+  const [editingAssignment, setEditingAssignment] =
+    useState<OverrideAssignment | null>(null);
 
   if (!upcomingAssignments) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div
-            key={i}
-            className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"
-          />
-        ))}
+      <div className="max-w-2xl space-y-4">
+        <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+        <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -36,8 +43,22 @@ export function ScheduleTab() {
     );
   }
 
+  const [thisWeek, ...futureWeeks] = upcomingAssignments;
+
+  const editHandler = (assignment: (typeof upcomingAssignments)[number]) =>
+    isAdmin
+      ? () =>
+          setEditingAssignment({
+            date: assignment.date,
+            dutyCrewId: assignment.dutyCrew._id,
+            isSpecial: assignment.isSpecial,
+            notes: assignment.notes,
+            scheduleId: assignment.scheduleId,
+          })
+      : undefined;
+
   return (
-    <div className="space-y-4">
+    <div className="max-w-2xl space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Upcoming Schedule
@@ -47,15 +68,30 @@ export function ScheduleTab() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {upcomingAssignments.map((assignment, index) => (
-          <ScheduleCard
-            key={assignment.date}
-            assignment={assignment}
-            isFirst={index === 0}
-          />
-        ))}
-      </div>
+      <ScheduleCard
+        assignment={thisWeek}
+        isFirst
+        onEdit={editHandler(thisWeek)}
+      />
+
+      {futureWeeks.length > 0 && (
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+          {futureWeeks.map((assignment) => (
+            <ScheduleRow
+              key={assignment.date}
+              assignment={assignment}
+              onEdit={editHandler(assignment)}
+            />
+          ))}
+        </div>
+      )}
+
+      {isAdmin && (
+        <ScheduleOverridePanel
+          assignment={editingAssignment}
+          onClose={() => setEditingAssignment(null)}
+        />
+      )}
     </div>
   );
 }

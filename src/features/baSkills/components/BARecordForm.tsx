@@ -37,7 +37,7 @@ const USAGE_TYPES: Array<{
 
 export function BARecordForm({ onSuccess }: BARecordFormProps) {
   const currentUser = useQuery(api.baRecords.getCurrentUser);
-  const allMembers = useQuery(api.baRecords.listMembers);
+  const allMembers = useQuery(api.baRecords.listMembers, {});
   const createRecord = useMutation(api.baRecords.createRecord);
 
   const [isSubmitting, setIsSubmitting] = useState(false);

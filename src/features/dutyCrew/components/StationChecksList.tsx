@@ -27,9 +27,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 import { StationCheckItem } from "./StationCheckItem";
-import type { CheckItemData } from "../types";
+import type { CheckItemData, ItemUser } from "../types";
 
 interface StationChecksListProps {
   checkItems: CheckItemData[];
@@ -52,6 +51,7 @@ interface StationChecksListProps {
   submissionStatus: "draft" | "completed" | "not_started";
   isLeader: boolean;
   isAdmin: boolean;
+  itemUsersById: Record<string, ItemUser>;
 }
 
 export function StationChecksList({
@@ -67,6 +67,7 @@ export function StationChecksList({
   submissionStatus,
   isLeader,
   isAdmin,
+  itemUsersById,
 }: StationChecksListProps) {
   const isMobile = useIsMobile();
   const [editingNotes, setEditingNotes] = useState<{
@@ -82,6 +83,33 @@ export function StationChecksList({
   const adHocItems = checkItems.filter((item) => item.isAdHoc);
   const remainingCount = checkItems.filter((item) => !item.isCompleted).length;
   const canSubmit = remainingCount === 0 && checkItems.length > 0;
+
+  // Group template items by area (first-seen order, following template order),
+  // with a trailing "General" bucket for items without an area.
+  const groupedTemplateItems = (() => {
+    const named: { area?: string; items: CheckItemData[] }[] = [];
+    const general: CheckItemData[] = [];
+    for (const item of templateItems) {
+      if (item.area) {
+        const group = named.find((g) => g.area === item.area);
+        if (group) {
+          group.items.push(item);
+        } else {
+          named.push({ area: item.area, items: [item] });
+        }
+      } else {
+        general.push(item);
+      }
+    }
+    if (general.length > 0) {
+      named.push({ area: undefined, items: general });
+    }
+    return named;
+  })();
+  const hasNamedAreas = groupedTemplateItems.some((g) => g.area);
+
+  const getCompletedByUser = (item: CheckItemData) =>
+    item.completedBy ? itemUsersById[item.completedBy] ?? null : null;
 
   const handleSaveNotes = () => {
     if (!editingNotes) return;
@@ -150,23 +178,36 @@ export function StationChecksList({
 
   return (
     <div className="space-y-3">
-      {/* Template check items */}
-      {templateItems.map((item, index) => (
-        <StationCheckItem
-          key={item.checkId || `template-${index}`}
-          item={item}
-          index={index}
-          onToggle={() =>
-            onCheckToggle(item.checkId, undefined, !item.isCompleted)
-          }
-          onOpenNotes={() =>
-            setEditingNotes({
-              type: "item",
-              checkId: item.checkId,
-              currentValue: item.notes || "",
-            })
-          }
-        />
+      {/* Template check items, grouped by area */}
+      {groupedTemplateItems.map((group) => (
+        <div key={group.area ?? "general"} className="space-y-3">
+          {hasNamedAreas && (
+            <div className="pt-1 flex items-center gap-2">
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                {group.area ?? "General"}
+              </span>
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
+          )}
+          {group.items.map((item) => (
+            <StationCheckItem
+              key={item.checkId || `template-${item.name}`}
+              item={item}
+              completedByUser={getCompletedByUser(item)}
+              onToggle={() =>
+                onCheckToggle(item.checkId, undefined, !item.isCompleted)
+              }
+              onOpenNotes={() =>
+                setEditingNotes({
+                  type: "item",
+                  checkId: item.checkId,
+                  currentValue: item.notes || "",
+                })
+              }
+            />
+          ))}
+        </div>
       ))}
 
       {/* Ad-hoc items section */}
@@ -186,7 +227,7 @@ export function StationChecksList({
             <div key={`adhoc-${item.name}-${index}`} className="mb-3">
               <StationCheckItem
                 item={item}
-                index={templateItems.length + index}
+                completedByUser={getCompletedByUser(item)}
                 onToggle={() =>
                   onCheckToggle(undefined, item.name, !item.isCompleted)
                 }
@@ -300,31 +341,37 @@ export function StationChecksList({
         )}
       </div>
 
-      {/* Submit button */}
+      {/* Submit button / progress status */}
       <div className="pt-4 pb-2">
-        <Button
-          onClick={onSubmit}
-          disabled={isSubmitting || !canSubmit}
-          size="lg"
-          className={cn(
-            "w-full text-base font-medium",
-            canSubmit && !isSubmitting && "animate-pulse"
-          )}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Submitting...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Check className="h-5 w-5" />
-              {canSubmit
-                ? "Complete Checks"
-                : `${remainingCount} item${remainingCount !== 1 ? "s" : ""} remaining`}
-            </span>
-          )}
-        </Button>
+        {submissionStatus === "completed" ? (
+          <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-sm font-medium text-green-700 dark:text-green-300">
+            <Check className="h-4 w-4" />
+            All checks completed
+          </div>
+        ) : canSubmit ? (
+          <Button
+            onClick={onSubmit}
+            disabled={isSubmitting}
+            size="lg"
+            className="w-full text-base font-medium bg-green-600 hover:bg-green-700 text-white"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Submitting...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Check className="h-5 w-5" />
+                Complete Checks
+              </span>
+            )}
+          </Button>
+        ) : (
+          <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-700 dark:text-amber-300">
+            {remainingCount} item{remainingCount !== 1 ? "s" : ""} remaining
+          </div>
+        )}
       </div>
 
       {/* Notes Sheet/Drawer */}

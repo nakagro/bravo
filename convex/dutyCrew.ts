@@ -1,6 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Get all duty crews
@@ -65,7 +65,7 @@ export const createDutyCrew = mutation({
     // Check if a duty crew with the same number already exists
     const existingDutyCrew = await ctx.db
       .query("dutyCrew")
-      .filter((q) => q.eq(q.field("number"), args.number))
+      .withIndex("by_number", (q) => q.eq("number", args.number))
       .first();
 
     if (existingDutyCrew) {
@@ -151,7 +151,7 @@ export const deleteDutyCrew = mutation({
     // Check if there are any schedules using this duty crew
     const schedules = await ctx.db
       .query("dutyCrewSchedule")
-      .filter((q) => q.eq(q.field("dutyCrewId"), args.id))
+      .withIndex("by_dutyCrew", (q) => q.eq("dutyCrewId", args.id))
       .first();
 
     if (schedules) {
@@ -168,21 +168,21 @@ function getNthSundayOfMonth(year: number, month: number, n: number): Date {
   const firstDay = new Date(year, month, 1);
   const firstSunday = new Date(firstDay);
   firstSunday.setDate(firstDay.getDate() + (7 - firstDay.getDay()) % 7);
-  
+
   // If n is 1 and the first day of the month is a Sunday, return the first day
   if (n === 1 && firstDay.getDay() === 0) {
     return firstDay;
   }
-  
+
   // Otherwise, calculate the nth Sunday
   const nthSunday = new Date(firstSunday);
   nthSunday.setDate(firstSunday.getDate() + (n - 1) * 7);
-  
+
   // If the calculated date is in the next month, return null
   if (nthSunday.getMonth() !== month) {
     return new Date(0); // Invalid date
   }
-  
+
   return nthSunday;
 }
 
@@ -206,13 +206,13 @@ export const getDutyCrewForDate = query({
   ),
   handler: async (ctx, args) => {
     const date = new Date(args.date);
-    
+
     // Check if there's a manual assignment for this date
     const schedule = await ctx.db
       .query("dutyCrewSchedule")
-      .filter((q) => q.eq(q.field("date"), args.date))
+      .withIndex("by_date", (q) => q.eq("date", args.date))
       .first();
-    
+
     if (schedule) {
       const dutyCrew = await ctx.db.get(schedule.dutyCrewId);
       if (dutyCrew) {
@@ -224,13 +224,13 @@ export const getDutyCrewForDate = query({
         };
       }
     }
-    
+
     // If no manual assignment, calculate based on the rule:
     // Duty Crew 1 - 1st Sunday, Duty Crew 2 - 2nd Sunday, etc.
     const year = date.getFullYear();
     const month = date.getMonth();
     const day = date.getDate();
-    
+
     // Calculate which Sunday of the month this is
     let sundayCount = 0;
     for (let i = 1; i <= day; i++) {
@@ -242,24 +242,21 @@ export const getDutyCrewForDate = query({
         }
       }
     }
-    
+
     // If it's not a Sunday or we couldn't determine which Sunday it is
     if (date.getDay() !== 0 || sundayCount === 0) {
       return null;
     }
-    
+
     // For 5th Sunday, we consider it a special case (all duty crews)
     const isSpecial = sundayCount === 5;
-    
-    // For normal Sundays, get the corresponding duty crew
-    const dutyCrewNumber = isSpecial ? 0 : sundayCount;
-    
+
     if (!isSpecial) {
       const dutyCrew = await ctx.db
         .query("dutyCrew")
-        .filter((q) => q.eq(q.field("number"), dutyCrewNumber))
+        .withIndex("by_number", (q) => q.eq("number", sundayCount))
         .first();
-      
+
       if (dutyCrew) {
         return {
           ...dutyCrew,
@@ -273,7 +270,7 @@ export const getDutyCrewForDate = query({
       const allDutyCrews = await ctx.db.query("dutyCrew").collect();
       const allMembers = allDutyCrews.flatMap(crew => crew.members);
       const firstDutyCrew = allDutyCrews.find(crew => crew.number === 1);
-      
+
       if (firstDutyCrew) {
         return {
           ...firstDutyCrew,
@@ -286,10 +283,54 @@ export const getDutyCrewForDate = query({
         };
       }
     }
-    
+
     return null;
   },
 });
+
+// Enriched member info for schedule display
+const assignmentMemberValidator = v.object({
+  _id: v.id("users"),
+  name: v.string(),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  isLeader: v.boolean(),
+});
+
+type AssignmentMember = {
+  _id: Id<"users">;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  isLeader: boolean;
+};
+
+// Resolve a crew's members to user info, using a shared cache so each user
+// is only fetched once per query even when they appear in multiple crews.
+async function resolveCrewMembers(
+  ctx: QueryCtx,
+  crew: Doc<"dutyCrew">,
+  userCache: Map<Id<"users">, Doc<"users"> | null>
+): Promise<AssignmentMember[]> {
+  const members: AssignmentMember[] = [];
+  for (const memberId of crew.members) {
+    let user = userCache.get(memberId);
+    if (user === undefined) {
+      user = await ctx.db.get(memberId);
+      userCache.set(memberId, user);
+    }
+    if (user) {
+      members.push({
+        _id: user._id,
+        name: user.name || "",
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isLeader: crew.leader === user._id,
+      });
+    }
+  }
+  return members;
+}
 
 // Get upcoming duty crew assignments
 export const getUpcomingDutyCrewAssignments = query({
@@ -306,23 +347,28 @@ export const getUpcomingDutyCrewAssignments = query({
       }),
       isSpecial: v.boolean(),
       notes: v.optional(v.string()),
+      // Present only for manual overrides (dutyCrewSchedule docs)
+      scheduleId: v.optional(v.id("dutyCrewSchedule")),
+      // Empty for special (all-crews) Sundays
+      members: v.array(assignmentMemberValidator),
     })
   ),
   handler: async (ctx, args) => {
     const count = args.count ?? 4; // Default to 4 upcoming assignments
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const result = [];
     const allDutyCrews = await ctx.db.query("dutyCrew").collect();
-    
+    const userCache = new Map<Id<"users">, Doc<"users"> | null>();
+
     // Get all manual assignments in the future
     const manualAssignments = await ctx.db
       .query("dutyCrewSchedule")
-      .filter(q => q.gte(q.field("date"), today.getTime()))
+      .withIndex("by_date", (q) => q.gte("date", today.getTime()))
       .order("asc")
       .take(count);
-    
+
     // Add manual assignments to the result
     for (const assignment of manualAssignments) {
       const dutyCrew = await ctx.db.get(assignment.dutyCrewId);
@@ -336,28 +382,32 @@ export const getUpcomingDutyCrewAssignments = query({
           },
           isSpecial: assignment.isSpecial,
           notes: assignment.notes,
+          scheduleId: assignment._id,
+          members: assignment.isSpecial
+            ? []
+            : await resolveCrewMembers(ctx, dutyCrew, userCache),
         });
       }
     }
-    
+
     // If we don't have enough manual assignments, calculate the upcoming Sundays
     if (result.length < count) {
       let currentDate = new Date(today);
-      
+
       // Find the next Sunday
       const daysUntilNextSunday = (7 - currentDate.getDay()) % 7;
       currentDate.setDate(currentDate.getDate() + daysUntilNextSunday);
-      
+
       while (result.length < count) {
         const timestamp = currentDate.getTime();
-        
+
         // Check if we already have a manual assignment for this date
         const existingAssignment = result.find(a => a.date === timestamp);
-        
+
         if (!existingAssignment) {
           const month = currentDate.getMonth();
           const year = currentDate.getFullYear();
-          
+
           // Calculate which Sunday of the month this is
           let sundayCount = 0;
           for (let i = 1; i <= currentDate.getDate(); i++) {
@@ -366,15 +416,15 @@ export const getUpcomingDutyCrewAssignments = query({
               sundayCount++;
             }
           }
-          
+
           // For 5th Sunday, we consider it a special case (all duty crews)
           const isSpecial = sundayCount === 5;
-          
+
           if (!isSpecial) {
             // For normal Sundays, get the corresponding duty crew
             const dutyCrewNumber = sundayCount;
             const dutyCrew = allDutyCrews.find(crew => crew.number === dutyCrewNumber);
-            
+
             if (dutyCrew) {
               result.push({
                 date: timestamp,
@@ -385,6 +435,8 @@ export const getUpcomingDutyCrewAssignments = query({
                 },
                 isSpecial: false,
                 notes: undefined,
+                scheduleId: undefined,
+                members: await resolveCrewMembers(ctx, dutyCrew, userCache),
               });
             }
           } else {
@@ -400,19 +452,21 @@ export const getUpcomingDutyCrewAssignments = query({
                 },
                 isSpecial: true,
                 notes: "All duty crews",
+                scheduleId: undefined,
+                members: [],
               });
             }
           }
         }
-        
+
         // Move to the next Sunday
         currentDate.setDate(currentDate.getDate() + 7);
       }
     }
-    
+
     // Sort by date
     result.sort((a, b) => a.date - b.date);
-    
+
     return result.slice(0, count);
   },
 });
@@ -427,39 +481,30 @@ export const assignDutyCrew = mutation({
   },
   returns: v.id("dutyCrewSchedule"),
   handler: async (ctx, args): Promise<Id<"dutyCrewSchedule">> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
-    
-    const userId = await ctx.auth.getUserIdentity().then(identity => {
-      if (!identity) throw new Error("Not authenticated");
-      return identity.tokenIdentifier;
-    });
-    
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("tokenIdentifier"), userId))
-      .first();
-    
+
+    const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     // Check if the duty crew exists
     const dutyCrew = await ctx.db.get(args.dutyCrewId);
     if (!dutyCrew) {
       throw new Error("Duty crew not found");
     }
-    
+
     // Check if there's already an assignment for this date
     const existingSchedule = await ctx.db
       .query("dutyCrewSchedule")
-      .filter((q) => q.eq(q.field("date"), args.date))
+      .withIndex("by_date", (q) => q.eq("date", args.date))
       .first();
-    
+
     const now = Date.now();
-    
+
     if (existingSchedule) {
       // Update the existing assignment
       await ctx.db.patch(existingSchedule._id, {

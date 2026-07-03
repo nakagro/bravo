@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.07.03]
+- Navigation: Replaced the hamburger dropdown with a full-screen navigation sheet, with a theme toggle and tighter, mobile-friendly layout.
+- Duty Crew: Check templates can now be grouped by area (e.g. Kitchen, Toilets), and the weekly checklist shows who completed each item and when. Check items are now a single tap-anywhere row with an inline notes button.
+- Duty Crew: New History tab, visible to all members, showing past check submissions grouped by month with a tap-to-view detail drawer and "Show earlier" paging. Filter by crew or view all.
+- Duty Crew: Schedule tab redesigned, this week's crew gets a full card while future Sundays show as a compact list. Admins can override any Sunday's crew straight from the Schedule tab.
+- Duty Crew: Admin tab reworked for mobile, Crews and Templates split into a segmented switcher, templates grouped by area with reordering, and cleaner create buttons.
+
 ## [2026.07.01]
 - Kiosk: Added a BA Usage logging screen, log a BA wear with member, verifier, date, duration (custom keypad) and notes, right from the kiosk dashboard.
 - Action Centre: Renamed from "Action Center" across the app, and added a BA Skills provider so expiring/overdue BA records now surface as actions.
