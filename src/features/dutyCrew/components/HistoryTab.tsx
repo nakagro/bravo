@@ -201,7 +201,7 @@ export function HistoryTab() {
   const showAllCrews = crewFilter === "all";
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Check History

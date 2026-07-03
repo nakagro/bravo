@@ -19,7 +19,7 @@ export function AdminTab() {
   const [section, setSection] = useState<AdminSection>("crews");
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="space-y-4">
       {/* Segmented section switcher */}
       <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         {sections.map(({ key, label, icon: Icon }) => (

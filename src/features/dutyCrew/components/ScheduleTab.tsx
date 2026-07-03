@@ -22,7 +22,7 @@ export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
 
   if (!upcomingAssignments) {
     return (
-      <div className="max-w-2xl space-y-4">
+      <div className="space-y-4">
         <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
         <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
       </div>
@@ -58,7 +58,7 @@ export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
       : undefined;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">
           Upcoming Schedule
