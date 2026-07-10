@@ -1,5 +1,5 @@
 import * as React from "react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker } from "@daypicker/react";
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 
 import { cn } from "@/lib/utils";
