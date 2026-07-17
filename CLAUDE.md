@@ -13,7 +13,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run deploy:convex:vps` - **Deploy backend** — pushes Convex functions/schema to VPS (live production)
 - `npm run deploy:vps` - Deploy backend to VPS (frontend deploys automatically via GitHub → Vercel on merge to main)
 - `npm run build:vps` - Build frontend for VPS backend URL
-- `npm run lint` - TypeScript checking for both frontend and Convex code
+- `npm run lint` - Full gate: Oxlint + typecheck + tests + Convex codegen + production build
+- `npm run lint:code` - Oxlint only (`vp lint`, config in the `lint` block of `vite.config.ts`; also runs in the husky pre-commit)
+- `npm run test` / `npm run test:watch` - Vitest via `vp test` (frontend utils + `convex-test` backend tests)
+
+The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/VITE_PLUS_EVALUATION.md`). The `vite` package is aliased to `@voidzero-dev/vite-plus-core` via an npm override. Formatting stays on Prettier.
 
 ### Preview
 - `npm run preview:vps` - Build and preview VPS frontend locally

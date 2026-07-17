@@ -11,13 +11,11 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
-  DrawerTitle,
 } from "@/components/ui/drawer";
 import {
   Accordion,
@@ -25,7 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { TriangleAlert, Package, Search, X, ChevronRight, Plus, Minus } from "lucide-react";
+import { TriangleAlert, Package, Search, X, ChevronRight, Plus } from "lucide-react";
 import { EquipmentItemHistory } from "./EquipmentItemHistory";
 import { StepperInput } from "@/components/common/StepperInput";
 

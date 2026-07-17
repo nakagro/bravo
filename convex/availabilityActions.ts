@@ -45,7 +45,7 @@ export const nightlyReset = action({
                 source: "cron:nightlyReset",
               });
               successCount++;
-            } catch (err) {
+            } catch  {
               failureCount++;
             }
           }

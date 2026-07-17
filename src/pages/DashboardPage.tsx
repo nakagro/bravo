@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/card";
-import { RecentNotifications } from "../components/notifications/RecentNotifications";
 import { FireDangerRating } from "../components/dashboard/FireDangerRating";
 import { NAV_ITEMS } from "../config/navigation";
 

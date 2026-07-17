@@ -76,7 +76,7 @@ export function CrewManagementSection() {
     try {
       await updateDutyCrew({ id: current._id, number: target.number });
       await updateDutyCrew({ id: target._id, number: current.number });
-    } catch (error) {
+    } catch  {
       toast.error("Failed to reorder duty crews");
     }
   };

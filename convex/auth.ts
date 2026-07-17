@@ -351,7 +351,7 @@ export const adminResetPassword = action({
 
       return { success: true };
 
-    } catch (error: any) {
+    } catch  {
       throw new Error("Failed to reset password");
     }
   },

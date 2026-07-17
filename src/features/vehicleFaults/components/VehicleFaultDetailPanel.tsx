@@ -35,7 +35,6 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Paperclip,
 } from "lucide-react";
 
 interface VehicleFaultDetailPanelProps {

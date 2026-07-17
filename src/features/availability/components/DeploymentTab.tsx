@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
@@ -54,10 +54,14 @@ function DeploymentTab({ isAuthenticated }: DeploymentTabProps) {
   const startDate = deploymentDates.length > 0 ? deploymentDates[0].getTime() : 0;
   const endDate = deploymentDates.length > 0 ? deploymentDates[deploymentDates.length - 1].getTime() : 0;
 
-  const userDeploymentAvailability = useQuery(
+  const userDeploymentAvailabilityQuery = useQuery(
     api.deploymentAvailability.getCurrentUserDeploymentAvailability,
     startDate && endDate ? { startDate, endDate } : "skip"
-  ) || [];
+  );
+  const userDeploymentAvailability = useMemo(
+    () => userDeploymentAvailabilityQuery || [],
+    [userDeploymentAvailabilityQuery]
+  );
 
   // Fetch aggregated deployment availability for brigade view
   const aggregatedDeploymentAvailability = useQuery(

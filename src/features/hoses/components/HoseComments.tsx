@@ -12,11 +12,8 @@ import { Trash2, MessageSquare } from "lucide-react";
 export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // @ts-ignore - The hoseComments API will be available after running the app
   const comments = useQuery(api.hoseComments?.list, { hoseId });
-  // @ts-ignore - The hoseComments API will be available after running the app
   const addComment = useMutation(api.hoseComments?.add);
-  // @ts-ignore - The hoseComments API will be available after running the app
   const deleteComment = useMutation(api.hoseComments?.remove);
 
   const handleAddComment = async (e: React.FormEvent) => {

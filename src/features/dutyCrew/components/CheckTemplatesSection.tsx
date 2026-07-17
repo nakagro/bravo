@@ -85,7 +85,7 @@ export function CheckTemplatesSection() {
     try {
       await deleteStationCheck({ id });
       toast.success("Check template deleted");
-    } catch (error) {
+    } catch  {
       toast.error("Failed to delete check template");
     }
   };
@@ -103,7 +103,7 @@ export function CheckTemplatesSection() {
     try {
       await updateStationCheck({ id: current._id, order: adjacent.order });
       await updateStationCheck({ id: adjacent._id, order: current.order });
-    } catch (error) {
+    } catch  {
       toast.error("Failed to reorder checks");
     }
   };

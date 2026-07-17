@@ -4,7 +4,7 @@ import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { formatTime, formatShortDate, formatUserName, formatMonthYear, getTodayStr } from "../types";
+import { formatTime, formatShortDate, formatMonthYear, getTodayStr } from "../types";
 import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
 import { EventForm } from "./EventForm";
 import { EventTypesManager } from "./EventTypesManager";

@@ -1,7 +1,6 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
-import { internal } from "./_generated/api";
 
 export const sendTestEmail = action({
   args: {

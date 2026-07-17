@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Clock, TriangleAlert, Sparkles } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 

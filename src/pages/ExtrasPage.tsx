@@ -53,6 +53,12 @@ const EXTRA_LINKS: ExtraLink[] = [
     emoji: "⚡",
   },
   {
+    title: "Member Records (Preview)",
+    description: "Officer-only mockup — track member sizes and issued gear, with admin-defined item types.",
+    to: "/member-records-preview",
+    emoji: "🧤",
+  },
+  {
     title: "Action Centre (Preview)",
     description: "Static mockup of the planned Action Centre — items needing your attention from every module.",
     to: "/actions-preview",

@@ -9,7 +9,6 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Separator } from '../ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,13 +22,11 @@ import {
 import {
   ArrowLeft,
   Edit,
-  Calendar,
   User,
   FileText,
   TriangleAlert,
   CircleCheck,
   Clock,
-  Wrench,
   X,
   Save,
   Trash2,
@@ -162,7 +159,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
 
       setIsEditing(false);
       onUpdate?.();
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to update vehicle fault. Please try again.",
@@ -181,7 +178,7 @@ export function VehicleFaultDetail({ faultId, onClose, onUpdate }: VehicleFaultD
       });
       setIsDeleteOpen(false);
       onClose();
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to delete vehicle fault. Please try again.",

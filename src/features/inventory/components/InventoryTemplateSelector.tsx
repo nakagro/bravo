@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
-import { Play, ClipboardList, CircleCheckBig, Clock, TriangleAlert } from "lucide-react";
+import { Play, ClipboardList, CircleCheckBig, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {

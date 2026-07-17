@@ -81,7 +81,10 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
   const [sort, setSort] = useState<SortKey>("urgency");
   const [groupOpen, setGroupOpen] = useState<Record<CurrencyStatus, boolean>>(DEFAULT_GROUP_OPEN);
 
-  const allMembers: CurrencyMember[] = data?.members ?? [];
+  const allMembers: CurrencyMember[] = useMemo(
+    () => data?.members ?? [],
+    [data],
+  );
 
   const memberOptions: MemberOption[] = useMemo(
     () => allMembers.map((m) => ({ _id: m.userId, name: m.userName })),

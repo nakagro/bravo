@@ -6,7 +6,7 @@
 // control/scene endpoints, shared by every dashboard widget and modal.
 
 import {
-  Lock, LockOpen, DoorOpen, Flame, ShieldAlert, Siren, Clock, Ban,
+  Lock, LockOpen, DoorOpen, ShieldAlert, Siren, Clock, Ban,
   AlertTriangle, WifiOff, type LucideIcon,
 } from 'lucide-react';
 import * as mock from './mockStation';

@@ -1,7 +1,7 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Doc, Id } from "./_generated/dataModel";
+import { Doc } from "./_generated/dataModel";
 import { availabilityProvider } from "./actionCentreProviders/availability";
 import { profileProvider } from "./actionCentreProviders/profile";
 import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";

@@ -308,7 +308,7 @@ export default function AuthManagementPage() {
                                     try {
                                         const result = await purgeAllExpiredTokens({});
                                         alert(result.message);
-                                    } catch (error) {
+                                    } catch  {
                                         alert('Failed to start purge');
                                     } finally {
                                         setIsPurgingAll(false);
@@ -540,7 +540,7 @@ export default function AuthManagementPage() {
                                                     try {
                                                         const result = await purgeExpiredTokens({ userId: selectedUserId });
                                                         alert(`Deleted ${result.deletedCount} expired token${result.deletedCount !== 1 ? 's' : ''}`);
-                                                    } catch (error) {
+                                                    } catch  {
                                                         alert('Failed to purge tokens');
                                                     } finally {
                                                         setIsPurging(false);

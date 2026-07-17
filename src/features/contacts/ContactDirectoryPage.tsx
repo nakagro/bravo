@@ -19,7 +19,6 @@ import {
     type ContactCard,
     type ContactDirectoryIndex,
     type ContactMethods,
-    type ContactNode,
     type ContactRecord,
     type VehicleRecord,
 } from "@/features/kiosk/contactDirectoryData";

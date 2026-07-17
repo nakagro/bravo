@@ -223,7 +223,7 @@ export function NotificationSettings() {
           text: 'Notification permission was dismissed.'
         });
       }
-    } catch (error) {
+    } catch  {
       setMessage({
         type: 'error',
         text: 'Failed to request notification permission'

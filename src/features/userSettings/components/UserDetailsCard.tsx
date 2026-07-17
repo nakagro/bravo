@@ -1,4 +1,3 @@
-import { Id } from "../../../../convex/_generated/dataModel";
 
 interface UserDetailsCardProps {
   fullName: string;

@@ -12,7 +12,7 @@ import { Input } from "../../../components/ui/input";
 import { Badge } from "../../../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { cn } from "../../../lib/utils";
-import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, KeyRound, X, Mail, Phone, User } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, KeyRound, X, Phone, User } from "lucide-react";
 
 type ViewMode = 'cards' | 'table';
 type SortField = 'pegNumber' | 'siteName' | 'address' | 'itemCount';
@@ -68,6 +68,9 @@ export function KeyInventory() {
     if (sortConfig.field !== 'pegNumber') params.set('sort', sortConfig.field);
     if (sortConfig.direction !== 'asc') params.set('dir', sortConfig.direction);
     setSearchParams(params, { replace: true });
+    // searchParams is read for the current tab only; including it would
+    // re-run this effect on its own setSearchParams call above
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, sortConfig, setSearchParams]);
 
   const clearFilters = useCallback(() => {

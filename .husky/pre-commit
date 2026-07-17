@@ -6,3 +6,6 @@ node scripts/set-build-version.js || exit 1
 
 # Stage the updated package.json
 git add package.json
+
+# Lint (Oxlint via Vite+) — fast enough to run on every commit
+npx vp lint || exit 1

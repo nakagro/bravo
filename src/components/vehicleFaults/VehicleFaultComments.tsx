@@ -46,7 +46,7 @@ export function VehicleFaultComments({ faultId }: VehicleFaultCommentsProps) {
         title: "Comment Added",
         description: "Your comment has been posted successfully.",
       });
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to add comment. Please try again.",

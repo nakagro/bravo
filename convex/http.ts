@@ -305,7 +305,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
       if (contentType.includes("application/json")) {
         try {
           body = await request.json();
-        } catch (e) {
+        } catch  {
           // Ignore malformed JSON, fall back to query params
         }
       }

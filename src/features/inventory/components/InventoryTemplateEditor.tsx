@@ -9,7 +9,6 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { Plus, Pencil, Trash2, Info, Image, X, GripVertical } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { compressImage, validateImageFile } from "../../../lib/imageCompression";
@@ -79,7 +78,7 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
       await onSave(name.trim(), description.trim());
       toast({ title: "Success", description: "Template updated successfully" });
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to update template", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -149,7 +148,7 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
       toast({ title: "Success", description: "Section added successfully" });
       setName("");
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to add section", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -210,7 +209,7 @@ function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: 
       toast({ title: "Success", description: "Item added successfully" });
       setName("");
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to add item", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -289,7 +288,7 @@ function EditDialog({
       await onSave(value.trim());
       toast({ title: "Success", description: `${title} updated successfully` });
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: `Failed to update ${title.toLowerCase()}`, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -400,7 +399,7 @@ function SectionDetailsDialog({ section, onSave }: {
 
       toast({ title: "Success", description: "Section details updated successfully" });
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to update section details", variant: "destructive" });
     } finally {
       setUploading(false);
@@ -411,7 +410,7 @@ function SectionDetailsDialog({ section, onSave }: {
     try {
       await onSave(description.trim() || undefined, null);
       toast({ title: "Success", description: "Section image removed successfully" });
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
     }
   };
@@ -629,7 +628,7 @@ function ItemDetailsDialog({ item, onSave }: {
 
       toast({ title: "Success", description: "Item details updated successfully" });
       setOpen(false);
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to update item details", variant: "destructive" });
     } finally {
       setUploading(false);
@@ -640,7 +639,7 @@ function ItemDetailsDialog({ item, onSave }: {
     try {
       await onSave(description.trim() || undefined, null);
       toast({ title: "Success", description: "Image removed successfully" });
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
     }
   };
@@ -968,7 +967,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     try {
       await deleteSection({ sectionId });
       toast({ title: "Success", description: "Section deleted successfully" });
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to delete section", variant: "destructive" });
     }
   };
@@ -1005,7 +1004,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     try {
       await deleteItem({ itemId });
       toast({ title: "Success", description: "Item deleted successfully" });
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to delete item", variant: "destructive" });
     }
   };
@@ -1046,7 +1045,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
         return newState;
       });
       toast({ title: "Success", description: "Items reordered successfully" });
-    } catch (error) {
+    } catch  {
       // Revert optimistic update on error
       setOptimisticSections(prev => {
         const newState = { ...prev };
@@ -1062,7 +1061,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     try {
       await publishTemplate({ templateId: template._id });
       toast({ title: "Success", description: `Version ${template.version + 1} published successfully` });
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to publish template", variant: "destructive" });
     }
   };

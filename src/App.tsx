@@ -35,6 +35,7 @@ const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ de
 const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage").then((m) => ({ default: m.EventDetailPage })));
 const ActionsPreviewPage = lazy(() => import("./pages/ActionsPreviewPage"));
+const MemberRecordsPreviewPage = lazy(() => import("./pages/MemberRecordsPreviewPage"));
 const ActionsPage = lazy(() => import("./pages/ActionsPage").then((m) => ({ default: m.ActionsPage })));
 const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage").then((m) => ({ default: m.AvailabilityPage })));
 const FireReportsPage = lazy(() => import("./pages/FireReportsPage").then((m) => ({ default: m.FireReportsPage })));
@@ -63,7 +64,7 @@ const _t = (label: string) => (window as any).__BRAVO_T?.(label);
 
 function TimingMarker({ label }: { label: string }) {
   _t(label);
-  useEffect(() => { _t(`${label} (useEffect)`); }, []);
+  useEffect(() => { _t(`${label} (useEffect)`); }, [label]);
   return null;
 }
 
@@ -357,6 +358,7 @@ function AuthenticatedApp() {
           } />
           {/* Static design mockup — see docs/ACTION_CENTRE_PLAN.md; remove when the real module ships */}
           <Route path="/actions-preview" element={<ActionsPreviewPage />} />
+          <Route path="/member-records-preview" element={<MemberRecordsPreviewPage />} />
 
           {/* Catch all other routes and redirect to dashboard */}
           <Route path="*" element={<Navigate to="/" replace />} />

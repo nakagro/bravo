@@ -161,7 +161,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
       body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;}
       .qr{width:300px;height:300px;}.name{font-size:18px;font-weight:600;margin:16px 0 4px;}.url{font-size:12px;color:#666;max-width:300px;word-break:break-all;text-align:center;}
     </style></head><body><div class="qr">${svgData}</div>${name ? `<div class="name">${name}</div>` : ''}<div class="url">${url}</div>
-    <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);
+    <script>window.onload=()=>{window.print();window.close();}</script></body></html>`);
     w.document.close();
   }, [svgData, name, url]);
 

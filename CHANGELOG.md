@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.07.17]
+- Tooling: Adopted the new Vite+ (`vp`) toolchain. Linting moved from ESLint to Oxlint (now also runs on every commit), and a Vitest test suite was seeded covering availability backend logic and date utilities.
+- CI: New GitHub Actions workflow runs lint, typecheck and tests on every push and pull request.
+- Dependencies: Adopted TypeScript 7 and updated Convex, @convex-dev/auth, Radix UI, the date picker and many other libraries to their latest versions.
+- Code cleanup across ~50 files from the stricter linter (no behaviour changes).
+
 ## [2026.07.03]
 - Navigation: Replaced the hamburger dropdown with a full-screen navigation sheet, with a theme toggle and tighter, mobile-friendly layout.
 - Duty Crew: Check templates can now be grouped by area (e.g. Kitchen, Toilets), and the weekly checklist shows who completed each item and when. Check items are now a single tap-anywhere row with an inline notes button.

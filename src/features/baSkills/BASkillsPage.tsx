@@ -28,13 +28,16 @@ function BASkillsPage() {
     [adminRecords],
   );
 
-  const accessByTab: Record<BASkillsTab, boolean> = {
-    log: canSubmit,
-    mine: canSubmit,
-    history: isAdmin,
-    currency: isAdmin,
-    lms: isAdmin,
-  };
+  const accessByTab: Record<BASkillsTab, boolean> = useMemo(
+    () => ({
+      log: canSubmit,
+      mine: canSubmit,
+      history: isAdmin,
+      currency: isAdmin,
+      lms: isAdmin,
+    }),
+    [canSubmit, isAdmin],
+  );
 
   const requestedTab = searchParams.get("tab") as BASkillsTab | null;
   const memberFilter = searchParams.get("member") as Id<"users"> | null;

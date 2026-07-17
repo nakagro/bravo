@@ -60,7 +60,7 @@ export function InventoryCheckSection({ section, isReadOnly }: InventoryCheckSec
         })
       );
       toast.success(`${unanswered.length} items marked OK`);
-    } catch (err: any) {
+    } catch  {
       toast.error("Failed to mark items");
     }
   };

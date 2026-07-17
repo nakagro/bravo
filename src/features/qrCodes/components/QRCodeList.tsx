@@ -98,7 +98,7 @@ function printQR(svgData: string, name?: string, url?: string) {
   </style></head><body><div class="qr">${svgData}</div>
   ${name ? `<div class="name">${name}</div>` : ''}
   ${url ? `<div class="url">${url}</div>` : ''}
-  <script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);
+  <script>window.onload=()=>{window.print();window.close();}</script></body></html>`);
   w.document.close();
 }
 

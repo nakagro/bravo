@@ -47,7 +47,7 @@ export function CrewMembersPanel({ crewId, onClose }: CrewMembersPanelProps) {
       });
       setSelectedUserId("");
       toast.success("Member added");
-    } catch (error) {
+    } catch  {
       toast.error("Failed to add member");
     }
   };
@@ -60,7 +60,7 @@ export function CrewMembersPanel({ crewId, onClose }: CrewMembersPanelProps) {
         members: crew.members.filter((id) => id !== userId),
       });
       toast.success("Member removed");
-    } catch (error) {
+    } catch  {
       toast.error("Failed to remove member");
     }
   };
@@ -70,7 +70,7 @@ export function CrewMembersPanel({ crewId, onClose }: CrewMembersPanelProps) {
     try {
       await updateDutyCrew({ id: crew._id, leader: userId });
       toast.success("Leader updated");
-    } catch (error) {
+    } catch  {
       toast.error("Failed to set leader");
     }
   };

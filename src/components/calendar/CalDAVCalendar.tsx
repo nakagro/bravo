@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ICAL from 'ical.js';
-import { CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 import { format, startOfDay, addMonths, addDays } from 'date-fns';
 
 interface CalendarEvent {
@@ -131,10 +131,14 @@ export function CalDAVCalendar({
 
   useEffect(() => {
     fetchCalendarEvents();
-    
+
     // Refresh events every 30 minutes
     const interval = setInterval(fetchCalendarEvents, 30 * 60 * 1000);
     return () => clearInterval(interval);
+    // deps are fetchCalendarEvents' actual inputs; the function itself is
+    // recreated every render and can't be listed without memoizing it and
+    // parseICSWithICAL up the chain
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarUrl, maxEvents, username, password]);
 
   const formatEventDate = (event: CalendarEvent) => {

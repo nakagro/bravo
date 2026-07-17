@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   MapPin,
-  Ruler,
   Copy,
   Pencil,
   Clock,
@@ -33,7 +32,6 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarDays,
-  CircleDot,
   Layers,
   TriangleAlert,
 } from "lucide-react";

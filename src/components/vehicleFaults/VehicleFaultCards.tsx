@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Clock, TriangleAlert, CircleCheck } from 'lucide-react';
 import { Id } from '../../../convex/_generated/dataModel';

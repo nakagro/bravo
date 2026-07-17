@@ -28,7 +28,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Pencil, Trash2, Package, FolderPlus } from "lucide-react";
+import { Pencil, Trash2, Package, FolderPlus } from "lucide-react";
 
 export function EquipmentAdminPanel() {
   const categories = useQuery(api.equipment.getAllCategories);
@@ -139,7 +139,7 @@ export function EquipmentAdminPanel() {
     if (!confirm("Are you sure you want to delete this category? This cannot be undone.")) return;
     try {
       await deleteCategory({ categoryId });
-    } catch (error) {
+    } catch  {
       alert("Cannot delete category with items. Please move or delete items first.");
     }
   };

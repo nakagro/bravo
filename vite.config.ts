@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -6,6 +6,34 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
+  lint: {
+    plugins: ["react", "typescript", "oxc"],
+    categories: {
+      correctness: "warn",
+    },
+    rules: {
+      "no-unused-vars": [
+        "warn",
+        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
+      ],
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      "typescript/ban-ts-comment": "error",
+      "typescript/no-explicit-any": "off",
+    },
+    ignorePatterns: [
+      "dist",
+      "dev-dist",
+      "convex/_generated",
+      "exports",
+      "scripts",
+    ],
+  },
+  test: {
+    // convex-test must run un-externalized so its import.meta.glob of
+    // convex/ modules works inside the test bundle
+    server: { deps: { inline: ["convex-test"] } },
+  },
   plugins: [
     tailwindcss(),
     react(),
