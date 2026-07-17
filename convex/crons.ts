@@ -26,14 +26,6 @@ crons.daily(
   {}
 );
 
-// Remind members the evening before brigade events
-crons.daily(
-  "event reminders", // identifier
-  { hourUTC: 8, minuteUTC: 0 }, // 08:00 UTC == 18:00 AEST (UTC+10)
-  api.eventActions.sendEventReminders,
-  {}
-);
-
 // Process status transitions every 5 minutes
 crons.interval(
   "process status transitions", // identifier

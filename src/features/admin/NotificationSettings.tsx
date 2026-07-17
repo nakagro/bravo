@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, BellOff, CalendarCheck, Clock, Moon, RefreshCw } from "lucide-react";
+import { Bell, BellOff, Clock, Moon, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface NotificationSettingsProps {
@@ -33,7 +33,7 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
     }
   };
 
-  const handleToggleSetting = async (notificationType: "nightlyReset" | "morningReminder" | "eventReminder", enabled: boolean) => {
+  const handleToggleSetting = async (notificationType: "nightlyReset" | "morningReminder", enabled: boolean) => {
     try {
       setUpdatingSettings(prev => ({ ...prev, [notificationType]: true }));
       await updateSetting({ notificationType, enabled });
@@ -52,8 +52,6 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
         return "Daily Reset";
       case "morningReminder":
         return "Morning Reminder";
-      case "eventReminder":
-        return "Event Reminder";
       default:
         return type;
     }
@@ -65,8 +63,6 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
         return <Moon className="h-5 w-5" />;
       case "morningReminder":
         return <Clock className="h-5 w-5" />;
-      case "eventReminder":
-        return <CalendarCheck className="h-5 w-5" />;
       default:
         return <Bell className="h-5 w-5" />;
     }
@@ -78,8 +74,6 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
         return "4:00 AM";
       case "morningReminder":
         return "10:00 AM";
-      case "eventReminder":
-        return "6:00 PM (evening before each event)";
       default:
         return "Unknown";
     }

@@ -5,7 +5,6 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
-import { trackCronNotification } from "./posthogAnalytics";
 
 /**
  * Single funnel for all event pushes so future triggers (on-create broadcast
@@ -110,94 +109,5 @@ export const notifyEventMembers = action({
     });
 
     return null;
-  },
-});
-
-/**
- * Cron entry: the evening before each event, remind attending/maybe members
- * and nudge non-responders. Members who said "not attending" get nothing.
- * Safe to re-run — reminderSentAt gives at-most-once delivery per event.
- */
-export const sendEventReminders = action({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const startTime = Date.now();
-
-    // Kill switch (admin-controlled in Notification Settings)
-    const notificationsEnabled = await ctx.runQuery(
-      api.notificationSettings.isNotificationEnabled,
-      { notificationType: "eventReminder" }
-    );
-
-    if (!notificationsEnabled) {
-      await trackCronNotification({
-        cronName: "eventReminder",
-        notificationType: "eventReminder",
-        recipientCount: 0,
-        successCount: 0,
-        failureCount: 0,
-        duration: Date.now() - startTime,
-      });
-      return 0;
-    }
-
-    // AEST tomorrow: now + 10h (UTC→AEST) + 24h (tomorrow), same hardcoded
-    // UTC+10 assumption as crons.ts (drifts 1h during AEDT — accepted)
-    const targetDate = new Date(Date.now() + 34 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-    const { events, allUserIds } = await ctx.runQuery(internal.events.getReminderTargets, {
-      targetDate,
-    });
-
-    let successCount = 0;
-    let failureCount = 0;
-    let totalRecipients = 0;
-
-    for (const event of events) {
-      const rsvpByUser = new Map(event.rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
-      const timeSuffix =
-        !event.isAllDay && event.startTime ? ` at ${formatTime(event.startTime)}` : "";
-      const locationSuffix = event.location ? ` (${event.location})` : "";
-
-      for (const userId of allUserIds) {
-        const status = rsvpByUser.get(userId);
-        if (status === "notAttending") continue;
-
-        const body =
-          status === "attending" || status === "maybe"
-            ? `Reminder: ${event.title} is tomorrow${timeSuffix}${locationSuffix}.`
-            : `${event.title} is tomorrow${timeSuffix} — let the brigade know if you can make it.`;
-
-        totalRecipients++;
-        try {
-          await sendEventPush(ctx, {
-            userId,
-            title: "Event Reminder",
-            body,
-            eventId: event._id,
-            notificationType: "eventReminder",
-            source: "cron:eventReminder",
-          });
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to send event reminder to user ${userId}:`, err);
-          failureCount++;
-        }
-      }
-
-      await ctx.runMutation(internal.events.markReminderSent, { eventId: event._id });
-    }
-
-    await trackCronNotification({
-      cronName: "eventReminder",
-      notificationType: "eventReminder",
-      recipientCount: totalRecipients,
-      successCount,
-      failureCount,
-      duration: Date.now() - startTime,
-    });
-
-    return successCount;
   },
 });

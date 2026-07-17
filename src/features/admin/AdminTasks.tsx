@@ -22,7 +22,6 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
   const morningReminder = useAction(api.availabilityActions.morningReminder);
   const processTransitions = useMutation(api.availability.processStatusTransitions);
   const cleanupNotifications = useAction(api.notificationHistory.cleanupExpiredNotificationsAction);
-  const eventReminders = useAction(api.eventActions.sendEventReminders);
 
   // Task statuses
   const [deleteMessagesStatus, setDeleteMessagesStatus] = useState<TaskStatus>({ status: "idle", count: null });
@@ -30,7 +29,6 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
   const [reminderStatus, setReminderStatus] = useState<TaskStatus>({ status: "idle", count: null });
   const [transitionsStatus, setTransitionsStatus] = useState<TaskStatus>({ status: "idle", count: null });
   const [cleanupStatus, setCleanupStatus] = useState<TaskStatus>({ status: "idle", count: null });
-  const [eventRemindersStatus, setEventRemindersStatus] = useState<TaskStatus>({ status: "idle", count: null });
 
   const handleDeleteMessages = async () => {
     try {
@@ -84,17 +82,6 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
     } catch (err) {
       console.error(err);
       setCleanupStatus({ status: "error", count: null, message: String(err) });
-    }
-  };
-
-  const handleEventReminders = async () => {
-    try {
-      setEventRemindersStatus({ status: "running", count: null });
-      const count = await eventReminders({});
-      setEventRemindersStatus({ status: "success", count });
-    } catch (err) {
-      console.error(err);
-      setEventRemindersStatus({ status: "error", count: null, message: String(err) });
     }
   };
 
@@ -192,16 +179,6 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
           cleanupStatus,
           "Delete notification history entries older than 24 hours",
           "Scheduled: Every hour"
-        )}
-
-        <Separator />
-
-        {renderTaskButton(
-          "Event Reminders",
-          handleEventReminders,
-          eventRemindersStatus,
-          "Send reminders for tomorrow's events (sends at most once per event)",
-          "Scheduled: Daily at 6:00 PM AEST"
         )}
       </CardContent>
     </Card>

@@ -1,4 +1,4 @@
-import { query, mutation, internalQuery, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -120,7 +120,6 @@ const enrichedEventValidator = v.object({
   cancelledBy: v.optional(v.id("users")),
   cancelledAt: v.optional(v.number()),
   cancellationReason: v.optional(v.string()),
-  reminderSentAt: v.optional(v.number()),
   createdBy: v.id("users"),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -728,9 +727,6 @@ export const updateEvent = mutation({
       return null;
     }
 
-    if (updateData.startDate !== undefined && event.reminderSentAt !== undefined) {
-      updateData.reminderSentAt = undefined;
-    }
     updateData.updatedAt = Date.now();
 
     await ctx.db.patch(args.eventId, updateData);
@@ -1277,95 +1273,6 @@ export const getSlotRoster = query({
 });
 
 // ─── Internal functions for the reminder pipeline ───────────────────────────
-
-/**
- * Active events on targetDate that haven't had their reminder sent yet,
- * each with its RSVPs, plus all user ids (for non-responder nudges).
- */
-export const getReminderTargets = internalQuery({
-  args: { targetDate: v.string() },
-  returns: v.object({
-    events: v.array(
-      v.object({
-        _id: v.id("events"),
-        title: v.string(),
-        location: v.optional(v.string()),
-        startTime: v.optional(v.string()),
-        isAllDay: v.boolean(),
-        rsvps: v.array(
-          v.object({
-            userId: v.id("users"),
-            status: rsvpStatusValidator,
-          })
-        ),
-      })
-    ),
-    allUserIds: v.array(v.id("users")),
-  }),
-  handler: async (ctx, args) => {
-    const events = await ctx.db
-      .query("events")
-      .withIndex("by_status_startDate", (q) =>
-        q.eq("status", "active").eq("startDate", args.targetDate)
-      )
-      .collect();
-
-    const pendingEvents = events.filter((event) => event.reminderSentAt === undefined);
-
-    const eventsWithRsvps = await Promise.all(
-      pendingEvents.map(async (event) => {
-        const rsvps = await ctx.db
-          .query("eventRsvps")
-          .withIndex("by_event", (q) => q.eq("eventId", event._id))
-          .collect();
-
-        const statusByUser = new Map<Id<"users">, "attending" | "notAttending" | "maybe">(
-          rsvps.map((rsvp) => [rsvp.userId, rsvp.status])
-        );
-
-        // For slot events, interested ∪ allocated is the "attending" signal —
-        // fold each distinct user in so they're reminded (and excluded from
-        // non-responder nudges).
-        if (event.hasShifts) {
-          const attendingUsers = await slotAttendingUserIds(ctx, event._id);
-          for (const id of attendingUsers) {
-            if (!statusByUser.has(id)) {
-              statusByUser.set(id, "attending");
-            }
-          }
-        }
-
-        return {
-          _id: event._id,
-          title: event.title,
-          location: event.location,
-          startTime: event.startTime,
-          isAllDay: event.isAllDay,
-          rsvps: [...statusByUser.entries()].map(([userId, status]) => ({ userId, status })),
-        };
-      })
-    );
-
-    const users = await ctx.db.query("users").collect();
-
-    return {
-      events: eventsWithRsvps,
-      allUserIds: users.map((user) => user._id),
-    };
-  },
-});
-
-/**
- * Mark an event's reminder as sent (at-most-once delivery guard).
- */
-export const markReminderSent = internalMutation({
-  args: { eventId: v.id("events") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.eventId, { reminderSentAt: Date.now() });
-    return null;
-  },
-});
 
 /**
  * Record a notification_sent entry in the event's audit trail.

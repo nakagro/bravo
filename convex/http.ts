@@ -1,72 +1,12 @@
 import { httpRouter } from "convex/server";
-import { env, httpAction } from "./_generated/server";
+import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
-import { fetchCalendarData } from "./calendarProxy";
 
 const http = httpRouter();
 
 auth.addHttpRoutes(http);
-
-// CORS preflight handler for calendar endpoint
-http.route({
-  path: "/calendar/events",
-  method: "OPTIONS",
-  handler: httpAction(async (_ctx, _request) => {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers":
-          "Content-Type, Accept, Authorization, X-Requested-With",
-        "Access-Control-Max-Age": "86400",
-      },
-    });
-  }),
-});
-
-// Calendar proxy endpoint to avoid CORS issues
-http.route({
-  path: "/calendar/events",
-  method: "GET",
-  handler: httpAction(async () => {
-    try {
-      const icsData = await fetchCalendarData({
-        calendarUrl: env.CALDAV_URL,
-        username: env.CALDAV_USERNAME,
-        password: env.CALDAV_PASSWORD,
-      });
-
-      // Return the ICS data with proper CORS headers
-      return new Response(icsData, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/calendar",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET",
-          "Access-Control-Allow-Headers": "Content-Type",
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching calendar data:", error);
-      return new Response(
-        JSON.stringify({
-          error: "Failed to fetch calendar data",
-          details: error instanceof Error ? error.message : "Unknown error",
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        },
-      );
-    }
-  }),
-});
 
 // CORS preflight for member availability endpoint
 http.route({

@@ -1,12 +1,18 @@
 import { v } from "convex/values";
-import { action, internalQuery, query, env } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  action,
+  internalQuery,
+  query,
+  env,
+  type QueryCtx,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireEventsAdmin } from "./events";
+import { fetchCalendarData } from "./calendarProxy";
 
-// CalDAV writes to the Radicale calendar. Reads go through the public
-// /calendar/events HTTP proxy; writes are authenticated Convex actions so the
-// browser never sees Radicale or its credentials. Gated by the existing
-// eventsAdmin module setting until a dedicated calendar module ships.
+// Calendar reads and CalDAV writes are authenticated Convex actions, so the
+// browser never sees Radicale or its credentials. Read and write access use
+// separate module settings so administrators can manage them independently.
 
 // ─── Event payload validators ────────────────────────────────────────────────
 
@@ -234,11 +240,66 @@ async function putEvent(
 
 // ─── Access control ──────────────────────────────────────────────────────────
 
+async function requireCalendarAccess(
+  ctx: QueryCtx,
+  moduleId: "calendar" | "calendarWrite",
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("You must be signed in");
+
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error("User not found");
+  if (user.isAdmin) return;
+
+  const moduleSetting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
+    .unique();
+
+  const deniedMessage =
+    moduleId === "calendar"
+      ? "You do not have access to view the calendar"
+      : "You do not have access to modify the calendar";
+
+  if (!moduleSetting?.isEnabled || moduleSetting.adminOnly) {
+    throw new Error(deniedMessage);
+  }
+
+  const requiredRoles = moduleSetting.requiredRoles ?? [];
+  const hasRequiredRole =
+    requiredRoles.length === 0 ||
+    requiredRoles.some((role) => user.roles?.includes(role));
+
+  const rankOrder = {
+    Probationary: 1,
+    Firefighter: 2,
+    Lieutenant: 3,
+    Captain: 4,
+  } as const;
+  const hasRequiredRank = moduleSetting.minimumRank
+    ? user.rank !== undefined &&
+      rankOrder[user.rank] >= rankOrder[moduleSetting.minimumRank]
+    : true;
+
+  if (!hasRequiredRole || !hasRequiredRank) {
+    throw new Error(deniedMessage);
+  }
+}
+
+export const assertReadAccess = internalQuery({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    await requireCalendarAccess(ctx, "calendar");
+    return null;
+  },
+});
+
 export const assertWriteAccess = internalQuery({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    await requireEventsAdmin(ctx);
+    await requireCalendarAccess(ctx, "calendarWrite");
     return null;
   },
 });
@@ -249,11 +310,28 @@ export const canWriteCalendar = query({
   returns: v.boolean(),
   handler: async (ctx) => {
     try {
-      await requireEventsAdmin(ctx);
+      await requireCalendarAccess(ctx, "calendarWrite");
       return true;
     } catch {
       return false;
     }
+  },
+});
+
+/** Authenticated calendar feed used by both the dashboard and Calendar page. */
+export const getCalendarEvents = action({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx): Promise<string> => {
+    const _access: null = await ctx.runQuery(
+      internal.calendarWrite.assertReadAccess,
+      {},
+    );
+    return await fetchCalendarData({
+      calendarUrl: env.CALDAV_URL,
+      username: env.CALDAV_USERNAME,
+      password: env.CALDAV_PASSWORD,
+    });
   },
 });
 

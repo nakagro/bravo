@@ -207,10 +207,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/calendar",
     icon: CalendarRange,
     group: "brigade",
-    // No calendar module id exists yet in convex/modules.ts; the underlying
-    // events are already visible to every authenticated user via the
-    // dashboard widget. Gate properly with the next backend deploy.
-    alwaysVisible: true,
     color: {
       bg: "bg-purple-100 dark:bg-purple-900/20",
       bgHover: "group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40",

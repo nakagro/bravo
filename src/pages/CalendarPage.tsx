@@ -35,6 +35,7 @@ import {
   groupItemsByDay,
   type CalendarItem,
 } from "@/features/calendar/lib/calendarItems";
+import { CalendarLegend } from "@/features/calendar/components/CalendarLegend";
 import { MonthGrid } from "@/features/calendar/components/MonthGrid";
 import { DayAgenda } from "@/features/calendar/components/DayAgenda";
 import { ItemDetailSheet } from "@/features/calendar/components/ItemDetailSheet";
@@ -57,7 +58,8 @@ export function CalendarPage() {
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
   const agendaRef = useRef<HTMLDivElement>(null);
 
-  const canWrite = useQuery(api.calendarWrite.canWriteCalendar) === true;
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const canWrite = moduleAccess?.calendarWrite === true;
   const deleteEvent = useAction(api.calendarWrite.deleteEvent);
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -66,7 +68,6 @@ export function CalendarPage() {
 
   // The Events and Bookings modules overlay onto the calendar for members
   // who can access them
-  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
   const brigadeEvents = useQuery(
@@ -197,6 +198,11 @@ export function CalendarPage() {
           Today
         </Button>
       </div>
+
+      <CalendarLegend
+        showEvents={moduleAccess?.events === true}
+        showBookings={moduleAccess?.bookings === true}
+      />
 
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">

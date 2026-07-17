@@ -555,8 +555,7 @@ const applicationTables = {
   notificationSettings: defineTable({
     notificationType: v.union(
       v.literal("nightlyReset"),
-      v.literal("morningReminder"),
-      v.literal("eventReminder")
+      v.literal("morningReminder")
     ),
     enabled: v.boolean(),
     description: v.string(),
@@ -906,7 +905,6 @@ const applicationTables = {
     cancelledBy: v.optional(v.id("users")),
     cancelledAt: v.optional(v.number()),
     cancellationReason: v.optional(v.string()),
-    reminderSentAt: v.optional(v.number()), // Guards against double-sending the pre-event reminder
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -320,9 +320,11 @@ function AuthenticatedApp() {
               <AuthManagementPage />
             </ProtectedRoute>
           } />
-          {/* Calendar is alwaysVisible (no module gate) — matches the dashboard
-              events widget, which every authenticated user already sees */}
-          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/calendar" element={
+            <ProtectedRoute moduleId="calendar">
+              <CalendarPage />
+            </ProtectedRoute>
+          } />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/extras" element={<ExtrasPage />} />
           <Route path="/contacts" element={<ContactDirectoryPage />} />

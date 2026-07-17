@@ -235,6 +235,22 @@ export const syncModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "calendar",
+        moduleName: "Calendar (Read)",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "calendarWrite",
+        moduleName: "Calendar (Write)",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "actions",
         moduleName: "Action Centre",
         isEnabled: true,
@@ -471,6 +487,22 @@ export const initializeModuleSettings = mutation({
       {
         moduleId: "eventsAdmin",
         moduleName: "Events Admin",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "calendar",
+        moduleName: "Calendar (Read)",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: undefined
+      },
+      {
+        moduleId: "calendarWrite",
+        moduleName: "Calendar (Write)",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -729,6 +761,8 @@ export const getAllModuleAccess = query({
     bookingsAdmin: v.boolean(),
     events: v.boolean(),
     eventsAdmin: v.boolean(),
+    calendar: v.boolean(),
+    calendarWrite: v.boolean(),
     feedback: v.boolean(),
     links: v.boolean(),
     settings: v.boolean(),
@@ -760,6 +794,8 @@ export const getAllModuleAccess = query({
         bookingsAdmin: false,
         events: false,
         eventsAdmin: false,
+        calendar: false,
+        calendarWrite: false,
         feedback: false,
         links: false,
         settings: false,
@@ -792,6 +828,8 @@ export const getAllModuleAccess = query({
         bookingsAdmin: false,
         events: false,
         eventsAdmin: false,
+        calendar: false,
+        calendarWrite: false,
         feedback: false,
         links: false,
         settings: false,
@@ -824,6 +862,8 @@ export const getAllModuleAccess = query({
         bookingsAdmin: true,
         events: true,
         eventsAdmin: true,
+        calendar: true,
+        calendarWrite: true,
         feedback: true,
         links: true,
         settings: true,
@@ -902,6 +942,8 @@ export const getAllModuleAccess = query({
       bookingsAdmin: checkAccess("bookingsAdmin"),
       events: checkAccess("events"),
       eventsAdmin: checkAccess("eventsAdmin"),
+      calendar: checkAccess("calendar"),
+      calendarWrite: checkAccess("calendarWrite"),
       feedback: checkAccess("feedback"),
       links: checkAccess("links"),
       settings: checkAccess("settings"),

@@ -10,8 +10,7 @@ export const getNotificationSettings = query({
     _creationTime: v.number(),
     notificationType: v.union(
       v.literal("nightlyReset"),
-      v.literal("morningReminder"),
-      v.literal("eventReminder")
+      v.literal("morningReminder")
     ),
     enabled: v.boolean(),
     description: v.string(),
@@ -36,14 +35,13 @@ export const getNotificationSettings = query({
 
 // Get a specific notification setting
 export const getNotificationSetting = query({
-  args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder"), v.literal("eventReminder")) },
+  args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder")) },
   returns: v.union(v.object({
     _id: v.id("notificationSettings"),
     _creationTime: v.number(),
     notificationType: v.union(
       v.literal("nightlyReset"),
-      v.literal("morningReminder"),
-      v.literal("eventReminder")
+      v.literal("morningReminder")
     ),
     enabled: v.boolean(),
     description: v.string(),
@@ -85,13 +83,6 @@ export const initializeNotificationSettings = mutation({
         enabled: true,
         description: "Morning reminder notifications sent at 10:00 AM",
       },
-      {
-        notificationType: "eventReminder" as const,
-        // Off by default — must be explicitly enabled in Admin → Notification
-        // Settings before the cron sends anything
-        enabled: false,
-        description: "Reminder the evening before brigade events, sent at 6:00 PM",
-      },
     ];
 
     let created = 0;
@@ -119,7 +110,7 @@ export const initializeNotificationSettings = mutation({
 // Update notification setting
 export const updateNotificationSetting = mutation({
   args: {
-    notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder"), v.literal("eventReminder")),
+    notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder")),
     enabled: v.boolean(),
   },
   returns: v.id("notificationSettings"),
@@ -153,10 +144,8 @@ export const updateNotificationSetting = mutation({
       // Create new setting if it doesn't exist
       const description = args.notificationType === "nightlyReset"
         ? "Daily status reset notifications sent at 4:00 AM"
-        : args.notificationType === "eventReminder"
-          ? "Reminder the evening before brigade events, sent at 6:00 PM"
-          : "Morning reminder notifications sent at 10:00 AM";
-      
+        : "Morning reminder notifications sent at 10:00 AM";
+
       return await ctx.db.insert("notificationSettings", {
         notificationType: args.notificationType,
         enabled: args.enabled,
@@ -170,7 +159,7 @@ export const updateNotificationSetting = mutation({
 
 // Helper function to check if a notification type is enabled (used by scheduled actions)
 export const isNotificationEnabled = query({
-  args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder"), v.literal("eventReminder")) },
+  args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder")) },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const setting = await ctx.db
@@ -178,9 +167,8 @@ export const isNotificationEnabled = query({
       .withIndex("by_notificationType", (q) => q.eq("notificationType", args.notificationType))
       .first();
 
-    // If no setting row exists yet: legacy types default to enabled
-    // (preserves existing behaviour), but event reminders are opt-in and
-    // stay off until explicitly enabled in the admin UI
-    return setting?.enabled ?? (args.notificationType !== "eventReminder");
+    // If no setting row exists yet, default to enabled (preserves existing
+    // behaviour for the scheduled availability notifications)
+    return setting?.enabled ?? true;
   },
 });
