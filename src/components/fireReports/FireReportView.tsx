@@ -15,7 +15,6 @@ import {
   FireIcon,
   ShieldExclamationIcon
 } from "@heroicons/react/24/outline";
-import { useToast } from "../../hooks/use-toast";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface FireReportViewProps {
@@ -26,7 +25,6 @@ interface FireReportViewProps {
 
 export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps) {
   const report = useQuery(api.fireReports.getFireReport, { reportId });
-  const { toast } = useToast();
 
   if (!report) {
     return (

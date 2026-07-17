@@ -143,7 +143,6 @@ export function InventoryRecentChecks() {
           };
 
           const completedByName = s.run.status === "completed" ? getUserName(s.completedByUser) : null;
-          const startedByName = getUserName(s.startedByUser);
 
           return (
             <div

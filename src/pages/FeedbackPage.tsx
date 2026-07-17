@@ -18,7 +18,6 @@ export function FeedbackPage() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submittedCategory, setSubmittedCategory] = useState<"bug" | "feature" | "improvement" | "general">("general");
 
   const submitFeedback = useMutation(api.feedback.submitFeedback);
 
@@ -41,7 +40,6 @@ export function FeedbackPage() {
         appVersion: getVersionString(),
       });
 
-      setSubmittedCategory(category);
       setIsSubmitted(true);
       
       setSubject("");
@@ -57,13 +55,6 @@ export function FeedbackPage() {
 
   const handleSubmitAnother = () => {
     setIsSubmitted(false);
-  };
-
-  const categoryInfo = {
-    general: { emoji: "💬", color: "green", label: "General Feedback" },
-    bug: { emoji: "🐛", color: "red", label: "Bug Report" },
-    feature: { emoji: "✨", color: "blue", label: "Feature Request" },
-    improvement: { emoji: "🔧", color: "orange", label: "Improvement" },
   };
 
   if (isSubmitted) {

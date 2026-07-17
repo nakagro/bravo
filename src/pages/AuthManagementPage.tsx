@@ -63,7 +63,7 @@ export default function AuthManagementPage() {
         return formatDate(timestamp);
     };
 
-    const getSessionHealthBadge = (sessionCount: number, refreshTokenCount: number) => {
+    const getSessionHealthBadge = (sessionCount: number) => {
         if (sessionCount === 0) {
             return (
                 <Badge variant="outline" className="text-xs">
@@ -424,7 +424,7 @@ export default function AuthManagementPage() {
                                             Admin
                                         </Badge>
                                     )}
-                                    {getSessionHealthBadge(authInfo.sessionCount, authInfo.refreshTokenCount)}
+                                    {getSessionHealthBadge(authInfo.sessionCount)}
                                 </div>
 
                                 {/* User Info */}

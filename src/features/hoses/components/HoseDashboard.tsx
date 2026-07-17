@@ -109,16 +109,6 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
     "Duraline": "bg-sky-600",
   };
 
-  // Location color map
-  const locationColors: Record<string, string> = {
-    "Station": "bg-slate-500",
-    "Pumper": "bg-red-500",
-    "Tanker": "bg-amber-500",
-    "FCV": "bg-emerald-500",
-    "Other": "bg-gray-400",
-    "Unknown": "bg-gray-300",
-  };
-
   return (
     <div className="space-y-6">
       {/* Attention Banner */}

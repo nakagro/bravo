@@ -163,29 +163,6 @@ export const deleteDutyCrew = mutation({
   },
 });
 
-// Helper function to get the nth Sunday of a month
-function getNthSundayOfMonth(year: number, month: number, n: number): Date {
-  const firstDay = new Date(year, month, 1);
-  const firstSunday = new Date(firstDay);
-  firstSunday.setDate(firstDay.getDate() + (7 - firstDay.getDay()) % 7);
-
-  // If n is 1 and the first day of the month is a Sunday, return the first day
-  if (n === 1 && firstDay.getDay() === 0) {
-    return firstDay;
-  }
-
-  // Otherwise, calculate the nth Sunday
-  const nthSunday = new Date(firstSunday);
-  nthSunday.setDate(firstSunday.getDate() + (n - 1) * 7);
-
-  // If the calculated date is in the next month, return null
-  if (nthSunday.getMonth() !== month) {
-    return new Date(0); // Invalid date
-  }
-
-  return nthSunday;
-}
-
 // Get the duty crew assigned to a specific date
 export const getDutyCrewForDate = query({
   args: {

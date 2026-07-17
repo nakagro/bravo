@@ -18,18 +18,6 @@ interface ExportOptions {
   groupedSections: GroupedSection[];
 }
 
-function formatDate(timestamp?: number): string {
-  if (!timestamp) return "N/A";
-  return new Date(timestamp).toLocaleDateString("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function formatDateCompact(timestamp?: number): string {
   if (!timestamp) return "N/A";
   return new Date(timestamp).toLocaleDateString("en-AU", {

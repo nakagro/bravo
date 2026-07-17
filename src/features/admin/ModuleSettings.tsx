@@ -117,11 +117,6 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
     });
   };
   
-  // Format timestamp
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
-  
   // Handle adding a new role
   const handleAddRole = async () => {
     if (!newRoleName.trim()) {

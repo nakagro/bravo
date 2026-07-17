@@ -112,8 +112,6 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [url, color, errorLevel]);
 
-  const getPngBlob = useCallback(() => svgToPngBlob(svgData ?? ''), [svgData]);
-
   const handleSave = useCallback(async () => {
     if (!svgData) return;
     setIsSaving(true);

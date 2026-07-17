@@ -14,13 +14,6 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
 
-// Helper to normalize a timestamp to midnight UTC of that day
-function normalizeToMidnight(timestamp: number): number {
-    const date = new Date(timestamp);
-    date.setUTCHours(0, 0, 0, 0);
-    return date.getTime();
-}
-
 // Helper to get the "intended" local date for AEDT timezone (+11 hours)
 // This converts UTC to AEDT and returns the date string
 function getIntendedDateKey(timestamp: number): string {

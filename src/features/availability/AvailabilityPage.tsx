@@ -119,19 +119,6 @@ function AvailabilityPage() {
     }
   };
   
-  // Handle duty officer change
-  const handleDutyOfficerChange = async (userId: string) => {
-    try {
-      // Using any to bypass TypeScript error since the API might accept dutyOfficerId
-      // but the type definition doesn't include it
-      await updateStatus({ status: userStatus?.currentStatus || "available - station", dutyOfficerId: userId } as any);
-    } catch (error) {
-      console.error("Error updating duty officer:", error);
-      toast.error("Duty officer change was NOT saved", {
-        description: "Check your connection and try again.",
-      });
-    }
-  };
   
   // Handle sending a message
   const handleSendMessage = async () => {
@@ -219,7 +206,6 @@ function AvailabilityPage() {
           <BrigadeTab
             statuses={statuses}
             dutyOfficer={dutyOfficer}
-            handleDutyOfficerChange={handleDutyOfficerChange}
           />
         )}
         
@@ -237,7 +223,7 @@ function AvailabilityPage() {
         )}
         
         {activeTab === 'deployment' && isAuthenticated && (
-          <DeploymentTab isAuthenticated={isAuthenticated} />
+          <DeploymentTab />
         )}
         
         {activeTab === 'admin' && isAuthenticated && hasAdminTabAccess && (

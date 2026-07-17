@@ -187,17 +187,6 @@ export function EquipmentAdminPanel() {
     }
   };
 
-  const handleToggleItemActive = async (itemId: Id<"equipmentItems">, currentlyActive: boolean) => {
-    try {
-      await updateItem({
-        itemId,
-        isActive: !currentlyActive,
-      });
-    } catch (error) {
-      console.error("Failed to toggle item:", error);
-    }
-  };
-
   if (!categories || !items) {
     return (
       <div className="flex items-center justify-center py-8">

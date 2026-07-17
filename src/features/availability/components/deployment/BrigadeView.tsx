@@ -322,7 +322,7 @@ function BrigadeView({
                                   </span>
                                 )}
                               </div>
-                              <DeploymentSkillBadges userId={user.userId as Id<"users">} skills={batchSkills?.[user.userId] || []} />
+                              <DeploymentSkillBadges skills={batchSkills?.[user.userId] || []} />
                             </div>
                           ))}
                         </div>
@@ -362,11 +362,10 @@ function BrigadeView({
 const DEPLOYMENT_SKILLS = ['DR', 'BAi', 'PC1', 'TC1'];
 
 interface DeploymentSkillBadgesProps {
-  userId: Id<"users">;
   skills: any[];
 }
 
-function DeploymentSkillBadges({ userId, skills }: DeploymentSkillBadgesProps) {
+function DeploymentSkillBadges({ skills }: DeploymentSkillBadgesProps) {
   // Filter to only show deployment-relevant skills
   const filtered = (skills || []).filter((s: any) => DEPLOYMENT_SKILLS.includes(s.code));
 

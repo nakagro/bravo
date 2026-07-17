@@ -12,7 +12,7 @@ auth.addHttpRoutes(http);
 http.route({
   path: "/calendar/events",
   method: "OPTIONS",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, _request) => {
     return new Response(null, {
       status: 200,
       headers: {
@@ -104,7 +104,7 @@ http.route({
 http.route({
   path: "/api/member-availability",
   method: "OPTIONS",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, _request) => {
     return new Response(null, {
       status: 200,
       headers: getCorsHeaders(),
@@ -209,7 +209,7 @@ http.route({
 http.route({
   path: "/api/test-auth",
   method: "OPTIONS",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, _request) => {
     return new Response(null, {
       status: 200,
       headers: getCorsHeaders(),
@@ -285,7 +285,7 @@ const VALID_NEXT_STATUSES = new Set([...VALID_STATUSES, "reset"]);
 http.route({
   path: "/api/shortcuts/availability",
   method: "OPTIONS",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async (_ctx, _request) => {
     return new Response(null, {
       status: 200,
       headers: getCorsHeaders(),

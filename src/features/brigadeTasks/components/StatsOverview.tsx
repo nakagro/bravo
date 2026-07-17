@@ -1,5 +1,4 @@
 import { Clock, TriangleAlert, Sparkles } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TaskCounts {
     myTasks: number;
@@ -14,11 +13,6 @@ interface StatsOverviewProps {
 }
 
 export function StatsOverview({ counts, activeFilter, onFilterChange }: StatsOverviewProps) {
-    const isMobile = useIsMobile();
-
-    // On mobile, show a more compact version if desired, or keep the grid
-    // The grid cols 3 works well even on mobile if the content is compact
-
     const StatCard = ({
         type,
         count,

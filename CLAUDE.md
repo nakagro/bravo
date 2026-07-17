@@ -19,6 +19,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/VITE_PLUS_EVALUATION.md`). The `vite` package is aliased to `@voidzero-dev/vite-plus-core` via an npm override. Formatting stays on Prettier.
 
+**Lint policy**: `vp lint` must stay at **zero warnings** (baseline established 2026-07-17). Warnings don't fail CI, so the baseline is enforced by convention — see `docs/LINTING.md` for how to resolve new warnings (underscore-prefix required signatures, `ignoreRestSiblings` covers destructure-to-omit, verify dead code with grep before deleting, flag unfinished-feature removals in the PR).
+
 ### Preview
 - `npm run preview:vps` - Build and preview VPS frontend locally
 

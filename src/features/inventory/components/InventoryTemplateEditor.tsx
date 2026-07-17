@@ -195,7 +195,7 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
 }
 
 // Component for adding new items to a section
-function AddItemDialog({ sectionId, onAdd }: { sectionId: string; onAdd: (name: string) => Promise<void> }) {
+function AddItemDialog({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -1235,7 +1235,6 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
                       <div className="pt-1 border-t border-dashed" />
                     )}
                     <AddItemDialog
-                      sectionId={section._id}
                       onAdd={(name) => handleAddItem(section._id, name)}
                     />
                   </div>

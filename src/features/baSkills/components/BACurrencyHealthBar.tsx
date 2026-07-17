@@ -84,7 +84,6 @@ export function BACurrencyHealthBar({
           if (count === 0) return null;
           const pct = (count / total) * 100;
           const meta = STATUS_META[status];
-          const isActive = activeFilter === status;
           const dim = activeFilter !== "all" && !statusMatchesFilter(status, activeFilter);
           return (
             <button

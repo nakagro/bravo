@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/card";
+import { CalDAVCalendar } from "../components/calendar/CalDAVCalendar";
 import { FireDangerRating } from "../components/dashboard/FireDangerRating";
 import { NAV_ITEMS } from "../config/navigation";
 
@@ -44,6 +45,14 @@ export function DashboardPage() {
 
       {/* Fire Danger Rating */}
       <FireDangerRating />
+
+      {/* Calendar Events */}
+      <CalDAVCalendar
+        calendarUrl="https://cal.grayhux.io/wydv/f892ab6b-44db-4f7d-2a79-9d87036546a8/"
+        maxEvents={5}
+        username={import.meta.env.VITE_CALDAV_USERNAME}
+        password={import.meta.env.VITE_CALDAV_PASSWORD}
+      />
 
       {/* Modules Section */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">

@@ -2,7 +2,6 @@ import React from 'react';
 import { useQuery } from "convex/react";
 import { Link } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
 import { getRelativeTimeCompact } from "../../../utils/dateUtils";
 import { ChevronRight } from "lucide-react";
 import SkillBadge from "./brigadetab/SkillBadge";
@@ -11,13 +10,11 @@ import ApplianceLocations from "./brigadetab/ApplianceLocations";
 interface BrigadeTabProps {
   statuses: any[];
   dutyOfficer: any;
-  handleDutyOfficerChange: (userId: string) => void;
 }
 
 function BrigadeTab({
   statuses,
-  dutyOfficer,
-  handleDutyOfficerChange
+  dutyOfficer
 }: BrigadeTabProps) {
   // Duty crew for this week
   const upcomingAssignments = useQuery(api.dutyCrew.getUpcomingDutyCrewAssignments, { count: 1 });
@@ -216,7 +213,7 @@ function BrigadeTab({
                             )}
                           </div>
                           <div className="mt-0.5">
-                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                            <UserSkillsInline skills={batchSkills?.[user._id] || []} />
                           </div>
                         </div>
                       ))}
@@ -254,7 +251,7 @@ function BrigadeTab({
                             )}
                           </div>
                           <div className="mt-0.5">
-                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                            <UserSkillsInline skills={batchSkills?.[user._id] || []} />
                           </div>
                         </div>
                       ))}
@@ -313,7 +310,7 @@ function BrigadeTab({
                             )}
                           </div>
                           <div className="mt-0.5">
-                            <UserSkillsInline userId={user._id} skills={batchSkills?.[user._id] || []} />
+                            <UserSkillsInline skills={batchSkills?.[user._id] || []} />
                           </div>
                         </div>
                       ))}
@@ -335,11 +332,10 @@ function BrigadeTab({
 
 // Compact inline skills renderer - now receives skills as props instead of querying
 interface UserSkillsInlineProps {
-  userId: Id<"users">;
   skills: any[];
 }
 
-function UserSkillsInline({ userId, skills }: UserSkillsInlineProps) {
+function UserSkillsInline({ skills }: UserSkillsInlineProps) {
   // Hide the special NONE skill from badges
   const filtered = (skills || []).filter((s: any) => s.code !== "NONE");
 
@@ -348,46 +344,6 @@ function UserSkillsInline({ userId, skills }: UserSkillsInlineProps) {
       {filtered.map((skill) => (
         <SkillBadge key={skill._id} code={skill.code} name={skill.name} size="sm" />
       ))}
-    </div>
-  );
-}
-
-// Skill counters for crew viability (DR and BAi)
-interface SkillCountersProps {
-  userIds: Id<"users">[];
-  textColor: string;
-}
-
-function SkillCounters({ userIds, textColor }: SkillCountersProps) {
-  // Query skills for all users in this group
-  const allUserSkills = userIds.map(userId => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const skills = useQuery(api.skills.getUserSkills, { userId });
-    return { userId, skills };
-  });
-
-  // Count users with DR (Driver) skill
-  const drCount = allUserSkills.filter(({ skills }) => 
-    skills?.some(skill => skill.code === 'DR')
-  ).length;
-
-  // Count users with BAi (Breathing Apparatus Internal) skill
-  const baiCount = allUserSkills.filter(({ skills }) => 
-    skills?.some(skill => skill.code === 'BAi')
-  ).length;
-
-  // Determine if counts meet requirements (1 DR, 2 BAi)
-  const drMet = drCount >= 1;
-  const baiMet = baiCount >= 2;
-
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className={`font-medium ${drMet ? textColor : 'text-gray-500 dark:text-gray-400'}`}>
-        DR ({drCount}/1)
-      </span>
-      <span className={`font-medium ${baiMet ? textColor : 'text-gray-500 dark:text-gray-400'}`}>
-        BAi ({baiCount}/2)
-      </span>
     </div>
   );
 }

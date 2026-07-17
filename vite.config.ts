@@ -14,7 +14,11 @@ export default defineConfig({
     rules: {
       "no-unused-vars": [
         "warn",
-        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
+        {
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
       ],
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",

@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const getToken = query({
     args: {},
     returns: v.union(v.string(), v.null()),
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) {
             return null;
@@ -23,7 +23,7 @@ export const getToken = query({
 export const generateToken = mutation({
     args: {},
     returns: v.string(),
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) {
             throw new Error("You must be signed in to generate a shortcut token");
@@ -55,7 +55,7 @@ export const generateToken = mutation({
 export const revokeToken = mutation({
     args: {},
     returns: v.null(),
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) {
             throw new Error("You must be signed in to revoke your shortcut token");

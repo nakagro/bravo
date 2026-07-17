@@ -141,31 +141,6 @@ export function CalDAVCalendar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarUrl, maxEvents, username, password]);
 
-  const formatEventDate = (event: CalendarEvent) => {
-    const now = new Date();
-    const today = startOfDay(now);
-    const tomorrow = startOfDay(addDays(today, 1));
-    const eventDate = startOfDay(event.start);
-    
-    if (event.allDay) {
-      if (eventDate.getTime() === today.getTime()) {
-        return 'Today';
-      } else if (eventDate.getTime() === tomorrow.getTime()) {
-        return 'Tomorrow';
-      } else {
-        return format(event.start, 'MMM d');
-      }
-    }
-    
-    if (eventDate.getTime() === today.getTime()) {
-      return format(event.start, 'HH:mm');
-    } else if (eventDate.getTime() === tomorrow.getTime()) {
-      return `Tomorrow ${format(event.start, 'HH:mm')}`;
-    } else {
-      return format(event.start, 'MMM d, HH:mm');
-    }
-  };
-
   const formatEventDateShort = (event: CalendarEvent) => {
     const now = new Date();
     const today = startOfDay(now);
@@ -179,23 +154,6 @@ export function CalDAVCalendar({
     } else {
       return format(event.start, 'EEE MMM d');
     }
-  };
-
-  const formatDuration = (event: CalendarEvent) => {
-    if (event.allDay) return null;
-    
-    const duration = event.end.getTime() - event.start.getTime();
-    const hours = Math.floor(duration / (1000 * 60 * 60));
-    const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0 && minutes > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h`;
-    } else if (minutes > 0) {
-      return `${minutes}m`;
-    }
-    return null;
   };
 
   if (loading) {

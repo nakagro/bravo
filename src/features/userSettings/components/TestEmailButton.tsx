@@ -17,7 +17,7 @@ export function TestEmailButton({ userEmail, userName }: TestEmailButtonProps) {
   const handleSendTestEmail = async () => {
     setIsSending(true);
     try {
-      const result = await sendTestEmail({
+      await sendTestEmail({
         to: userEmail,
         userName: userName,
       });

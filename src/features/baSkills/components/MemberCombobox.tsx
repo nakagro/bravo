@@ -35,8 +35,6 @@ export function MemberCombobox({
 }: MemberComboboxProps) {
   const [query, setQuery] = useState("");
 
-  const selected = value ? options.find((o) => o._id === value) ?? null : null;
-
   const filtered =
     query === ""
       ? options

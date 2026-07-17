@@ -16,13 +16,8 @@ function getUTCDateKey(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-interface DeploymentTabProps {
-  isAuthenticated: boolean;
-}
-
-function DeploymentTab({ isAuthenticated }: DeploymentTabProps) {
+function DeploymentTab() {
   // State for deployment availability
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
   const [deploymentAvailability, setDeploymentAvailability] = useState<{ [key: string]: { notAvailable: boolean, local: boolean, shortHaul: boolean, longHaul: boolean, message?: string } }>({});
 
@@ -47,7 +42,6 @@ function DeploymentTab({ isAuthenticated }: DeploymentTabProps) {
     }
 
     setDeploymentDates(dates);
-    setSelectedDate(today); // Default to today
   }, []);
 
   // Fetch current user's deployment availability when dates are set
