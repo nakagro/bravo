@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAction, useQuery } from "convex/react";
 import {
+  addDays,
   addMonths,
+  endOfMonth,
+  endOfWeek,
   format,
-  isSameDay,
-  isSameMonth,
   isValid,
   parseISO,
   startOfMonth,
+  startOfWeek,
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -26,9 +28,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useCalendarEvents } from "@/features/calendar/hooks/useCalendarEvents";
 import type { CalendarEvent } from "@/features/calendar/lib/parseIcs";
+import {
+  fromBookings,
+  fromBrigadeEvents,
+  fromIcsEvents,
+  groupItemsByDay,
+  type CalendarItem,
+} from "@/features/calendar/lib/calendarItems";
 import { MonthGrid } from "@/features/calendar/components/MonthGrid";
 import { DayAgenda } from "@/features/calendar/components/DayAgenda";
-import { EventDetailSheet } from "@/features/calendar/components/EventDetailSheet";
+import { ItemDetailSheet } from "@/features/calendar/components/ItemDetailSheet";
 import { EventFormModal } from "@/features/calendar/components/EventFormModal";
 
 function parseDateParam(value: string | null): Date | null {
@@ -45,9 +54,8 @@ export function CalendarPage() {
     () => parseDateParam(searchParams.get("date")) ?? new Date(),
   );
   const [month, setMonth] = useState<Date>(() => startOfMonth(selectedDate));
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null,
-  );
+  const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
+  const agendaRef = useRef<HTMLDivElement>(null);
 
   const canWrite = useQuery(api.calendarWrite.canWriteCalendar) === true;
   const deleteEvent = useAction(api.calendarWrite.deleteEvent);
@@ -56,19 +64,52 @@ export function CalendarPage() {
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // The Events and Bookings modules overlay onto the calendar for members
+  // who can access them
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
+  const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+  const brigadeEvents = useQuery(
+    api.events.getUpcomingEvents,
+    moduleAccess?.events === true
+      ? // Reach back a month so multi-day events spanning into the grid appear
+        { fromDate: format(addDays(gridStart, -31), "yyyy-MM-dd") }
+      : "skip",
+  );
+  const bookings = useQuery(
+    api.bookings.getBookingsForDateRange,
+    moduleAccess?.bookings === true
+      ? {
+          startDate: format(gridStart, "yyyy-MM-dd"),
+          endDate: format(gridEnd, "yyyy-MM-dd"),
+        }
+      : "skip",
+  );
+
+  const itemsByDay = useMemo(
+    () =>
+      groupItemsByDay([
+        ...fromIcsEvents(events),
+        ...fromBrigadeEvents(brigadeEvents ?? []),
+        ...fromBookings(bookings ?? []),
+      ]),
+    [events, brigadeEvents, bookings],
+  );
+  const dayItems = itemsByDay.get(format(selectedDate, "yyyy-MM-dd")) ?? [];
+
   const openCreateForm = () => {
     setEditingEvent(null);
     setFormOpen(true);
   };
 
   const openEditForm = (event: CalendarEvent) => {
-    setSelectedEvent(null);
+    setSelectedItem(null);
     setEditingEvent(event);
     setFormOpen(true);
   };
 
   const requestDelete = (event: CalendarEvent) => {
-    setSelectedEvent(null);
+    setSelectedItem(null);
     setDeleteTarget(event);
   };
 
@@ -90,24 +131,24 @@ export function CalendarPage() {
     }
   };
 
-  const selectDate = (date: Date) => {
+  const selectDate = (date: Date, opts?: { reveal?: boolean }) => {
     setSelectedDate(date);
     setMonth(startOfMonth(date));
     setSearchParams({ date: format(date, "yyyy-MM-dd") }, { replace: true });
+    // On mobile the agenda sits below the grid; bring it into view when a
+    // day is picked directly
+    if (opts?.reveal && !window.matchMedia("(min-width: 1024px)").matches) {
+      requestAnimationFrame(() =>
+        agendaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    }
   };
 
+  // Keep the selected day-of-month when browsing months (clamped to shorter
+  // months by date-fns)
   const changeMonth = (delta: number) => {
-    const nextMonth = addMonths(month, delta);
-    // Landing back on the current month re-selects today; other months
-    // select the 1st so the agenda always matches the visible grid
-    selectDate(
-      isSameMonth(nextMonth, new Date()) ? new Date() : startOfMonth(nextMonth),
-    );
+    selectDate(addMonths(selectedDate, delta));
   };
-
-  const dayEvents = events.filter((event) =>
-    isSameDay(event.start, selectedDate),
-  );
 
   return (
     <div className="space-y-4" data-component="CalendarPage">
@@ -115,13 +156,16 @@ export function CalendarPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Calendar
         </h1>
-        <div className="flex items-center gap-1.5">
-          {canWrite && (
-            <Button onClick={openCreateForm} className="mr-1">
-              <Plus className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Add event</span>
-            </Button>
-          )}
+        {canWrite && (
+          <Button onClick={openCreateForm}>
+            <Plus className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Add event</span>
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center">
           <Button
             variant="outline"
             size="icon"
@@ -130,13 +174,12 @@ export function CalendarPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => selectDate(new Date())}
-            className="px-3"
+          <h2
+            className="w-40 text-center text-lg font-semibold text-gray-800 dark:text-gray-200"
+            aria-live="polite"
           >
-            Today
-          </Button>
+            {format(month, "MMMM yyyy")}
+          </h2>
           <Button
             variant="outline"
             size="icon"
@@ -146,11 +189,14 @@ export function CalendarPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => selectDate(new Date())}
+          className="px-3"
+        >
+          Today
+        </Button>
       </div>
-
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-        {format(month, "MMMM yyyy")}
-      </h2>
 
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -178,27 +224,30 @@ export function CalendarPage() {
           <div className="rounded-lg bg-white p-3 shadow-sm transition-colors dark:bg-gray-800">
             <MonthGrid
               month={month}
-              events={events}
+              itemsByDay={itemsByDay}
               selectedDate={selectedDate}
-              onSelectDate={selectDate}
-              onSelectEvent={setSelectedEvent}
+              onSelectDate={(date) => selectDate(date, { reveal: true })}
+              onSelectItem={setSelectedItem}
               onMonthChange={changeMonth}
             />
           </div>
 
-          <div className="mt-4 rounded-lg bg-white p-3 shadow-sm transition-colors dark:bg-gray-800 lg:mt-0 lg:self-start">
+          <div
+            ref={agendaRef}
+            className="mt-4 rounded-lg bg-white p-3 shadow-sm transition-colors dark:bg-gray-800 lg:mt-0 lg:self-start"
+          >
             <DayAgenda
               date={selectedDate}
-              events={dayEvents}
-              onSelectEvent={setSelectedEvent}
+              items={dayItems}
+              onSelectItem={setSelectedItem}
             />
           </div>
         </div>
       )}
 
-      <EventDetailSheet
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
+      <ItemDetailSheet
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
         canWrite={canWrite}
         onEdit={openEditForm}
         onDelete={requestDelete}
@@ -234,7 +283,7 @@ export function CalendarPage() {
                 e.preventDefault();
                 void confirmDelete();
               }}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>

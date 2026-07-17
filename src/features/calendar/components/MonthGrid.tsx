@@ -10,7 +10,11 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import type { CalendarEvent } from "../lib/parseIcs";
+import {
+  itemChipClasses,
+  itemDotClass,
+  type CalendarItem,
+} from "../lib/calendarItems";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MAX_CHIPS = 3;
@@ -20,19 +24,20 @@ const SWIPE_THRESHOLD_PX = 48;
 interface MonthGridProps {
   /** Any date inside the displayed month */
   month: Date;
-  events: CalendarEvent[];
+  /** Items keyed by yyyy-MM-dd, multi-day items present under every covered day */
+  itemsByDay: Map<string, CalendarItem[]>;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  onSelectEvent: (event: CalendarEvent) => void;
+  onSelectItem: (item: CalendarItem) => void;
   onMonthChange: (delta: number) => void;
 }
 
 export function MonthGrid({
   month,
-  events,
+  itemsByDay,
   selectedDate,
   onSelectDate,
-  onSelectEvent,
+  onSelectItem,
   onMonthChange,
 }: MonthGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -46,20 +51,6 @@ export function MonthGrid({
       }),
     [month],
   );
-
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarEvent[]>();
-    for (const event of events) {
-      const key = format(event.start, "yyyy-MM-dd");
-      const list = map.get(key);
-      if (list) {
-        list.push(event);
-      } else {
-        map.set(key, [event]);
-      }
-    }
-    return map;
-  }, [events]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const cell = (e.target as HTMLElement).closest<HTMLElement>("[data-day-idx]");
@@ -121,12 +112,14 @@ export function MonthGrid({
 
       <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
         {days.map((day, idx) => {
-          const dayEvents = eventsByDay.get(format(day, "yyyy-MM-dd")) ?? [];
+          const dayItems = itemsByDay.get(format(day, "yyyy-MM-dd")) ?? [];
           const inMonth = isSameMonth(day, month);
           const selected = isSameDay(day, selectedDate);
-          const overflow = dayEvents.length - MAX_CHIPS;
+          const overflow = dayItems.length - MAX_CHIPS;
 
           return (
+            // Clicks on the inner controls bubble here; the cell button below
+            // carries the keyboard/AT semantics
             <div
               key={day.getTime()}
               data-day-idx={idx}
@@ -142,10 +135,9 @@ export function MonthGrid({
               }`}
             >
               <button
-                onClick={() => onSelectDate(day)}
                 aria-label={`${format(day, "EEEE d MMMM yyyy")}${
-                  dayEvents.length > 0
-                    ? `, ${dayEvents.length} event${dayEvents.length > 1 ? "s" : ""}`
+                  dayItems.length > 0
+                    ? `, ${dayItems.length} item${dayItems.length > 1 ? "s" : ""}`
                     : ""
                 }`}
                 aria-pressed={selected}
@@ -165,16 +157,14 @@ export function MonthGrid({
                   {format(day, "d")}
                 </span>
 
-                {/* Mobile: event dots */}
-                {dayEvents.length > 0 && (
+                {/* Mobile: item dots */}
+                {dayItems.length > 0 && (
                   <span className="flex gap-0.5 md:hidden" aria-hidden="true">
-                    {dayEvents.slice(0, MAX_DOTS).map((event) => (
+                    {dayItems.slice(0, MAX_DOTS).map((item) => (
                       <span
-                        key={event.uid}
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          inMonth
-                            ? "bg-purple-500"
-                            : "bg-purple-500/40"
+                        key={item.key}
+                        className={`h-1.5 w-1.5 rounded-full ${itemDotClass(item)} ${
+                          inMonth ? "" : "opacity-40"
                         }`}
                       />
                     ))}
@@ -182,41 +172,33 @@ export function MonthGrid({
                 )}
               </button>
 
-              {/* Desktop: event chips */}
-              {dayEvents.length > 0 && (
+              {/* Desktop: item chips */}
+              {dayItems.length > 0 && (
                 <div className="hidden flex-col gap-0.5 px-1 pb-1 md:flex">
-                  {dayEvents.slice(0, MAX_CHIPS).map((event) => (
+                  {dayItems.slice(0, MAX_CHIPS).map((item) => (
                     <button
-                      key={event.uid}
+                      key={item.key}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSelectEvent(event);
+                        onSelectItem(item);
                       }}
-                      title={event.summary}
-                      className={`w-full truncate rounded px-1 py-0.5 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-purple-500 ${
-                        event.allDay
-                          ? "bg-purple-600 text-white hover:bg-purple-700"
-                          : "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:hover:bg-purple-900/60"
-                      } ${inMonth ? "" : "opacity-50"}`}
+                      title={item.title}
+                      className={`w-full truncate rounded px-1 py-0.5 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-purple-500 ${itemChipClasses(
+                        item,
+                      )} ${inMonth ? "" : "opacity-50"}`}
                     >
-                      {!event.allDay && (
+                      {!item.allDay && isSameDay(item.start, day) && (
                         <span className="font-medium">
-                          {format(event.start, "HH:mm")}{" "}
+                          {format(item.start, "HH:mm")}{" "}
                         </span>
                       )}
-                      {event.summary}
+                      {item.title}
                     </button>
                   ))}
                   {overflow > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectDate(day);
-                      }}
-                      className="w-full rounded px-1 py-0.5 text-left text-xs text-muted-foreground hover:bg-accent"
-                    >
+                    <div className="w-full rounded px-1 py-0.5 text-left text-xs text-muted-foreground">
                       +{overflow} more
-                    </button>
+                    </div>
                   )}
                 </div>
               )}
