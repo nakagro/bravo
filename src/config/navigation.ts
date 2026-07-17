@@ -12,6 +12,7 @@ import {
   Link2,
   Calendar,
   CalendarCheck,
+  CalendarRange,
   BellRing,
 } from "lucide-react";
 import { FaMaskVentilator } from "react-icons/fa6";
@@ -198,6 +199,22 @@ export const NAV_ITEMS: NavItem[] = [
       bg: "bg-indigo-100 dark:bg-indigo-900/20",
       bgHover: "group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40",
       fg: "text-indigo-600 dark:text-indigo-400",
+    },
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    path: "/calendar",
+    icon: CalendarRange,
+    group: "brigade",
+    // No calendar module id exists yet in convex/modules.ts; the underlying
+    // events are already visible to every authenticated user via the
+    // dashboard widget. Gate properly with the next backend deploy.
+    alwaysVisible: true,
+    color: {
+      bg: "bg-purple-100 dark:bg-purple-900/20",
+      bgHover: "group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40",
+      fg: "text-purple-600 dark:text-purple-400",
     },
   },
   {

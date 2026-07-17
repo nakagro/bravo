@@ -32,6 +32,7 @@ const InventoryPage = lazy(() => import("./pages/InventoryPage").then((m) => ({ 
 const InventoryChecksTab = lazy(() => import("./features/inventory/pages/InventoryChecksTab").then((m) => ({ default: m.InventoryChecksTab })));
 const InventoryTemplateTab = lazy(() => import("./features/inventory/pages/InventoryTemplateTab").then((m) => ({ default: m.InventoryTemplateTab })));
 const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ default: m.BookingsPage })));
+const CalendarPage = lazy(() => import("./pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage").then((m) => ({ default: m.EventDetailPage })));
 const ActionsPage = lazy(() => import("./pages/ActionsPage").then((m) => ({ default: m.ActionsPage })));
@@ -319,6 +320,9 @@ function AuthenticatedApp() {
               <AuthManagementPage />
             </ProtectedRoute>
           } />
+          {/* Calendar is alwaysVisible (no module gate) — matches the dashboard
+              events widget, which every authenticated user already sees */}
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/extras" element={<ExtrasPage />} />
           <Route path="/contacts" element={<ContactDirectoryPage />} />

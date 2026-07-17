@@ -1,8 +1,9 @@
 import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
+import { env, httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
+import { fetchCalendarData } from "./calendarProxy";
 
 const http = httpRouter();
 
@@ -18,7 +19,8 @@ http.route({
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization, X-Requested-With",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Accept, Authorization, X-Requested-With",
         "Access-Control-Max-Age": "86400",
       },
     });
@@ -29,46 +31,13 @@ http.route({
 http.route({
   path: "/calendar/events",
   method: "GET",
-  handler: httpAction(async (ctx, request) => {
+  handler: httpAction(async () => {
     try {
-      // Extract calendar URL and auth parameters from query parameters
-      const url = new URL(request.url);
-      const calendarUrl = url.searchParams.get("url");
-      const username = url.searchParams.get("username");
-      const password = url.searchParams.get("password");
-
-      if (!calendarUrl) {
-        return new Response(
-          JSON.stringify({ error: "Missing calendar URL parameter" }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" }
-          }
-        );
-      }
-
-      // Prepare headers for the CalDAV request
-      const headers: Record<string, string> = {
-        'Accept': 'text/calendar',
-        'User-Agent': 'Brigade-Management-System/1.0'
-      };
-
-      // Add Basic Authentication if credentials are provided
-      if (username && password) {
-        const credentials = btoa(`${username}:${password}`);
-        headers['Authorization'] = `Basic ${credentials}`;
-      }
-
-      // Fetch the ICS data from the CalDAV server
-      const response = await fetch(calendarUrl, {
-        headers,
+      const icsData = await fetchCalendarData({
+        calendarUrl: env.CALDAV_URL,
+        username: env.CALDAV_USERNAME,
+        password: env.CALDAV_PASSWORD,
       });
-
-      if (!response.ok) {
-        throw new Error(`Calendar server responded with ${response.status}: ${response.statusText}`);
-      }
-
-      const icsData = await response.text();
 
       // Return the ICS data with proper CORS headers
       return new Response(icsData, {
@@ -80,21 +49,20 @@ http.route({
           "Access-Control-Allow-Headers": "Content-Type",
         },
       });
-
     } catch (error) {
       console.error("Error fetching calendar data:", error);
       return new Response(
         JSON.stringify({
           error: "Failed to fetch calendar data",
-          details: error instanceof Error ? error.message : "Unknown error"
+          details: error instanceof Error ? error.message : "Unknown error",
         }),
         {
           status: 500,
           headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-          }
-        }
+            "Access-Control-Allow-Origin": "*",
+          },
+        },
       );
     }
   }),
@@ -123,17 +91,22 @@ http.route({
     const authResult = validateApiKey(request);
 
     if (!authResult.isValid) {
-      console.log("[INFO] [GET /api/member-availability] Unauthorized request - invalid API key");
+      console.log(
+        "[INFO] [GET /api/member-availability] Unauthorized request - invalid API key",
+      );
       return authResult.errorResponse!;
     }
 
     // Get optional client identifier from header or query param
     const url = new URL(request.url);
-    const clientId = request.headers.get("X-Client-Id")
-      || url.searchParams.get("client")
-      || "unknown-client";
+    const clientId =
+      request.headers.get("X-Client-Id") ||
+      url.searchParams.get("client") ||
+      "unknown-client";
 
-    console.log(`[INFO] [GET /api/member-availability] [${clientId}] Request received`);
+    console.log(
+      `[INFO] [GET /api/member-availability] [${clientId}] Request received`,
+    );
 
     try {
       // Get all users
@@ -141,11 +114,13 @@ http.route({
 
       // Get all user IDs for batch skills query
       const userIds = users
-        .filter(user => user.firstName && user.lastName)
-        .map(user => user._id);
+        .filter((user) => user.firstName && user.lastName)
+        .map((user) => user._id);
 
       // Fetch all skills in ONE batch query (avoids N+1 problem)
-      const batchSkills = await ctx.runQuery(api.skills.getBatchUserSkills, { userIds });
+      const batchSkills = await ctx.runQuery(api.skills.getBatchUserSkills, {
+        userIds,
+      });
 
       // Build response array
       const memberAvailability = [];
@@ -181,21 +156,20 @@ http.route({
           ...getCorsHeaders(),
         },
       });
-
     } catch (error) {
       console.error("Error fetching member availability:", error);
       return new Response(
         JSON.stringify({
           error: "Failed to fetch member availability",
-          details: error instanceof Error ? error.message : "Unknown error"
+          details: error instanceof Error ? error.message : "Unknown error",
         }),
         {
           status: 500,
           headers: {
             "Content-Type": "application/json",
             ...getCorsHeaders(),
-          }
-        }
+          },
+        },
       );
     }
   }),
@@ -246,21 +220,20 @@ http.route({
           ...getCorsHeaders(),
         },
       });
-
     } catch (error) {
       console.error("Error in test endpoint:", error);
       return new Response(
         JSON.stringify({
           error: "Internal server error",
-          details: error instanceof Error ? error.message : "Unknown error"
+          details: error instanceof Error ? error.message : "Unknown error",
         }),
         {
           status: 500,
           headers: {
             "Content-Type": "application/json",
             ...getCorsHeaders(),
-          }
-        }
+          },
+        },
       );
     }
   }),
@@ -305,7 +278,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
       if (contentType.includes("application/json")) {
         try {
           body = await request.json();
-        } catch  {
+        } catch {
           // Ignore malformed JSON, fall back to query params
         }
       }
@@ -314,7 +287,10 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
     const token = body.token || url.searchParams.get("token");
     const status = body.status || url.searchParams.get("status");
 
-    let durationHours = body.durationHours !== undefined ? body.durationHours : url.searchParams.get("durationHours");
+    let durationHours =
+      body.durationHours !== undefined
+        ? body.durationHours
+        : url.searchParams.get("durationHours");
     if (typeof durationHours === "string" && durationHours) {
       durationHours = parseFloat(durationHours);
     }
@@ -322,7 +298,8 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
       durationHours = undefined;
     }
 
-    let nextStatus: string | undefined = body.nextStatus || url.searchParams.get("nextStatus") || undefined;
+    let nextStatus: string | undefined =
+      body.nextStatus || url.searchParams.get("nextStatus") || undefined;
 
     // --- Input validation ---
     if (!token) {
@@ -341,7 +318,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-        }
+        },
       );
     }
 
@@ -354,7 +331,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-        }
+        },
       );
     }
 
@@ -367,7 +344,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-        }
+        },
       );
     }
 
@@ -379,7 +356,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-        }
+        },
       );
     }
 
@@ -391,7 +368,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
     // --- Token verification ---
     const userId = await ctx.runMutation(
       internal.shortcuts.verifyTokenAndGetUser,
-      { token }
+      { token },
     );
 
     if (!userId) {
@@ -400,13 +377,20 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         {
           status: 401,
           headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-        }
+        },
       );
     }
 
     // --- Update status ---
     // Safe to cast: both status and nextStatus have been validated above
-    type Status = "available - station" | "available - at station" | "available - satellite" | "not available" | "delayed response" | "WFH" | "WFH - at station";
+    type Status =
+      | "available - station"
+      | "available - at station"
+      | "available - satellite"
+      | "not available"
+      | "delayed response"
+      | "WFH"
+      | "WFH - at station";
     type NextStatus = Status | "reset";
 
     const result = await ctx.runMutation(
@@ -416,7 +400,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
         status: status as Status,
         durationHours,
         nextStatus: nextStatus as NextStatus | undefined,
-      }
+      },
     );
 
     return new Response(
@@ -432,7 +416,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-      }
+      },
     );
   } catch (error) {
     console.error("Error in shortcuts endpoint:", error);
@@ -444,7 +428,7 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...getCorsHeaders() },
-      }
+      },
     );
   }
 });
