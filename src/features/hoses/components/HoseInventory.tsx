@@ -16,7 +16,7 @@ import {
   OverdueFilter,
   HoseFilterType,
   TapeColor,
-  tapeColorSwatchClasses,
+  getTapeColorStyle,
 } from "../types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -412,9 +412,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
             >
               {tapeColor && (
                 <div
-                  className={`absolute -right-9 top-3 w-32 rotate-45 ${tapeColorSwatchClasses[tapeColor]}`}
-                  style={{ height: "14px" }}
-                  title={`Test tape: ${tapeColor}`}
+                  className="absolute -right-9 top-3 h-3.5 w-32 rotate-45"
+                  style={getTapeColorStyle(tapeColor)}
+                  title="Test tape"
                 />
               )}
               <CardContent className="p-4">

@@ -5,7 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { formatDistanceToNow } from "date-fns";
 import { HoseComments } from "./HoseComments";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { statusColors, tapeColorSwatchClasses, TapeColor } from "../types";
+import { getTapeColorStyle, statusColors, TapeColor } from "../types";
 
 import {
   Sheet,
@@ -93,20 +93,18 @@ export function HoseDetailPanel({
               className="flex flex-col items-center flex-shrink-0"
               title={
                 tapeColor
-                  ? `Test tape: ${tapeColor} (${testYear})`
+                  ? `Test tape (${testYear})`
                   : `No test tape colour set for ${testYear}`
               }
             >
               <span
                 className={`inline-block h-8 w-20 rounded-sm shadow-sm ${
                   tapeColor
-                    ? tapeColorSwatchClasses[tapeColor]
-                    : "border-2 border-dashed border-gray-300 dark:border-gray-600"
+                    ? "border border-border"
+                    : "border-2 border-dashed border-border"
                 }`}
+                style={tapeColor ? getTapeColorStyle(tapeColor) : undefined}
               />
-              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 mt-1">
-                {tapeColor ?? "No tape set"}
-              </span>
             </div>
           )}
         </div>

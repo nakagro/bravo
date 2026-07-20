@@ -1,6 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
+import {
+  legacyTapeColorValidator,
+  tapeColorValidator,
+} from "./lib/tapeColors";
 
 // We need to keep all the original auth fields and add our custom ones
 const extendedAuthTables = {
@@ -223,20 +227,10 @@ const applicationTables = {
   // Maps a test year to the electrical tape colour used on hose couplings that year
   hoseTapeColors: defineTable({
     year: v.number(),
-    color: v.union(
-      v.literal("Red"),
-      v.literal("Blue"),
-      v.literal("Yellow"),
-      v.literal("Green"),
-      v.literal("White"),
-      v.literal("Black"),
-      v.literal("Orange"),
-      v.literal("Purple"),
-      v.literal("Brown"),
-      v.literal("Grey"),
-      v.literal("Pink"),
-      v.literal("Green/Gold Stripe")
-    ),
+    // Deprecated after the custom palette migration; retained while existing
+    // named-colour records are converted.
+    color: v.optional(legacyTapeColorValidator),
+    tapeColor: v.optional(tapeColorValidator),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   }).index("by_year", ["year"]),
