@@ -15,6 +15,8 @@ import {
   UpcomingTestFilter,
   OverdueFilter,
   HoseFilterType,
+  TapeColor,
+  tapeColorSwatchClasses,
 } from "../types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -125,6 +127,15 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     location: filters.location || undefined,
     search: searchTerm || undefined,
   });
+
+  const tapeColors = useQuery(api.hoseTapeColors.list);
+  const tapeColorForTestDate = useCallback(
+    (testDate: number): TapeColor | null => {
+      const year = new Date(testDate).getFullYear();
+      return tapeColors?.find((m) => m.year === year)?.color ?? null;
+    },
+    [tapeColors]
+  );
 
   const handleSort = (field: SortField) => {
     setSortConfig(prev => {
@@ -391,12 +402,21 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {sortedHoses.map((hose) => (
+          {sortedHoses.map((hose) => {
+            const tapeColor = tapeColorForTestDate(hose.testDate);
+            return (
             <Card
               key={hose._id}
-              className={`cursor-pointer hover:shadow-md transition-all rounded-none border-l-4 ${statusBorderColors[hose.status]}`}
+              className={`relative overflow-hidden cursor-pointer hover:shadow-md transition-all rounded-none border-l-4 ${statusBorderColors[hose.status]}`}
               onClick={() => setViewingHose(hose._id)}
             >
+              {tapeColor && (
+                <div
+                  className={`absolute -right-9 top-3 w-32 rotate-45 ${tapeColorSwatchClasses[tapeColor]}`}
+                  style={{ height: "14px" }}
+                  title={`Test tape: ${tapeColor}`}
+                />
+              )}
               <CardContent className="p-4">
                 {/* Header: ID and status */}
                 <div className="flex items-start justify-between mb-3">
@@ -430,7 +450,8 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">

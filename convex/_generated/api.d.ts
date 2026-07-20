@@ -45,6 +45,7 @@ import type * as hoseAuditTrail from "../hoseAuditTrail.js";
 import type * as hoseComments from "../hoseComments.js";
 import type * as hoseDashboard from "../hoseDashboard.js";
 import type * as hoseStatusSync from "../hoseStatusSync.js";
+import type * as hoseTapeColors from "../hoseTapeColors.js";
 import type * as hoses from "../hoses.js";
 import type * as http from "../http.js";
 import type * as inventoryCheckRuns from "../inventoryCheckRuns.js";
@@ -123,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   hoseComments: typeof hoseComments;
   hoseDashboard: typeof hoseDashboard;
   hoseStatusSync: typeof hoseStatusSync;
+  hoseTapeColors: typeof hoseTapeColors;
   hoses: typeof hoses;
   http: typeof http;
   inventoryCheckRuns: typeof inventoryCheckRuns;

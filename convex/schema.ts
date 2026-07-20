@@ -220,6 +220,27 @@ const applicationTables = {
     .index("by_hose", ["hoseId"])
     .index("by_timestamp", ["timestamp"]),
 
+  // Maps a test year to the electrical tape colour used on hose couplings that year
+  hoseTapeColors: defineTable({
+    year: v.number(),
+    color: v.union(
+      v.literal("Red"),
+      v.literal("Blue"),
+      v.literal("Yellow"),
+      v.literal("Green"),
+      v.literal("White"),
+      v.literal("Black"),
+      v.literal("Orange"),
+      v.literal("Purple"),
+      v.literal("Brown"),
+      v.literal("Grey"),
+      v.literal("Pink"),
+      v.literal("Green/Gold Stripe")
+    ),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_year", ["year"]),
+
   // Keys table for managing protected premises keys
   keys: defineTable({
     pegNumber: v.string(), // Unique identifier for the peg

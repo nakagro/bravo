@@ -4,6 +4,7 @@ import { HoseDashboard } from "../features/hoses/components/HoseDashboard";
 import { HoseInventory } from "../features/hoses/components/HoseInventory";
 import { HoseStatusSync } from "../features/hoses/components/HoseStatusSync";
 import { HoseAuditTrail } from "../features/hoses/components/HoseAuditTrail";
+import { HoseTapeColors } from "../features/hoses/components/HoseTapeColors";
 import { PageTabs } from "../components/shared/PageTabs";
 import {
   Status,
@@ -103,6 +104,8 @@ export function HosesPage() {
           {activeTab === "sync" && <HoseStatusSync />}
 
           {activeTab === "audit" && <HoseAuditTrail />}
+
+          {activeTab === "tapeColors" && <HoseTapeColors />}
         </div>
       </div>
     </div>

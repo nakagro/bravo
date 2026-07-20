@@ -2,11 +2,10 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { HoseComments } from "./HoseComments";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { statusColors } from "../types";
+import { statusColors, tapeColorSwatchClasses, TapeColor } from "../types";
 
 import {
   Sheet,
@@ -25,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   MapPin,
-  Copy,
   Pencil,
   Clock,
   MessageSquare,
@@ -35,12 +33,6 @@ import {
   Layers,
   TriangleAlert,
 } from "lucide-react";
-
-function copyToClipboard(text: string, label: string) {
-  navigator.clipboard.writeText(text).then(() => {
-    toast.success(`${label} copied`);
-  });
-}
 
 export function HoseDetailPanel({
   hoseId,
@@ -54,6 +46,7 @@ export function HoseDetailPanel({
   const isMobile = useIsMobile();
   const hose = useQuery(api.hoses.get, { id: hoseId });
   const history = useQuery(api.hoses.getHistory, { hoseId });
+  const tapeColors = useQuery(api.hoseTapeColors.list);
 
   const [showHistory, setShowHistory] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -70,29 +63,53 @@ export function HoseDetailPanel({
     hose.status === "Due for testing" ||
     (testExpiryDate && testExpiryDate.getTime() < Date.now());
 
+  const testYear = hose.testDate
+    ? new Date(hose.testDate).getFullYear()
+    : null;
+  const tapeColor: TapeColor | null =
+    testYear !== null
+      ? tapeColors?.find((m) => m.year === testYear)?.color ?? null
+      : null;
+
   const content = (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
             <span className="text-2xl font-bold text-red-700 dark:text-red-400">
               {hose.hoseId}
             </span>
+            <div className="mt-2">
+              <span
+                className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[hose.status]}`}
+              >
+                {hose.status}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={() => copyToClipboard(hose.hoseId, "Hose ID")}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title="Copy Hose ID"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
+          {testYear !== null && (
+            <div
+              className="flex flex-col items-center flex-shrink-0"
+              title={
+                tapeColor
+                  ? `Test tape: ${tapeColor} (${testYear})`
+                  : `No test tape colour set for ${testYear}`
+              }
+            >
+              <span
+                className={`inline-block h-8 w-20 rounded-sm shadow-sm ${
+                  tapeColor
+                    ? tapeColorSwatchClasses[tapeColor]
+                    : "border-2 border-dashed border-gray-300 dark:border-gray-600"
+                }`}
+              />
+              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 mt-1">
+                {tapeColor ?? "No tape set"}
+              </span>
+            </div>
+          )}
         </div>
-        <span
-          className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium mt-2 ${statusColors[hose.status]}`}
-        >
-          {hose.status}
-        </span>
       </div>
 
       {/* Scrollable content */}
