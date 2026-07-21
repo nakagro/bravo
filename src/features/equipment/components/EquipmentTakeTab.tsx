@@ -236,7 +236,7 @@ export function EquipmentTakeTab() {
             }`}
           >
             <span className={`font-semibold ${selectedGroup.isCollapsedCategory ? 'text-sm' : 'text-lg'}`}>
-              {variant.label || "—"}
+              {variant.label || "-"}
             </span>
             <p className={`text-xs mt-1 ${variant.isLowStock ? "text-destructive" : "text-muted-foreground"}`}>
               {variant.currentStock} left

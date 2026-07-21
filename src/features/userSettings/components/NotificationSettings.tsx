@@ -38,7 +38,7 @@ function DeviceList() {
       if (result.sentCount > 0) {
         toast.success(
           result.sentCount === 1
-            ? "Test notification sent — check this device."
+            ? "Test notification sent, check this device."
             : `Test notification sent to ${result.sentCount} device(s).`
         );
       }

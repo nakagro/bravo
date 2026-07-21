@@ -147,7 +147,7 @@ export function BASkillsLMSTab() {
           <div className="flex flex-col items-center gap-2 rounded border border-dashed border-green-300 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 p-6 text-center">
             <CheckCircle2 className="h-5 w-5 text-green-500" />
             <p className="text-sm text-green-700 dark:text-green-300">
-              All caught up — no BA records are waiting for LMS entry.
+              All caught up. No BA records are waiting for LMS entry.
             </p>
           </div>
         ) : (

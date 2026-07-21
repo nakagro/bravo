@@ -159,7 +159,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                           </span>
                           {isDeclined ? (
                             <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-                              {needsReplacing ? "can't make it — replace" : "can't make it"}
+                              {needsReplacing ? "can't make it, replace" : "can't make it"}
                             </span>
                           ) : (
                             isInterested && (

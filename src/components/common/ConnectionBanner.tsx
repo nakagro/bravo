@@ -32,7 +32,7 @@ export function ConnectionBanner() {
       className="bg-amber-500 dark:bg-amber-600 text-amber-950 dark:text-amber-50 px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium"
     >
       <WifiOff className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-      <span>Offline — changes won't be saved until you reconnect</span>
+      <span>Offline, changes won't be saved until you reconnect</span>
     </div>
   );
 }

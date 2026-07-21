@@ -335,7 +335,7 @@ export function KeyInventory() {
                             {key.itemSummary}
                           </span>
                         ) : (
-                          <span className="text-sm text-gray-400 dark:text-gray-600">—</span>
+                          <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
                         )}
                       </TableCell>
                     </TableRow>

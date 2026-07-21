@@ -19,11 +19,38 @@ import {
   Flame,
 } from "lucide-react";
 import { Status, UpcomingTestFilter, OverdueFilter } from "../types";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface HoseDashboardProps {
   onStatusCardClick?: (status: Status) => void;
   onUpcomingTestClick?: (timeframe: UpcomingTestFilter) => void;
   onOverdueClick?: (timeframe: OverdueFilter) => void;
+}
+
+function DashboardActionCard({
+  children,
+  className,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  className?: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="h-full w-full touch-manipulation text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <Card className={cn("h-full transition-[box-shadow,transform] hover:shadow-md motion-reduce:transition-none", className)}>
+        {children}
+      </Card>
+    </button>
+  );
 }
 
 // Simple horizontal bar for distribution charts
@@ -44,7 +71,7 @@ function DistributionBar({
           </span>
           <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${colorMap[item.label] || "bg-gray-400"}`}
+              className={`h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none ${colorMap[item.label] || "bg-gray-400"}`}
               style={{ width: `${Math.max(item.percentage, 2)}%` }}
             />
           </div>
@@ -123,8 +150,9 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
               <div className="space-y-1">
                 {criticalOverdue > 0 && (
                   <button
+                    type="button"
                     onClick={() => onOverdueClick?.("overdue12plus")}
-                    className="flex items-center gap-2 text-sm text-red-700 dark:text-red-400 hover:underline group w-full text-left"
+                    className="group flex min-h-11 w-full touch-manipulation items-center gap-2 text-left text-sm text-red-700 hover:underline dark:text-red-400"
                   >
                     <span className="font-bold">{criticalOverdue}</span>
                     <span>
@@ -136,8 +164,9 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                 )}
                 {urgentExpiring > 0 && (
                   <button
+                    type="button"
                     onClick={() => onUpcomingTestClick?.("1month")}
-                    className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 hover:underline group w-full text-left"
+                    className="group flex min-h-11 w-full touch-manipulation items-center gap-2 text-left text-sm text-amber-700 hover:underline dark:text-amber-400"
                   >
                     <span className="font-bold">{urgentExpiring}</span>
                     <span>
@@ -154,8 +183,8 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-        <Card>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <Card className="col-span-2 xl:col-span-1">
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 flex-shrink-0">
@@ -169,8 +198,9 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           </CardContent>
         </Card>
 
-        <Card
-          className="cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+        <DashboardActionCard
+          className="hover:-translate-y-0.5"
+          label="Show hoses that are in date"
           onClick={() => onStatusCardClick?.("In date")}
         >
           <CardContent className="p-3.5">
@@ -184,10 +214,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
               </div>
             </div>
           </CardContent>
-        </Card>
+        </DashboardActionCard>
 
-        <Card
-          className="cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+        <DashboardActionCard
+          className="hover:-translate-y-0.5"
+          label="Show hoses due for testing"
           onClick={() => onStatusCardClick?.("Due for testing")}
         >
           <CardContent className="p-3.5">
@@ -201,10 +232,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
               </div>
             </div>
           </CardContent>
-        </Card>
+        </DashboardActionCard>
 
-        <Card
-          className="cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+        <DashboardActionCard
+          className="hover:-translate-y-0.5"
+          label="Show hoses with district for repair"
           onClick={() => onStatusCardClick?.("With district for repair")}
         >
           <CardContent className="p-3.5">
@@ -218,10 +250,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
               </div>
             </div>
           </CardContent>
-        </Card>
+        </DashboardActionCard>
 
-        <Card
-          className="cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+        <DashboardActionCard
+          className="hover:-translate-y-0.5"
+          label="Show condemned hoses"
           onClick={() => onStatusCardClick?.("Condemned")}
         >
           <CardContent className="p-3.5">
@@ -235,11 +268,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
               </div>
             </div>
           </CardContent>
-        </Card>
+        </DashboardActionCard>
       </div>
 
       {/* Accordion Sections */}
-      <Accordion type="multiple" className="w-full space-y-4">
+      <Accordion type="multiple" defaultValue={["upcoming", "overdue"]} className="w-full space-y-4">
 
         {/* Upcoming Test Dates Section */}
         <AccordionItem value="upcoming" className="border rounded-lg px-4 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
@@ -258,8 +291,9 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card
-                className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950"
+                label="Show hoses due for testing in four to six months"
                 onClick={() => onUpcomingTestClick?.("6months")}
               >
                 <CardContent className="p-6">
@@ -271,10 +305,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ClockIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
 
-              <Card
-                className="border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950"
+                label="Show hoses due for testing in one to three months"
                 onClick={() => onUpcomingTestClick?.("3months")}
               >
                 <CardContent className="p-6">
@@ -286,10 +321,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ClockIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
 
-              <Card
-                className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950"
+                label="Show hoses due for testing within one month"
                 onClick={() => onUpcomingTestClick?.("1month")}
               >
                 <CardContent className="p-6">
@@ -301,7 +337,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ClockIcon className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -324,8 +360,9 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card
-                className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950"
+                label="Show hoses overdue by up to three months"
                 onClick={() => onOverdueClick?.("overdue3months")}
               >
                 <CardContent className="p-6">
@@ -337,10 +374,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ExclamationTriangleIcon className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
 
-              <Card
-                className="border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950"
+                label="Show hoses overdue by three to six months"
                 onClick={() => onOverdueClick?.("overdue6months")}
               >
                 <CardContent className="p-6">
@@ -352,10 +390,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ExclamationTriangleIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
 
-              <Card
-                className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                label="Show hoses overdue by six to twelve months"
                 onClick={() => onOverdueClick?.("overdue12months")}
               >
                 <CardContent className="p-6">
@@ -367,10 +406,11 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ExclamationTriangleIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
 
-              <Card
-                className="border-red-300 bg-red-100 dark:border-red-900 dark:bg-red-950 cursor-pointer hover:shadow-md transition-shadow"
+              <DashboardActionCard
+                className="border-red-300 bg-red-100 dark:border-red-900 dark:bg-red-950"
+                label="Show hoses overdue by more than twelve months"
                 onClick={() => onOverdueClick?.("overdue12plus")}
               >
                 <CardContent className="p-6">
@@ -382,7 +422,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                     <ExclamationTriangleIcon className="h-8 w-8 text-red-700 dark:text-red-400" />
                   </div>
                 </CardContent>
-              </Card>
+              </DashboardActionCard>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -418,7 +458,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                             {/* Green portion = in date */}
                             {loc.inDate > 0 && (
                               <div
-                                className="h-full bg-green-500 transition-all duration-500"
+                                className="h-full bg-green-500 transition-[width] duration-500 motion-reduce:transition-none"
                                 style={{ width: `${(loc.inDate / totalHoses) * 100}%` }}
                                 title={`${loc.inDate} in date`}
                               />
@@ -426,7 +466,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                             {/* Amber portion = due for testing */}
                             {loc.dueForTesting > 0 && (
                               <div
-                                className="h-full bg-amber-500 transition-all duration-500"
+                                className="h-full bg-amber-500 transition-[width] duration-500 motion-reduce:transition-none"
                                 style={{ width: `${(loc.dueForTesting / totalHoses) * 100}%` }}
                                 title={`${loc.dueForTesting} due for testing`}
                               />
@@ -434,7 +474,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                             {/* Gray portion = other statuses */}
                             {loc.count - loc.inDate - loc.dueForTesting > 0 && (
                               <div
-                                className="h-full bg-gray-400 transition-all duration-500"
+                                className="h-full bg-gray-400 transition-[width] duration-500 motion-reduce:transition-none"
                                 style={{ width: `${((loc.count - loc.inDate - loc.dueForTesting) / totalHoses) * 100}%` }}
                                 title={`${loc.count - loc.inDate - loc.dueForTesting} other`}
                               />

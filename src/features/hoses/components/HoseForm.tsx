@@ -34,6 +34,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
   const update = useMutation(api.hoses.update);
   const markAsReplaced = useMutation(api.hoses.markAsReplaced);
   const deleteHose = useMutation(api.hoses.deleteHose);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [replacementNotes, setReplacementNotes] = useState("");
   const [deletionReason, setDeletionReason] = useState("");
@@ -126,6 +127,8 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (hoseId) {
         const updateData: any = {
@@ -162,6 +165,8 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -206,6 +211,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           <Label htmlFor="hoseId" className="text-base font-medium">Hose ID</Label>
           <Input
             id="hoseId"
+            name="hoseId"
             type="text"
             value={formData.hoseId}
             onChange={(e) => {
@@ -312,8 +318,11 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
             </SelectContent>
           </Select>
           {lengthOption === 'other' && (
+            <div className="mt-3 space-y-2">
+            <Label htmlFor="customLength">Custom length (metres)</Label>
             <Input
               id="customLength"
+              name="customLength"
               type="number"
               value={customLength}
               onChange={(e) => {
@@ -321,12 +330,13 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 setCustomLength(value);
                 setFormData(f => ({ ...f, length: value }));
               }}
-              className="mt-2 h-12 text-base"
-              placeholder="Custom length (m)"
+              className="h-12 text-base"
+              inputMode="decimal"
               required
               min="1"
               step="0.1"
             />
+            </div>
           )}
         </div>
       </div>
@@ -357,6 +367,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           <Label htmlFor="testDate" className="text-base font-medium">Test Date</Label>
           <Input
             id="testDate"
+            name="testDate"
             type="date"
             value={formData.testDate}
             onChange={(e) => setFormData(f => ({ ...f, testDate: e.target.value }))}
@@ -403,7 +414,10 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                   Record that hose {hose?.hoseId} has been replaced.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <Label htmlFor="replacement-notes">Replacement notes (optional)</Label>
               <Textarea
+                id="replacement-notes"
+                name="replacementNotes"
                 value={replacementNotes}
                 onChange={(e) => setReplacementNotes(e.target.value)}
                 placeholder="Notes (optional)"
@@ -434,7 +448,10 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                   This will permanently delete {hose?.hoseId} and all history. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <Label htmlFor="deletion-reason">Reason for deletion (optional)</Label>
               <Textarea
+                id="deletion-reason"
+                name="deletionReason"
                 value={deletionReason}
                 onChange={(e) => setDeletionReason(e.target.value)}
                 placeholder="Reason for deletion (optional)"
@@ -456,11 +473,12 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
   // Sticky footer with action buttons
   const formFooter = (
     <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+      <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1 h-12 text-base">
         Cancel
       </Button>
-      <Button type="submit" form="hose-form" className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
-        {hoseId ? "Update" : "Add"} Hose
+      <Button type="submit" form="hose-form" disabled={isSubmitting} className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
+        {isSubmitting && <ArrowPathIcon aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
+        {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
       </Button>
     </div>
   );
@@ -475,7 +493,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
               <DrawerTitle className="text-xl font-bold">
                 {hoseId ? `Edit ${hose?.hoseId || 'Hose'}` : 'Add New Hose'}
               </DrawerTitle>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
+              <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close hose form" className="h-10 w-10">
                 <XMarkIcon className="h-6 w-6" />
               </Button>
             </div>

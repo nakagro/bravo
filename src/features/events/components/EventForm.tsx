@@ -305,7 +305,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
               </FormControl>
               {eventTypes && eventTypes.length === 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No types set up yet — add them from the Admin tab.
+                  No types set up yet. Add them from the Admin tab.
                 </p>
               )}
               <FormMessage />
@@ -652,7 +652,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                 <textarea
                   {...field}
                   rows={3}
-                  placeholder="What members need to know — what to bring, where to meet..."
+                  placeholder="What members need to know: what to bring, where to meet..."
                   className={inputClasses}
                 />
               </FormControl>

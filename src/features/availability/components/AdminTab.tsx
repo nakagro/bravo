@@ -204,7 +204,7 @@ function AdminTab({ isAuthenticated }: AdminTabProps) {
                 </div>
                 {locationEditSkills.length === 0 && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                    No skills selected — only admins and Lieutenants+ can move appliances.
+                    No skills selected. Only admins and Lieutenants+ can move appliances.
                   </p>
                 )}
               </div>

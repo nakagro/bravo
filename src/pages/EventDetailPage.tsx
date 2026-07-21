@@ -492,8 +492,8 @@ export function EventDetailPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {showRsvp
                     ? event.hasShifts
-                      ? "No responses yet — be the first to pick a shift."
-                      : "No responses yet — be the first to RSVP."
+                      ? "No responses yet. Be the first to pick a shift."
+                      : "No responses yet. Be the first to RSVP."
                     : "Nobody marked themselves as going."}
                 </p>
               ) : (
@@ -615,7 +615,7 @@ function MemberChip({
   if (member.declined) {
     return (
       <span
-        title={`${formatUserName(member)} — can't make it`}
+        title={`${formatUserName(member)}: can't make it`}
         className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400 line-through"
       >
         <span className="h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center">
@@ -657,7 +657,7 @@ function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boole
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
         {showRsvp
-          ? "No responses yet — be the first to pick a shift."
+          ? "No responses yet. Be the first to pick a shift."
           : "Nobody put their hand up for a shift."}
       </p>
     );
@@ -683,7 +683,7 @@ function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boole
       <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
         {rosterStarted
           ? "The rostered crew for each shift."
-          : "Interest so far — shifts haven't been rostered yet."}
+          : "Interest so far - shifts haven't been rostered yet."}
       </p>
 
       {slots.map((slot) => {

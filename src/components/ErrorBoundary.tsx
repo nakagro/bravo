@@ -83,7 +83,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               Something went wrong
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              An unexpected error occurred. Reload the app to continue — if it
+              An unexpected error occurred. Reload the app to continue, if it
               keeps happening, screenshot this page and send it to an admin.
             </p>
             <div className="text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2 overflow-x-auto">

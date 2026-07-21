@@ -50,7 +50,7 @@ export function interpretState(s: number): DoorStateInfo {
   if (s & 32)  return { label: 'Held Too Long', sub: 'Door held open too long',           icon: Clock,         severity: 'alert' };
   if (s & 16)  return { label: 'Held Warning',  sub: 'Door nearly held open too long',    icon: Clock,         severity: 'warning' };
   if (s & 4)   return { label: 'Locked Out',    sub: 'Door locked out by override',       icon: Ban,           severity: 'alert' };
-  if (s & 128) return { label: 'Reader Tamper', sub: 'Reader tamper — check site',        icon: AlertTriangle, severity: 'warning' };
+  if (s & 128) return { label: 'Reader Tamper', sub: 'Reader tamper, check site',        icon: AlertTriangle, severity: 'warning' };
   if ((s & 1) && (s & 2)) return { label: 'Open', sub: 'Unlocked and physically open',    icon: DoorOpen,      severity: 'open' };
   if (s & 2)   return { label: 'Open',          sub: 'Physically open',                   icon: DoorOpen,      severity: 'open' };
   if (s & 1)   return { label: 'Unlocked',      sub: 'Held open',                         icon: LockOpen,      severity: 'unlocked' };

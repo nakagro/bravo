@@ -230,12 +230,12 @@ function BrigadeView({
                     )}
                     {uniqueAvailable === 0 && dateData.counts.notAvailable > 0 && (
                       <span className="text-[10px] font-medium text-red-500 dark:text-red-400">
-                        —
+                        -
                       </span>
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">—</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 mt-1">-</span>
                 )}
               </button>
             );

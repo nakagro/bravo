@@ -405,7 +405,7 @@ export function EquipmentManageTab() {
             <AlertDialogTitle>Delete Category?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteCategoryName}"? This cannot be undone.
-              Categories with items cannot be deleted — move or delete items first.
+              Categories with items cannot be deleted. Move or delete items first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">

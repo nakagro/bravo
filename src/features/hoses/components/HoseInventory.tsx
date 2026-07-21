@@ -19,18 +19,13 @@ import {
   getTapeColorStyle,
 } from "../types";
 import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import {
-  PlusIcon,
-  FunnelIcon,
-  ChevronDownIcon,
-  XMarkIcon,
-  ClockIcon,
-  MapPinIcon,
-} from "@heroicons/react/24/outline";
-import { Flame } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { ChevronDown, Clock, Flame, Funnel, MapPin, Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Shared components
 import { InventorySearch } from "@/components/shared/InventorySearch";
@@ -56,8 +51,8 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     size: (searchParams.get('size') || "") as Size | "",
     type: (searchParams.get('type') || "") as Type | "",
     location: (searchParams.get('location') || "") as Location | "",
-    upcomingTest: "" as UpcomingTestFilter | "",
-    overdueFilter: "" as OverdueFilter | "",
+    upcomingTest: (searchParams.get('upcoming') || "") as UpcomingTestFilter | "",
+    overdueFilter: (searchParams.get('overdue') || "") as OverdueFilter | "",
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -101,10 +96,12 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     if (filters.size) params.set('size', filters.size);
     if (filters.type) params.set('type', filters.type);
     if (filters.location) params.set('location', filters.location);
+    if (filters.upcomingTest) params.set('upcoming', filters.upcomingTest);
+    if (filters.overdueFilter) params.set('overdue', filters.overdueFilter);
     if (sortConfig.field !== 'hoseId') params.set('sort', sortConfig.field);
     if (sortConfig.direction !== 'asc') params.set('dir', sortConfig.direction);
     setSearchParams(params, { replace: true });
-  }, [searchTerm, filters.status, filters.size, filters.type, filters.location, sortConfig, setSearchParams]);
+  }, [searchTerm, filters.status, filters.size, filters.type, filters.location, filters.upcomingTest, filters.overdueFilter, sortConfig, setSearchParams]);
 
   const clearFilters = useCallback(() => {
     setFilters({
@@ -236,148 +233,151 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
     });
   }, [hoses, sortConfig, filters]);
 
-  if (hoses === undefined) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
-      </div>
-    );
-  }
-
-  // Empty state when no hoses exist at all
-  if (hoses.length === 0 && !hasActiveFilters) {
-    return (
-      <>
-        <EmptyState
-          icon={<Flame className="h-12 w-12 text-red-400 dark:text-red-500" />}
-          title="No hoses registered yet"
-          description="Track fire hoses across your brigade. Each record includes the hose ID, size, length, type, location, and testing status."
-          secondaryDescription="Monitor testing schedules, manage replacements, and maintain compliance records."
-          actionLabel="Add First Hose"
-          onAction={() => setShowAddForm(true)}
-        />
-        {showAddForm && (
-          <HoseForm hoseId={null} onClose={() => setShowAddForm(false)} />
-        )}
-      </>
-    );
-  }
-
   return (
     <div className="space-y-4" data-component="HoseInventory">
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <InventorySearch
-          placeholder="Search hose ID..."
+          placeholder="Search by hose ID…"
           value={searchTerm}
           onChange={setSearchTerm}
         />
 
-        {/* Filter toggle */}
-        <Button
-          onClick={() => setShowFilters(!showFilters)}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1"
-        >
-          <FunnelIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Filters'}</span>
-          <ChevronDownIcon className={`h-3 w-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-        </Button>
-
-        {hasActiveFilters && (
+        <div className="flex items-center gap-2">
           <Button
-            onClick={clearFilters}
-            variant="ghost"
-            size="sm"
-            className="text-red-600 dark:text-red-400"
-            title="Clear all filters"
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            variant="outline"
+            className="min-h-11 flex-1 touch-manipulation sm:flex-none"
+            aria-expanded={showFilters}
+            aria-controls="hose-inventory-filters"
           >
-            <XMarkIcon className="h-4 w-4" />
+            <Funnel data-icon="inline-start" aria-hidden="true" />
+            {showFilters ? 'Hide filters' : 'Filters'}
+            <ChevronDown
+              data-icon="inline-end"
+              aria-hidden="true"
+              className={cn("transition-transform motion-reduce:transition-none", showFilters && "rotate-180")}
+            />
           </Button>
-        )}
 
-        <ViewModeToggle
-          storageKey="hoseInventoryViewMode"
-          value={viewMode}
-          onChange={setViewMode}
-        />
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              onClick={clearFilters}
+              variant="ghost"
+              className="min-h-11 touch-manipulation text-red-700 dark:text-red-400"
+            >
+              <X data-icon="inline-start" aria-hidden="true" />
+              <span className="hidden sm:inline">Clear</span>
+              <span className="sr-only sm:hidden">Clear filters</span>
+            </Button>
+          )}
 
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 text-white"
-        >
-          <PlusIcon className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">Add Hose</span>
-        </Button>
+          <ViewModeToggle
+            storageKey="hoseInventoryViewMode"
+            value={viewMode}
+            onChange={setViewMode}
+          />
+
+          <Button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="min-h-11 touch-manipulation bg-red-700 text-white hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            <span className="hidden sm:inline">Add hose</span>
+            <span className="sr-only sm:hidden">Add hose</span>
+          </Button>
+        </div>
       </div>
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-fadeIn">
+        <div id="hose-inventory-filters" className="grid grid-cols-1 gap-4 rounded-lg border bg-muted/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="hose-status-filter">Status</Label>
           <Select
             value={filters.status === "" ? "all" : filters.status}
             onValueChange={(value) => setFilters(f => ({ ...f, status: value === "all" ? "" : value as Status }))}
           >
-            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <SelectTrigger id="hose-status-filter" className="min-h-11 bg-background">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
+              <SelectGroup>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="Condemned">Condemned</SelectItem>
               <SelectItem value="Due for testing">Due for testing</SelectItem>
               <SelectItem value="With district for repair">With district for repair</SelectItem>
               <SelectItem value="In date">In date</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="hose-size-filter">Size</Label>
           <Select
             value={filters.size === "" ? "all" : filters.size}
             onValueChange={(value) => setFilters(f => ({ ...f, size: value === "all" ? "" : value as Size }))}
           >
-            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <SelectTrigger id="hose-size-filter" className="min-h-11 bg-background">
               <SelectValue placeholder="All Sizes" />
             </SelectTrigger>
             <SelectContent>
+              <SelectGroup>
               <SelectItem value="all">All Sizes</SelectItem>
               <SelectItem value="25">25mm</SelectItem>
               <SelectItem value="38">38mm</SelectItem>
               <SelectItem value="65">65mm</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="hose-type-filter">Type</Label>
           <Select
             value={filters.type === "" ? "all" : filters.type}
             onValueChange={(value) => setFilters(f => ({ ...f, type: value === "all" ? "" : value as Type }))}
           >
-            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <SelectTrigger id="hose-type-filter" className="min-h-11 bg-background">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
+              <SelectGroup>
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="Canvas">Canvas</SelectItem>
               <SelectItem value="Duraline">Duraline</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="hose-location-filter">Location</Label>
           <Select
             value={filters.location === "" ? "all" : filters.location}
             onValueChange={(value) => setFilters(f => ({ ...f, location: value === "all" ? "" : value as Location }))}
           >
-            <SelectTrigger className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <SelectTrigger id="hose-location-filter" className="min-h-11 bg-background">
               <SelectValue placeholder="All Locations" />
             </SelectTrigger>
             <SelectContent>
+              <SelectGroup>
               <SelectItem value="all">All Locations</SelectItem>
               <SelectItem value="Station">Station</SelectItem>
               <SelectItem value="Pumper">Pumper</SelectItem>
               <SelectItem value="Tanker">Tanker</SelectItem>
               <SelectItem value="FCV">FCV</SelectItem>
               <SelectItem value="Other">Other</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
+          </div>
         </div>
       )}
 
       {/* Results count */}
-      {hasActiveFilters && (
+      {hasActiveFilters && hoses !== undefined && (
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <span>
             {sortedHoses.length} {sortedHoses.length === 1 ? 'hose' : 'hoses'}
@@ -389,26 +389,49 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         </div>
       )}
 
-      {/* Empty state for filtered results */}
-      {sortedHoses.length === 0 ? (
+      {/* Results stay mounted independently from the search control so typing never loses focus. */}
+      {hoses === undefined ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Loading hose results">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-48 rounded-lg" />
+          ))}
+        </div>
+      ) : hoses.length === 0 && !hasActiveFilters ? (
+        <EmptyState
+          icon={<Flame className="size-12 text-red-400 dark:text-red-500" />}
+          title="No hoses registered yet"
+          description="Track fire hoses across your brigade. Each record includes the hose ID, size, length, type, location, and testing status."
+          secondaryDescription="Monitor testing schedules, manage replacements, and maintain compliance records."
+          actionLabel="Add first hose"
+          onAction={() => setShowAddForm(true)}
+        />
+      ) : sortedHoses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Flame className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" />
+          <Flame aria-hidden="true" className="mb-3 size-10 text-muted-foreground/40" />
           <p className="text-gray-500 dark:text-gray-400">
             No hoses match your current filters
           </p>
-          <button onClick={clearFilters} className="mt-2 text-red-600 dark:text-red-400 hover:underline text-sm">
+          <Button type="button" variant="link" onClick={clearFilters} className="mt-2 text-red-700 dark:text-red-400">
             Clear filters
-          </button>
+          </Button>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {sortedHoses.map((hose) => {
             const tapeColor = tapeColorForTestDate(hose.testDate);
             return (
-            <Card
+            <button
               key={hose._id}
-              className={`relative overflow-hidden cursor-pointer hover:shadow-md transition-all rounded-none border-l-4 ${statusBorderColors[hose.status]}`}
+              type="button"
               onClick={() => setViewingHose(hose._id)}
+              className="group h-full cursor-pointer touch-manipulation text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              aria-label={`View hose ${hose.hoseId}`}
+            >
+            <Card
+              className={cn(
+                "relative h-full overflow-hidden rounded-none border-l-4 transition-[background-color,box-shadow] group-hover:bg-accent/40 group-hover:shadow-lg group-active:bg-accent/60 motion-reduce:transition-none [content-visibility:auto]",
+                statusBorderColors[hose.status],
+              )}
             >
               {tapeColor && (
                 <div
@@ -439,22 +462,25 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                   <div className="flex items-center justify-between">
                     <span>{hose.type}</span>
                     <span className="flex items-center gap-1">
-                      <MapPinIcon className="h-3.5 w-3.5" />
+                      <MapPin aria-hidden="true" className="size-3.5" />
                       {hose.location || 'Unknown'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-xs">
-                    <ClockIcon className="h-3.5 w-3.5" />
+                    <Clock aria-hidden="true" className="size-3.5" />
                     Tested {new Date(hose.testDate).toLocaleDateString()}
                   </div>
                 </div>
               </CardContent>
             </Card>
+            </button>
             );
           })}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <div>
+          <p className="mb-2 text-xs text-muted-foreground md:hidden">Swipe sideways to see all columns.</p>
+          <div className="overflow-x-auto overscroll-x-contain rounded-lg border">
           <Table>
             <TableHeader className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10">
               <TableRow>
@@ -471,10 +497,19 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               {sortedHoses.map((hose, index) => (
                 <TableRow
                   key={hose._id}
-                  className={`cursor-pointer transition-colors hover:bg-red-50/50 dark:hover:bg-red-950/20 ${
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View hose ${hose.hoseId}`}
+                  onClick={() => setViewingHose(hose._id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setViewingHose(hose._id);
+                    }
+                  }}
+                  className={`cursor-pointer [content-visibility:auto] hover:bg-red-50/70 focus-visible:bg-red-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500 dark:hover:bg-red-950/30 dark:focus-visible:bg-red-950/30 ${
                     index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'
                   }`}
-                  onClick={() => setViewingHose(hose._id)}
                 >
                   <TableCell className="font-semibold">{hose.hoseId}</TableCell>
                   <TableCell>
@@ -487,8 +522,8 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                   <TableCell>{hose.type}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1 text-muted-foreground">
-                      <MapPinIcon className="h-3.5 w-3.5" />
-                      {hose.location || '—'}
+                      <MapPin aria-hidden="true" className="size-3.5" />
+                      {hose.location || '-'}
                     </span>
                   </TableCell>
                   <TableCell>{new Date(hose.testDate).toLocaleDateString()}</TableCell>
@@ -496,6 +531,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 

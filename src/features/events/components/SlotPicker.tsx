@@ -172,7 +172,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                           key={member._id}
                           title={
                             member.declined
-                              ? `${formatUserName(member)} — can't make it`
+                              ? `${formatUserName(member)}: can't make it`
                               : formatUserName(member)
                           }
                           className={`inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full border text-xs ${
@@ -204,7 +204,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                     {
                       {
                         rostered: "You're rostered on this shift",
-                        interested: "You can do this shift — tap to remove",
+                        interested: "You can do this shift, tap to remove",
                         offered: "You offered to help, not rostered on this one. Tap to withdraw.",
                         idle: "Tap if you can do this shift",
                       }[cardState]

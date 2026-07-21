@@ -21,7 +21,7 @@ let announced = false;
 function announce() {
   if (announced) return;
   announced = true;
-  console.info('%c[kiosk] Station API MOCK active — buttons are simulated, no real hardware.', 'color:#f59e0b;font-weight:bold');
+  console.info('%c[kiosk] Station API MOCK active, buttons are simulated, no real hardware.', 'color:#f59e0b;font-weight:bold');
 }
 
 // Small fake latency so the loading states actually exercise.

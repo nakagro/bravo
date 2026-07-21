@@ -37,31 +37,35 @@ export function ViewModeToggle({ storageKey, value, onChange }: ViewModeTogglePr
   }, [storageKey, value]);
 
   return (
-    <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700">
+    <div className="flex shrink-0 overflow-hidden rounded-lg border" role="group" aria-label="Inventory view">
       <Button
+        type="button"
         onClick={() => onChange("cards")}
         variant={value === "cards" ? "default" : "ghost"}
         size="sm"
         className={cn(
-          "flex items-center rounded-r-none",
+          "min-h-11 touch-manipulation rounded-r-none px-3",
           value === "cards" && "bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
         )}
-        title="Card View"
+        aria-label="Card view"
+        aria-pressed={value === "cards"}
       >
-        <LayoutGrid className="h-4 w-4 mr-1" />
+        <LayoutGrid data-icon="inline-start" aria-hidden="true" />
         <span className="hidden sm:inline">Cards</span>
       </Button>
       <Button
+        type="button"
         onClick={() => onChange("table")}
         variant={value === "table" ? "default" : "ghost"}
         size="sm"
         className={cn(
-          "flex items-center rounded-l-none",
+          "min-h-11 touch-manipulation rounded-l-none px-3",
           value === "table" && "bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
         )}
-        title="Table View"
+        aria-label="Table view"
+        aria-pressed={value === "table"}
       >
-        <List className="h-4 w-4 mr-1" />
+        <List data-icon="inline-start" aria-hidden="true" />
         <span className="hidden sm:inline">Table</span>
       </Button>
     </div>

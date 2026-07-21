@@ -208,7 +208,7 @@ export function EquipmentReplenishTab() {
             className="p-3 rounded-lg border text-center transition-colors bg-card border-border hover:border-green-500/50 hover:bg-green-500/5 active:bg-green-500/10"
           >
             <span className={`font-semibold ${selectedGroup.isCollapsedCategory ? 'text-sm' : 'text-lg'}`}>
-              {variant.label || "—"}
+              {variant.label || "-"}
             </span>
             <p className={`text-xs mt-1 ${variant.isLowStock ? "text-destructive" : "text-muted-foreground"}`}>
               {variant.currentStock} in stock

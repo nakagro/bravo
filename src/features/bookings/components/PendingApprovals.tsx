@@ -35,7 +35,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
           label: "Undo",
           onClick: () => {
             revertBooking({ bookingId })
-              .then(() => toast.info("Approval undone — booking is pending again"))
+              .then(() => toast.info("Approval undone, booking is pending again"))
               .catch((error) => {
                 console.error("Error undoing approval:", error);
                 toast.error("Failed to undo approval", {

@@ -120,7 +120,7 @@ export function InventoryCheckSection({ section, isReadOnly }: InventoryCheckSec
                 className="w-full h-11 border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 hover:border-green-400 font-medium mb-1"
               >
                 <CheckCheck className="w-4 h-4 mr-2" />
-                All OK — Mark {sectionTotal - sectionAnswered} remaining as Yes
+                All OK, mark {sectionTotal - sectionAnswered} remaining as Yes
               </Button>
             )}
 

@@ -186,7 +186,7 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
               <div className="flex flex-col items-center gap-2 rounded border border-dashed border-green-300 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 p-8 text-center">
                 <PartyPopper className="h-6 w-6 text-green-500" />
                 <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                  Whole brigade is current — nice work.
+                  Whole brigade is current, nice work.
                 </p>
               </div>
             ) : (

@@ -14,8 +14,9 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface ResponsiveModalProps {
   open: boolean;
@@ -42,47 +43,65 @@ export function ResponsiveModal({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-        <DrawerContent className={`${drawerHeight} flex flex-col border-gray-700`}>
-          <DrawerHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4">
+      <Drawer
+        open={open}
+        onOpenChange={(o) => {
+          if (!o) onClose();
+        }}
+      >
+        <DrawerContent
+          className={cn(
+            "flex flex-col overscroll-contain border-border",
+            drawerHeight,
+          )}
+        >
+          <DrawerHeader className="shrink-0 border-b border-border pb-4">
             <div className="flex items-center justify-between">
               <DrawerTitle className="text-xl font-bold">{title}</DrawerTitle>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
-                <XMarkIcon className="h-6 w-6" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="size-10 touch-manipulation"
+                aria-label="Close"
+              >
+                <X aria-hidden="true" />
               </Button>
             </div>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4">
             {children}
           </div>
-          {footer && (
-            <DrawerFooter className="flex-shrink-0 p-0">
-              {footer}
-            </DrawerFooter>
-          )}
+          {footer ? (
+            <DrawerFooter className="shrink-0 p-0">{footer}</DrawerFooter>
+          ) : null}
         </DrawerContent>
       </Drawer>
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
       <SheetContent
         side="right"
-        className={`w-full ${maxWidth} p-0 flex flex-col border-l border-gray-200 dark:border-gray-700`}
+        className={cn(
+          "flex w-full flex-col overscroll-contain border-l border-border p-0",
+          maxWidth,
+        )}
       >
-        <SheetHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <SheetHeader className="shrink-0 border-b border-border p-6 pb-4">
           <SheetTitle className="text-xl font-bold">{title}</SheetTitle>
           <SheetDescription className="sr-only">{title}</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-4 pb-4">
           {children}
         </div>
-        {footer && (
-          <div className="flex-shrink-0">
-            {footer}
-          </div>
-        )}
+        {footer ? <div className="shrink-0">{footer}</div> : null}
       </SheetContent>
     </Sheet>
   );

@@ -395,7 +395,7 @@ function ServiceAccountSettings({
           <code className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 rounded text-xs">
             {window.location.origin}/service-login
           </code>{" "}
-          — Service accounts use this page to sign in with their PIN.
+          Service accounts use this page to sign in with their PIN.
         </p>
       </div>
 
@@ -653,7 +653,7 @@ function ServiceAccountSettings({
                 Service Account PIN
               </Dialog.Title>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Save this PIN now — it will not be shown again.
+                Save this PIN now, it will not be shown again.
               </p>
 
               <div className="flex items-center justify-center gap-2 mb-4">

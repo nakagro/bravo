@@ -235,7 +235,7 @@ export function CheckTemplatesSection() {
       {/* Delete confirmation */}
       <DeleteConfirmDialog
         title={deletingCheck ? `Delete "${deletingCheck.name}"?` : "Delete check?"}
-        description="Past submission history will not be affected — completed checks keep a snapshot of this item."
+        description="Past submission history will not be affected. Completed checks keep a snapshot of this item."
         open={!!deletingCheck}
         onOpenChange={(open) => {
           if (!open) setDeletingId(null);

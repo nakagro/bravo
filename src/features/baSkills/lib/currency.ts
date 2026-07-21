@@ -60,9 +60,9 @@ export function statusMessage(
 ): string {
   switch (status) {
     case "expired":
-      return `Expired ${Math.abs(daysUntilExpiry ?? 0)} days ago — use BA to regain currency`;
+      return `Expired ${Math.abs(daysUntilExpiry ?? 0)} days ago. Use BA to regain currency`;
     case "warning":
-      return `${daysUntilExpiry} days remaining — use BA within 2 weeks`;
+      return `${daysUntilExpiry} days remaining. Use BA within 2 weeks`;
     case "never_used":
       return "No BA usage recorded";
     case "current":

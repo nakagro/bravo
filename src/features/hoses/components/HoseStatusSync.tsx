@@ -1,33 +1,47 @@
-import React, { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  CheckCircleIcon, 
-  ExclamationTriangleIcon,
-  ArrowPathIcon,
-  ClockIcon
-} from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import { ArrowRight, CheckCircle2, Clock3, RefreshCw, TriangleAlert } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+
+function statusClass(status: string) {
+  if (status === "In date") return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300";
+  if (status === "Due for testing") return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+  return "bg-muted text-muted-foreground";
+}
 
 export function HoseStatusSync() {
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Query to get hoses that need status updates
+  const [isSyncing, setIsSyncing] = useState(false);
   const hosesNeedingUpdate = useQuery(api.hoseStatusSync.getHosesNeedingStatusUpdate);
-  
-  // Mutation to sync all hose statuses
   const syncAllStatuses = useMutation(api.hoseStatusSync.syncAllHoseStatuses);
 
   const handleSyncAll = async () => {
-    setIsLoading(true);
+    if (isSyncing) return;
+    setIsSyncing(true);
     try {
       const result = await syncAllStatuses();
-      
       if (result.updated > 0) {
-        toast.success(`Successfully updated ${result.updated} hose${result.updated === 1 ? '' : 's'}`);
+        toast.success(`Updated ${result.updated} hose${result.updated === 1 ? "" : "s"}`);
       } else {
         toast.info("All hose statuses are already up to date");
       }
@@ -35,152 +49,116 @@ export function HoseStatusSync() {
       console.error("Error syncing hose statuses:", error);
       toast.error("Failed to sync hose statuses");
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString();
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "In date":
-        return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300";
-      case "Due for testing":
-        return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-    }
-  };
-
-  if (!hosesNeedingUpdate) {
+  if (hosesNeedingUpdate === undefined) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-          </div>
+      <Card aria-label="Loading status sync">
+        <CardHeader>
+          <Skeleton className="h-6 w-52" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-24 w-full" />)}
         </CardContent>
       </Card>
     );
   }
 
+  const count = hosesNeedingUpdate.length;
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ArrowPathIcon className="h-5 w-5" />
-              <span className="text-base sm:text-lg">Hose Status Synchronization</span>
-            </div>
-            {hosesNeedingUpdate.length > 0 && (
-              <Button 
-                onClick={handleSyncAll}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 w-full sm:w-auto"
-                size="sm"
-              >
-                {isLoading ? (
-                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircleIcon className="h-4 w-4" />
-                )}
-                <span className="sm:hidden">Sync All Hoses ({hosesNeedingUpdate.length})</span>
-                <span className="hidden sm:inline">Sync All ({hosesNeedingUpdate.length})</span>
-              </Button>
-            )}
+    <Card>
+      <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <RefreshCw aria-hidden="true" className="size-5" />
+            Status sync
           </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {hosesNeedingUpdate.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckCircleIcon className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                All Hose Statuses Are Up to Date
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                All hoses have the correct status based on their test dates.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-300 mb-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
-                <ExclamationTriangleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-                <span className="leading-relaxed">
-                  {hosesNeedingUpdate.length} hose{hosesNeedingUpdate.length === 1 ? '' : 's'} need{hosesNeedingUpdate.length === 1 ? 's' : ''} status updates based on test dates
-                </span>
-              </div>
-              
-              <div className="space-y-3">
-                {hosesNeedingUpdate.map((hose) => (
-                  <div 
-                    key={hose._id} 
-                    className="p-4 bg-card border border-border rounded-lg space-y-3"
-                  >
-                    {/* Hose ID and Test Info */}
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100 text-lg">{hose.hoseId}</p>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        <ClockIcon className="h-3 w-3 flex-shrink-0" />
-                        <span>Tested: {formatDate(hose.testDate)}</span>
-                        <span className="hidden sm:inline">({hose.daysSinceTest} days ago)</span>
-                      </div>
-                      <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {hose.daysSinceTest} days ago
-                      </div>
+          <CardDescription>Review date-based status corrections before applying them.</CardDescription>
+        </div>
+
+        {count > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button className="min-h-11 w-full touch-manipulation sm:w-auto">
+                <RefreshCw data-icon="inline-start" aria-hidden="true" />
+                Sync {count} {count === 1 ? "hose" : "hoses"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apply {count} status {count === 1 ? "change" : "changes"}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This updates each listed hose to the suggested status based on its test date.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isSyncing}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSyncAll} disabled={isSyncing}>
+                  {isSyncing && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
+                  {isSyncing ? "Syncing…" : "Apply changes"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        {count === 0 ? (
+          <div className="py-8 text-center">
+            <CheckCircle2 aria-hidden="true" className="mx-auto mb-4 size-12 text-green-600 dark:text-green-400" />
+            <h3 className="text-lg font-medium">All statuses are up to date</h3>
+            <p className="mt-2 text-sm text-muted-foreground">No date-based corrections are currently required.</p>
+          </div>
+        ) : (
+          <>
+            <Alert>
+              <TriangleAlert aria-hidden="true" className="size-4" />
+              <AlertTitle>Review required</AlertTitle>
+              <AlertDescription>{count} {count === 1 ? "hose has" : "hoses have"} a status that does not match its test date.</AlertDescription>
+            </Alert>
+
+            <div className="space-y-3">
+              {hosesNeedingUpdate.map((hose) => (
+                <div key={hose._id} className="rounded-lg border p-4 [content-visibility:auto]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-lg font-semibold">{hose.hoseId}</p>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Clock3 aria-hidden="true" className="size-4" />
+                        Tested {dateFormatter.format(hose.testDate)} · {hose.daysSinceTest} days ago
+                      </p>
                     </div>
-                    
-                    {/* Status Information */}
-                    <div className="space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400 font-medium min-w-[80px]">Current:</span>
-                        <Badge className={`${getStatusColor(hose.currentStatus)} text-xs`}>
-                          {hose.currentStatus}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400 font-medium min-w-[80px]">Should be:</span>
-                        <Badge className={`${getStatusColor(hose.suggestedStatus)} text-xs`}>
-                          {hose.suggestedStatus}
-                        </Badge>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2" aria-label={`Status changes from ${hose.currentStatus} to ${hose.suggestedStatus}`}>
+                      <Badge className={cn("text-xs", statusClass(hose.currentStatus))}>{hose.currentStatus}</Badge>
+                      <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground" />
+                      <Badge className={cn("text-xs", statusClass(hose.suggestedStatus))}>{hose.suggestedStatus}</Badge>
                     </div>
                   </div>
-                ))}
-              </div>
-              
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-3 text-sm sm:text-base">How Automatic Status Management Works:</h4>
-                <ul className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
-                    <span>Hoses tested within the last 365 days are automatically marked as "In date"</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
-                    <span>Hoses tested more than 365 days ago are automatically marked as "Due for testing"</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
-                    <span>Only "In date" and "Due for testing" statuses are automatically managed</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
-                    <span>"With district for repair" and "Condemned" statuses require manual intervention</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold mt-0.5">•</span>
-                    <span>Status changes are automatically applied when test dates are updated</span>
-                  </li>
-                </ul>
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </>
+        )}
+
+        <Accordion type="single" collapsible>
+          <AccordionItem value="rules">
+            <AccordionTrigger>How status sync works</AccordionTrigger>
+            <AccordionContent>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>Hoses tested within the last 365 days are marked In date.</li>
+                <li>Hoses tested more than 365 days ago are marked Due for testing.</li>
+                <li>With district for repair and Condemned remain manually managed.</li>
+                <li>Changing a test date can also update its managed status.</li>
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
   );
 }

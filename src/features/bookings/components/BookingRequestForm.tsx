@@ -323,7 +323,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                 {existingBookingsForDate.length === 0 ? (
                   <div className="flex items-center gap-2">
                     <CheckIcon className="h-4 w-4 flex-shrink-0" />
-                    <span>No existing bookings — this resource is free on the selected date{watchIsMultiDay ? "s" : ""}.</span>
+                    <span>No existing bookings, this resource is free on the selected date{watchIsMultiDay ? "s" : ""}.</span>
                   </div>
                 ) : (
                   <>

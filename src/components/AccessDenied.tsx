@@ -49,7 +49,7 @@ export function AccessDenied({ moduleId }: AccessDeniedProps) {
       </h1>
 
       <p className="text-muted-foreground text-base mb-1">
-        Oops — looks like you don't have permission to view this
+        Oops, looks like you don't have permission to view this
         {moduleId ? ` (${moduleId})` : ' area'}.
       </p>
 

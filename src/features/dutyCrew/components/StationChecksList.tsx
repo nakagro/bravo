@@ -137,7 +137,7 @@ export function StationChecksList({
       <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          No station checks configured yet — ask an admin to add some.
+          No station checks configured yet. Ask an admin to add some.
         </p>
       </div>
     );

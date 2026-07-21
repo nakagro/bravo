@@ -35,7 +35,7 @@ async function testWebhookUrl(url: string): Promise<void> {
             toast.error(data.error || `Request failed with status ${response.status}`);
         }
     } catch {
-        toast.error("Network error — could not reach the endpoint.");
+        toast.error("Network error: could not reach the endpoint.");
     }
 }
 
@@ -488,7 +488,7 @@ export default function ShortcutsPage() {
                                 </p>
                                 <ul className="list-disc pl-5 mt-1">
                                     <li>
-                                        <code>reset</code> — clears the status
+                                        <code>reset</code> clears the status
                                         entirely
                                     </li>
                                 </ul>

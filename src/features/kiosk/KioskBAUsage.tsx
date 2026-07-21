@@ -457,7 +457,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
             }
             if (skippedSelf > 0) {
                 toast.warning(
-                    `${skippedSelf} member${skippedSelf === 1 ? '' : 's'} skipped — the verifier can't verify their own BA usage. Log that one separately with a different verifier.`,
+                    `${skippedSelf} member${skippedSelf === 1 ? '' : 's'} skipped, the verifier can't verify their own BA usage. Log that one separately with a different verifier.`,
                 );
             }
             if (failed > 0) {
@@ -578,7 +578,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
                         }`}
                     >
                         <span className={`text-lg ${notes ? 'text-white' : 'text-slate-500'}`}>
-                            {notes || 'Tap to enter job details, e.g. "Structure fire — 475 Ballan Rd, Wyndham Vale"'}
+                            {notes || 'Tap to enter job details, e.g. "Structure fire, 475 Ballan Rd, Wyndham Vale"'}
                         </span>
                         <Pencil className="h-6 w-6 shrink-0 text-slate-400" />
                     </button>

@@ -13,7 +13,7 @@ export function InventorySearch({
   placeholder = "Search...",
   value,
   onChange,
-  debounceMs = 250,
+  debounceMs = 400,
 }: InventorySearchProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -38,22 +38,27 @@ export function InventorySearch({
   }, [onChange]);
 
   return (
-    <div className="relative flex-1">
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-500" />
+    <div className="relative min-w-0 flex-1">
+      <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        type="text"
+        type="search"
+        name="inventory-search"
+        aria-label="Search inventory"
+        autoComplete="off"
+        spellCheck={false}
         placeholder={placeholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="pl-9 pr-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 focus-visible:ring-red-500"
+        className="min-h-11 bg-background pl-9 pr-10 focus-visible:ring-red-500 [&::-webkit-search-cancel-button]:hidden"
       />
       {localValue && (
         <button
           onClick={handleClear}
           className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           type="button"
+          aria-label="Clear search"
         >
-          <X className="h-4 w-4" />
+          <X aria-hidden="true" className="size-4" />
         </button>
       )}
     </div>
