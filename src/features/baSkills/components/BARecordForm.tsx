@@ -309,7 +309,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
           id="notes"
           placeholder={
             usageType === "firecall"
-              ? "e.g., Structure fire \u2014 475 Ballan Rd, Wyndham Vale"
+              ? "e.g., Structure fire - 475 Ballan Rd, Wyndham Vale"
               : "e.g., BA drill at Wyndham Vale Fire Station"
           }
           value={notes}

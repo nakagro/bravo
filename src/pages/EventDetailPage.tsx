@@ -95,6 +95,9 @@ export function EventDetailPage() {
   );
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canManageEvents = moduleAccess?.eventsAdmin === true;
+  // Used to mark "you" in the shift lists — the one thing you can't work out
+  // by looking, since offers get spread across shifts by the organiser
+  const myUserId = useQuery(api.messages.getCurrentUserId);
 
   const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
@@ -484,10 +487,13 @@ export function EventDetailPage() {
           {attendance && (
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
               <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-                Who&apos;s coming ({attendance.attending.length})
+                {/* No count on shift events — people are spread across shifts,
+                    so a single number never matches the lists below it */}
+                Who&apos;s coming
+                {!event.hasShifts && ` (${attendance.attending.length})`}
               </h3>
               {event.hasShifts && slots && slots.length > 0 ? (
-                <ShiftTurnout slots={slots} showRsvp={showRsvp} />
+                <ShiftTurnout slots={slots} showRsvp={showRsvp} myUserId={myUserId ?? null} />
               ) : attendance.attending.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {showRsvp
@@ -499,7 +505,7 @@ export function EventDetailPage() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {attendance.attending.map((member) => (
-                    <MemberChip key={member._id} member={member} tone="green" />
+                    <MemberChip key={member._id} member={member} isMe={member._id === myUserId} />
                   ))}
                 </div>
               )}
@@ -598,20 +604,16 @@ interface ChipMember {
   firstName?: string;
   lastName?: string;
   name?: string;
-  /** Rostered but marked "can't make it" */
+  /** Put down for a shift but has since marked "can't make it" */
   declined?: boolean;
 }
 
-/** Avatar name chip. Green = interest/going, indigo = official roster. */
-function MemberChip({
-  member,
-  tone,
-  muted = false,
-}: {
-  member: ChipMember;
-  tone: "green" | "indigo";
-  muted?: boolean;
-}) {
+/**
+ * Avatar name chip. Deliberately one look for everyone — where a name sits
+ * (under a shift, or under a shift still marked "not sorted yet") says what it
+ * means, so the chip doesn't need to colour-code interest vs allocation.
+ */
+function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boolean }) {
   if (member.declined) {
     return (
       <span
@@ -627,76 +629,73 @@ function MemberChip({
   }
   return (
     <span
-      className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-200 ${
-        muted ? "opacity-75" : ""
+      className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border text-sm ${
+        isMe
+          ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-gray-900 dark:text-white font-medium"
+          : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
       }`}
     >
       <span
         className={`h-6 w-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
-          tone === "indigo" ? "bg-indigo-600" : "bg-green-600"
+          isMe ? "bg-red-600" : "bg-gray-500 dark:bg-gray-600"
         }`}
       >
         {getInitials(member)}
       </span>
       {formatUserName(member)}
+      {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
     </span>
   );
 }
 
 /**
- * Per-shift turnout for the "Who's coming" card. While nothing has been
- * allocated it shows interest per shift (who put their hand up for what);
- * once allocation starts it shows the official roster instead, with anyone
- * who offered but wasn't placed listed underneath so they don't disappear.
+ * Per-shift turnout for the "Who's coming" card.
+ *
+ * Each shift stands on its own: once someone has been put on a shift that
+ * shift shows its people, otherwise it shows everyone who put their hand up
+ * with a quiet "not sorted yet". Sorting the shifts out is incremental, so a
+ * single global flip would blank out the hands-up list on every shift the
+ * organiser hasn't got to yet — exactly when they need to see it.
+ *
+ * Nobody is told they missed out: someone who offered and wasn't picked simply
+ * stays visible under the shifts they offered for.
  */
-function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boolean }) {
-  const rosterStarted = slots.some((slot) => slot.allocatedCount > 0);
-  const anyInterest = slots.some((slot) => slot.interested.length > 0);
+function ShiftTurnout({
+  slots,
+  showRsvp,
+  myUserId,
+}: {
+  slots: EventSlot[];
+  showRsvp: boolean;
+  myUserId: Id<"users"> | null;
+}) {
+  const anyone = slots.some((slot) => slot.allocated.length > 0 || slot.interested.length > 0);
 
-  if (!rosterStarted && !anyInterest) {
+  if (!anyone) {
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        {showRsvp
-          ? "No responses yet. Be the first to pick a shift."
-          : "Nobody put their hand up for a shift."}
+        {showRsvp ? "Nobody yet — be the first to put your hand up." : "Nobody put their hand up."}
       </p>
     );
   }
 
-  // Roster mode: members who offered to help but weren't placed anywhere
-  const allocatedAnywhere = new Set(
-    slots.flatMap((slot) => slot.allocated.map((member) => member._id))
-  );
-  const alsoOffered = rosterStarted
-    ? [
-        ...new Map(
-          slots
-            .flatMap((slot) => slot.interested)
-            .filter((member) => !allocatedAnywhere.has(member._id))
-            .map((member) => [member._id, member] as const)
-        ).values(),
-      ]
-    : [];
-
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-        {rosterStarted
-          ? "The rostered crew for each shift."
-          : "Interest so far - shifts haven't been rostered yet."}
-      </p>
-
       {slots.map((slot) => {
-        const members = rosterStarted ? slot.allocated : slot.interested;
+        const sorted = slot.allocated.length > 0;
+        const members = sorted ? slot.allocated : slot.interested;
         const when = formatSlotWhen(slot);
         return (
           <div key={slot._id}>
-            <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-              {slot.label}
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {slot.label}
+              </span>
               {when && (
-                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-                  {when}
-                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{when}</span>
+              )}
+              {!sorted && members.length > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">· not sorted yet</span>
               )}
             </div>
             {members.length === 0 ? (
@@ -707,7 +706,7 @@ function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boole
                   <MemberChip
                     key={member._id}
                     member={member}
-                    tone={rosterStarted ? "indigo" : "green"}
+                    isMe={member._id === myUserId}
                   />
                 ))}
               </div>
@@ -715,19 +714,6 @@ function ShiftTurnout({ slots, showRsvp }: { slots: EventSlot[]; showRsvp: boole
           </div>
         );
       })}
-
-      {alsoOffered.length > 0 && (
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60">
-          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
-            Also offered to help
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {alsoOffered.map((member) => (
-              <MemberChip key={member._id} member={member} tone="green" muted />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
