@@ -13,6 +13,7 @@ interface ModuleSettingsProps {
 // Define rank options
 const rankOptions = [
   { value: undefined, label: "No Rank Required" },
+  { value: "Brigade Member", label: "Brigade Member" },
   { value: "Probationary", label: "Probationary" },
   { value: "Firefighter", label: "Firefighter" },
   { value: "Lieutenant", label: "Lieutenant" },
@@ -27,7 +28,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
   // State for the module being edited
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedRank, setSelectedRank] = useState<"Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined>(undefined);
+  const [selectedRank, setSelectedRank] = useState<"Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined>(undefined);
   const [isAdminOnly, setIsAdminOnly] = useState<boolean>(false);
   
   // State for role management dialog
@@ -76,7 +77,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       setEditingModuleId(moduleId);
       setSelectedRoles(module.requiredRoles || []);
       // Type assertion to ensure the rank is one of the allowed values
-      const rank = module.minimumRank as "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined;
+      const rank = module.minimumRank as "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined;
       setSelectedRank(rank);
       setIsAdminOnly(module.adminOnly || false);
     }

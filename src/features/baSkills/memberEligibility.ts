@@ -5,6 +5,7 @@ export const RANK_ORDER: Record<string, number> = {
   Lieutenant: 2,
   Firefighter: 3,
   Probationary: 4,
+  "Brigade Member": 5,
 };
 
 export function isBARecordMemberOption(member: { rank?: string; skills?: string[] }) {

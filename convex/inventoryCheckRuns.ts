@@ -241,6 +241,7 @@ export const deleteRun = mutation({
       }
 
       const rankOrder: Record<string, number> = {
+        "Brigade Member": 0,
         Probationary: 1,
         Firefighter: 2,
         Lieutenant: 3,

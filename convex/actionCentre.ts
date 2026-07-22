@@ -38,6 +38,7 @@ const actionItemValidator = v.object({
 });
 
 const rankValidator = v.union(
+  v.literal("Brigade Member"),
   v.literal("Probationary"),
   v.literal("Firefighter"),
   v.literal("Lieutenant"),
@@ -47,6 +48,7 @@ const rankValidator = v.union(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const RANK_ORDER: Record<string, number> = {
+  "Brigade Member": 0,
   Probationary: 1,
   Firefighter: 2,
   Lieutenant: 3,

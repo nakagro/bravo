@@ -49,6 +49,7 @@ export async function requireEventsAdmin(ctx: QueryCtx | MutationCtx) {
   let rankOk = true;
   if (hasRankReq) {
     const rankOrder: Record<string, number> = {
+      "Brigade Member": 0,
       Probationary: 1,
       Firefighter: 2,
       Lieutenant: 3,

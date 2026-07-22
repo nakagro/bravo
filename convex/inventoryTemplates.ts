@@ -40,6 +40,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
    let rankOk = true;
    if (hasRankReq) {
      const rankOrder: Record<string, number> = {
+       "Brigade Member": 0,
        Probationary: 1,
        Firefighter: 2,
        Lieutenant: 3,

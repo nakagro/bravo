@@ -1,5 +1,27 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+
+/**
+ * One-off backfill: assign the floor rank "Brigade Member" to any user that
+ * currently has no rank (legacy null/undefined), so the removed "no rank"
+ * state no longer exists. Safe to run repeatedly (idempotent).
+ * Run via: npx convex run users:backfillBrigadeMemberRank (or the dashboard).
+ */
+export const backfillBrigadeMemberRank = internalMutation({
+  args: {},
+  returns: v.object({ updated: v.number() }),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let updated = 0;
+    for (const user of users) {
+      if (!user.rank) {
+        await ctx.db.patch(user._id, { rank: "Brigade Member" });
+        updated++;
+      }
+    }
+    return { updated };
+  },
+});
 
 /**
  * Get all users from the system
@@ -51,6 +73,7 @@ export const updateUserRank = mutation({
   args: {
     userId: v.id("users"),
     rank: v.union(
+      v.literal("Brigade Member"),
       v.literal("Probationary"),
       v.literal("Firefighter"),
       v.literal("Lieutenant"),

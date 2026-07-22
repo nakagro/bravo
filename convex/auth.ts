@@ -8,17 +8,17 @@ import { v } from "convex/values";
  * DEFAULT SIGNUP RANK CONFIGURATION
  * 
  * Set the default rank for new user signups.
- * Options: "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | null
- * 
- * - null = Member (no rank, limited permissions)
+ * Options: "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+ *
+ * - "Brigade Member" = Non-operational member (floor rank, default for new signups)
  * - "Probationary" = Probationary firefighter
- * - "Firefighter" = Full firefighter (recommended for most signups)
+ * - "Firefighter" = Full firefighter
  * - "Lieutenant" = Lieutenant rank
  * - "Captain" = Captain rank
- * 
+ *
  * Change this value to set what rank new users receive on signup.
  */
-const DEFAULT_SIGNUP_RANK: "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | null = "Firefighter";
+const DEFAULT_SIGNUP_RANK: "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" = "Brigade Member";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [

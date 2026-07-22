@@ -13,6 +13,7 @@ export const getDutyCrewMembers = query({
       firstName: v.optional(v.string()),
       lastName: v.optional(v.string()),
       rank: v.optional(v.union(
+        v.literal("Brigade Member"),
         v.literal("Probationary"),
         v.literal("Firefighter"),
         v.literal("Lieutenant"),
@@ -48,7 +49,7 @@ export const getDutyCrewMembers = query({
       if (a.isLeader && !b.isLeader) return -1;
       if (!a.isLeader && b.isLeader) return 1;
       
-      const rankOrder = { "Captain": 1, "Lieutenant": 2, "Firefighter": 3, "Probationary": 4 };
+      const rankOrder = { "Captain": 1, "Lieutenant": 2, "Firefighter": 3, "Probationary": 4, "Brigade Member": 5 };
       const aRankValue = a.rank ? rankOrder[a.rank] : 5;
       const bRankValue = b.rank ? rankOrder[b.rank] : 5;
       

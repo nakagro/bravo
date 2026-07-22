@@ -96,6 +96,7 @@ export const updateApplianceLocation = mutation({
 
       // Check if user is admin, has Lieutenant rank or higher, or has the Driver (DR) skill
       const rankOrder = {
+        "Brigade Member": 0,
         "Probationary": 1,
         "Firefighter": 2,
         "Lieutenant": 3,
@@ -111,7 +112,10 @@ export const updateApplianceLocation = mutation({
         const authorizedCodes = await getLocationEditSkillCodes(ctx);
         const authorizedSkills = await Promise.all(
           authorizedCodes.map((code) =>
-            ctx.db.query("skills").filter((q) => q.eq(q.field("code"), code)).first()
+            ctx.db
+              .query("skills")
+              .withIndex("by_code", (q) => q.eq("code", code))
+              .first()
           )
         );
         const authorizedSkillIds = authorizedSkills
@@ -158,7 +162,7 @@ export const updateApplianceLocation = mutation({
     // Check if appliance location already exists
     const existingLocation = await ctx.db
       .query("applianceLocations")
-      .filter((q) => q.eq(q.field("applianceName"), args.applianceName))
+      .withIndex("by_applianceName", (q) => q.eq("applianceName", args.applianceName))
       .unique();
 
     if (existingLocation) {
@@ -194,7 +198,7 @@ export const initializeApplianceLocations = mutation({
     // Get the first admin user to use as the updatedBy field
     const adminUser = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("isAdmin"), true))
+      .withIndex("by_isAdmin", (q) => q.eq("isAdmin", true))
       .first();
 
     if (!adminUser) {
@@ -204,7 +208,7 @@ export const initializeApplianceLocations = mutation({
     for (const appliance of appliances) {
       const existing = await ctx.db
         .query("applianceLocations")
-        .filter((q) => q.eq(q.field("applianceName"), appliance))
+        .withIndex("by_applianceName", (q) => q.eq("applianceName", appliance))
         .unique();
 
       if (!existing) {

@@ -609,6 +609,7 @@ export const updateModuleRequirements = mutation({
     adminOnly: v.boolean(),
     requiredRoles: v.array(v.string()),
     minimumRank: v.optional(v.union(
+      v.literal("Brigade Member"),
       v.literal("Probationary"),
       v.literal("Firefighter"),
       v.literal("Lieutenant"),
@@ -712,6 +713,7 @@ export const checkModuleAccess = query({
     let rankOk = true;
     if (hasRankReq) {
       const rankOrder = {
+        "Brigade Member": 0,
         "Probationary": 1,
         "Firefighter": 2,
         "Lieutenant": 3,
@@ -901,6 +903,7 @@ export const getAllModuleAccess = query({
       let rankOk = true;
       if (hasRankReq) {
         const rankOrder = {
+          "Brigade Member": 0,
           "Probationary": 1,
           "Firefighter": 2,
           "Lieutenant": 3,

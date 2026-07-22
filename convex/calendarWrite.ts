@@ -271,6 +271,7 @@ async function requireCalendarAccess(
     requiredRoles.some((role) => user.roles?.includes(role));
 
   const rankOrder = {
+    "Brigade Member": 0,
     Probationary: 1,
     Firefighter: 2,
     Lieutenant: 3,

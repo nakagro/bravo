@@ -1,6 +1,7 @@
 import { ActionProvider } from "./types";
 
 const RANK_ORDER: Record<string, number> = {
+  "Brigade Member": 0,
   Probationary: 1,
   Firefighter: 2,
   Lieutenant: 3,

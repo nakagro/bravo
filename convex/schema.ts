@@ -20,7 +20,9 @@ const extendedAuthTables = {
     lastName: v.optional(v.string()),
     memberNumber: v.optional(v.string()), // CFA ID
     // Rank field - a user can have only one rank
+    // "Brigade Member" is the floor rank for non-operational members (default on signup)
     rank: v.optional(v.union(
+      v.literal("Brigade Member"),
       v.literal("Probationary"),
       v.literal("Firefighter"),
       v.literal("Lieutenant"),
@@ -64,6 +66,7 @@ const extendedAuthTables = {
   })
     .index("by_email", ["email"])
     .index("by_memberNumber", ["memberNumber"])
+    .index("by_isAdmin", ["isAdmin"])
 };
 
 const applicationTables = {
@@ -112,6 +115,7 @@ const applicationTables = {
     requiredRoles: v.optional(v.array(v.string())),
     // Required minimum rank to access this module (null means no rank requirement)
     minimumRank: v.optional(v.union(
+      v.literal("Brigade Member"),
       v.literal("Probationary"),
       v.literal("Firefighter"),
       v.literal("Lieutenant"),
@@ -422,7 +426,7 @@ const applicationTables = {
       v.union(v.literal("user"), v.literal("serviceAccount"))
     ),
     updatedAt: v.number(),
-  }),
+  }).index("by_applianceName", ["applianceName"]),
 
   fireReports: defineTable({
     // Meta information
@@ -1236,7 +1240,7 @@ const applicationTables = {
     assignedUserIds: v.array(v.id("users")),
     assignedRoles: v.array(v.string()),
     minimumRank: v.optional(v.union(
-      v.literal("Probationary"), v.literal("Firefighter"),
+      v.literal("Brigade Member"), v.literal("Probationary"), v.literal("Firefighter"),
       v.literal("Lieutenant"), v.literal("Captain")
     )),
     sourceModuleId: v.optional(v.string()),
@@ -1271,7 +1275,7 @@ const applicationTables = {
     roles: v.array(v.string()),
     userIds: v.array(v.id("users")),
     minimumRank: v.optional(v.union(
-      v.literal("Probationary"), v.literal("Firefighter"),
+      v.literal("Brigade Member"), v.literal("Probationary"), v.literal("Firefighter"),
       v.literal("Lieutenant"), v.literal("Captain")
     )),
     isEnabled: v.boolean(),

@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
 const RANK_ORDER = {
+  "Brigade Member": 0,
   Probationary: 1,
   Firefighter: 2,
   Lieutenant: 3,
@@ -73,13 +74,12 @@ async function assertNoBookingConflict(
 ) {
   const effectiveEndDate = booking.endDate || booking.startDate;
 
-  const existingBookings = await ctx.db
-    .query("bookings")
-    .withIndex("by_resource", (q) => q.eq("resourceId", booking.resourceId))
-    .filter((q) =>
-      q.or(q.eq(q.field("status"), "pending"), q.eq(q.field("status"), "approved"))
-    )
-    .collect();
+  const existingBookings = (
+    await ctx.db
+      .query("bookings")
+      .withIndex("by_resource", (q) => q.eq("resourceId", booking.resourceId))
+      .collect()
+  ).filter((b) => b.status === "pending" || b.status === "approved");
 
   for (const existing of existingBookings) {
     if (booking.excludeBookingId && existing._id === booking.excludeBookingId) {
@@ -1221,6 +1221,7 @@ export const getAllUsers = query({
       name: v.optional(v.string()),
       rank: v.optional(
         v.union(
+          v.literal("Brigade Member"),
           v.literal("Probationary"),
           v.literal("Firefighter"),
           v.literal("Lieutenant"),

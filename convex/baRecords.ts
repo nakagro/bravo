@@ -46,6 +46,7 @@ async function resolveKioskServiceAccount(
 
 const BA_RECORD_DELETE_WINDOW_MS = 15 * 60 * 1000;
 const RANK_ORDER = {
+  "Brigade Member": 0,
   Probationary: 1,
   Firefighter: 2,
   Lieutenant: 3,
@@ -370,6 +371,7 @@ export const listMembers = query({
       lastName: v.optional(v.string()),
       rank: v.optional(
         v.union(
+          v.literal("Brigade Member"),
           v.literal("Probationary"),
           v.literal("Firefighter"),
           v.literal("Lieutenant"),

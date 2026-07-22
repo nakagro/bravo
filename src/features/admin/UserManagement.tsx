@@ -75,8 +75,8 @@ const getStrengthText = (strength: number) => {
 };
 
 function UserManagement() {
-  // constant for no rank
-  const NO_RANK_VALUE = "none";
+  // "Brigade Member" is the floor rank (non-operational members); every user has at least this rank.
+  const DEFAULT_RANK = "Brigade Member";
 
   // State
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
@@ -153,11 +153,7 @@ function UserManagement() {
 
   // Handle rank selection via shadcn Select
   const handleRankChange = (value: string) => {
-    if (value === NO_RANK_VALUE) {
-      setSelectedRank(null);
-    } else {
-      setSelectedRank(value);
-    }
+    setSelectedRank(value);
   };
 
   // Handle role selection
@@ -271,7 +267,7 @@ function UserManagement() {
 
         await updateRank({
           userId: selectedUserId,
-          rank: selectedRank as "Probationary" | "Firefighter" | "Lieutenant" | "Captain",
+          rank: selectedRank as "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain",
         });
       }
 
@@ -426,14 +422,14 @@ function UserManagement() {
                   Rank
                 </label>
                 <Select
-                  value={selectedRank ?? NO_RANK_VALUE}
+                  value={selectedRank ?? DEFAULT_RANK}
                   onValueChange={handleRankChange}
                 >
                   <SelectTrigger id="rank-select" className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-                    <SelectValue placeholder="-- No rank --" />
+                    <SelectValue placeholder="Brigade Member" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_RANK_VALUE}>-- No rank --</SelectItem>
+                    <SelectItem value="Brigade Member">Brigade Member</SelectItem>
                     <SelectItem value="Probationary">Probationary</SelectItem>
                     <SelectItem value="Firefighter">Firefighter</SelectItem>
                     <SelectItem value="Lieutenant">Lieutenant</SelectItem>
