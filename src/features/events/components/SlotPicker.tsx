@@ -4,13 +4,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import {
-  formatSlotWhen,
-  slotCoverageLabel,
-  getInitials,
-  formatUserName,
-  RsvpStatus,
-} from "../types";
+import { formatSlotWhen, slotCoverageLabel, RsvpStatus } from "../types";
 
 interface SlotPickerProps {
   eventId: Id<"events">;
@@ -19,10 +13,14 @@ interface SlotPickerProps {
 }
 
 /**
- * Member RSVP surface for a shift event — purely about **interest**. A vertical
- * list of shift cards (no 2-D grid); tap a card to mark "I can do this". The
- * official roster (who's been allocated) is set by an admin and shown read-only
- * here. An explicit "Can't make it" sits below.
+ * Zone 2 input surface for a shift event — purely about the **caller's own**
+ * availability. A vertical list of shift toggles; tap one to say "I can do
+ * this".
+ *
+ * Deliberately shows NO other members: the communal roster / interest picture
+ * lives in the read-only `ShiftBoard` (Zone 3). That split is the whole point —
+ * this card is what's asked of *you*, the board is what everyone can see. The
+ * only names here are your own standing (the "you're rostered on" banner).
  */
 export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
   const slots = useQuery(api.events.getEventSlots, { eventId });
@@ -165,35 +163,6 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                     <div className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{when}</div>
                   )}
 
-                  {slot.allocated.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {slot.allocated.map((member) => (
-                        <span
-                          key={member._id}
-                          title={
-                            member.declined
-                              ? `${formatUserName(member)}: can't make it`
-                              : formatUserName(member)
-                          }
-                          className={`inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full border text-xs ${
-                            member.declined
-                              ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 line-through"
-                              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          <span
-                            className={`h-5 w-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${
-                              member.declined ? "bg-red-500" : "bg-indigo-600"
-                            }`}
-                          >
-                            {member.declined ? <XMarkIcon className="h-3 w-3" /> : getInitials(member)}
-                          </span>
-                          {formatUserName(member)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
                   <div
                     className={`text-xs font-medium mt-2 ${
                       cardState === "rostered"
@@ -204,9 +173,9 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                     {
                       {
                         rostered: "You're rostered on this shift",
-                        interested: "You can do this shift, tap to remove",
-                        offered: "You offered to help, not rostered on this one. Tap to withdraw.",
-                        idle: "Tap if you can do this shift",
+                        interested: "You're interested in this shift, tap to remove",
+                        offered: "You're interested in this one, not rostered on it. Tap to withdraw.",
+                        idle: "Tap if you're interested in this shift",
                       }[cardState]
                     }
                   </div>

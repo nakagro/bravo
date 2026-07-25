@@ -235,6 +235,22 @@ export const seedDevDatabase = mutation({
         minimumRank: "Lieutenant",
       },
       {
+        moduleId: "memberRecords",
+        moduleName: "Member Records",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant",
+      },
+      {
+        moduleId: "memberRecordsAdmin",
+        moduleName: "Member Records - Kit",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant",
+      },
+      {
         moduleId: "equipment",
         moduleName: "Equipment",
         isEnabled: true,

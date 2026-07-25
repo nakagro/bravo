@@ -1,6 +1,77 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Doc } from "./_generated/dataModel";
+
+/**
+ * The single rank ladder. It lived in three places (two here, one in the member
+ * records module) and every new rank meant finding all of them. "Brigade
+ * Member" was added by hand to each. Keep it here and import it.
+ */
+export const RANK_ORDER: Record<string, number> = {
+  "Brigade Member": 0,
+  Probationary: 1,
+  Firefighter: 2,
+  Lieutenant: 3,
+  Captain: 4,
+};
+
+/**
+ * Does this user satisfy a module's gate? Role and rank requirements are ANDed;
+ * a missing or disabled module denies. Admins are handled by the callers, which
+ * short-circuit before getting here.
+ */
+export function moduleSettingAllows(
+  user: Doc<"users">,
+  moduleSetting: Doc<"moduleSettings"> | null | undefined,
+): boolean {
+  if (!moduleSetting || !moduleSetting.isEnabled) return false;
+  if (moduleSetting.adminOnly && !user.isAdmin) return false;
+
+  const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
+  const hasRankReq = !!moduleSetting.minimumRank;
+
+  let roleOk = true;
+  if (hasRoleReq) {
+    const userRoles = user.roles || [];
+    roleOk = moduleSetting.requiredRoles!.some((role: string) => userRoles.includes(role));
+  }
+
+  let rankOk = true;
+  if (hasRankReq) {
+    const userRank = user.rank;
+    rankOk = userRank ? RANK_ORDER[userRank] >= RANK_ORDER[moduleSetting.minimumRank!] : false;
+  }
+
+  return roleOk && rankOk;
+}
+
+/**
+ * Throw unless the signed-in user passes a moduleSettings-gated module. The gate
+ * lives in data so officers can retune rank/role requirements from the Admin UI
+ * without a code change. Admins always pass. Returns the caller's user id.
+ */
+export async function requireModuleAccess(
+  ctx: QueryCtx | MutationCtx,
+  moduleId: string,
+  denialMessage: string,
+) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("You must be signed in");
+
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error("User not found");
+  if (user.isAdmin) return userId;
+
+  const moduleSetting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
+    .first();
+
+  if (!moduleSettingAllows(user, moduleSetting)) throw new Error(denialMessage);
+
+  return userId;
+}
 
 /**
  * Get all module settings
@@ -133,6 +204,22 @@ export const syncModuleSettings = mutation({
       {
         moduleId: "inventoryAdmin",
         moduleName: "Inventory - Templates",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "memberRecords",
+        moduleName: "Member Records",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "memberRecordsAdmin",
+        moduleName: "Member Records - Kit",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -391,6 +478,22 @@ export const initializeModuleSettings = mutation({
       {
         moduleId: "inventoryAdmin",
         moduleName: "Inventory - Templates",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "memberRecords",
+        moduleName: "Member Records",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
+        moduleId: "memberRecordsAdmin",
+        moduleName: "Member Records - Kit",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
@@ -686,54 +789,7 @@ export const checkModuleAccess = query({
       .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
       .first();
 
-    if (!moduleSetting) {
-      return false; // Module not found
-    }
-
-    // Check if the module is enabled globally
-    if (!moduleSetting.isEnabled) {
-      return false;
-    }
-
-    // Check if the module is admin-only
-    if (moduleSetting.adminOnly && !user.isAdmin) {
-      return false; // Module is admin-only and user is not an admin
-    }
-
-    // Check role requirements
-    const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-    const hasRankReq = !!moduleSetting.minimumRank;
-
-    let roleOk = true;
-    if (hasRoleReq) {
-      const userRoles = user.roles || [];
-      roleOk = moduleSetting.requiredRoles!.some(role => userRoles.includes(role));
-    }
-
-    let rankOk = true;
-    if (hasRankReq) {
-      const rankOrder = {
-        "Brigade Member": 0,
-        "Probationary": 1,
-        "Firefighter": 2,
-        "Lieutenant": 3,
-        "Captain": 4
-      };
-
-      const userRank = user.rank;
-      if (!userRank) {
-        rankOk = false;
-      } else {
-        rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank as keyof typeof rankOrder];
-      }
-    }
-
-    // When both role and rank requirements exist, user must meet BOTH
-    // When only one requirement exists, user must meet that one
-    if (!(roleOk && rankOk)) return false;
-
-    // If all checks pass, the user has access
-    return true;
+    return moduleSettingAllows(user, moduleSetting);
   },
 });
 
@@ -753,6 +809,8 @@ export const getAllModuleAccess = query({
     fireReports: v.boolean(),
     inventory: v.boolean(),
     inventoryAdmin: v.boolean(),
+    memberRecords: v.boolean(),
+    memberRecordsAdmin: v.boolean(),
     vehicleFaults: v.boolean(),
     equipment: v.boolean(),
     equipmentAdmin: v.boolean(),
@@ -786,6 +844,8 @@ export const getAllModuleAccess = query({
         fireReports: false,
         inventory: false,
         inventoryAdmin: false,
+        memberRecords: false,
+        memberRecordsAdmin: false,
         vehicleFaults: false,
         equipment: false,
         equipmentAdmin: false,
@@ -820,6 +880,8 @@ export const getAllModuleAccess = query({
         fireReports: false,
         inventory: false,
         inventoryAdmin: false,
+        memberRecords: false,
+        memberRecordsAdmin: false,
         vehicleFaults: false,
         equipment: false,
         equipmentAdmin: false,
@@ -854,6 +916,8 @@ export const getAllModuleAccess = query({
         fireReports: true,
         inventory: true,
         inventoryAdmin: true,
+        memberRecords: true,
+        memberRecordsAdmin: true,
         vehicleFaults: true,
         equipment: true,
         equipmentAdmin: true,
@@ -881,49 +945,8 @@ export const getAllModuleAccess = query({
     const moduleMap = new Map(allModuleSettings.map(m => [m.moduleId, m]));
 
     // Helper function to check access for a specific module
-    const checkAccess = (moduleId: string): boolean => {
-      const moduleSetting = moduleMap.get(moduleId);
-      if (!moduleSetting || !moduleSetting.isEnabled) {
-        return false;
-      }
-
-      if (moduleSetting.adminOnly && !user.isAdmin) {
-        return false;
-      }
-
-      const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-      const hasRankReq = !!moduleSetting.minimumRank;
-
-      let roleOk = true;
-      if (hasRoleReq) {
-        const userRoles = user.roles || [];
-        roleOk = moduleSetting.requiredRoles!.some(role => userRoles.includes(role));
-      }
-
-      let rankOk = true;
-      if (hasRankReq) {
-        const rankOrder = {
-          "Brigade Member": 0,
-          "Probationary": 1,
-          "Firefighter": 2,
-          "Lieutenant": 3,
-          "Captain": 4
-        };
-
-        const userRank = user.rank;
-        if (!userRank) {
-          rankOk = false;
-        } else {
-          rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank as keyof typeof rankOrder];
-        }
-      }
-
-      // When both role and rank requirements exist, user must meet BOTH
-      // When only one requirement exists, user must meet that one
-      if (!(roleOk && rankOk)) return false;
-
-      return true;
-    };
+    const checkAccess = (moduleId: string): boolean =>
+      moduleSettingAllows(user, moduleMap.get(moduleId));
 
     return {
       dashboard: checkAccess("dashboard"),
@@ -935,6 +958,8 @@ export const getAllModuleAccess = query({
       fireReports: checkAccess("fireReports"),
       inventory: checkAccess("inventory"),
       inventoryAdmin: checkAccess("inventoryAdmin"),
+      memberRecords: checkAccess("memberRecords"),
+      memberRecordsAdmin: checkAccess("memberRecordsAdmin"),
       vehicleFaults: checkAccess("vehicleFaults"),
       equipment: checkAccess("equipment"),
       equipmentAdmin: checkAccess("equipmentAdmin"),

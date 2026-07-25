@@ -14,6 +14,7 @@ import {
   CalendarCheck,
   CalendarRange,
   BellRing,
+  ClipboardList,
 } from "lucide-react";
 import { FaMaskVentilator } from "react-icons/fa6";
 
@@ -224,6 +225,19 @@ export const NAV_ITEMS: NavItem[] = [
       bg: "bg-emerald-100 dark:bg-emerald-900/20",
       bgHover: "group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/40",
       fg: "text-emerald-600 dark:text-emerald-400",
+    },
+  },
+  {
+    id: "memberRecords",
+    label: "Member Records",
+    shortLabel: "Records",
+    path: "/member-records",
+    icon: ClipboardList,
+    group: "brigade",
+    color: {
+      bg: "bg-rose-100 dark:bg-rose-900/20",
+      bgHover: "group-hover:bg-rose-200 dark:group-hover:bg-rose-900/40",
+      fg: "text-rose-600 dark:text-rose-400",
     },
   },
   {

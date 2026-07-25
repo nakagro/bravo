@@ -5,6 +5,11 @@ import {
   legacyTapeColorValidator,
   tapeColorValidator,
 } from "./lib/tapeColors";
+import {
+  kitHistoryReasonValidator,
+  kitTracksValidator,
+  kitValueValidator,
+} from "./lib/memberKit";
 
 // We need to keep all the original auth fields and add our custom ones
 const extendedAuthTables = {
@@ -845,6 +850,94 @@ const applicationTables = {
     .index("by_run", ["runId"])
     .index("by_run_sectionOrder", ["runId", "sectionOrder"])
     .index("by_run_itemOrder", ["runId", "itemOrder"]),
+
+  // Member Records - a kit register. An officer records what gear each member
+  // holds so ordering doesn't mean chasing a spreadsheet. The domain has three
+  // nouns: a kit *set* (Structural PPC), the *items* in it (jacket, boots), and
+  // the *size chart* a sized item is ordered against. Some things the brigade
+  // tracks aren't sets at all (a pager is one serial, station workwear is one
+  // yes/no), so an item may stand alone with no set.
+  memberKitSets: defineTable({
+    name: v.string(), // "Structural PPC", "Wildfire PPC", "Comms"
+    description: v.optional(v.string()),
+    order: v.number(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+    metadata: v.optional(v.any()),
+  }).index("by_order", ["order"]),
+
+  memberKitItems: defineTable({
+    // Absent means standalone. Standalone items are read from the same index
+    // with q.eq("setId", undefined), and `order` sequences them among
+    // themselves, so no second index is needed.
+    setId: v.optional(v.id("memberKitSets")),
+    name: v.string(), // "Jacket", "Boots", "Pager"
+    description: v.optional(v.string()), // helper text shown under the control
+    order: v.number(),
+    tracks: kitTracksValidator,
+    options: v.optional(v.array(v.string())), // "choice" only
+    isArchived: v.optional(v.boolean()), // hidden from profiles, entries retained
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_set", ["setId"])
+    .index("by_set_order", ["setId", "order"]),
+
+  // A brand/model belonging to a "size" item, carrying its own size list,
+  // suppliers do not share a sizing scale, so the sizes have to follow the
+  // chosen chart rather than sit in one flat list.
+  memberKitSizeCharts: defineTable({
+    itemId: v.id("memberKitItems"),
+    name: v.string(), // "Stewart & Heaton", "Haix"
+    order: v.number(),
+    sizes: v.array(v.string()), // e.g. ["82","87","92"] or ["S","M","L"]
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_item_order", ["itemId", "order"]),
+
+  // One row per (member, item) that has a recorded value. A missing row means
+  // "not recorded", which stays distinct from a recorded `false`, so clearing a value
+  // deletes the row rather than storing an empty one.
+  memberKitEntries: defineTable({
+    userId: v.id("users"),
+    itemId: v.id("memberKitItems"),
+    value: kitValueValidator,
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_item", ["itemId"])
+    .index("by_user_item", ["userId", "itemId"]),
+
+  // Immutable audit of every material entry change. Deliberately snapshot-based
+  // (the Inventory pattern): the formatted values, item name, set name and actor
+  // name are captured when the event is written, so renaming or deleting a
+  // chart, item, set or user never rewrites how an existing row reads.
+  memberKitEntryHistory: defineTable({
+    userId: v.id("users"),
+    itemId: v.id("memberKitItems"),
+    previousValue: v.optional(kitValueValidator),
+    newValue: v.optional(kitValueValidator), // absent means the value was cleared
+    previousDisplaySnapshot: v.optional(v.string()),
+    newDisplaySnapshot: v.optional(v.string()),
+    reason: kitHistoryReasonValidator,
+    itemNameSnapshot: v.string(),
+    setNameSnapshot: v.optional(v.string()), // absent means the item was standalone then
+    changedByNameSnapshot: v.string(),
+    changedBy: v.id("users"),
+    changedAt: v.number(),
+  })
+    .index("by_user_changedAt", ["userId", "changedAt"])
+    .index("by_item_changedAt", ["itemId", "changedAt"]),
 
   // Bookings - Resource booking system
   // Resources that can be booked (appliances, meeting room, etc.)

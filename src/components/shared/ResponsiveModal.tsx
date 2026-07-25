@@ -28,6 +28,13 @@ interface ResponsiveModalProps {
   drawerHeight?: string;
   /** Desktop sheet max-width — defaults to "sm:max-w-md md:max-w-lg" */
   maxWidth?: string;
+  /**
+   * Veto a dismissal. Called for the close button, Escape, an outside click and
+   * the drawer swipe; returning false leaves the modal open so the owner can
+   * confirm first (e.g. discarding an unsaved draft). Callers that omit it
+   * behave exactly as before.
+   */
+  onRequestClose?: () => boolean;
 }
 
 export function ResponsiveModal({
@@ -38,15 +45,21 @@ export function ResponsiveModal({
   footer,
   drawerHeight = "h-[90vh]",
   maxWidth = "sm:max-w-md md:max-w-lg",
+  onRequestClose,
 }: ResponsiveModalProps) {
   const isMobile = useIsMobile();
+
+  const attemptClose = () => {
+    if (onRequestClose && !onRequestClose()) return;
+    onClose();
+  };
 
   if (isMobile) {
     return (
       <Drawer
         open={open}
         onOpenChange={(o) => {
-          if (!o) onClose();
+          if (!o) attemptClose();
         }}
       >
         <DrawerContent
@@ -61,7 +74,7 @@ export function ResponsiveModal({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onClose}
+                onClick={attemptClose}
                 className="size-10 touch-manipulation"
                 aria-label="Close"
               >
@@ -84,7 +97,7 @@ export function ResponsiveModal({
     <Sheet
       open={open}
       onOpenChange={(o) => {
-        if (!o) onClose();
+        if (!o) attemptClose();
       }}
     >
       <SheetContent

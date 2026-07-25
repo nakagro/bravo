@@ -31,6 +31,12 @@ const VehicleFaultsPage = lazy(() => import("./pages/VehicleFaultsPage").then((m
 const InventoryPage = lazy(() => import("./pages/InventoryPage").then((m) => ({ default: m.InventoryPage })));
 const InventoryChecksTab = lazy(() => import("./features/inventory/pages/InventoryChecksTab").then((m) => ({ default: m.InventoryChecksTab })));
 const InventoryTemplateTab = lazy(() => import("./features/inventory/pages/InventoryTemplateTab").then((m) => ({ default: m.InventoryTemplateTab })));
+const MemberRecordsPage = lazy(() => import("./pages/MemberRecordsPage"));
+const MemberKitProfilePage = lazy(() => import("./pages/MemberKitProfilePage"));
+const MemberKitHistoryPage = lazy(() => import("./pages/MemberKitHistoryPage"));
+const MemberKitSetPage = lazy(() => import("./pages/MemberKitSetPage"));
+const MemberKitItemPage = lazy(() => import("./pages/MemberKitItemPage"));
+const MemberKitBulkPage = lazy(() => import("./pages/MemberKitBulkPage"));
 const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ default: m.BookingsPage })));
 const CalendarPage = lazy(() => import("./pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
@@ -258,6 +264,60 @@ function AuthenticatedApp() {
           <Route path="/inventory/run/:runId" element={
             <ProtectedRoute moduleId="inventory">
               <InventoryChecksTab />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberRecordsPage />
+            </ProtectedRoute>
+          } />
+          {/* Kit-definition routes are gated on memberRecordsAdmin, not just the
+              visibility of the Kit tab, and must sit before /:userId so "kit"
+              isn't matched as a member id. */}
+          <Route path="/member-records/kit/new" element={
+            <ProtectedRoute moduleId="memberRecordsAdmin">
+              <MemberKitSetPage mode="form" />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/kit/items/new" element={
+            <ProtectedRoute moduleId="memberRecordsAdmin">
+              <MemberKitItemPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/kit/items/:itemId" element={
+            <ProtectedRoute moduleId="memberRecordsAdmin">
+              <MemberKitItemPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/kit/items/:itemId/all" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberKitBulkPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/kit/:setId" element={
+            <ProtectedRoute moduleId="memberRecordsAdmin">
+              <MemberKitSetPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/kit/:setId/edit" element={
+            <ProtectedRoute moduleId="memberRecordsAdmin">
+              <MemberKitSetPage mode="form" />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/:userId" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberKitProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/:userId/history" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberKitHistoryPage />
+            </ProtectedRoute>
+          } />
+          {/* The set editor is addressable: the profile renders behind it. */}
+          <Route path="/member-records/:userId/set/:setId" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberKitProfilePage editing />
             </ProtectedRoute>
           } />
           <Route path="/vehicle-faults" element={

@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { FunctionReturnType } from "convex/server";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import {
   formatShortDate,
-  formatSlotWhen,
   formatTime,
   formatUserName,
   formatWeekday,
@@ -18,6 +16,7 @@ import {
 } from "../features/events/types";
 import { RsvpButtons } from "../features/events/components/RsvpButtons";
 import { SlotPicker } from "../features/events/components/SlotPicker";
+import { ShiftBoard } from "../features/events/components/ShiftBoard";
 import { AllocateShiftsDialog } from "../features/events/components/AllocateShiftsDialog";
 import { EventForm } from "../features/events/components/EventForm";
 import { EventTypeChip } from "../features/events/components/badges";
@@ -88,15 +87,10 @@ export function EventDetailPage() {
     api.events.getEventAttendance,
     typedEventId ? { eventId: typedEventId } : "skip"
   );
-  // Per-shift breakdown for the "Who's coming" card (shift events only)
-  const slots = useQuery(
-    api.events.getEventSlots,
-    typedEventId && event?.hasShifts ? { eventId: typedEventId } : "skip"
-  );
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canManageEvents = moduleAccess?.eventsAdmin === true;
-  // Used to mark "you" in the shift lists — the one thing you can't work out
-  // by looking, since offers get spread across shifts by the organiser
+  // Used to mark "you" in the (non-shift) attending list. Shift events carry
+  // their own per-shift turnout (with its own "you" marking) in the ShiftBoard.
   const myUserId = useQuery(api.messages.getCurrentUserId);
 
   const cancelEvent = useMutation(api.events.cancelEvent);
@@ -398,25 +392,33 @@ export function EventDetailPage() {
         </div>
       </div>
 
-      {/* RSVP — full-width card, consistent with the rest of the page */}
-      {showRsvp &&
-        (event.hasShifts ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
-            <div className="text-sm font-bold text-gray-900 dark:text-white mb-3">
-              Which shifts can you do?
+      {/* Zone 2 — Your status: only ever about *you* (your availability / your
+          place on the roster). Interactive while the event is still open; once
+          it's past or cancelled there's nothing to ask, so this drops away and
+          the read-only board below carries the turnout (it highlights "you"). */}
+      {showRsvp && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
+          {event.hasShifts ? (
+            <>
+              <div className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+                Which shifts can you do?
+              </div>
+              <SlotPicker eventId={event._id} myRsvp={event.myRsvp} />
+            </>
+          ) : (
+            <div className="sm:flex sm:items-center sm:justify-between sm:gap-6">
+              <div className="mb-3 sm:mb-0">
+                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                  Are you coming?
+                </div>
+              </div>
+              <div className="sm:w-auto w-full sm:min-w-[320px]">
+                <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} size="lg" />
+              </div>
             </div>
-            <SlotPicker eventId={event._id} myRsvp={event.myRsvp} />
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
-            <div className="mb-3 sm:mb-0">
-              <div className="text-sm font-bold text-gray-900 dark:text-white">Are you coming?</div>
-            </div>
-            <div className="sm:w-auto w-full sm:min-w-[320px]">
-              <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} size="lg" />
-            </div>
-          </div>
-        ))}
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3 items-start">
         {/* Details — all the event information lives here as labelled sections */}
@@ -480,37 +482,33 @@ export function EventDetailPage() {
             )}
           </div>
 
-          {/* Who's coming — avatar chips for quick scanning. Visible to all
-              members (the attending list is the turnout signal). For shift
-              events this is per-shift: interest while nothing is allocated,
-              the official roster once allocation has started. */}
-          {attendance && (
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
-              <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-                {/* No count on shift events — people are spread across shifts,
-                    so a single number never matches the lists below it */}
-                Who&apos;s coming
-                {!event.hasShifts && ` (${attendance.attending.length})`}
-              </h3>
-              {event.hasShifts && slots && slots.length > 0 ? (
-                <ShiftTurnout slots={slots} showRsvp={showRsvp} myUserId={myUserId ?? null} />
-              ) : attendance.attending.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {showRsvp
-                    ? event.hasShifts
-                      ? "No responses yet. Be the first to pick a shift."
-                      : "No responses yet. Be the first to RSVP."
-                    : "Nobody marked themselves as going."}
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {attendance.attending.map((member) => (
-                    <MemberChip key={member._id} member={member} isMe={member._id === myUserId} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Zone 3 — the board: read-only turnout for everyone. Shift events get
+              the per-shift ShiftBoard (roster + interested + coverage); simple
+              events get the flat "going" list. Purely display — all input lives
+              in the Your-status card above, so nothing here is a control. */}
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
+            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
+              Who&apos;s coming
+              {!event.hasShifts && attendance ? ` (${attendance.attending.length})` : ""}
+            </h3>
+            {event.hasShifts ? (
+              <ShiftBoard eventId={event._id} />
+            ) : !attendance ? (
+              <Skeleton className="h-8 w-48 rounded" />
+            ) : attendance.attending.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {showRsvp
+                  ? "No responses yet. Be the first to RSVP."
+                  : "Nobody marked themselves as going."}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {attendance.attending.map((member) => (
+                  <MemberChip key={member._id} member={member} isMe={member._id === myUserId} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Responses panel — admin-only drill-down (Maybe / Not going / No
@@ -597,21 +595,19 @@ export function EventDetailPage() {
   );
 }
 
-type EventSlot = FunctionReturnType<typeof api.events.getEventSlots>[number];
-
 interface ChipMember {
   _id: string;
   firstName?: string;
   lastName?: string;
   name?: string;
-  /** Put down for a shift but has since marked "can't make it" */
+  /** Marked "can't make it" — struck through in red */
   declined?: boolean;
 }
 
 /**
- * Avatar name chip. Deliberately one look for everyone — where a name sits
- * (under a shift, or under a shift still marked "not sorted yet") says what it
- * means, so the chip doesn't need to colour-code interest vs allocation.
+ * Avatar name chip for the simple (non-shift) attending list. "You" and "can't
+ * make it" get their own accents so you can find yourself and spot conflicts at
+ * a glance. Shift events render their own chips inside the ShiftBoard.
  */
 function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boolean }) {
   if (member.declined) {
@@ -645,75 +641,5 @@ function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boole
       {formatUserName(member)}
       {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
     </span>
-  );
-}
-
-/**
- * Per-shift turnout for the "Who's coming" card.
- *
- * Each shift stands on its own: once someone has been put on a shift that
- * shift shows its people, otherwise it shows everyone who put their hand up
- * with a quiet "not sorted yet". Sorting the shifts out is incremental, so a
- * single global flip would blank out the hands-up list on every shift the
- * organiser hasn't got to yet — exactly when they need to see it.
- *
- * Nobody is told they missed out: someone who offered and wasn't picked simply
- * stays visible under the shifts they offered for.
- */
-function ShiftTurnout({
-  slots,
-  showRsvp,
-  myUserId,
-}: {
-  slots: EventSlot[];
-  showRsvp: boolean;
-  myUserId: Id<"users"> | null;
-}) {
-  const anyone = slots.some((slot) => slot.allocated.length > 0 || slot.interested.length > 0);
-
-  if (!anyone) {
-    return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        {showRsvp ? "Nobody yet — be the first to put your hand up." : "Nobody put their hand up."}
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {slots.map((slot) => {
-        const sorted = slot.allocated.length > 0;
-        const members = sorted ? slot.allocated : slot.interested;
-        const when = formatSlotWhen(slot);
-        return (
-          <div key={slot._id}>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {slot.label}
-              </span>
-              {when && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">{when}</span>
-              )}
-              {!sorted && members.length > 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">· not sorted yet</span>
-              )}
-            </div>
-            {members.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Nobody yet</p>
-            ) : (
-              <div className="flex flex-wrap gap-2 mt-1.5">
-                {members.map((member) => (
-                  <MemberChip
-                    key={member._id}
-                    member={member}
-                    isMe={member._id === myUserId}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
