@@ -314,10 +314,16 @@ function AuthenticatedApp() {
               <MemberKitHistoryPage />
             </ProtectedRoute>
           } />
-          {/* The set editor is addressable: the profile renders behind it. */}
+          {/* The editors are addressable: the profile renders behind them. A
+              kit set is edited whole; a standalone item is edited on its own. */}
           <Route path="/member-records/:userId/set/:setId" element={
             <ProtectedRoute moduleId="memberRecords">
-              <MemberKitProfilePage editing />
+              <MemberKitProfilePage editing="set" />
+            </ProtectedRoute>
+          } />
+          <Route path="/member-records/:userId/item/:itemId" element={
+            <ProtectedRoute moduleId="memberRecords">
+              <MemberKitProfilePage editing="item" />
             </ProtectedRoute>
           } />
           <Route path="/vehicle-faults" element={

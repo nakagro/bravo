@@ -13,8 +13,13 @@ import { useDirtyDraftGuard } from "./useDirtyDraftGuard";
 
 interface KitSetEditorProps {
   userId: Id<"users">;
-  /** `null` addresses the standalone "Individual items" group. */
+  /** `null` when editing a standalone item, which belongs to no set. */
   setId: Id<"memberKitSets"> | null;
+  /**
+   * Narrows the editor to one item. Standalone items are edited alone, since a
+   * pager is its own thing rather than a member of some "individual" group.
+   */
+  itemId?: Id<"memberKitItems">;
   /** Called on a clean close and after a successful save. */
   onClose: () => void;
 }
@@ -22,11 +27,12 @@ interface KitSetEditorProps {
 type Draft = Record<string, KitValue | null>;
 
 /**
- * The only place inputs live. One set's items, an explicit Save, and a dirty
- * guard on every exit, replacing the 50-input accordion that committed on blur.
+ * The only place inputs live: one kit set, or one standalone item, with an
+ * explicit Save and a dirty guard on every exit. Replaces the 50-input
+ * accordion that committed on blur.
  */
-export function KitSetEditor({ userId, setId, onClose }: KitSetEditorProps) {
-  const scope = useQuery(api.memberKit.getKitScopeForEntry, { userId, setId });
+export function KitSetEditor({ userId, setId, itemId, onClose }: KitSetEditorProps) {
+  const scope = useQuery(api.memberKit.getKitScopeForEntry, { userId, setId, itemId });
   const saveEntries = useMutation(api.memberKit.setKitEntries);
 
   const [draft, setDraft] = useState<Draft>({});
@@ -121,9 +127,9 @@ export function KitSetEditor({ userId, setId, onClose }: KitSetEditorProps) {
             ))}
           </div>
         ) : scope === null ? (
-          <p className="text-sm text-muted-foreground">This kit group no longer exists.</p>
+          <p className="text-sm text-muted-foreground">This kit no longer exists.</p>
         ) : scope.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No items in this group yet.</p>
+          <p className="text-sm text-muted-foreground">Nothing to record here yet.</p>
         ) : (
           <div className="space-y-5 pb-4">
             {error && (

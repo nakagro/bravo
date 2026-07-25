@@ -322,6 +322,65 @@ describe("recording values", () => {
   });
 });
 
+describe("editing scope", () => {
+  it("scopes the editor to one standalone item, not a group of them", async () => {
+    const { as, memberId } = await setup();
+    const pager = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Pager",
+      tracks: "serial",
+    });
+    await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Station workwear",
+      tracks: "held",
+    });
+    await as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId: pager, value: "EM-1" });
+
+    const scope = await as.query(api.memberKit.getKitScopeForEntry, {
+      userId: memberId,
+      setId: null,
+      itemId: pager,
+    });
+
+    // The editor is titled with the item, and the workwear is nowhere near it.
+    expect(scope?.title).toBe("Pager");
+    expect(scope?.items).toHaveLength(1);
+    expect(scope?.items[0].name).toBe("Pager");
+    expect(scope?.values).toEqual([{ itemId: pager, value: "EM-1" }]);
+  });
+
+  it("titles a set scope with the set name and returns all its items", async () => {
+    const { as, memberId } = await setup();
+    const setId = await as.mutation(api.memberKitAdmin.createSet, { name: "Structural PPC" });
+    await as.mutation(api.memberKitAdmin.createItem, { setId, name: "Jacket", tracks: "size" });
+    await as.mutation(api.memberKitAdmin.createItem, { setId, name: "Pants", tracks: "size" });
+
+    const scope = await as.query(api.memberKit.getKitScopeForEntry, {
+      userId: memberId,
+      setId,
+    });
+    expect(scope?.title).toBe("Structural PPC");
+    expect(scope?.items.map((item) => item.name)).toEqual(["Jacket", "Pants"]);
+  });
+
+  it("refuses an item that does not live in the requested scope", async () => {
+    const { as, memberId } = await setup();
+    const setId = await as.mutation(api.memberKitAdmin.createSet, { name: "Comms" });
+    const inSet = await as.mutation(api.memberKitAdmin.createItem, {
+      setId,
+      name: "Radio",
+      tracks: "serial",
+    });
+
+    // Asking for a set item as though it were standalone finds nothing.
+    const scope = await as.query(api.memberKit.getKitScopeForEntry, {
+      userId: memberId,
+      setId: null,
+      itemId: inSet,
+    });
+    expect(scope).toBeNull();
+  });
+});
+
 describe("batch saves reject as a whole", () => {
   it("rejects a duplicate item id without writing anything", async () => {
     const { as, memberId } = await setup();
@@ -725,6 +784,89 @@ describe("definition guards", () => {
     await expect(
       as.mutation(api.memberKitAdmin.updateChart, { chartId, sizes: ["87"] }),
     ).rejects.toThrow(/still recorded against members: 92/);
+  });
+
+  it("records a size against an unnamed chart, with no brand in the display", async () => {
+    const { as, memberId } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Braces",
+      tracks: "size",
+    });
+    // Braces only ever come in one make, so the officer names nothing.
+    const chartId = await as.mutation(api.memberKitAdmin.createChart, {
+      itemId,
+      sizes: ["Small", "Medium", "Large"],
+    });
+
+    await as.mutation(api.memberKit.setKitEntry, {
+      userId: memberId,
+      itemId,
+      value: { chartId, size: "Medium" },
+    });
+
+    const summary = await as.query(api.memberKit.getMemberKitSummary, { userId: memberId });
+    expect(summary?.standalone.entries[0].display).toBe("Medium");
+
+    const history = await as.query(api.memberKit.getMemberKitHistory, {
+      userId: memberId,
+      paginationOpts: { numItems: 50, cursor: null },
+    });
+    expect(history.page[0].newDisplay).toBe("Medium");
+  });
+
+  it("treats a blank chart name the same as omitting it", async () => {
+    const { as } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Braces",
+      tracks: "size",
+    });
+    await as.mutation(api.memberKitAdmin.createChart, { itemId, name: "  ", sizes: ["M"] });
+
+    const defs = await as.query(api.memberKit.getKitDefinitions, {});
+    expect(defs.standalone[0].charts[0].name).toBeUndefined();
+  });
+
+  it("requires a name once an item has more than one chart", async () => {
+    const { as } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Gloves",
+      tracks: "size",
+    });
+    const first = await as.mutation(api.memberKitAdmin.createChart, {
+      itemId,
+      sizes: ["9"],
+    });
+
+    // A second chart alongside an unnamed one would be indistinguishable.
+    await expect(
+      as.mutation(api.memberKitAdmin.createChart, { itemId, name: "Supplier B", sizes: ["10"] }),
+    ).rejects.toThrow(/unnamed/);
+
+    await as.mutation(api.memberKitAdmin.updateChart, { chartId: first, name: "Supplier A" });
+    const second = await as.mutation(api.memberKitAdmin.createChart, {
+      itemId,
+      name: "Supplier B",
+      sizes: ["10"],
+    });
+    expect(second).toBeDefined();
+
+    // …and now neither one may drop its name.
+    await expect(
+      as.mutation(api.memberKitAdmin.updateChart, { chartId: first, name: "" }),
+    ).rejects.toThrow(/needs a name/);
+  });
+
+  it("refuses a second unnamed chart", async () => {
+    const { as } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Gloves",
+      tracks: "size",
+    });
+    await as.mutation(api.memberKitAdmin.createChart, { itemId, name: "Supplier A", sizes: ["9"] });
+
+    await expect(
+      as.mutation(api.memberKitAdmin.createChart, { itemId, sizes: ["10"] }),
+    ).rejects.toThrow(/needs a brand or model name/);
   });
 
   it("refuses charts on an item that is not sized", async () => {

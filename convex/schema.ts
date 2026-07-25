@@ -888,12 +888,14 @@ const applicationTables = {
     .index("by_set", ["setId"])
     .index("by_set_order", ["setId", "order"]),
 
-  // A brand/model belonging to a "size" item, carrying its own size list,
-  // suppliers do not share a sizing scale, so the sizes have to follow the
-  // chosen chart rather than sit in one flat list.
+  // A size list belonging to a "size" item. Suppliers do not share a sizing
+  // scale, so gloves stocked from three of them need three charts and the sizes
+  // have to follow the chosen one. `name` is optional because plenty of gear
+  // (braces, for one) only ever comes in a single make: that item gets one
+  // unnamed chart and the officer is never asked to invent a brand.
   memberKitSizeCharts: defineTable({
     itemId: v.id("memberKitItems"),
-    name: v.string(), // the supplier's brand or model name
+    name: v.optional(v.string()), // the supplier's brand or model, when it matters
     order: v.number(),
     sizes: v.array(v.string()), // e.g. ["82","87","92"] or ["S","M","L"]
     createdBy: v.id("users"),

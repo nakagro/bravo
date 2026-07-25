@@ -164,6 +164,9 @@ function SizeControl({ item, value, onChange, compact }: KitItemControlProps) {
     [charts, chartId],
   );
 
+  /** A single unnamed chart is just "this item's sizes", with no brand to pick. */
+  const unbranded = charts.length === 1 && !charts[0].name;
+
   if (charts.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -185,21 +188,31 @@ function SizeControl({ item, value, onChange, compact }: KitItemControlProps) {
     // switching brand used to silently wipe a recorded size.
     if (next.sizes.includes(recordedSize)) {
       onChange({ chartId: nextId, size: recordedSize });
-      setAnnouncement(`Size ${recordedSize} carried over to ${next.name}.`);
+      setAnnouncement(
+        `Size ${recordedSize} carried over to ${next.name ?? "the new size list"}.`,
+      );
     } else {
       onChange(null);
-      setAnnouncement(`${next.name} has no size ${recordedSize}, so the size was cleared.`);
+      setAnnouncement(
+        `${next.name ?? "That size list"} has no size ${recordedSize}, so the size was cleared.`,
+      );
     }
   };
 
   return (
     <div className="space-y-3">
+      {/* One unnamed chart means the item only comes in one make (braces, say),
+          so there is nothing to choose: show the sizes on their own. */}
+      {!unbranded && (
       <div className="space-y-1.5">
         <span className="text-xs font-medium text-muted-foreground">Brand</span>
         {charts.length <= CHART_CHIP_LIMIT ? (
           <KitChoiceChips
             label={`${item.name} brand`}
-            options={charts.map((chart) => ({ value: chart._id, label: chart.name }))}
+            options={charts.map((chart) => ({
+              value: chart._id,
+              label: chart.name ?? "Standard",
+            }))}
             value={chartId}
             onChange={(next) => next && selectChart(next as Id<"memberKitSizeCharts">)}
             wide
@@ -215,13 +228,14 @@ function SizeControl({ item, value, onChange, compact }: KitItemControlProps) {
             <SelectContent>
               {charts.map((chart) => (
                 <SelectItem key={chart._id} value={chart._id}>
-                  {chart.name}
+                  {chart.name ?? "Standard"}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
       </div>
+      )}
 
       {activeChart && (
         <div className="space-y-1.5">

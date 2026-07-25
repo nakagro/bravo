@@ -51,7 +51,8 @@ const rankValidator = v.union(
 export const chartValidator = v.object({
   _id: v.id("memberKitSizeCharts"),
   itemId: v.id("memberKitItems"),
-  name: v.string(),
+  /** Absent when the item only ever comes in one make. */
+  name: v.optional(v.string()),
   order: v.number(),
   sizes: v.array(v.string()),
 });
@@ -126,6 +127,7 @@ export async function itemsInScope(
 /**
  * Render a value the way a person reads it. History stores the result rather
  * than re-deriving it, so deleting the chart named here never rewrites the past.
+ * An unnamed chart contributes nothing: a brace reads "Medium", not " · Medium".
  */
 export async function formatKitValue(
   ctx: QueryCtx | MutationCtx,
@@ -136,7 +138,7 @@ export async function formatKitValue(
 
   if (isKitSizeValue(value)) {
     const chart = await ctx.db.get(value.chartId);
-    return chart ? `${chart.name} · ${value.size}` : value.size;
+    return chart?.name ? `${chart.name} · ${value.size}` : value.size;
   }
   if (typeof value === "boolean") return value ? "Issued" : "Not issued";
   return value;
@@ -195,7 +197,9 @@ export async function normaliseKitValue(
       }
       if (value.size === "") return null;
       if (!chart.sizes.includes(value.size)) {
-        throw new Error(`"${value.size}" is not a size for ${chart.name}`);
+        throw new Error(
+          `"${value.size}" is not a size for ${chart.name ?? item.name}`,
+        );
       }
       return { chartId: value.chartId, size: value.size };
     }
@@ -542,14 +546,20 @@ export const getMemberKitSummary = query({
 });
 
 /**
- * One scope's items with their charts and this member's current values: what
- * the set editor needs to render its controls and detect a dirty draft.
- * `setId: null` addresses the standalone group.
+ * The items to edit in one go, with their charts and this member's current
+ * values: what the editor needs to render its controls and detect a dirty draft.
+ *
+ * A kit set is edited as a whole, because its items are ordered together. A
+ * standalone item is edited on its own (`itemId`, with `setId: null`) because it
+ * is its own thing: a pager is not part of a group and should never be presented
+ * as though it were.
  */
 export const getKitScopeForEntry = query({
   args: {
     userId: v.id("users"),
     setId: v.union(v.id("memberKitSets"), v.null()),
+    /** Narrows the scope to a single item, which must live in `setId`. */
+    itemId: v.optional(v.id("memberKitItems")),
   },
   returns: v.union(
     v.null(),
@@ -562,20 +572,27 @@ export const getKitScopeForEntry = query({
       ),
     }),
   ),
-  handler: async (ctx, { userId, setId }) => {
+  handler: async (ctx, { userId, setId, itemId }) => {
     await requireKitAccess(ctx);
 
     const member = await ctx.db.get(userId);
     if (!member) return null;
 
-    let title = "Individual items";
+    let title = "Kit";
     if (setId !== null) {
       const set = await ctx.db.get(setId);
       if (!set) return null;
       title = set.name;
     }
 
-    const items = (await itemsInScope(ctx, setId ?? undefined)).filter((i) => !i.isArchived);
+    let items = (await itemsInScope(ctx, setId ?? undefined)).filter((i) => !i.isArchived);
+
+    if (itemId !== undefined) {
+      const only = items.find((candidate) => candidate._id === itemId);
+      if (!only) return null;
+      items = [only];
+      title = only.name;
+    }
     const itemIds = new Set(items.map((i) => i._id));
 
     const entries = await ctx.db

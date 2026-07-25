@@ -402,7 +402,7 @@ function SizeChartsSection({
         <KitSortableList
           items={charts}
           getId={(chart) => chart._id}
-          getLabel={(chart) => chart.name}
+          getLabel={(chart) => chart.name ?? "Sizes"}
           onReorder={(ids) =>
             reorderCharts({
               itemId,
@@ -411,7 +411,9 @@ function SizeChartsSection({
           }
           renderRow={(chart) => (
             <div className="min-w-0 px-1 py-1">
-              <p className="truncate font-medium">{chart.name}</p>
+              <p className="truncate font-medium">
+                {chart.name ?? "Sizes (no brand)"}
+              </p>
               <p className="truncate text-xs text-muted-foreground">
                 {chart.sizes.length} sizes · {chart.sizes.join(", ")}
               </p>
@@ -422,7 +424,7 @@ function SizeChartsSection({
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0">
                   <MoreVertical className="size-4" aria-hidden="true" />
-                  <span className="sr-only">Actions for {chart.name}</span>
+                  <span className="sr-only">Actions for {chart.name ?? "sizes"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -508,7 +510,7 @@ function ChartForm({
 }: {
   chart: KitSizeChart | null;
   onCancel: () => void;
-  onSubmit: (name: string, sizes: string[]) => Promise<void>;
+  onSubmit: (name: string | undefined, sizes: string[]) => Promise<void>;
 }) {
   const [name, setName] = useState(chart?.name ?? "");
   const [sizes, setSizes] = useState<string[]>(chart?.sizes ?? []);
@@ -538,10 +540,12 @@ function ChartForm({
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-      <h3 className="text-sm font-semibold">{chart ? `Edit ${chart.name}` : "New size chart"}</h3>
+      <h3 className="text-sm font-semibold">
+        {chart ? `Edit ${chart.name ?? "sizes"}` : "New size chart"}
+      </h3>
 
       <div className="space-y-1.5">
-        <Label htmlFor="chart-name">Brand or model</Label>
+        <Label htmlFor="chart-name">Brand or model (optional)</Label>
         <Input
           id="chart-name"
           value={name}
@@ -549,6 +553,11 @@ function ChartForm({
           placeholder="Supplier or model name"
           className="min-h-11"
         />
+        <p className="text-xs text-muted-foreground">
+          Leave blank if this item only ever comes in one make, like braces. Name it
+          only when you stock the same item from more than one supplier, so an
+          officer has to pick which one a member was issued.
+        </p>
       </div>
 
       <div className="space-y-1.5">
@@ -646,14 +655,14 @@ function ChartForm({
         </Button>
         <Button
           type="button"
-          disabled={saving || name.trim() === "" || sizes.length === 0}
+          disabled={saving || sizes.length === 0}
           aria-busy={saving}
           className="min-h-11 w-full bg-red-700 text-white hover:bg-red-800 sm:w-auto dark:bg-red-600 dark:hover:bg-red-700"
           onClick={async () => {
             setSaving(true);
             setError(null);
             try {
-              await onSubmit(name, sizes);
+              await onSubmit(name.trim() || undefined, sizes);
             } catch (caught) {
               setError(caught instanceof Error ? caught.message : "Could not save");
             } finally {

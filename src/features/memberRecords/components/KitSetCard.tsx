@@ -19,9 +19,9 @@ interface KitSetCardProps {
 }
 
 /**
- * One kit set as read-first text, not a wall of inputs. Used unchanged for the
- * "Individual items" group: it takes a title, a count and item/value pairs, and
- * doesn't know which it is.
+ * One kit set as read-first text, not a wall of inputs: the items that get
+ * ordered together, with a count and their recorded values. Standalone items use
+ * `KitStandaloneCard` below instead, because they are not a set.
  */
 export function KitSetCard({ title, recorded, total, entries, to }: KitSetCardProps) {
   const nothingRecorded = recorded === 0;
@@ -65,6 +65,43 @@ export function KitSetCard({ title, recorded, total, entries, to }: KitSetCardPr
           </dl>
         )}
       </div>
+    </Link>
+  );
+}
+
+interface KitStandaloneCardProps {
+  itemName: string;
+  tracks: KitTracks;
+  display?: string;
+  to: string;
+}
+
+/**
+ * A standalone item on the profile: its own card, titled with the item's own
+ * name. Deliberately not folded into an "Individual items" group, which read as
+ * a set called "Individual items" and buried a pager one tap deeper than the
+ * gear that actually belongs to a set.
+ */
+export function KitStandaloneCard({ itemName, tracks, display, to }: KitStandaloneCardProps) {
+  return (
+    <Link
+      to={to}
+      aria-label={`${itemName}, ${display ?? "not recorded"}. Edit.`}
+      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors hover:bg-muted/50 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-base font-semibold">{itemName}</h2>
+        <p
+          className={
+            display
+              ? `text-sm [overflow-wrap:anywhere] ${tracks === "serial" ? "font-mono" : ""}`
+              : "text-sm text-muted-foreground/60"
+          }
+        >
+          {display ?? "Not recorded"}
+        </p>
+      </div>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
     </Link>
   );
 }

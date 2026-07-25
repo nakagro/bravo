@@ -24,6 +24,14 @@ function cleanStrings(values: string[] | undefined): string[] | undefined {
   return cleaned;
 }
 
+async function chartsForItemAdmin(ctx: MutationCtx, itemId: Id<"memberKitItems">) {
+  return await ctx.db
+    .query("memberKitSizeCharts")
+    .withIndex("by_item_order", (q) => q.eq("itemId", itemId))
+    .order("asc")
+    .collect();
+}
+
 async function entriesForItem(ctx: MutationCtx, itemId: Id<"memberKitItems">) {
   return await ctx.db
     .query("memberKitEntries")
@@ -419,7 +427,9 @@ export const deleteItem = mutation({
 export const createChart = mutation({
   args: {
     itemId: v.id("memberKitItems"),
-    name: v.string(),
+    // Omitted or blank means unnamed: the item only ever comes in one make, so
+    // there is no brand worth recording against a member.
+    name: v.optional(v.string()),
     sizes: v.array(v.string()),
   },
   returns: v.id("memberKitSizeCharts"),
@@ -432,17 +442,26 @@ export const createChart = mutation({
       throw new Error(`${item.name} is not a sized item, so it cannot have size charts`);
     }
 
-    const trimmedName = name.trim();
-    if (!trimmedName) throw new Error("Size chart name is required");
+    const trimmedName = name?.trim() || undefined;
 
     const cleanedSizes = cleanStrings(sizes) ?? [];
     if (cleanedSizes.length === 0) throw new Error("A size chart needs at least one size");
 
-    const last = await ctx.db
-      .query("memberKitSizeCharts")
-      .withIndex("by_item_order", (q) => q.eq("itemId", itemId))
-      .order("desc")
-      .first();
+    const existing = await chartsForItemAdmin(ctx, itemId);
+    // An unnamed chart is only unambiguous while it stands alone: with a second
+    // chart in play the officer has to be able to tell them apart.
+    if (existing.length > 0 && !trimmedName) {
+      throw new Error(
+        `${item.name} already has a size chart, so this one needs a brand or model name`,
+      );
+    }
+    if (existing.some((chart) => !chart.name)) {
+      throw new Error(
+        `${item.name}'s existing size chart is unnamed. Name it first, then add another.`,
+      );
+    }
+
+    const last = existing[existing.length - 1];
 
     const now = Date.now();
     return await ctx.db.insert("memberKitSizeCharts", {
@@ -474,8 +493,15 @@ export const updateChart = mutation({
     const patch: Record<string, unknown> = { updatedBy: userId, updatedAt: Date.now() };
 
     if (name !== undefined) {
-      const trimmed = name.trim();
-      if (!trimmed) throw new Error("Size chart name is required");
+      const trimmed = name.trim() || undefined;
+      if (!trimmed) {
+        const siblings = await chartsForItemAdmin(ctx, chart.itemId);
+        if (siblings.length > 1) {
+          throw new Error(
+            "This item has more than one size chart, so each one needs a name",
+          );
+        }
+      }
       patch.name = trimmed;
     }
 

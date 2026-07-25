@@ -15,7 +15,8 @@ export type KitValue = string | boolean | KitSizeValue;
 export interface KitSizeChart {
   _id: Id<"memberKitSizeCharts">;
   itemId: Id<"memberKitItems">;
-  name: string;
+  /** Absent when the item only ever comes in one make, so there is no brand to pick. */
+  name?: string;
   order: number;
   sizes: string[];
 }
@@ -102,7 +103,7 @@ export function formatKitValue(item: KitItemDef, value: KitValue | undefined | n
 
   if (item.tracks === "size" && isSizeValue(value)) {
     const chart = item.charts.find((c) => c._id === value.chartId);
-    return chart ? `${chart.name} · ${value.size}` : value.size;
+    return chart?.name ? `${chart.name} · ${value.size}` : value.size;
   }
   if (typeof value === "boolean") return value ? "Issued" : "Not issued";
   if (typeof value === "string") return value;

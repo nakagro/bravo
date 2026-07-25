@@ -10,12 +10,15 @@ import {
   MemberKitHeader,
   formatKitDate,
 } from "../features/memberRecords/components/MemberKitHeader";
-import { KitSetCard } from "../features/memberRecords/components/KitSetCard";
+import { KitSetCard, KitStandaloneCard } from "../features/memberRecords/components/KitSetCard";
 import { KitSetEditor } from "../features/memberRecords/components/KitSetEditor";
 
 interface MemberKitProfilePageProps {
-  /** Rendered behind the addressable set-editor routes. */
-  editing?: boolean;
+  /**
+   * Which addressable editor route is open on top of the profile: a whole kit
+   * set, or one standalone item.
+   */
+  editing?: "set" | "item";
 }
 
 /**
@@ -23,20 +26,18 @@ interface MemberKitProfilePageProps {
  * `/inventory/run/:runId`. Reads as a profile with kit cards; the only inputs
  * live in the set editor, which is a nested addressable route on top of it.
  */
-function MemberKitProfilePage({ editing = false }: MemberKitProfilePageProps) {
-  const { userId, setId } = useParams<{ userId: string; setId: string }>();
+function MemberKitProfilePage({ editing }: MemberKitProfilePageProps) {
+  const { userId, setId, itemId } = useParams<{
+    userId: string;
+    setId: string;
+    itemId: string;
+  }>();
   const navigate = useNavigate();
 
   const memberId = userId as Id<"users">;
   const summary = useQuery(api.memberKit.getMemberKitSummary, { userId: memberId });
 
   const basePath = `/member-records/${memberId}`;
-  // "individual" is the standalone group's slug; a real id addresses a set.
-  const editingSetId: Id<"memberKitSets"> | null | undefined = !editing
-    ? undefined
-    : setId === "individual"
-      ? null
-      : (setId as Id<"memberKitSets">);
 
   if (summary === undefined) {
     return (
@@ -100,16 +101,17 @@ function MemberKitProfilePage({ editing = false }: MemberKitProfilePageProps) {
             />
           ))}
 
-          {/* Standalone items read as rows in one card, not a card each. */}
-          {summary.standalone.itemCount > 0 && (
-            <KitSetCard
-              title="Individual items"
-              recorded={summary.standalone.recordedCount}
-              total={summary.standalone.itemCount}
-              entries={summary.standalone.entries}
-              to={`${basePath}/set/individual`}
+          {/* Each standalone item stands on its own, alongside the sets rather
+              than bundled behind a group card that isn't a real group. */}
+          {summary.standalone.entries.map((entry) => (
+            <KitStandaloneCard
+              key={entry.itemId}
+              itemName={entry.itemName}
+              tracks={entry.tracks}
+              display={entry.display}
+              to={`${basePath}/item/${entry.itemId}`}
             />
-          )}
+          ))}
         </>
       )}
 
@@ -128,11 +130,20 @@ function MemberKitProfilePage({ editing = false }: MemberKitProfilePageProps) {
         <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       </Link>
 
-      {editingSetId !== undefined && (
+      {editing === "set" && (
         <KitSetEditor
           key={setId}
           userId={memberId}
-          setId={editingSetId}
+          setId={setId as Id<"memberKitSets">}
+          onClose={() => navigate(basePath)}
+        />
+      )}
+      {editing === "item" && (
+        <KitSetEditor
+          key={itemId}
+          userId={memberId}
+          setId={null}
+          itemId={itemId as Id<"memberKitItems">}
           onClose={() => navigate(basePath)}
         />
       )}
