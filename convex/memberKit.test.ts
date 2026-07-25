@@ -143,7 +143,7 @@ describe("recording values", () => {
     });
     const chartId = await ctx.as.mutation(api.memberKitAdmin.createChart, {
       itemId,
-      name: "Stewart & Heaton",
+      name: "Supplier A",
       sizes: ["87", "92", "97"],
     });
     return { ...ctx, setId, itemId, chartId };
@@ -159,7 +159,7 @@ describe("recording values", () => {
     });
 
     let summary = await as.query(api.memberKit.getMemberKitSummary, { userId: memberId });
-    expect(summary?.sets[0].entries[0].display).toBe("Stewart & Heaton · 92");
+    expect(summary?.sets[0].entries[0].display).toBe("Supplier A · 92");
     expect(summary?.recordedCount).toBe(1);
     expect(summary?.itemCount).toBe(1);
 
@@ -496,7 +496,7 @@ describe("history", () => {
     });
     const chartId = await as.mutation(api.memberKitAdmin.createChart, {
       itemId,
-      name: "Stewart & Heaton",
+      name: "Supplier A",
       sizes: ["92"],
     });
     await as.mutation(api.memberKit.setKitEntry, {
@@ -507,13 +507,13 @@ describe("history", () => {
 
     await as.mutation(api.memberKitAdmin.updateSet, { setId, name: "Structure" });
     await as.mutation(api.memberKitAdmin.updateItem, { itemId, name: "Coat" });
-    await as.mutation(api.memberKitAdmin.updateChart, { chartId, name: "S&H" });
+    await as.mutation(api.memberKitAdmin.updateChart, { chartId, name: "Supplier A (renamed)" });
 
     const rows = await historyFor(as, memberId);
     expect(rows[0]).toMatchObject({
       itemName: "Jacket",
       setName: "Structural PPC",
-      newDisplay: "Stewart & Heaton · 92",
+      newDisplay: "Supplier A · 92",
     });
   });
 
@@ -527,7 +527,7 @@ describe("history", () => {
     });
     const chartId = await as.mutation(api.memberKitAdmin.createChart, {
       itemId,
-      name: "Stewart & Heaton",
+      name: "Supplier A",
       sizes: ["92"],
     });
     await as.mutation(api.memberKit.setKitEntry, {
@@ -541,7 +541,7 @@ describe("history", () => {
     let rows = await historyFor(as, memberId);
     expect(rows[0]).toMatchObject({
       reason: "chartDeleted",
-      previousDisplay: "Stewart & Heaton · 92",
+      previousDisplay: "Supplier A · 92",
       itemName: "Jacket",
       setName: "Structural PPC",
     });
@@ -550,7 +550,7 @@ describe("history", () => {
     // Re-record, then delete the set out from under it.
     const chart2 = await as.mutation(api.memberKitAdmin.createChart, {
       itemId,
-      name: "Haix",
+      name: "Supplier B",
       sizes: ["9"],
     });
     await as.mutation(api.memberKit.setKitEntry, {
@@ -561,7 +561,7 @@ describe("history", () => {
     await as.mutation(api.memberKitAdmin.deleteSet, { setId });
 
     rows = await historyFor(as, memberId);
-    expect(rows[0]).toMatchObject({ reason: "setDeleted", previousDisplay: "Haix · 9" });
+    expect(rows[0]).toMatchObject({ reason: "setDeleted", previousDisplay: "Supplier B · 9" });
 
     const summary = await as.query(api.memberKit.getMemberKitSummary, { userId: memberId });
     expect(summary?.sets).toEqual([]);
@@ -713,7 +713,7 @@ describe("definition guards", () => {
     });
     const chartId = await as.mutation(api.memberKitAdmin.createChart, {
       itemId,
-      name: "S&H",
+      name: "Supplier A",
       sizes: ["87", "92"],
     });
     await as.mutation(api.memberKit.setKitEntry, {
@@ -734,7 +734,7 @@ describe("definition guards", () => {
       tracks: "serial",
     });
     await expect(
-      as.mutation(api.memberKitAdmin.createChart, { itemId, name: "S&H", sizes: ["1"] }),
+      as.mutation(api.memberKitAdmin.createChart, { itemId, name: "Supplier A", sizes: ["1"] }),
     ).rejects.toThrow(/not a sized item/);
   });
 

@@ -546,7 +546,7 @@ function ChartForm({
           id="chart-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="Stewart &amp; Heaton"
+          placeholder="Supplier or model name"
           className="min-h-11"
         />
       </div>

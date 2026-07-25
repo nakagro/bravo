@@ -893,7 +893,7 @@ const applicationTables = {
   // chosen chart rather than sit in one flat list.
   memberKitSizeCharts: defineTable({
     itemId: v.id("memberKitItems"),
-    name: v.string(), // "Stewart & Heaton", "Haix"
+    name: v.string(), // the supplier's brand or model name
     order: v.number(),
     sizes: v.array(v.string()), // e.g. ["82","87","92"] or ["S","M","L"]
     createdBy: v.id("users"),

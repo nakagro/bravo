@@ -17,7 +17,7 @@ function sizedItem(overrides: Partial<KitItemDef> = {}): KitItemDef {
       {
         _id: chartId,
         itemId: "item1" as Id<"memberKitItems">,
-        name: "Ansell ActivArmr",
+        name: "Supplier A",
         order: 1,
         sizes: ["9", "10"],
       },
@@ -49,7 +49,7 @@ describe("generateSizeRange", () => {
 
 describe("formatKitValue", () => {
   it("renders a sized value as chart and size", () => {
-    expect(formatKitValue(sizedItem(), { chartId, size: "10" })).toBe("Ansell ActivArmr · 10");
+    expect(formatKitValue(sizedItem(), { chartId, size: "10" })).toBe("Supplier A · 10");
   });
 
   it("falls back to the bare size when the chart has gone", () => {
