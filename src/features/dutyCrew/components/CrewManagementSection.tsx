@@ -29,7 +29,7 @@ import { CrewMembersPanel } from "./CrewMembersPanel";
 
 export function CrewManagementSection() {
   const dutyCrews = useQuery(api.dutyCrew.getAllDutyCrews, {});
-  const users = useQuery(api.users.getUsers, {});
+  const users = useQuery(api.users.getMemberUsers, {});
   const updateDutyCrew = useMutation(api.dutyCrew.updateDutyCrew);
   const deleteDutyCrew = useMutation(api.dutyCrew.deleteDutyCrew);
 

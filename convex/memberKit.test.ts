@@ -977,3 +977,94 @@ describe("access gates", () => {
     await expect(t.query(api.memberKit.listMembers, {})).rejects.toThrow(/signed in/);
   });
 });
+
+describe("shared accounts", () => {
+  /** Adds a shared (non-member) login alongside the normal fixture members. */
+  async function withSharedAccount() {
+    const ctx = await setup();
+    const sharedId = await ctx.t.run(async (db) =>
+      db.db.insert("users", {
+        name: "Duty Officer Phone",
+        firstName: "Duty Officer",
+        lastName: "Phone",
+        rank: "Firefighter" as const,
+        accountType: "shared" as const,
+      }),
+    );
+    return { ...ctx, sharedId };
+  }
+
+  it("omits a shared account from the members list", async () => {
+    const { as, memberId, sharedId } = await withSharedAccount();
+
+    const members = await as.query(api.memberKit.listMembers, {});
+    const ids = members.map((m) => m._id);
+
+    expect(ids).toContain(memberId);
+    expect(ids).not.toContain(sharedId);
+  });
+
+  it("omits a shared account from the bulk fill-in screen", async () => {
+    const { as, memberId, sharedId } = await withSharedAccount();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Pager",
+      tracks: "serial",
+    });
+
+    const result = await as.query(api.memberKit.getItemEntriesForAllMembers, { itemId });
+    const ids = result?.members.map((m) => m.userId) ?? [];
+
+    expect(ids).toContain(memberId);
+    expect(ids).not.toContain(sharedId);
+  });
+
+  it("returns null for a shared account's kit summary, closing the deep-link", async () => {
+    const { as, sharedId } = await withSharedAccount();
+
+    await expect(
+      as.query(api.memberKit.getMemberKitSummary, { userId: sharedId }),
+    ).resolves.toBeNull();
+  });
+
+  it("refuses to record kit against a shared account", async () => {
+    const { as, sharedId } = await withSharedAccount();
+    const setId = await as.mutation(api.memberKitAdmin.createSet, { name: "Structural PPC" });
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      setId,
+      name: "Boots",
+      tracks: "serial",
+    });
+
+    await expect(
+      as.mutation(api.memberKit.setKitEntries, {
+        userId: sharedId,
+        setId,
+        entries: [{ itemId, value: "BX-1" }],
+      }),
+    ).rejects.toThrow(/Member not found/);
+
+    await expect(
+      as.mutation(api.memberKit.setKitEntry, { userId: sharedId, itemId, value: "BX-1" }),
+    ).rejects.toThrow(/Member not found/);
+
+    await expect(
+      as.mutation(api.memberKit.setKitItemEntries, {
+        itemId,
+        entries: [{ userId: sharedId, value: "BX-1" }],
+      }),
+    ).rejects.toThrow(/Member not found/);
+  });
+
+  it("treats a user with no accountType exactly as before (no-backfill guarantee)", async () => {
+    const { as, memberId, otherMemberId } = await withSharedAccount();
+
+    const members = await as.query(api.memberKit.listMembers, {});
+    const ids = members.map((m) => m._id);
+
+    expect(ids).toContain(memberId);
+    expect(ids).toContain(otherMemberId);
+    await expect(
+      as.query(api.memberKit.getMemberKitSummary, { userId: memberId }),
+    ).resolves.not.toBeNull();
+  });
+});

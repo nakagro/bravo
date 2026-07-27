@@ -2,6 +2,7 @@ import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc } from "./_generated/dataModel";
+import { isSharedAccount } from "./lib/accountType";
 import { availabilityProvider } from "./actionCentreProviders/availability";
 import { profileProvider } from "./actionCentreProviders/profile";
 import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";
@@ -12,13 +13,17 @@ import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProv
 
 // ─── Provider registry ────────────────────────────────────────────────────────
 
-const providers: ActionProvider[] = [
-  availabilityProvider,
-  profileProvider,
-  bookingApprovalsProvider,
-  eventRsvpProvider,
-  tasksProvider,
-  baSkillsLmsProvider,
+// Providers that raise a *member's* personal obligation are skipped for shared
+// accounts — the DO phone has no availability, no skills profile and no RSVP.
+// Duty-driven providers stay: they fire only on explicit assignment or an
+// officer module the account would have to be deliberately granted.
+const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
+  { run: availabilityProvider, membersOnly: true },
+  { run: profileProvider, membersOnly: true },
+  { run: bookingApprovalsProvider },
+  { run: eventRsvpProvider, membersOnly: true },
+  { run: tasksProvider },
+  { run: baSkillsLmsProvider },
 ];
 
 // ─── Validators ───────────────────────────────────────────────────────────────
@@ -158,8 +163,12 @@ export const getMyActions = query({
 
     const providerCtx: ProviderCtx = { user, userId, hasModuleAccess };
 
+    const active = isSharedAccount(user)
+      ? providers.filter((p) => !p.membersOnly)
+      : providers;
+
     const results = await Promise.all(
-      providers.map((p) => p(ctx, providerCtx).catch(() => [] as ActionItem[]))
+      active.map((p) => p.run(ctx, providerCtx).catch(() => [] as ActionItem[]))
     );
 
     return sortActions(results.flat());

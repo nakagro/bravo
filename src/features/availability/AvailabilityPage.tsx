@@ -9,6 +9,7 @@ import AdminTab from './components/AdminTab';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { PageTabs } from "@/components/shared/PageTabs";
+import { isSharedAccount } from "@/lib/accountType";
 import { toast } from "sonner";
 
 type AvailabilityTab = "you" | "brigade" | "messages" | "deployment" | "admin";
@@ -48,6 +49,11 @@ function AvailabilityPage() {
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const hasAdminTabAccess = moduleAccess?.availabilityAdmin;
 
+  // A shared account (DO phone, appliance tablet) has no personal status, so the
+  // "You" tab means nothing to it — it opens straight on the brigade board.
+  const isShared = isSharedAccount(userStatus);
+  const defaultTab: AvailabilityTab = isShared ? "brigade" : "you";
+
   const requestedTab = searchParams.get("tab");
   const isKnownTab =
     requestedTab === "you" ||
@@ -56,22 +62,28 @@ function AvailabilityPage() {
     requestedTab === "deployment" ||
     requestedTab === "admin";
   const activeTab: AvailabilityTab = !requestedTab || !isKnownTab
-    ? "you"
+    ? defaultTab
     : requestedTab === "admin" && hasAdminTabAccess !== true
-      ? "you"
-      : (requestedTab as AvailabilityTab);
+      ? defaultTab
+      : requestedTab === "you" && isShared
+        ? defaultTab
+        : (requestedTab as AvailabilityTab);
 
   // Normalize invalid/unauthorized tab values in the URL
   useEffect(() => {
     if (!requestedTab) return;
-    if (isKnownTab && !(requestedTab === "admin" && hasAdminTabAccess === false)) return;
+    if (
+      isKnownTab &&
+      !(requestedTab === "admin" && hasAdminTabAccess === false) &&
+      !(requestedTab === "you" && isShared)
+    ) return;
 
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("tab");
       return next;
     }, { replace: true });
-  }, [hasAdminTabAccess, isKnownTab, requestedTab, setSearchParams]);
+  }, [hasAdminTabAccess, isKnownTab, isShared, requestedTab, setSearchParams]);
 
   const handleTabChange = (tab: string) => {
     setSearchParams((prev) => {
@@ -87,7 +99,7 @@ function AvailabilityPage() {
 
   const availabilityTabs = useMemo(() => {
     const tabs: Array<{ key: AvailabilityTab; label: string; badgeCount?: number }> = [
-      { key: "you", label: "You" },
+      ...(isShared ? [] : [{ key: "you" as const, label: "You" }]),
       { key: "brigade", label: "Brigade" },
       { key: "messages", label: "Messages", badgeCount: unreadCount > 0 ? unreadCount : undefined },
       { key: "deployment", label: "Deployment" },
@@ -98,7 +110,7 @@ function AvailabilityPage() {
     }
 
     return tabs;
-  }, [hasAdminTabAccess, unreadCount]);
+  }, [hasAdminTabAccess, isShared, unreadCount]);
   
   // Mark messages as viewed when Messages tab is opened
   useEffect(() => {

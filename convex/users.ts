@@ -1,5 +1,7 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 
 /**
  * One-off backfill: assign the floor rank "Brigade Member" to any user that
@@ -34,6 +36,20 @@ export const getUsers = query({
 });
 
 /**
+ * Members only — for pickers that are choosing a person, not an account.
+ *
+ * Deliberately separate from `getUsers`, which must keep returning shared
+ * accounts so the admin User Management screen can see and edit them.
+ */
+export const getMemberUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter(isMemberAccount);
+  },
+});
+
+/**
  * Get all admin users from the system
  */
 export const getAdminUsers = query({
@@ -63,6 +79,41 @@ export const getRoles = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("roles").collect();
+  },
+});
+
+/**
+ * Mark a login as a member or a shared (non-person) account.
+ *
+ * Unlike the neighbouring `updateUserRank`/`updateUserRoles`, this checks
+ * `isAdmin` server-side (following `convex/serviceAccounts.ts`) — a new mutation
+ * shouldn't inherit an existing gap. Rank is deliberately left alone: module
+ * access is gated on it, so clearing it would lock the account out of modules
+ * with a `minimumRank`.
+ */
+export const updateUserAccountType = mutation({
+  args: {
+    userId: v.id("users"),
+    accountType: accountTypeValidator,
+  },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    const actorId = await getAuthUserId(ctx);
+    if (!actorId) {
+      throw new Error("You must be signed in");
+    }
+    const actor = await ctx.db.get(actorId);
+    if (!actor || !actor.isAdmin) {
+      throw new Error("Only administrators can change an account type");
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error(`User with ID ${args.userId} not found`);
+    }
+
+    await ctx.db.patch(args.userId, { accountType: args.accountType });
+    return args.userId;
   },
 });
 

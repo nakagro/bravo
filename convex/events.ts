@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { isMemberAccount } from "./lib/accountType";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -503,7 +504,9 @@ export const getEventAttendance = query({
     const attending = (
       await Promise.all([...attendingIds].map((id) => ctx.db.get(id)))
     )
-      .filter((user): user is Doc<"users"> => user !== null)
+      // A shared account with a stale RSVP or slot allocation is still not a
+      // member, so it must not show up in the attending list either.
+      .filter((user): user is Doc<"users"> => user !== null && isMemberAccount(user))
       .map(nameOf);
 
     // Full breakdown (incl. non-responders) is admin-only
@@ -513,8 +516,9 @@ export const getEventAttendance = query({
     }
 
     const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
-    // "All members" = all users rows (no isActive flag, per bookings.getAllUsers)
-    const users = await ctx.db.query("users").collect();
+    // "All members" = all member users rows (no isActive flag, per bookings.getAllUsers).
+    // Shared accounts would otherwise inflate totalMembers and sit in noResponse forever.
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
 
     const maybe: Array<ReturnType<typeof nameOf>> = [];
     const notAttending: Array<ReturnType<typeof nameOf>> = [];
@@ -1217,7 +1221,7 @@ export const getSlotRoster = query({
       return null;
     }
 
-    const users = await ctx.db.query("users").collect();
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
     const members = users
       .map((user) => ({
         _id: user._id,

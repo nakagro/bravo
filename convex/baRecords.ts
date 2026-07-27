@@ -2,6 +2,7 @@ import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { isMemberAccount } from "./lib/accountType";
 
 const usageTypeValidator = v.union(
   v.literal("firecall"),
@@ -395,7 +396,7 @@ export const listMembers = query({
     const skillMap = new Map(skills.map((skill) => [skill._id, skill.code]));
 
     return users
-      .filter((u) => !u.isAnonymous && (u.firstName || u.lastName || u.name))
+      .filter(isMemberAccount)
       .map((u) => ({
         _id: u._id,
         name: userDisplayName(u),

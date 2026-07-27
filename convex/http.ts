@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
+import { isMemberAccount } from "./lib/accountType";
 
 const http = httpRouter();
 
@@ -49,8 +50,10 @@ http.route({
     );
 
     try {
-      // Get all users
-      const users = await ctx.runQuery(api.users.getUsers);
+      // Get all users. `getUsers` deliberately still returns shared accounts (the
+      // admin screen needs them), so the external CAD/paging consumer filters here
+      // — it must never be told the DO phone is "available".
+      const users = (await ctx.runQuery(api.users.getUsers)).filter(isMemberAccount);
 
       // Get all user IDs for batch skills query
       const userIds = users

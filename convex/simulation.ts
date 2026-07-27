@@ -1,6 +1,7 @@
 import { internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
+import { isMemberAccount } from "./lib/accountType";
 
 /**
  * "Living sandbox" simulator.
@@ -61,7 +62,7 @@ function eligible(users: Doc<"users">[]): Doc<"users">[] {
   return users.filter(
     (u) =>
       !!u.rank && // real member, not a bare auth row
-      !u.isAnonymous &&
+      isMemberAccount(u) && // shared accounts keep a rank but aren't people
       (!CONFIG.excludeAdmins || !u.isAdmin)
   );
 }

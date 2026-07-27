@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
+import { accountTypeValidator } from "./lib/accountType";
 import {
   legacyTapeColorValidator,
   tapeColorValidator,
@@ -33,6 +34,11 @@ const extendedAuthTables = {
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
+    // What kind of login this is. Absent means "member" — the brigade's people.
+    // "shared" is a login that isn't a person: the Duty Officer phone, an appliance
+    // tablet. Shared accounts keep a rank (module access is still gated on it) but
+    // are excluded from member lists, member counts and member reminders.
+    accountType: v.optional(accountTypeValidator),
     // Roles field - a user can have multiple roles
     roles: v.optional(v.array(v.string())),
     // Skills field - array of skill IDs that the user has
@@ -72,6 +78,7 @@ const extendedAuthTables = {
     .index("by_email", ["email"])
     .index("by_memberNumber", ["memberNumber"])
     .index("by_isAdmin", ["isAdmin"])
+    .index("by_isDutyOfficer", ["isDutyOfficer"])
 };
 
 const applicationTables = {

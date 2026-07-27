@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
+import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 
 // Get all user statuses, resetting at 4am each day
 export const getStatuses = query({
@@ -60,8 +61,8 @@ export const getStatuses = query({
       today4am - 24 * 60 * 60 * 1000 : // Subtract one day if before 4am
       today4am;
       
-    const users = await ctx.db.query("users").collect();
-    
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
+
     // Map users to the format we need, but reset status if it was updated before the cutoff time
     return users.map((user) => {
       // Check if the status was updated after the cutoff time
@@ -133,7 +134,10 @@ export const getAllUsersStatus = query({
     })
   ),
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").collect();
+    // Shared accounts (DO phone, appliance tablets) are not brigade members, so
+    // they never appear on the board. The nightly reset and morning reminder both
+    // fan out from this query, so filtering here also stops their pushes.
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
     return users.map((u) => ({
       _id: u._id,
       name: u.name,
@@ -167,7 +171,7 @@ export const getDutyOfficer = query({
   handler: async (ctx) => {
     const dutyOfficer = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("isDutyOfficer"), true))
+      .withIndex("by_isDutyOfficer", (q) => q.eq("isDutyOfficer", true))
       .first();
     
     if (!dutyOfficer) {
@@ -213,6 +217,9 @@ export const getCurrentUserStatus = query({
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
+      // Lets the page hide the personal "You" tab for a shared account without
+      // a second round trip. Absent means member.
+      accountType: v.optional(accountTypeValidator),
     }),
     v.null()
   ),
@@ -232,7 +239,7 @@ export const getCurrentUserStatus = query({
     
     // Check if status has expired
     const hasExpired = user.statusExpiresAt && user.statusExpiresAt <= Date.now();
-    
+
     return {
       currentStatus: hasExpired ? undefined : user.currentStatus,
       statusUpdatedAt: hasExpired ? undefined : user.statusUpdatedAt,
@@ -240,6 +247,7 @@ export const getCurrentUserStatus = query({
       statusDurationHours: hasExpired ? undefined : user.statusDurationHours,
       nextStatus: hasExpired ? undefined : user.nextStatus,
       nextStatusAt: hasExpired ? undefined : user.nextStatusAt,
+      accountType: user.accountType,
     };
   },
 });
@@ -346,7 +354,7 @@ export const setDutyOfficer = mutation({
     // Find current duty officer if any
     const currentDutyOfficer = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("isDutyOfficer"), true))
+      .withIndex("by_isDutyOfficer", (q) => q.eq("isDutyOfficer", true))
       .first();
     
     // If there is a current duty officer, update their record
@@ -358,7 +366,7 @@ export const setDutyOfficer = mutation({
       // Find the most recent duty officer history record for this user
       const dutyHistory = await ctx.db
         .query("dutyOfficerHistory")
-        .filter((q) => q.eq(q.field("userId"), currentDutyOfficer._id))
+        .withIndex("by_user", (q) => q.eq("userId", currentDutyOfficer._id))
         .order("desc")
         .first();
       
@@ -415,7 +423,7 @@ export const unsetDutyOfficer = mutation({
     // Find the most recent duty officer history record for this user
     const dutyHistory = await ctx.db
       .query("dutyOfficerHistory")
-      .filter((q) => q.eq(q.field("userId"), currentUserId))
+      .withIndex("by_user", (q) => q.eq("userId", currentUserId))
       .order("desc")
       .first();
     
@@ -453,7 +461,7 @@ export const getUsersWithOfficerSkill = query({
     // Find the Officer skill
     const officerSkill = await ctx.db
       .query("skills")
-      .filter((q) => q.eq(q.field("code"), "OF"))
+      .withIndex("by_code", (q) => q.eq("code", "OF"))
       .first();
     
     if (!officerSkill) {
@@ -461,8 +469,8 @@ export const getUsersWithOfficerSkill = query({
     }
     
     // Get all users
-    const allUsers = await ctx.db.query("users").collect();
-    
+    const allUsers = (await ctx.db.query("users").collect()).filter(isMemberAccount);
+
     // Filter users who have the Officer skill
     const usersWithOfficerSkill = allUsers.filter((user) => {
       const userSkills = user.skills || [];
@@ -810,8 +818,8 @@ export const getUsersWithScheduledChanges = query({
     const now = Date.now();
     
     // Get all users
-    const users = await ctx.db.query("users").collect();
-    
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
+
     // Filter users who have scheduled status changes (statusExpiresAt and nextStatus are set)
     const usersWithScheduledChanges = users.filter(user => 
       user.statusExpiresAt && 

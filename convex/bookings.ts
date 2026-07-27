@@ -2,6 +2,7 @@ import { query, mutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
+import { isMemberAccount } from "./lib/accountType";
 
 const RANK_ORDER = {
   "Brigade Member": 0,
@@ -1236,7 +1237,7 @@ export const getAllUsers = query({
       return [];
     }
 
-    const users = await ctx.db.query("users").collect();
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
 
     return users.map((user) => ({
       _id: user._id,

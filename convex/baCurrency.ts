@@ -2,6 +2,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { isMemberAccount } from "./lib/accountType";
 
 const SIX_MONTHS_DAYS = 180;
 // Warning triggers when a member is within 2 weeks of their currency expiring.
@@ -162,7 +163,7 @@ export const getBrigadeCurrency = query({
     }> = [];
 
     for (const user of allUsers) {
-      if (user.isAnonymous || !user.skills || user.skills.length === 0) continue;
+      if (!isMemberAccount(user) || !user.skills || user.skills.length === 0) continue;
       const userSkillCodes = user.skills
         .map((id) => skillMap.get(id)?.code)
         .filter((c): c is string => Boolean(c));

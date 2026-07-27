@@ -6,6 +6,7 @@ import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { isSharedAccount, type AccountType } from "@/lib/accountType";
 
 // --- shadcn ui imports ---
 import {
@@ -82,6 +83,7 @@ function UserManagement() {
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRank, setSelectedRank] = useState<string | null>(null);
+  const [selectedAccountType, setSelectedAccountType] = useState<AccountType>("member");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isDutyOfficer, setIsDutyOfficer] = useState<boolean>(false);
@@ -105,6 +107,7 @@ function UserManagement() {
 
   // Mutations
   const updateRank = useMutation(api.users.updateUserRank);
+  const updateAccountType = useMutation(api.users.updateUserAccountType);
   const updateRoles = useMutation(api.users.updateUserRoles);
   const updateAdminStatus = useMutation(api.users.updateUserAdminStatus);
   const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
@@ -119,11 +122,13 @@ function UserManagement() {
   useEffect(() => {
     if (selectedUser) {
       setSelectedRank(selectedUser.rank || null);
+      setSelectedAccountType(selectedUser.accountType === "shared" ? "shared" : "member");
       setSelectedRoles(selectedUser.roles || []);
       setIsAdmin(selectedUser.isAdmin || false);
       setIsDutyOfficer(selectedUser.isDutyOfficer || false);
     } else {
       setSelectedRank(null);
+      setSelectedAccountType("member");
       setSelectedRoles([]);
       setIsAdmin(false);
       setIsDutyOfficer(false);
@@ -271,6 +276,15 @@ function UserManagement() {
         });
       }
 
+      // Update account type if changed. Absent on the row means "member".
+      const currentAccountType = selectedUser?.accountType === "shared" ? "shared" : "member";
+      if (selectedAccountType !== currentAccountType) {
+        await updateAccountType({
+          userId: selectedUserId,
+          accountType: selectedAccountType,
+        });
+      }
+
       // Update roles if changed
       const currentRoles = selectedUser?.roles || [];
       if (JSON.stringify(selectedRoles.sort()) !== JSON.stringify(currentRoles.sort())) {
@@ -368,10 +382,20 @@ function UserManagement() {
                         {({ selected, active }) => (
                           <>
                             <span
-                              className={`block truncate ${selected ? "font-medium" : "font-normal"
+                              className={`flex items-center gap-2 truncate ${selected ? "font-medium" : "font-normal"
                                 }`}
                             >
-                              {formatUserName(user)}
+                              <span className="truncate">{formatUserName(user)}</span>
+                              {isSharedAccount(user) && (
+                                <span
+                                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${active
+                                    ? "bg-white/20 text-white"
+                                    : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
+                                    }`}
+                                >
+                                  Shared
+                                </span>
+                              )}
                             </span>
                             {selected ? (
                               <span
@@ -436,6 +460,34 @@ function UserManagement() {
                     <SelectItem value="Captain">Captain</SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedAccountType === "shared" && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Rank still controls which modules this account can open.
+                  </p>
+                )}
+              </div>
+
+              {/* Account type selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium dark:text-gray-200" htmlFor="account-type-select">
+                  Account type
+                </label>
+                <Select
+                  value={selectedAccountType}
+                  onValueChange={(value) => setSelectedAccountType(value as AccountType)}
+                >
+                  <SelectTrigger id="account-type-select" className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                    <SelectValue placeholder="Member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="shared">Shared account</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Shared accounts (Duty Officer phone, appliance tablets) are excluded from
+                  member lists, member counts and availability reminders.
+                </p>
               </div>
 
               {/* Roles selection */}

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireModuleAccess } from "./modules";
+import { isMemberAccount } from "./lib/accountType";
 import {
   KitValue,
   isKitSizeValue,
@@ -386,7 +387,7 @@ export const listMembers = query({
     await requireKitAccess(ctx);
 
     const users = await ctx.db.query("users").collect();
-    const members = users.filter((u) => !u.isAnonymous && (u.firstName || u.lastName || u.name));
+    const members = users.filter(isMemberAccount);
 
     // Newest history row per member, one indexed lookup each. 58 members, and
     // history grows without bound so it must never be collected whole.
@@ -462,7 +463,9 @@ export const getMemberKitSummary = query({
     await requireKitAccess(ctx);
 
     const member = await ctx.db.get(userId);
-    if (!member) return null;
+    // A shared account (DO phone, appliance tablet) has no kit record. Reads the
+    // same as a deleted member, which the page already renders as "Member not found".
+    if (!member || !isMemberAccount(member)) return null;
 
     const entries = await ctx.db
       .query("memberKitEntries")
@@ -653,7 +656,7 @@ export const getItemEntriesForAllMembers = query({
       item: await shapeItem(ctx, item),
       setName: set?.name,
       members: users
-        .filter((u) => !u.isAnonymous && (u.firstName || u.lastName || u.name))
+        .filter(isMemberAccount)
         .map((u) => ({
           userId: u._id,
           name: userDisplayName(u),
@@ -735,7 +738,7 @@ export const setKitEntry = mutation({
     const actorId = await requireKitAccess(ctx);
 
     const member = await ctx.db.get(userId);
-    if (!member) throw new Error("Member not found");
+    if (!member || !isMemberAccount(member)) throw new Error("Member not found");
 
     const item = await ctx.db.get(itemId);
     if (!item) throw new Error("Kit item not found");
@@ -768,7 +771,7 @@ export const setKitEntries = mutation({
     const actorId = await requireKitAccess(ctx);
 
     const member = await ctx.db.get(userId);
-    if (!member) throw new Error("Member not found");
+    if (!member || !isMemberAccount(member)) throw new Error("Member not found");
 
     if (setId !== null && !(await ctx.db.get(setId))) throw new Error("Kit set not found");
 
@@ -832,7 +835,7 @@ export const setKitItemEntries = mutation({
     const prepared: { userId: Id<"users">; value: KitValue | null }[] = [];
     for (const entry of entries) {
       const member = await ctx.db.get(entry.userId);
-      if (!member) throw new Error("Member not found");
+      if (!member || !isMemberAccount(member)) throw new Error("Member not found");
       prepared.push({
         userId: entry.userId,
         value: await normaliseKitValue(ctx, item, entry.value),
