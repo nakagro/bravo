@@ -13,6 +13,13 @@ export type ActionItem = {
   count?: number;
   createdAt: number;
   meta?: unknown;
+  /**
+   * Opt in to a per-user "wave it away" control. Only for actions a user can
+   * reasonably choose to stop seeing — a derived action whose condition still
+   * holds (unset availability) must stay put, or the Action Centre stops being
+   * a reliable account of what's outstanding.
+   */
+  dismissible?: boolean;
 };
 
 export type ProviderCtx = {

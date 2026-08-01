@@ -47,7 +47,21 @@ export function ActionCard({ action }: ActionCardProps) {
   const colorClass = priorityColors[action.priority];
   const setRsvp = useMutation(api.events.setRsvp);
   const declineSlotEvent = useMutation(api.events.declineSlotEvent);
+  const dismissAction = useMutation(api.actionCentre.dismissAction);
   const [submitting, setSubmitting] = useState<RsvpStatus | null>(null);
+  // Hide straight away rather than waiting for the query to round-trip — the
+  // card is under the user's thumb and a lingering one reads as a failed tap.
+  const [dismissed, setDismissed] = useState(false);
+
+  const handleDismiss = async () => {
+    setDismissed(true);
+    try {
+      await dismissAction({ actionId: action.id });
+    } catch (err) {
+      setDismissed(false);
+      toast.error(err instanceof Error ? err.message : "Failed to dismiss");
+    }
+  };
 
   const meta = rsvpMeta(action);
   const eventId = meta?.eventId;
@@ -103,17 +117,33 @@ export function ActionCard({ action }: ActionCardProps) {
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{action.description}</p>
         )}
       </div>
-      {action.url && (
+      {action.url && !action.dismissible && (
         <ChevronRight
           className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400 dark:text-gray-500"
           aria-hidden="true"
         />
       )}
+      {/* Reserve room so the title never runs under the dismiss button */}
+      {action.dismissible && <div className="w-6 flex-shrink-0" aria-hidden="true" />}
     </div>
   );
 
+  if (dismissed) return null;
+
   return (
-    <div className={`rounded-r-md border-l-4 ${colorClass}`}>
+    <div className={`relative rounded-r-md border-l-4 ${colorClass}`}>
+      {/* Sibling of the Link, never nested inside it — a dismiss tap must not
+          also navigate. */}
+      {action.dismissible && (
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label={`Dismiss: ${action.title}`}
+          className="absolute top-0 right-0 z-10 flex h-10 w-10 items-center justify-center text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
       {action.url ? (
         <Link to={action.url} className="block hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors rounded-r-md">
           {content}

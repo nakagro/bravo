@@ -10,6 +10,7 @@ export type ActionItem = {
   count?: number;
   createdAt: number;
   meta?: unknown;
+  dismissible?: boolean;
 };
 
 export const priorityColors: Record<ActionItem["priority"], string> = {

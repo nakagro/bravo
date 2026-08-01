@@ -92,6 +92,9 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
       priority: "medium",
       count: remaining,
       createdAt: monday.getTime(),
+      // Safe to wave away: the id carries this week's Sunday, so a dismissal
+      // only silences the current week and next week's reminder is a new id.
+      dismissible: true,
     },
   ];
 };

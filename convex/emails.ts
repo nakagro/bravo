@@ -320,3 +320,123 @@ export const sendPasswordResetEmail = internalAction({
     }
   },
 });
+
+/**
+ * The email half of notifyEvent() — one generic branded template every module
+ * shares, so a new notification is a call site rather than another bespoke
+ * email action. Deliberately never throws: a bounced notification must not roll
+ * back the mutation that scheduled it.
+ */
+export const sendEventNoticeEmail = internalAction({
+  args: {
+    to: v.array(v.string()),
+    subject: v.string(),
+    heading: v.string(),
+    intro: v.optional(v.string()),
+    details: v.array(v.object({ label: v.string(), value: v.string() })),
+    listTitle: v.optional(v.string()),
+    list: v.array(v.string()),
+    url: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    emailId: v.optional(v.string()),
+    message: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    if (args.to.length === 0) {
+      return { success: true, message: "No recipients to notify" };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
+    const link = args.url.startsWith("http")
+      ? args.url
+      : `${frontendUrl}${args.url.startsWith("/") ? "" : "/"}${args.url}`;
+
+    const detailRows = args.details
+      .map(
+        (d) => `
+              <tr>
+                <td style="padding: 6px 12px 6px 0; color: #6b7280; font-size: 14px; vertical-align: top; white-space: nowrap;">${d.label}</td>
+                <td style="padding: 6px 0; color: #111827; font-size: 14px;">${d.value}</td>
+              </tr>`
+      )
+      .join("");
+
+    const listItems = args.list
+      .map(
+        (item) =>
+          `<li style="color: #111827; font-size: 14px; margin-bottom: 6px; line-height: 1.5;">${item}</li>`
+      )
+      .join("");
+
+    try {
+      const result = await resend.emails.send({
+        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+        to: args.to,
+        subject: args.subject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #dc2626; margin-bottom: 20px;">BRAVO</h1>
+            <h2 style="color: #374151; margin-bottom: 16px;">${args.heading}</h2>
+
+            ${
+              args.intro
+                ? `<p style="color: #4b5563; margin-bottom: 20px; line-height: 1.6;">${args.intro}</p>`
+                : ""
+            }
+
+            ${
+              detailRows
+                ? `<table style="width: 100%; border-collapse: collapse; background-color: #f9fafb; border-radius: 8px; padding: 8px; margin-bottom: 20px;">
+                     <tbody>${detailRows}</tbody>
+                   </table>`
+                : ""
+            }
+
+            ${
+              listItems
+                ? `<div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+                     ${
+                       args.listTitle
+                         ? `<h3 style="color: #92400e; margin-top: 0; margin-bottom: 10px; font-size: 15px;">${args.listTitle}</h3>`
+                         : ""
+                     }
+                     <ul style="margin: 0; padding-left: 20px;">${listItems}</ul>
+                   </div>`
+                : ""
+            }
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${link}"
+                 style="display: inline-block; background-color: #dc2626; color: #ffffff !important; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                <span style="color: #ffffff !important;">Open in BRAVO</span>
+              </a>
+            </div>
+
+            <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+              You're receiving this because you're listed as accountable for this
+              area in BRAVO. Sent at ${new Date().toLocaleString()}
+            </p>
+          </div>
+        `,
+      });
+
+      if (result.error) {
+        console.error("Event notice email error:", result.error);
+        return { success: false, message: result.error.message };
+      }
+
+      return { success: true, emailId: result.data?.id };
+    } catch (error) {
+      console.error("Event notice email action error:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to send email",
+      };
+    }
+  },
+});

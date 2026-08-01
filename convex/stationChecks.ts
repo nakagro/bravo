@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { notifyEvent } from "./lib/notifyEvent";
 
 type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
@@ -69,6 +70,52 @@ function applyItemAttribution(
     }
     return { ...item, completedBy: userId, completedAt: now };
   });
+}
+
+// Condition key for "the week's station checks were submitted". Officers map it
+// to themselves in Duty Crew → Admin → Notifications.
+export const CHECKS_SUBMITTED_KEY = "dutyCrew:checksSubmitted";
+
+// Build the notice a duty-crew submission raises. The point of the whole thing
+// is the exception detail: pen-and-paper sheets told nobody what was skipped or
+// what needed a second look, so N/A items and anything with a note are named.
+function buildSubmissionNotice(
+  items: SubmissionCheckItem[],
+  crewName: string,
+  weekEnding: number
+) {
+  const completed = items.filter((i) => i.isCompleted).length;
+  const notApplicable = items.filter((i) => !i.isCompleted && i.isNotApplicable === true);
+  const withNotes = items.filter((i) => i.notes && i.notes.trim().length > 0);
+
+  const weekLabel = new Date(weekEnding).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+  });
+
+  const summary = [
+    `${completed} completed`,
+    notApplicable.length > 0 ? `${notApplicable.length} N/A` : null,
+    withNotes.length > 0 ? `${withNotes.length} with notes` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const attention = [
+    ...notApplicable.map(
+      (i) => `${i.name} — marked N/A${i.notes ? `: ${i.notes.trim()}` : ""}`
+    ),
+    ...withNotes
+      .filter((i) => i.isNotApplicable !== true)
+      .map((i) => `${i.name} — ${i.notes!.trim()}`),
+  ];
+
+  return {
+    weekLabel,
+    summary,
+    attention,
+    description: `${crewName} · week ending Sun ${weekLabel} · ${summary}`,
+  };
 }
 
 // Get all station checks, sorted by display order
@@ -622,6 +669,45 @@ export const submitStationCheck = mutation({
 
     const now = Date.now();
 
+    // Raise the "checks are done" notice for whoever holds the duty-crew
+    // portfolio. Silent unless an officer has mapped the condition key.
+    const notifySubmission = async (submissionId: Id<"stationCheckSubmissions">) => {
+      const crew = await ctx.db.get(args.dutyCrewId);
+      const notice = buildSubmissionNotice(
+        args.checkItems,
+        crew?.name ?? "Duty crew",
+        args.date
+      );
+      const submitterName =
+        [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ") ||
+        currentUser.name ||
+        "a crew member";
+
+      await notifyEvent(ctx, {
+        moduleId: "dutyCrew",
+        conditionKey: CHECKS_SUBMITTED_KEY,
+        title: "Duty crew checks submitted",
+        description: notice.description,
+        url: "/duty-crew?tab=history",
+        priority: notice.attention.length > 0 ? "medium" : "low",
+        sourceEntityId: submissionId,
+        actorUserId: currentUser._id,
+        emailSubject: `Duty crew checks submitted — week ending Sun ${notice.weekLabel}`,
+        emailIntro: `${submitterName} submitted the station checks for ${crew?.name ?? "the duty crew"}.`,
+        emailDetails: [
+          { label: "Crew", value: crew?.name ?? "Unknown" },
+          { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
+          { label: "Submitted by", value: submitterName },
+          { label: "Result", value: notice.summary },
+          ...(args.notes?.trim()
+            ? [{ label: "Crew notes", value: args.notes.trim() }]
+            : []),
+        ],
+        emailListTitle: "Needs attention",
+        emailList: notice.attention,
+      });
+    };
+
     if (args.existingSubmissionId) {
       // Update the existing submission and mark as completed
       const existing = await ctx.db.get(args.existingSubmissionId);
@@ -640,6 +726,7 @@ export const submitStationCheck = mutation({
         lastUpdatedAt: now,
       });
 
+      await notifySubmission(args.existingSubmissionId);
       return args.existingSubmissionId;
     } else {
       // Check if there's already a submission for this date and duty crew
@@ -667,10 +754,11 @@ export const submitStationCheck = mutation({
           lastUpdatedAt: now,
         });
 
+        await notifySubmission(existingSubmission._id);
         return existingSubmission._id;
       } else {
         // Create a new completed submission
-        return await ctx.db.insert("stationCheckSubmissions", {
+        const submissionId = await ctx.db.insert("stationCheckSubmissions", {
           date: args.date,
           dutyCrewId: args.dutyCrewId,
           checkItems: applyItemAttribution(
@@ -686,6 +774,9 @@ export const submitStationCheck = mutation({
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
         });
+
+        await notifySubmission(submissionId);
+        return submissionId;
       }
     }
   },

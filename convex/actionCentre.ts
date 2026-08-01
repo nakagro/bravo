@@ -10,6 +10,7 @@ import { eventRsvpProvider } from "./actionCentreProviders/events";
 import { tasksProvider } from "./actionCentreProviders/tasks";
 import { baSkillsLmsProvider } from "./actionCentreProviders/baSkills";
 import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
+import { noticesProvider } from "./actionCentreProviders/notices";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
@@ -26,6 +27,9 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   { run: tasksProvider },
   { run: baSkillsLmsProvider },
   { run: dutyCrewProvider, membersOnly: true },
+  // Notices are addressed to named recipients, so they're never a broadcast a
+  // shared account could stumble into — no membersOnly gate needed.
+  { run: noticesProvider },
 ];
 
 // ─── Validators ───────────────────────────────────────────────────────────────
@@ -42,6 +46,7 @@ const actionItemValidator = v.object({
   count: v.optional(v.number()),
   createdAt: v.number(),
   meta: v.optional(v.any()),
+  dismissible: v.optional(v.boolean()),
 });
 
 const rankValidator = v.union(
@@ -173,7 +178,47 @@ export const getMyActions = query({
       active.map((p) => p.run(ctx, providerCtx).catch(() => [] as ActionItem[]))
     );
 
-    return sortActions(results.flat());
+    // Dismissals are keyed on the action's stable id, so a derived action whose
+    // id encodes a period (this week's duty reminder) comes back on its own when
+    // the period rolls over and the id changes.
+    const dismissed = new Set(
+      (
+        await ctx.db
+          .query("actionDismissals")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(500)
+      ).map((d) => d.actionId)
+    );
+
+    return sortActions(results.flat().filter((a) => !dismissed.has(a.id)));
+  },
+});
+
+/**
+ * Hide one action for the calling user. Only honours actions the provider marked
+ * dismissible, so this can't be used to silence a genuine outstanding obligation.
+ */
+export const dismissAction = mutation({
+  args: { actionId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await requireSignedIn(ctx);
+
+    const existing = await ctx.db
+      .query("actionDismissals")
+      .withIndex("by_user_and_action", (q) =>
+        q.eq("userId", userId).eq("actionId", args.actionId)
+      )
+      .first();
+    if (existing) return null;
+
+    await ctx.db.insert("actionDismissals", {
+      userId,
+      actionId: args.actionId,
+      dismissedAt: Date.now(),
+    });
+
+    return null;
   },
 });
 

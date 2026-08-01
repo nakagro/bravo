@@ -8,12 +8,14 @@
  * @module
  */
 
+import type * as actionAccountability from "../actionAccountability.js";
 import type * as actionCentre from "../actionCentre.js";
 import type * as actionCentreProviders_availability from "../actionCentreProviders/availability.js";
 import type * as actionCentreProviders_baSkills from "../actionCentreProviders/baSkills.js";
 import type * as actionCentreProviders_bookings from "../actionCentreProviders/bookings.js";
 import type * as actionCentreProviders_dutyCrew from "../actionCentreProviders/dutyCrew.js";
 import type * as actionCentreProviders_events from "../actionCentreProviders/events.js";
+import type * as actionCentreProviders_notices from "../actionCentreProviders/notices.js";
 import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
 import type * as actionCentreProviders_tasks from "../actionCentreProviders/tasks.js";
 import type * as actionCentreProviders_types from "../actionCentreProviders/types.js";
@@ -58,6 +60,7 @@ import type * as keys from "../keys.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
+import type * as lib_notifyEvent from "../lib/notifyEvent.js";
 import type * as lib_tapeColors from "../lib/tapeColors.js";
 import type * as links from "../links.js";
 import type * as memberKit from "../memberKit.js";
@@ -94,12 +97,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  actionAccountability: typeof actionAccountability;
   actionCentre: typeof actionCentre;
   "actionCentreProviders/availability": typeof actionCentreProviders_availability;
   "actionCentreProviders/baSkills": typeof actionCentreProviders_baSkills;
   "actionCentreProviders/bookings": typeof actionCentreProviders_bookings;
   "actionCentreProviders/dutyCrew": typeof actionCentreProviders_dutyCrew;
   "actionCentreProviders/events": typeof actionCentreProviders_events;
+  "actionCentreProviders/notices": typeof actionCentreProviders_notices;
   "actionCentreProviders/profile": typeof actionCentreProviders_profile;
   "actionCentreProviders/tasks": typeof actionCentreProviders_tasks;
   "actionCentreProviders/types": typeof actionCentreProviders_types;
@@ -144,6 +149,7 @@ declare const fullApi: ApiFromModules<{
   "lib/accountType": typeof lib_accountType;
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;
+  "lib/notifyEvent": typeof lib_notifyEvent;
   "lib/tapeColors": typeof lib_tapeColors;
   links: typeof links;
   memberKit: typeof memberKit;

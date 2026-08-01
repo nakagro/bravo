@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Users, ClipboardList } from "lucide-react";
+import { Users, ClipboardList, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationRecipientsSection } from "@/components/shared/NotificationRecipientsSection";
 import { CrewManagementSection } from "./CrewManagementSection";
 import { CheckTemplatesSection } from "./CheckTemplatesSection";
 
-type AdminSection = "crews" | "templates";
+type AdminSection = "crews" | "templates" | "notifications";
 
 const sections: Array<{
   key: AdminSection;
@@ -13,6 +14,7 @@ const sections: Array<{
 }> = [
   { key: "crews", label: "Crews", icon: Users },
   { key: "templates", label: "Templates", icon: ClipboardList },
+  { key: "notifications", label: "Notify", icon: Bell },
 ];
 
 export function AdminTab() {
@@ -21,7 +23,7 @@ export function AdminTab() {
   return (
     <div className="space-y-4">
       {/* Segmented section switcher */}
-      <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         {sections.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -42,6 +44,13 @@ export function AdminTab() {
 
       {section === "crews" && <CrewManagementSection />}
       {section === "templates" && <CheckTemplatesSection />}
+      {section === "notifications" && (
+        <NotificationRecipientsSection
+          conditionKey="dutyCrew:checksSubmitted"
+          title="Weekly station checks submitted"
+          description="Tell the people who hold the duty crew portfolio when a crew submits their week's checks, including anything marked N/A or left with a note."
+        />
+      )}
     </div>
   );
 }

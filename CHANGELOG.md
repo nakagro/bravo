@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.08.02]
+- Duty Crew: Check items can now be marked "couldn't be completed" (N/A) with a required reason, so one genuinely un-doable item no longer blocks the whole week from being submitted. N/A items show distinctly in the weekly list and in History, with the reason and who marked them.
+- Duty Crew: The progress bar now sticks to the bottom of the weekly checklist. When items are outstanding it's a button, tap it to jump to the next unresolved item. Area headings show their own count (e.g. KITCHEN 2/4).
+- Duty Crew: Safer taps throughout, bigger week arrows and Reopen button, breathing room between a check row and its notes/delete buttons, a confirmation before deleting an ad-hoc item, and an undo toast when a save overwrites another member's tick. Editing a completed week now tells you it's been reopened instead of doing it silently.
+- Duty Crew: Template items can be flagged "Must do", shown red-edged and sorted to the top of the weekly list.
+- Duty Crew: Your Action Centre now reminds you when it's your crew's week, with the number of items still outstanding. It clears once the week's checks are submitted.
+- Duty Crew: The Schedule tab marks your own crew with a green badge, and Admin → Crews lists members who aren't in any crew yet, with one-tap adding.
+- Duty Crew: When a crew submits their weekly checks, the people responsible for duty crew are now told automatically, in the Action Centre and by email. The notice names anything marked N/A or left with a note, so nothing needing attention goes unnoticed.
+- Duty Crew: Choose who gets told under Duty Crew → Admin → Notify. Pick people by name, by role (survives a handover without editing the list), or by rank, and turn the Action Centre notice and email on or off independently.
+- Action Centre: Some items can now be dismissed with an × when you no longer need to see them. Your duty crew week reminder is the first, dismissing it clears it for that week only and it returns next week. Outstanding obligations like unset availability can't be dismissed.
+
 ## [2026.08.01]
 - Events: Location and Address are now separate optional fields, use either or both, and whichever are set show under "Where".
 - Calendar: Events can be saved with a start time and no finish time, shown as open-ended instead of assuming an end.

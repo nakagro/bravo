@@ -1375,7 +1375,8 @@ const applicationTables = {
     .index("by_task", ["taskId"])
     .index("by_timestamp", ["timestamp"]),
 
-  // Maps a brigade-wide condition to accountable people (consumed by future Role-policy providers)
+  // Maps a brigade-wide condition to accountable people. Read by Role-policy
+  // providers and by notifyEvent() when a module reports something happened.
   actionAccountability: defineTable({
     conditionKey: v.string(),
     roles: v.array(v.string()),
@@ -1385,7 +1386,44 @@ const applicationTables = {
       v.literal("Lieutenant"), v.literal("Captain")
     )),
     isEnabled: v.boolean(),
+    // Delivery channels for event notices raised against this key. Absent means
+    // in-app only, which is what the Role providers reading this table assume.
+    notifyInApp: v.optional(v.boolean()),
+    notifyEmail: v.optional(v.boolean()),
+    updatedAt: v.optional(v.number()),
+    updatedBy: v.optional(v.id("users")),
   }).index("by_conditionKey", ["conditionKey"]),
+
+  // Action Centre — "this happened" notices raised by a module via notifyEvent().
+  // Unlike derived actions these are stored, because the event they report is a
+  // moment in time that nothing can recompute later.
+  actionNotices: defineTable({
+    moduleId: v.string(),
+    conditionKey: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    url: v.string(),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    recipientUserIds: v.array(v.id("users")),
+    // Identifies the thing the notice is about, so a repeat event (a reopened
+    // and resubmitted station check) updates the notice instead of stacking.
+    sourceEntityId: v.optional(v.string()),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_source", ["conditionKey", "sourceEntityId"]),
+
+  // Per-user "I've seen this, stop showing me" record, keyed by the action's
+  // stable id string. Works for stored notices and derived actions alike.
+  actionDismissals: defineTable({
+    userId: v.id("users"),
+    actionId: v.string(),
+    dismissedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_action", ["userId", "actionId"])
+    .index("by_action", ["actionId"]),
 };
 
 export default defineSchema({
