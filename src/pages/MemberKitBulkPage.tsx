@@ -13,7 +13,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../features/memberRecords/types";
 import { KitItemControl } from "../features/memberRecords/components/KitItemControl";
-import { useDirtyDraftGuard } from "../features/memberRecords/components/useDirtyDraftGuard";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 
 type Draft = Record<string, KitValue | null>;
 

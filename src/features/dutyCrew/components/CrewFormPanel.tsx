@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ordinalSuffix } from "../types";
@@ -44,6 +46,12 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
     }
   }, [value]);
 
+  // No react-hook-form here, so dirtiness is a straight compare against what
+  // the panel opened with.
+  const isDirty =
+    value !== null && (name !== value.name || number !== value.number);
+  const guard = useDirtyDraftGuard(isDirty, onClose);
+
   if (!value) return null;
 
   const isEditing = value.id !== undefined;
@@ -59,6 +67,7 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
         await createDutyCrew({ name: name.trim(), number, members: [] });
         toast.success("Duty crew created");
       }
+      guard.release();
       onClose();
     } catch (error: any) {
       console.error("Error saving duty crew:", error);
@@ -72,66 +81,78 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
   };
 
   return (
-    <ResponsiveModal
-      open={!!value}
-      onClose={onClose}
-      title={isEditing ? "Rename Crew" : "New Duty Crew"}
-      drawerHeight="h-auto max-h-[90vh]"
-      footer={
-        <div className="flex flex-col gap-2 p-4 pt-2">
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || isSaving}
-            className="w-full"
-            size="lg"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : isEditing ? (
-              "Save"
-            ) : (
-              "Create"
-            )}
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-4 pb-4">
-        <div>
-          <Label>Crew Name</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Duty Crew 1"
-            className="mt-1 text-base md:text-sm"
-            autoFocus={!isEditing}
-          />
-        </div>
-
-        {!isEditing && (
-          <div>
-            <Label>Sunday Number (1-4)</Label>
-            <Select
-              value={number.toString()}
-              onValueChange={(v) => setNumber(parseInt(v))}
+    <>
+      <ResponsiveModal
+        open={!!value}
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title={isEditing ? "Rename Crew" : "New Duty Crew"}
+        drawerHeight="h-auto max-h-[90vh]"
+        footer={
+          <div className="flex flex-col gap-2 p-4 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={!name.trim() || isSaving}
+              className="w-full"
+              size="lg"
             >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4].map((n) => (
-                  <SelectItem key={n} value={n.toString()}>
-                    {ordinalSuffix(n)} Sunday
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {isSaving ? (
+                <span className="flex items-center gap-2">
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  Saving...
+                </span>
+              ) : isEditing ? (
+                "Save"
+              ) : (
+                "Create"
+              )}
+            </Button>
           </div>
-        )}
-      </div>
-    </ResponsiveModal>
+        }
+      >
+        <div className="space-y-4 pb-4">
+          <div>
+            <Label>Crew Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Duty Crew 1"
+              className="mt-1 text-base md:text-sm"
+              autoFocus={!isEditing}
+            />
+          </div>
+
+          {!isEditing && (
+            <div>
+              <Label>Sunday Number (1-4)</Label>
+              <Select
+                value={number.toString()}
+                onValueChange={(v) => setNumber(parseInt(v))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4].map((n) => (
+                    <SelectItem key={n} value={n.toString()}>
+                      {ordinalSuffix(n)} Sunday
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description="This crew has unsaved changes. Leaving now will lose them."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }

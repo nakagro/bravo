@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, getBookingConflictMessage } from "../types";
@@ -76,7 +77,10 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
     },
   });
 
-  const { isSubmitting } = form.formState;
+  const { isSubmitting, isDirty } = form.formState;
+  // One confirmation for every exit from a half-filled form: the X, Cancel,
+  // Escape, an outside tap, the drawer swipe and the Back button.
+  const guard = useDirtyDraftGuard(isDirty, onClose);
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
   const watchStatus = form.watch("status");
@@ -112,6 +116,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
         notes: values.notes.trim(),
         status: values.status,
       });
+      guard.release();
       toast.success("Booking updated successfully");
       onClose();
     } catch (error) {
@@ -128,6 +133,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
   const handleDelete = async () => {
     try {
       await updateBooking({ bookingId, status: "cancelled" });
+      guard.release();
       toast.success("Booking cancelled");
       onClose();
     } catch (error) {
@@ -398,7 +404,14 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
 
   const formFooter = (
     <div className="flex gap-3 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          if (guard.requestClose()) onClose();
+        }}
+        className="flex-1 h-12 text-base"
+      >
         Cancel
       </Button>
       <Button
@@ -413,14 +426,26 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
   );
 
   return (
-    <ResponsiveModal
-      open
-      onClose={onClose}
-      title="Edit Booking"
-      footer={formFooter}
-      drawerHeight="h-[95vh]"
-    >
-      {formContent}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        open
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title="Edit Booking"
+        footer={formFooter}
+        drawerHeight="h-[95vh]"
+      >
+        {formContent}
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description="This booking has unsaved edits. Leaving now will lose them."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }

@@ -6,6 +6,7 @@ interface IcsEvent {
   title: string;
   description?: string;
   location?: string;
+  address?: string;
   startDate: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
   startTime?: string; // HH:MM
@@ -58,7 +59,9 @@ function buildIcs(event: IcsEvent): string {
   }
 
   lines.push(`SUMMARY:${escapeText(event.title)}`);
-  if (event.location) lines.push(`LOCATION:${escapeText(event.location)}`);
+  // Calendars carry a single LOCATION — join the venue name and address.
+  const where = [event.location, event.address].filter(Boolean).join(", ");
+  if (where) lines.push(`LOCATION:${escapeText(where)}`);
   if (event.description) lines.push(`DESCRIPTION:${escapeText(event.description)}`);
   lines.push("END:VEVENT", "END:VCALENDAR");
 

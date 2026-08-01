@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,6 +52,16 @@ export function CheckTemplateFormPanel({
     }
   }, [value]);
 
+  // No react-hook-form here, so dirtiness is a straight compare against what
+  // the panel opened with.
+  const isDirty =
+    value !== null &&
+    (name !== value.name ||
+      description !== value.description ||
+      area !== value.area ||
+      isActive !== value.isActive);
+  const guard = useDirtyDraftGuard(isDirty, onClose);
+
   if (!value) return null;
 
   const isEditing = value.id !== undefined;
@@ -76,6 +88,7 @@ export function CheckTemplateFormPanel({
         });
         toast.success("Check template created");
       }
+      guard.release();
       onClose();
     } catch (error) {
       console.error("Error saving check template:", error);
@@ -90,100 +103,112 @@ export function CheckTemplateFormPanel({
   };
 
   return (
-    <ResponsiveModal
-      open={!!value}
-      onClose={onClose}
-      title={isEditing ? "Edit Check" : "New Check"}
-      drawerHeight="h-auto max-h-[90vh]"
-      footer={
-        <div className="flex flex-col gap-2 p-4 pt-2">
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || isSaving}
-            className="w-full"
-            size="lg"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : isEditing ? (
-              "Save"
-            ) : (
-              "Create"
-            )}
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-4 pb-4">
-        <div>
-          <Label>Check Name</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Empty bins"
-            className="mt-1 text-base md:text-sm"
-            autoFocus={!isEditing}
-          />
-        </div>
-
-        <div>
-          <Label>Area (Optional)</Label>
-          <Input
-            value={area}
-            onChange={(e) => setArea(e.target.value)}
-            placeholder="e.g., Kitchen"
-            className="mt-1 text-base md:text-sm"
-          />
-          {areaSuggestions.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {areaSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => setArea(suggestion)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    area.trim().toLowerCase() === suggestion.toLowerCase()
-                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                  }`}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            Checks with the same area are grouped together in the weekly list.
-          </p>
-        </div>
-
-        <div>
-          <Label>Description (Optional)</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add detailed instructions..."
-            className="mt-1 resize-none h-20 text-base md:text-sm"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-3 py-1">
+    <>
+      <ResponsiveModal
+        open={!!value}
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title={isEditing ? "Edit Check" : "New Check"}
+        drawerHeight="h-auto max-h-[90vh]"
+        footer={
+          <div className="flex flex-col gap-2 p-4 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={!name.trim() || isSaving}
+              className="w-full"
+              size="lg"
+            >
+              {isSaving ? (
+                <span className="flex items-center gap-2">
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  Saving...
+                </span>
+              ) : isEditing ? (
+                "Save"
+              ) : (
+                "Create"
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 pb-4">
           <div>
-            <Label htmlFor="template-active-switch">Active</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Inactive checks are hidden from the weekly list
+            <Label>Check Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Empty bins"
+              className="mt-1 text-base md:text-sm"
+              autoFocus={!isEditing}
+            />
+          </div>
+
+          <div>
+            <Label>Area (Optional)</Label>
+            <Input
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="e.g., Kitchen"
+              className="mt-1 text-base md:text-sm"
+            />
+            {areaSuggestions.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {areaSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setArea(suggestion)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      area.trim().toLowerCase() === suggestion.toLowerCase()
+                        ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Checks with the same area are grouped together in the weekly list.
             </p>
           </div>
-          <Switch
-            id="template-active-switch"
-            checked={isActive}
-            onCheckedChange={setIsActive}
-          />
+
+          <div>
+            <Label>Description (Optional)</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add detailed instructions..."
+              className="mt-1 resize-none h-20 text-base md:text-sm"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 py-1">
+            <div>
+              <Label htmlFor="template-active-switch">Active</Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Inactive checks are hidden from the weekly list
+              </p>
+            </div>
+            <Switch
+              id="template-active-switch"
+              checked={isActive}
+              onCheckedChange={setIsActive}
+            />
+          </div>
         </div>
-      </div>
-    </ResponsiveModal>
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description="This check has unsaved changes. Leaving now will lose them."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }

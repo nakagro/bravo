@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.08.01]
+- Events: Location and Address are now separate optional fields, use either or both, and whichever are set show under "Where".
+- Calendar: Events can be saved with a start time and no finish time, shown as open-ended instead of assuming an end.
+
 ## [2026.07.17]
 - Tooling: Adopted the new Vite+ (`vp`) toolchain. Linting moved from ESLint to Oxlint (now also runs on every commit), and a Vitest test suite was seeded covering availability backend logic and date utilities.
 - CI: New GitHub Actions workflow runs lint, typecheck and tests on every push and pull request.

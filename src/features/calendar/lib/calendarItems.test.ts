@@ -18,6 +18,7 @@ function icsEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     start: new Date(2026, 6, 15, 18, 0),
     end: new Date(2026, 6, 15, 19, 0),
     allDay: false,
+    endUnknown: false,
     recurring: false,
     ...overrides,
   };
@@ -45,6 +46,32 @@ function booking(overrides: Partial<BookingInput> = {}): BookingInput {
     ...overrides,
   };
 }
+
+describe("open-ended items", () => {
+  it("marks a timed brigade event with no end time as end-unknown", () => {
+    const [item] = fromBrigadeEvents([
+      brigadeEvent({ isAllDay: false, startTime: "09:00", endTime: undefined }),
+    ]);
+    expect(item.endUnknown).toBe(true);
+    // A nominal end still exists so the item lands on its day
+    expect(item.end.getTime()).toBeGreaterThan(item.start.getTime());
+  });
+
+  it("leaves an event with an end time alone", () => {
+    const [item] = fromBrigadeEvents([
+      brigadeEvent({ isAllDay: false, startTime: "09:00", endTime: "11:00" }),
+    ]);
+    expect(item.endUnknown).toBe(false);
+  });
+
+  it("carries the open-ended flag through from ICS", () => {
+    const [item] = fromIcsEvents([
+      icsEvent({ endUnknown: true, end: new Date(2026, 6, 15, 18, 0) }),
+    ]);
+    expect(item.endUnknown).toBe(true);
+    expect(coveredDays(item)).toEqual(["2026-07-15"]);
+  });
+});
 
 describe("fromBrigadeEvents", () => {
   it("skips cancelled events", () => {

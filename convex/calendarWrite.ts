@@ -21,7 +21,8 @@ const whenValidator = v.union(
     kind: v.literal("timed"),
     /** ms since epoch */
     start: v.number(),
-    end: v.number(),
+    /** Omitted when the finish time isn't known — the VEVENT gets no DTEND */
+    end: v.optional(v.number()),
   }),
   v.object({
     kind: v.literal("allDay"),
@@ -40,7 +41,7 @@ const eventFields = {
 };
 
 type EventWhen =
-  | { kind: "timed"; start: number; end: number }
+  | { kind: "timed"; start: number; end?: number }
   | { kind: "allDay"; startDate: string; endDateExclusive: string };
 
 export interface EventInput {
@@ -84,13 +85,18 @@ export function buildVEventCalendar(
   if (!summary) throw new Error("Event title is required");
 
   let dtstart: string;
-  let dtend: string;
+  // Open-ended timed events omit DTEND entirely (RFC 5545 §3.6.1 allows a
+  // VEVENT with only DTSTART); all-day events always carry one.
+  let dtend: string | null;
   if (input.when.kind === "timed") {
-    if (input.when.end <= input.when.start) {
+    if (input.when.end !== undefined && input.when.end <= input.when.start) {
       throw new Error("Event end must be after its start");
     }
     dtstart = `DTSTART:${formatUtcDateTime(input.when.start)}`;
-    dtend = `DTEND:${formatUtcDateTime(input.when.end)}`;
+    dtend =
+      input.when.end === undefined
+        ? null
+        : `DTEND:${formatUtcDateTime(input.when.end)}`;
   } else {
     const start = formatDateOnly(input.when.startDate);
     const end = formatDateOnly(input.when.endDateExclusive);
@@ -109,7 +115,7 @@ export function buildVEventCalendar(
     `UID:${uid}`,
     `DTSTAMP:${formatUtcDateTime(now.getTime())}`,
     dtstart,
-    dtend,
+    ...(dtend ? [dtend] : []),
     `SUMMARY:${escapeIcsText(summary)}`,
   ];
   if (input.location?.trim()) {

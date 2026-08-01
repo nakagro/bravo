@@ -18,6 +18,12 @@ export interface CalendarItem {
   start: Date;
   /** Exclusive for all-day items */
   end: Date;
+  /**
+   * True when no finish time was recorded. `end` still holds a nominal value
+   * (a one-hour block) so layout and day-coverage keep working, but the UI
+   * shows the event as open-ended rather than inventing a finish.
+   */
+  endUnknown?: boolean;
   allDay: boolean;
   location?: string;
   description?: string;
@@ -83,7 +89,7 @@ function resolveWhen(record: {
   startTime?: string;
   endTime?: string;
   isAllDay: boolean;
-}): { start: Date; end: Date; allDay: boolean } {
+}): { start: Date; end: Date; allDay: boolean; endUnknown: boolean } {
   const lastDate =
     record.endDate && record.endDate >= record.startDate ? record.endDate : record.startDate;
 
@@ -93,6 +99,7 @@ function resolveWhen(record: {
       // Inclusive last day → exclusive end
       end: addDays(parseISO(lastDate), 1),
       allDay: true,
+      endUnknown: false,
     };
   }
 
@@ -104,6 +111,8 @@ function resolveWhen(record: {
     start,
     end: end > start ? end : new Date(start.getTime() + DEFAULT_TIMED_DURATION_MS),
     allDay: false,
+    // A timed record without an end time runs until whenever it's done
+    endUnknown: !record.endTime,
   };
 }
 
@@ -113,7 +122,10 @@ export function fromIcsEvents(events: CalendarEvent[]): CalendarItem[] {
     source: "caldav" as const,
     title: event.summary,
     start: event.start,
-    end: event.end,
+    end: event.endUnknown
+      ? new Date(event.start.getTime() + DEFAULT_TIMED_DURATION_MS)
+      : event.end,
+    endUnknown: event.endUnknown,
     allDay: event.allDay,
     location: event.location,
     description: event.description,

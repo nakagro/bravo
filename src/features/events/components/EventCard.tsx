@@ -78,10 +78,12 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             )}
           </div>
 
-          {event.location && (
+          {(event.location || event.address) && (
             <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
               <MapPinIcon className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{event.location}</span>
+              <span className="truncate">
+                {[event.location, event.address].filter(Boolean).join(" · ")}
+              </span>
             </div>
           )}
 

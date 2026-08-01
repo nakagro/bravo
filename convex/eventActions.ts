@@ -84,8 +84,9 @@ export const notifyEventMembers = action({
       if (!event.isAllDay && event.startTime) {
         parts.push(formatTime(event.startTime));
       }
-      if (event.location) {
-        parts.push(event.location);
+      // One of the two may be set on its own; the venue name reads better first
+      if (event.location || event.address) {
+        parts.push(event.location || (event.address as string));
       }
       body =
         event.status === "cancelled"

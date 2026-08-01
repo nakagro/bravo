@@ -14,6 +14,20 @@ const AUG_START = new Date(Date.UTC(2026, 7, 1));
 const AUG_END = new Date(Date.UTC(2026, 7, 31, 23, 59, 59));
 
 describe("parseIcs", () => {
+  it("flags an event with no DTEND as open-ended", () => {
+    const ics = wrap(
+      "BEGIN:VEVENT",
+      "UID:open-1",
+      "DTSTART:20260810T090000Z",
+      "SUMMARY:Working bee",
+      "END:VEVENT",
+    );
+
+    const [event] = parseIcs(ics, AUG_START, AUG_END);
+    expect(event.endUnknown).toBe(true);
+    expect(event.end.getTime()).toBe(event.start.getTime());
+  });
+
   it("parses a single timed event with its fields", () => {
     const ics = wrap(
       "BEGIN:VEVENT",

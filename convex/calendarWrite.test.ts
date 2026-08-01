@@ -15,6 +15,20 @@ describe("escapeIcsText", () => {
 describe("buildVEventCalendar", () => {
   const now = new Date("2026-07-17T06:00:00Z");
 
+  it("omits DTEND when the finish time is unknown", () => {
+    const ics = buildVEventCalendar(
+      "bravo-open-ended",
+      {
+        summary: "Working bee",
+        when: { kind: "timed", start: Date.parse("2026-08-10T09:00:00Z") },
+      },
+      now,
+    );
+
+    expect(ics).toContain("DTSTART:20260810T090000Z\r\n");
+    expect(ics).not.toContain("DTEND");
+  });
+
   it("builds a timed event in UTC with CRLF line endings", () => {
     const ics = buildVEventCalendar(
       "bravo-test-1",

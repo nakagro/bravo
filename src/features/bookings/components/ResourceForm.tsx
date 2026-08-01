@@ -9,6 +9,8 @@ import { z } from "zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { formatUserName } from "../types";
 import { UsersIcon, CheckIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 
@@ -46,7 +48,10 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
     },
   });
 
-  const { isSubmitting } = form.formState;
+  const { isSubmitting, isDirty } = form.formState;
+  // One confirmation for every exit from a half-filled form: the X, Cancel,
+  // Escape, an outside tap, the drawer swipe and the Back button.
+  const guard = useDirtyDraftGuard(isDirty, onClose);
   const selectedApprovers = form.watch("approvers");
 
   // Load existing resource data when editing
@@ -92,6 +97,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
         });
         toast.success("Resource created successfully");
       }
+      guard.release();
       onClose();
     } catch (error) {
       console.error("Error saving resource:", error);
@@ -305,7 +311,14 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
 
   const formFooter = (
     <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          if (guard.requestClose()) onClose();
+        }}
+        className="flex-1 h-12 text-base"
+      >
         Cancel
       </Button>
       <Button
@@ -320,13 +333,25 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
   );
 
   return (
-    <ResponsiveModal
-      open
-      onClose={onClose}
-      title={resourceId ? "Edit Resource" : "Add New Resource"}
-      footer={formFooter}
-    >
-      {formContent}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        open
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title={resourceId ? "Edit Resource" : "Add New Resource"}
+        footer={formFooter}
+      >
+        {formContent}
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description="This resource has unsaved changes. Leaving now will lose them."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }

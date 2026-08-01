@@ -20,6 +20,8 @@ import {
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { eventTypeColors } from "../types";
 
 const slotSchema = z.object({
@@ -36,6 +38,7 @@ const eventFormSchema = z
     title: z.string().min(1, "Please enter a title"),
     eventTypeId: z.string(),
     location: z.string(),
+    address: z.string(),
     startDate: z.string().min(1, "Please select a date"),
     endDate: z.string(),
     startTime: z.string(),
@@ -74,6 +77,7 @@ const blankDefaults: EventFormValues = {
   title: "",
   eventTypeId: "",
   location: "",
+  address: "",
   startDate: "",
   endDate: "",
   startTime: "",
@@ -127,7 +131,15 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
     move: moveSlot,
   } = useFieldArray({ control: form.control, name: "slots" });
 
-  const { isSubmitting } = form.formState;
+  const { isSubmitting, isDirty } = form.formState;
+  // One confirmation for every exit from a half-typed event: the X, Cancel,
+  // Escape, an outside tap, the drawer swipe and the Back button.
+  const guard = useDirtyDraftGuard(isDirty, () => {
+    // An explicit discard takes the stashed new-event draft with it, otherwise
+    // reopening the form would resurrect what was just thrown away.
+    if (!isEditing) newEventDraft = null;
+    onClose();
+  });
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
   const watchHasShifts = form.watch("hasShifts");
@@ -140,6 +152,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         title: existingEvent.title,
         eventTypeId: existingEvent.eventTypeId || "",
         location: existingEvent.location || "",
+        address: existingEvent.address || "",
         startDate: existingEvent.startDate,
         endDate: existingEvent.endDate || "",
         startTime: existingEvent.startTime || "",
@@ -178,6 +191,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       title: values.title.trim(),
       eventTypeId: values.eventTypeId,
       location: values.location.trim(),
+      address: values.address.trim(),
       startDate: values.startDate,
       endDate: values.isMultiDay ? values.endDate : "",
       startTime: values.isAllDay ? "" : values.startTime,
@@ -209,12 +223,14 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           hasShifts: values.hasShifts,
           slots,
         });
+        guard.release();
         toast.success("Event updated");
       } else {
         await createEvent({
           ...fields,
           eventTypeId: (fields.eventTypeId || undefined) as Id<"eventTypes"> | undefined,
           location: fields.location || undefined,
+          address: fields.address || undefined,
           endDate: fields.endDate || undefined,
           startTime: fields.startTime || undefined,
           endTime: fields.endTime || undefined,
@@ -225,6 +241,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         });
         // Event saved — the draft has served its purpose.
         newEventDraft = null;
+        guard.release();
         toast.success("Event created");
       }
       onClose();
@@ -327,6 +344,28 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                   {...field}
                   type="text"
                   placeholder="e.g., Main Station"
+                  className={inputClasses}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Address */}
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Address (optional)
+              </FormLabel>
+              <FormControl>
+                <input
+                  {...field}
+                  type="text"
+                  placeholder="e.g., 12 Smith St, Wandong"
                   className={inputClasses}
                 />
               </FormControl>
@@ -573,48 +612,89 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                   </div>
                 </div>
 
-                <input
-                  {...form.register(`slots.${index}.label`)}
-                  type="text"
-                  placeholder="Label (e.g. Morning shift)"
-                  className={inputClasses}
-                />
-
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor={`slot-${slotField.id}-label`}
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Label
+                  </label>
                   <input
-                    {...form.register(`slots.${index}.startTime`)}
-                    type="time"
-                    aria-label="Shift start time"
-                    className={inputClasses}
-                  />
-                  <input
-                    {...form.register(`slots.${index}.endTime`)}
-                    type="time"
-                    aria-label="Shift end time"
+                    {...form.register(`slots.${index}.label`)}
+                    id={`slot-${slotField.id}-label`}
+                    type="text"
+                    placeholder="e.g. Morning shift"
                     className={inputClasses}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name={`slots.${index}.date`}
-                    render={({ field }) => (
-                      <DatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Date (optional)"
-                      />
-                    )}
-                  />
-                  <input
-                    {...form.register(`slots.${index}.targetCount`)}
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    placeholder="Target #"
-                    className={inputClasses}
-                  />
+                {/* Native time inputs are intrinsically wide; side by side they
+                    collide on a phone, so stack them there. */}
+                <div className={isMobile ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor={`slot-${slotField.id}-start`}
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      From
+                    </label>
+                    <input
+                      {...form.register(`slots.${index}.startTime`)}
+                      id={`slot-${slotField.id}-start`}
+                      type="time"
+                      className={inputClasses}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor={`slot-${slotField.id}-end`}
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      To
+                    </label>
+                    <input
+                      {...form.register(`slots.${index}.endTime`)}
+                      id={`slot-${slotField.id}-end`}
+                      type="time"
+                      className={inputClasses}
+                    />
+                  </div>
+                </div>
+
+                <div className={isMobile ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                  <div className="space-y-1">
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Date (optional)
+                    </span>
+                    <FormField
+                      control={form.control}
+                      name={`slots.${index}.date`}
+                      render={({ field }) => (
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Same as event"
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor={`slot-${slotField.id}-target`}
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Target # (optional)
+                    </label>
+                    <input
+                      {...form.register(`slots.${index}.targetCount`)}
+                      id={`slot-${slotField.id}-target`}
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      placeholder="e.g. 4"
+                      className={inputClasses}
+                    />
+                  </div>
                 </div>
               </div>
             ))}
@@ -666,7 +746,14 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
 
   const formFooter = (
     <div className="flex gap-3 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          if (guard.requestClose()) onClose();
+        }}
+        className="flex-1 h-12 text-base"
+      >
         Cancel
       </Button>
       <Button
@@ -681,14 +768,30 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   );
 
   return (
-    <ResponsiveModal
-      open
-      onClose={onClose}
-      title={isEditing ? "Edit Event" : "New Event"}
-      footer={formFooter}
-      drawerHeight="h-[95vh]"
-    >
-      {formContent}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        open
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title={isEditing ? "Edit Event" : "New Event"}
+        footer={formFooter}
+        drawerHeight="h-[95vh]"
+      >
+        {formContent}
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description={
+          isEditing
+            ? "This event has unsaved edits. Leaving now will lose them."
+            : "This event hasn't been created yet. Leaving now will lose what you've entered."
+        }
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }

@@ -24,7 +24,7 @@ function timeColumn(item: CalendarItem, date: Date) {
     <>
       {startsToday ? format(item.start, "HH:mm") : "…"}
       <span className="mt-0.5 block font-normal text-gray-500 dark:text-gray-400">
-        {endsToday ? format(item.end, "HH:mm") : "…"}
+        {item.endUnknown ? "onwards" : endsToday ? format(item.end, "HH:mm") : "…"}
       </span>
     </>
   );

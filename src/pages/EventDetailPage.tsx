@@ -434,12 +434,23 @@ export function EventDetailPage() {
                   {timeLine}
                 </span>
               )}
-              {event.location &&
+              {(event.location || event.address) &&
                 detailSection(
                   "Where",
-                  <span className="flex items-center gap-2">
-                    <MapPinIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    {event.location}
+                  <span className="flex items-start gap-2">
+                    <MapPinIcon className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span className="flex flex-col">
+                      {event.location && <span>{event.location}</span>}
+                      {event.address && (
+                        <span
+                          className={
+                            event.location ? "text-gray-500 dark:text-gray-400" : undefined
+                          }
+                        >
+                          {event.address}
+                        </span>
+                      )}
+                    </span>
                   </span>
                 )}
               {detailSection(

@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Sheet,
   SheetContent,
@@ -48,6 +48,22 @@ export function ResponsiveModal({
   onRequestClose,
 }: ResponsiveModalProps) {
   const isMobile = useIsMobile();
+  // While a text field inside the drawer has focus the on-screen keyboard is up
+  // and the sheet gets shoved around, which makes an accidental swipe or a tap
+  // on dead space far too easy — and that would throw away the draft. Lock
+  // dismissal until the field is blurred; the header X always closes.
+  const [isTypingInside, setIsTypingInside] = useState(false);
+
+  const handleFocusChange = (target: EventTarget | null, focused: boolean) => {
+    const el = target as HTMLElement | null;
+    if (!el) return;
+    const input = el as HTMLInputElement;
+    const isTextEntry =
+      el.tagName === "TEXTAREA" ||
+      el.isContentEditable === true ||
+      (el.tagName === "INPUT" && input.type !== "checkbox" && input.type !== "radio");
+    if (isTextEntry) setIsTypingInside(focused);
+  };
 
   const attemptClose = () => {
     if (onRequestClose && !onRequestClose()) return;
@@ -58,6 +74,7 @@ export function ResponsiveModal({
     return (
       <Drawer
         open={open}
+        dismissible={!isTypingInside}
         onOpenChange={(o) => {
           if (!o) attemptClose();
         }}
@@ -82,7 +99,14 @@ export function ResponsiveModal({
               </Button>
             </div>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4">
+          {/* data-vaul-no-drag: a drag inside the form scrolls it and never
+              drags the sheet away — only the handle and header can dismiss. */}
+          <div
+            data-vaul-no-drag
+            onFocus={(e) => handleFocusChange(e.target, true)}
+            onBlur={(e) => handleFocusChange(e.target, false)}
+            className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4"
+          >
             {children}
           </div>
           {footer ? (

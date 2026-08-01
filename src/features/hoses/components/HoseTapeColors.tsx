@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { cn } from "@/lib/utils";
 import {
   LoaderCircle,
@@ -198,22 +199,39 @@ export function HoseTapeColors() {
   const remove = useMutation(api.hoseTapeColors.remove);
 
   const [editor, setEditor] = useState<TapeEditor | null>(null);
+  // What the editor opened with, so an accidental dismissal can be caught.
+  const [editorBaseline, setEditorBaseline] = useState<TapeEditor | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const closeEditor = () => {
+    setEditor(null);
+    setEditorBaseline(null);
+  };
+
+  const isEditorDirty =
+    editor !== null &&
+    editorBaseline !== null &&
+    (editor.year !== editorBaseline.year || editor.color !== editorBaseline.color);
+  const guard = useDirtyDraftGuard(isEditorDirty, closeEditor);
 
   const openAddEditor = () => {
     const usedYears = new Set(mappings?.map((mapping) => mapping.year));
     let suggestedYear = new Date().getFullYear();
     while (usedYears.has(suggestedYear)) suggestedYear += 1;
 
-    setEditor({
+    const next: TapeEditor = {
       mode: "add",
       year: String(suggestedYear),
       color: defaultTapeColor,
-    });
+    };
+    setEditor(next);
+    setEditorBaseline(next);
   };
 
   const openEditEditor = (year: number, color: TapeColor) => {
-    setEditor({ mode: "edit", year: String(year), color });
+    const next: TapeEditor = { mode: "edit", year: String(year), color };
+    setEditor(next);
+    setEditorBaseline(next);
   };
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -241,7 +259,8 @@ export function HoseTapeColors() {
           ? `${year} tape colour added`
           : `${year} tape colour updated`,
       );
-      setEditor(null);
+      guard.release();
+      closeEditor();
     } catch (error) {
       console.error("Error saving tape colour:", error);
       toast.error("Could not save the tape colour. Try again.");
@@ -375,9 +394,8 @@ export function HoseTapeColors() {
       {editor ? (
         <ResponsiveModal
           open
-          onClose={() => {
-            if (!isSaving) setEditor(null);
-          }}
+          onClose={closeEditor}
+          onRequestClose={() => !isSaving && guard.requestClose()}
           title={
             editor.mode === "add"
               ? "Add Test Tape Colour"
@@ -392,7 +410,9 @@ export function HoseTapeColors() {
                 variant="outline"
                 className="h-11 flex-1 touch-manipulation"
                 disabled={isSaving}
-                onClick={() => setEditor(null)}
+                onClick={() => {
+                  if (guard.requestClose()) closeEditor();
+                }}
               >
                 Cancel
               </Button>
@@ -427,6 +447,15 @@ export function HoseTapeColors() {
           />
         </ResponsiveModal>
       ) : null}
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard unsaved changes?"
+        description="This tape colour has unsaved changes. Leaving now will lose them."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
     </section>
   );
 }

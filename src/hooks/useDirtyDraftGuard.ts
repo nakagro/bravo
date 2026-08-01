@@ -29,7 +29,7 @@ interface DirtyDraftGuard {
  * on the page are not intercepted, which is fine because the editor is a modal
  * and the only links reachable while it is open are its own.
  *
- * Deliberately no `beforeunload`: a refresh losing one unsaved size is not
+ * Deliberately no `beforeunload`: a refresh losing one unsaved edit is not
  * worth a browser-level warning on every tab close.
  */
 export function useDirtyDraftGuard(isDirty: boolean, onDiscard: () => void): DirtyDraftGuard {
@@ -46,17 +46,17 @@ export function useDirtyDraftGuard(isDirty: boolean, onDiscard: () => void): Dir
     // A sentinel entry so the first Back lands here instead of leaving the
     // editor. Undoing it on cleanup keeps the history stack the size it was.
     const href = window.location.href;
-    window.history.pushState({ kitDraftGuard: true }, "", href);
+    window.history.pushState({ draftGuard: true }, "", href);
 
     const onPopState = () => {
-      window.history.pushState({ kitDraftGuard: true }, "", href);
+      window.history.pushState({ draftGuard: true }, "", href);
       setPromptOpen(true);
     };
 
     window.addEventListener("popstate", onPopState);
     return () => {
       window.removeEventListener("popstate", onPopState);
-      if (window.history.state?.kitDraftGuard) window.history.back();
+      if (window.history.state?.draftGuard) window.history.back();
     };
   }, [active]);
 

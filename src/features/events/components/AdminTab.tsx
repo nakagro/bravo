@@ -200,7 +200,9 @@ export function AdminTab() {
             {event.endDate && event.endDate !== event.startDate && (
               <span className="ml-1">&rarr; {formatShortDate(event.endDate)}</span>
             )}
-            {event.location && <span className="ml-2">&bull; {event.location}</span>}
+            {(event.location || event.address) && (
+              <span className="ml-2">&bull; {event.location || event.address}</span>
+            )}
           </div>
 
           <button

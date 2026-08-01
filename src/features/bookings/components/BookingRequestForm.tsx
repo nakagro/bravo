@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, formatSummaryDate, formatTime, getBookingConflictMessage } from "../types";
 import { format } from "date-fns";
@@ -91,7 +93,10 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
     },
   });
 
-  const { isSubmitting } = form.formState;
+  const { isSubmitting, isDirty } = form.formState;
+  // One confirmation for every exit from a half-filled form: the X, Cancel,
+  // Escape, an outside tap, the drawer swipe and the Back button.
+  const guard = useDirtyDraftGuard(isDirty, onClose);
   const watchResourceId = form.watch("resourceId");
   const watchStartDate = form.watch("startDate");
   const watchIsAllDay = form.watch("isAllDay");
@@ -176,6 +181,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               : "Your booking request has been sent for approval.",
         }
       );
+      guard.release();
       onClose();
     } catch (error) {
       console.error("Error creating booking:", error);
@@ -637,7 +643,9 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
       <Button
         type="button"
         variant="outline"
-        onClick={onClose}
+        onClick={() => {
+          if (guard.requestClose()) onClose();
+        }}
         className="flex-1 h-12 text-base"
       >
         Cancel
@@ -654,15 +662,27 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
   );
 
   return (
-    <ResponsiveModal
-      open
-      onClose={onClose}
-      title="Request a Booking"
-      footer={formFooter}
-      drawerHeight="h-[95vh]"
-    >
-      {formContent}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        open
+        onClose={onClose}
+        onRequestClose={guard.requestClose}
+        title="Request a Booking"
+        footer={formFooter}
+        drawerHeight="h-[95vh]"
+      >
+        {formContent}
+      </ResponsiveModal>
+
+      <DeleteConfirmDialog
+        open={guard.promptOpen}
+        onOpenChange={guard.setPromptOpen}
+        title="Discard this request?"
+        description="This booking request hasn't been submitted. Leaving now will lose what you've entered."
+        confirmLabel="Discard"
+        onConfirm={guard.confirmDiscard}
+      />
+    </>
   );
 }
 

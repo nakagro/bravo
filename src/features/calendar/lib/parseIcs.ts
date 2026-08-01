@@ -8,6 +8,11 @@ export interface CalendarEvent {
   description?: string;
   location?: string;
   allDay: boolean;
+  /**
+   * True when the VEVENT carries no DTEND/DURATION — the finish time isn't
+   * known. `end` then equals `start`; treat it as open-ended when displaying.
+   */
+  endUnknown: boolean;
   /** True for expanded RRULE occurrences — read-only in BRAVO (v1) */
   recurring: boolean;
 }
@@ -31,6 +36,11 @@ export function parseIcs(
 
     const events: CalendarEvent[] = [];
 
+    // ical.js synthesises an endDate when neither DTEND nor DURATION is
+    // present, so ask the component itself whether a finish was ever given.
+    const hasEnd = (vevent: ICAL.Component) =>
+      vevent.hasProperty("dtend") || vevent.hasProperty("duration");
+
     for (const vevent of vevents) {
       const event = new ICAL.Event(vevent);
 
@@ -53,6 +63,7 @@ export function parseIcs(
               description: event.description ?? undefined,
               location: event.location ?? undefined,
               allDay: event.startDate.isDate,
+              endUnknown: !hasEnd(vevent),
               recurring: true,
             });
           }
@@ -69,6 +80,7 @@ export function parseIcs(
             description: event.description ?? undefined,
             location: event.location ?? undefined,
             allDay: event.startDate.isDate,
+            endUnknown: !hasEnd(vevent),
             recurring: false,
           });
         }

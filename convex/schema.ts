@@ -1014,7 +1014,8 @@ const applicationTables = {
     description: v.optional(v.string()),
     eventType: v.optional(v.string()), // Legacy free-text category (pre-eventTypes); read-only fallback
     eventTypeId: v.optional(v.id("eventTypes")), // Structured category (preferred)
-    location: v.optional(v.string()),
+    location: v.optional(v.string()), // Venue/place name (e.g. "Main Station")
+    address: v.optional(v.string()), // Street address, independent of location
     status: v.union(v.literal("active"), v.literal("cancelled")),
     startDate: v.string(), // ISO date string (YYYY-MM-DD)
     endDate: v.optional(v.string()), // ISO date string, optional for single-day events

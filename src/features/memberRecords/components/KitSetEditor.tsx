@@ -9,7 +9,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../types";
 import { KitItemControl } from "./KitItemControl";
-import { useDirtyDraftGuard } from "./useDirtyDraftGuard";
+import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 
 interface KitSetEditorProps {
   userId: Id<"users">;
