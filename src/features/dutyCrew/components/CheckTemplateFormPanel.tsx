@@ -193,7 +193,7 @@ export function CheckTemplateFormPanel({
 
           <div className="flex items-center justify-between gap-3 py-1">
             <div>
-              <Label htmlFor="template-priority-switch">Must do</Label>
+              <Label htmlFor="template-priority-switch">Priority</Label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 Emphasised and listed first — for checks that can't be skipped
               </p>

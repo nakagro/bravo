@@ -104,7 +104,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/dutycrew",
     icon: Users,
     group: "operations",
-    wip: true,
     color: {
       bg: "bg-purple-100 dark:bg-purple-900/20",
       bgHover: "group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40",
@@ -157,7 +156,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/inventory",
     icon: Wrench,
     group: "equipment",
-    wip: true,
     color: {
       bg: "bg-yellow-100 dark:bg-yellow-900/20",
       bgHover: "group-hover:bg-yellow-200 dark:group-hover:bg-yellow-900/40",
@@ -170,7 +168,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/vehicle-faults",
     icon: TriangleAlert,
     group: "equipment",
-    wip: true,
     color: {
       bg: "bg-red-100 dark:bg-red-900/20",
       bgHover: "group-hover:bg-red-200 dark:group-hover:bg-red-900/40",

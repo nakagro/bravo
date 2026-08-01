@@ -124,7 +124,7 @@ export function StationChecksList({
     if (general.length > 0) {
       named.push({ area: undefined, items: general });
     }
-    // Must-do checks surface at the top of their area (stable within each tier)
+    // Priority checks surface at the top of their area (stable within each tier)
     for (const group of named) {
       group.items = [
         ...group.items.filter((i) => i.isPriority),

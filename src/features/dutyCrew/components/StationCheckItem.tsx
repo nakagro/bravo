@@ -34,7 +34,7 @@ export function StationCheckItem({
           : isNA
             ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60"
             : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md",
-        // Must-do items keep a red edge until they're resolved
+        // Priority items keep a red edge until they're resolved
         item.isPriority && !item.isCompleted && !isNA &&
           "border-l-4 border-l-red-500 dark:border-l-red-500",
         highlighted && "ring-2 ring-amber-400 dark:ring-amber-500 animate-pulse"
@@ -94,7 +94,7 @@ export function StationCheckItem({
             </h3>
             {item.isPriority && !item.isCompleted && !isNA && (
               <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded flex-shrink-0 uppercase tracking-wide">
-                Must do
+                Priority
               </span>
             )}
             {isNA && (

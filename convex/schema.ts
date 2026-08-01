@@ -332,7 +332,7 @@ const applicationTables = {
     name: v.string(), // Name of the check item (e.g., "Clean multipurpose room")
     description: v.optional(v.string()), // Optional detailed description of the check
     area: v.optional(v.string()), // Optional area/room grouping (e.g., "Kitchen", "Toilets")
-    isPriority: v.optional(v.boolean()), // Must-do check, emphasised and sorted first in the weekly list
+    isPriority: v.optional(v.boolean()), // Priority check, emphasised and sorted first in the weekly list
     isActive: v.boolean(), // Whether this check is currently active
     order: v.number(), // Order in which the check should appear in the list
     createdBy: v.id("users"),

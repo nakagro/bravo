@@ -146,7 +146,7 @@ export function CheckTemplatesSection() {
                           variant="outline"
                           className="text-[10px] px-1.5 py-0 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex-shrink-0 uppercase"
                         >
-                          Must do
+                          Priority
                         </Badge>
                       )}
                       {!check.isActive && (
