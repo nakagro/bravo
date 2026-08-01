@@ -12,6 +12,7 @@ import type * as actionCentre from "../actionCentre.js";
 import type * as actionCentreProviders_availability from "../actionCentreProviders/availability.js";
 import type * as actionCentreProviders_baSkills from "../actionCentreProviders/baSkills.js";
 import type * as actionCentreProviders_bookings from "../actionCentreProviders/bookings.js";
+import type * as actionCentreProviders_dutyCrew from "../actionCentreProviders/dutyCrew.js";
 import type * as actionCentreProviders_events from "../actionCentreProviders/events.js";
 import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
 import type * as actionCentreProviders_tasks from "../actionCentreProviders/tasks.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   "actionCentreProviders/availability": typeof actionCentreProviders_availability;
   "actionCentreProviders/baSkills": typeof actionCentreProviders_baSkills;
   "actionCentreProviders/bookings": typeof actionCentreProviders_bookings;
+  "actionCentreProviders/dutyCrew": typeof actionCentreProviders_dutyCrew;
   "actionCentreProviders/events": typeof actionCentreProviders_events;
   "actionCentreProviders/profile": typeof actionCentreProviders_profile;
   "actionCentreProviders/tasks": typeof actionCentreProviders_tasks;

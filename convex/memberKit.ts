@@ -142,6 +142,7 @@ export async function formatKitValue(
     return chart?.name ? `${chart.name} · ${value.size}` : value.size;
   }
   if (typeof value === "boolean") return value ? "Issued" : "Not issued";
+  if (typeof value === "number") return String(value);
   return value;
 }
 
@@ -174,6 +175,14 @@ export async function normaliseKitValue(
       if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         throw new Error(`${item.name} expects a date in YYYY-MM-DD form`);
       }
+      return value;
+    }
+    case "count": {
+      // A recorded 0 is a real answer ("none allocated"), so only null clears.
+      if (typeof value !== "number") throw new Error(`${item.name} expects a number`);
+      if (!Number.isInteger(value)) throw new Error(`${item.name} expects a whole number`);
+      if (value < 0) throw new Error(`${item.name} cannot be negative`);
+      if (value > 9999) throw new Error(`${item.name} is limited to 9999`);
       return value;
     }
     case "held": {

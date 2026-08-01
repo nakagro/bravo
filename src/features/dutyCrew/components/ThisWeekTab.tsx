@@ -5,7 +5,12 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { DutyCrewHero } from "./DutyCrewHero";
 import { StationChecksList } from "./StationChecksList";
-import type { CheckItemData, ItemUser } from "../types";
+import {
+  getUserFullName,
+  isItemResolved,
+  type CheckItemData,
+  type ItemUser,
+} from "../types";
 
 interface ThisWeekTabProps {
   isAdmin: boolean;
@@ -72,6 +77,14 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const [checkItems, setCheckItems] = useState<CheckItemData[]>([]);
   const [generalNotes, setGeneralNotes] = useState("");
 
+  const loggedInUser = useQuery(api.auth.loggedInUser);
+
+  // Map of user id -> user info for per-item "checked by" attribution
+  const itemUsersById: Record<string, ItemUser> = {};
+  for (const user of currentWeekStatus?.itemUsers ?? []) {
+    itemUsersById[user._id] = user;
+  }
+
   // Initialize check items from query data
   useEffect(() => {
     if (stationChecks) {
@@ -84,6 +97,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
             checkId: check._id,
             name: check.name,
             area: check.area,
+            isPriority: check.isPriority,
             isCompleted: false,
           }))
         );
@@ -109,6 +123,9 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       const submissionId = currentWeekStatus?.submission?._id;
       if (currentWeekStatus?.submission?.status === "completed" && submissionId) {
         await reopenStationCheck({ submissionId });
+        toast.info(
+          "Week reopened — tap Complete Checks again when you're finished."
+        );
       }
 
       await saveDraftStationCheck({
@@ -133,30 +150,75 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     adHocName: string | undefined,
     isCompleted: boolean
   ) => {
+    const prevItems = checkItems;
+    const target = checkItems.find((item) =>
+      checkId
+        ? item.checkId === checkId
+        : item.isAdHoc && item.name === adHocName
+    );
+    // Toggling an item someone else resolved rewrites their attribution —
+    // offer an undo instead of doing it silently
+    const overwritesOther =
+      target &&
+      isItemResolved(target) &&
+      target.completedBy &&
+      loggedInUser &&
+      target.completedBy !== loggedInUser._id;
+
     const newItems = checkItems.map((item) => {
       if (checkId && item.checkId === checkId) {
-        return { ...item, isCompleted };
+        // Completing an item clears any N/A marking
+        return { ...item, isCompleted, isNotApplicable: undefined };
       }
       if (adHocName && item.isAdHoc && item.name === adHocName) {
-        return { ...item, isCompleted };
+        return { ...item, isCompleted, isNotApplicable: undefined };
       }
       return item;
     });
     setCheckItems(newItems);
     await saveDraft(newItems, generalNotes);
+
+    if (overwritesOther && target) {
+      const previousUser = itemUsersById[target.completedBy!];
+      const wasLabel = target.isCompleted ? "completed" : "marked N/A";
+      toast(
+        `"${target.name}" was ${wasLabel} by ${
+          previousUser ? getUserFullName(previousUser) : "another member"
+        }`,
+        {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              setCheckItems(prevItems);
+              void saveDraft(prevItems, generalNotes);
+            },
+          },
+        }
+      );
+    }
   };
 
   const handleNotesChange = async (
     checkId: Id<"stationChecks"> | undefined,
     adHocName: string | undefined,
-    notes: string
+    notes: string,
+    isNotApplicable?: boolean
   ) => {
     const newItems = checkItems.map((item) => {
-      if (checkId && item.checkId === checkId) {
-        return { ...item, notes };
-      }
-      if (adHocName && item.isAdHoc && item.name === adHocName) {
-        return { ...item, notes };
+      if (
+        (checkId && item.checkId === checkId) ||
+        (adHocName && item.isAdHoc && item.name === adHocName)
+      ) {
+        if (isNotApplicable === undefined) {
+          return { ...item, notes };
+        }
+        // Marking N/A clears completion; the reverse happens in handleCheckToggle
+        return {
+          ...item,
+          notes,
+          isNotApplicable: isNotApplicable || undefined,
+          isCompleted: isNotApplicable ? false : item.isCompleted,
+        };
       }
       return item;
     });
@@ -227,12 +289,6 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
 
   const submissionStatus: "draft" | "completed" | "not_started" =
     currentWeekStatus?.submission?.status ?? "not_started";
-
-  // Map of user id -> user info for per-item "checked by" attribution
-  const itemUsersById: Record<string, ItemUser> = {};
-  for (const user of currentWeekStatus?.itemUsers ?? []) {
-    itemUsersById[user._id] = user;
-  }
 
   // Loading state
   if (!stationChecks) {

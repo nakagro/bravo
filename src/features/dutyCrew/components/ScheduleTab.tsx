@@ -17,6 +17,7 @@ export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
     api.dutyCrew.getUpcomingDutyCrewAssignments,
     { count: 8 }
   );
+  const loggedInUser = useQuery(api.auth.loggedInUser);
   const [editingAssignment, setEditingAssignment] =
     useState<OverrideAssignment | null>(null);
 
@@ -72,6 +73,7 @@ export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
         assignment={thisWeek}
         isFirst
         onEdit={editHandler(thisWeek)}
+        currentUserId={loggedInUser?._id}
       />
 
       {futureWeeks.length > 0 && (
@@ -81,6 +83,7 @@ export function ScheduleTab({ isAdmin }: ScheduleTabProps) {
               key={assignment.date}
               assignment={assignment}
               onEdit={editHandler(assignment)}
+              currentUserId={loggedInUser?._id}
             />
           ))}
         </div>

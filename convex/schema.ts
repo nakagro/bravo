@@ -332,6 +332,7 @@ const applicationTables = {
     name: v.string(), // Name of the check item (e.g., "Clean multipurpose room")
     description: v.optional(v.string()), // Optional detailed description of the check
     area: v.optional(v.string()), // Optional area/room grouping (e.g., "Kitchen", "Toilets")
+    isPriority: v.optional(v.boolean()), // Must-do check, emphasised and sorted first in the weekly list
     isActive: v.boolean(), // Whether this check is currently active
     order: v.number(), // Order in which the check should appear in the list
     createdBy: v.id("users"),
@@ -358,7 +359,9 @@ const applicationTables = {
         checkId: v.optional(v.id("stationChecks")), // Reference to the check item (optional for ad-hoc items)
         name: v.string(), // Name of the check at the time of submission (in case it changes later)
         area: v.optional(v.string()), // Area snapshot at time of submission (like name)
+        isPriority: v.optional(v.boolean()), // Priority snapshot at time of submission (like name)
         isCompleted: v.boolean(), // Whether this specific check was completed
+        isNotApplicable: v.optional(v.boolean()), // Marked as unable to be completed (mutually exclusive with isCompleted)
         notes: v.optional(v.string()), // Optional notes for this specific check
         completedBy: v.optional(v.id("users")), // User who completed this specific check
         completedAt: v.optional(v.number()), // Timestamp when this specific check was completed

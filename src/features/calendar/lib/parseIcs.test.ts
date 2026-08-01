@@ -172,6 +172,7 @@ describe("selectUpcoming", () => {
     start: new Date(start),
     end: new Date(start),
     allDay: false,
+    endUnknown: false,
     recurring: false,
   });
 

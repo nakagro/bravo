@@ -18,6 +18,7 @@ export interface TemplateFormValue {
   name: string;
   description: string;
   area: string;
+  isPriority: boolean;
   isActive: boolean;
 }
 
@@ -40,6 +41,7 @@ export function CheckTemplateFormPanel({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [area, setArea] = useState("");
+  const [isPriority, setIsPriority] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,6 +50,7 @@ export function CheckTemplateFormPanel({
       setName(value.name);
       setDescription(value.description);
       setArea(value.area);
+      setIsPriority(value.isPriority);
       setIsActive(value.isActive);
     }
   }, [value]);
@@ -59,6 +62,7 @@ export function CheckTemplateFormPanel({
     (name !== value.name ||
       description !== value.description ||
       area !== value.area ||
+      isPriority !== value.isPriority ||
       isActive !== value.isActive);
   const guard = useDirtyDraftGuard(isDirty, onClose);
 
@@ -76,6 +80,7 @@ export function CheckTemplateFormPanel({
           name: name.trim(),
           description: description.trim() || undefined,
           area: area.trim() || undefined,
+          isPriority,
           isActive,
         });
         toast.success("Check template updated");
@@ -84,6 +89,7 @@ export function CheckTemplateFormPanel({
           name: name.trim(),
           description: description.trim() || undefined,
           area: area.trim() || undefined,
+          isPriority,
           isActive,
         });
         toast.success("Check template created");
@@ -182,6 +188,20 @@ export function CheckTemplateFormPanel({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add detailed instructions..."
               className="mt-1 resize-none h-20 text-base md:text-sm"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 py-1">
+            <div>
+              <Label htmlFor="template-priority-switch">Must do</Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Emphasised and listed first — for checks that can't be skipped
+              </p>
+            </div>
+            <Switch
+              id="template-priority-switch"
+              checked={isPriority}
+              onCheckedChange={setIsPriority}
             />
           </div>
 

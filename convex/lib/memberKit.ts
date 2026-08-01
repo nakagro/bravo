@@ -2,10 +2,10 @@ import { v } from "convex/values";
 import type { Infer } from "convex/values";
 
 /**
- * What a kit item tracks. Six shapes, deliberately: a jacket has a brand and a
- * size, a pager has a serial, station workwear is a yes/no. Quantities and
- * multi-select were dropped: nothing the brigade orders needed them, and they
- * made the member form read like a spreadsheet.
+ * What a kit item tracks. Seven shapes, deliberately: a jacket has a brand and
+ * a size, a pager has a serial, station workwear is a yes/no. Multi-select was
+ * dropped: nothing the brigade orders needed it, and it made the member form
+ * read like a spreadsheet.
  */
 export const kitTracksValidator = v.union(
   v.literal("size"), // chart (brand/model) + one of its sizes
@@ -14,6 +14,7 @@ export const kitTracksValidator = v.union(
   v.literal("choice"), // one of options[]
   v.literal("date"), // calendar date, "YYYY-MM-DD"
   v.literal("note"), // multiline free text
+  v.literal("count"), // whole number, as in "structural gear sets allocated"
 );
 
 export type KitTracks = Infer<typeof kitTracksValidator>;
@@ -26,6 +27,7 @@ export type KitTracks = Infer<typeof kitTracksValidator>;
  */
 export const kitValueValidator = v.union(
   v.string(), // serial, note, choice, date
+  v.number(), // count
   v.boolean(), // held
   v.object({ chartId: v.id("memberKitSizeCharts"), size: v.string() }), // size
 );

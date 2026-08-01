@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/drawer";
 import {
   CircleCheck,
+  CircleSlash,
   CircleX,
   ChevronRight,
   ClipboardCheck,
@@ -38,6 +39,7 @@ import {
   formatMonthYear,
   formatTime,
   getUserFullName,
+  isItemResolved,
 } from "../types";
 
 const PAGE_SIZE = 12;
@@ -57,7 +59,9 @@ interface HistorySubmission {
     checkId?: Id<"stationChecks">;
     name: string;
     area?: string;
+    isPriority?: boolean;
     isCompleted: boolean;
+    isNotApplicable?: boolean;
     notes?: string;
     isAdHoc?: boolean;
   }>;
@@ -70,6 +74,20 @@ function completionBadgeClass(completed: number, total: number) {
   if (pct === 1) return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400";
   if (pct >= 0.7) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400";
   return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400";
+}
+
+function ItemStatusIcon({
+  item,
+}: {
+  item: { isCompleted: boolean; isNotApplicable?: boolean };
+}) {
+  if (item.isCompleted) {
+    return <CircleCheck className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />;
+  }
+  if (item.isNotApplicable) {
+    return <CircleSlash className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />;
+  }
+  return <CircleX className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />;
 }
 
 function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
@@ -114,12 +132,16 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
               key={`${item.checkId ?? idx}-${item.name}`}
               className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800/60"
             >
-              {item.isCompleted
-                ? <CircleCheck className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                : <CircleX className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              }
+              <ItemStatusIcon item={item} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 dark:text-gray-200">{item.name}</p>
+                <p className="text-sm text-gray-800 dark:text-gray-200">
+                  {item.name}
+                  {!item.isCompleted && item.isNotApplicable && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
+                      N/A
+                    </span>
+                  )}
+                </p>
                 {item.notes && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 italic">
                     {item.notes}
@@ -142,12 +164,16 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
               key={`adhoc-${idx}`}
               className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40"
             >
-              {item.isCompleted
-                ? <CircleCheck className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                : <CircleX className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              }
+              <ItemStatusIcon item={item} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 dark:text-gray-200">{item.name}</p>
+                <p className="text-sm text-gray-800 dark:text-gray-200">
+                  {item.name}
+                  {!item.isCompleted && item.isNotApplicable && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
+                      N/A
+                    </span>
+                  )}
+                </p>
                 {item.notes && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 italic">
                     {item.notes}
@@ -256,9 +282,7 @@ export function HistoryTab() {
 
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
                 {group.items.map((submission) => {
-                  const completed = submission.checkItems.filter(
-                    (i) => i.isCompleted
-                  ).length;
+                  const completed = submission.checkItems.filter(isItemResolved).length;
                   const total = submission.checkItems.length;
                   return (
                     <button

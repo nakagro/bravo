@@ -8,7 +8,9 @@ type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
   name: string;
   area?: string;
+  isPriority?: boolean;
   isCompleted: boolean;
+  isNotApplicable?: boolean;
   notes?: string;
   completedBy?: Id<"users">;
   completedAt?: number;
@@ -16,12 +18,18 @@ type SubmissionCheckItem = {
   addedBy?: Id<"users">;
 };
 
+// An item counts toward submission when it is either completed or marked N/A
+const isResolved = (item: { isCompleted: boolean; isNotApplicable?: boolean }) =>
+  item.isCompleted || item.isNotApplicable === true;
+
 // Reusable validator for a single submission check item
 const checkItemValidator = v.object({
   checkId: v.optional(v.id("stationChecks")),
   name: v.string(),
   area: v.optional(v.string()),
+  isPriority: v.optional(v.boolean()),
   isCompleted: v.boolean(),
+  isNotApplicable: v.optional(v.boolean()),
   notes: v.optional(v.string()),
   completedBy: v.optional(v.id("users")),
   completedAt: v.optional(v.number()),
@@ -30,23 +38,29 @@ const checkItemValidator = v.object({
 });
 
 // Stamp per-item completedBy/completedAt server-side. Attribution set when an
-// item is newly completed, preserved when it was already completed in the
-// existing submission, and cleared when unchecked. Ad-hoc items (no checkId)
-// match by name.
+// item is newly resolved (completed or marked N/A), preserved when it was
+// already resolved the same way in the existing submission, and cleared when
+// unresolved. Completed and N/A are mutually exclusive — completed wins if a
+// client ever sends both. Ad-hoc items (no checkId) match by name.
 function applyItemAttribution(
   incoming: SubmissionCheckItem[],
   existing: SubmissionCheckItem[] | undefined,
   userId: Id<"users">,
   now: number
 ): SubmissionCheckItem[] {
-  return incoming.map((item) => {
-    if (!item.isCompleted) {
+  return incoming.map((raw) => {
+    const item = raw.isCompleted ? { ...raw, isNotApplicable: undefined } : raw;
+    if (!isResolved(item)) {
       return { ...item, completedBy: undefined, completedAt: undefined };
     }
     const prev = existing?.find((e) =>
       item.checkId ? e.checkId === item.checkId : !e.checkId && e.name === item.name
     );
-    if (prev?.isCompleted && prev.completedBy) {
+    const sameResolution =
+      prev &&
+      prev.isCompleted === item.isCompleted &&
+      (prev.isNotApplicable === true) === (item.isNotApplicable === true);
+    if (sameResolution && prev.completedBy) {
       return {
         ...item,
         completedBy: prev.completedBy,
@@ -69,6 +83,7 @@ export const getAllStationChecks = query({
       name: v.string(),
       description: v.optional(v.string()),
       area: v.optional(v.string()),
+      isPriority: v.optional(v.boolean()),
       isActive: v.boolean(),
       order: v.number(),
       createdBy: v.id("users"),
@@ -100,6 +115,7 @@ export const getStationCheck = query({
     name: v.string(),
     description: v.optional(v.string()),
     area: v.optional(v.string()),
+    isPriority: v.optional(v.boolean()),
     isActive: v.boolean(),
     order: v.number(),
     createdBy: v.id("users"),
@@ -116,6 +132,7 @@ export const getStationCheck = query({
       name: check.name,
       description: check.description,
       area: check.area,
+      isPriority: check.isPriority,
       isActive: check.isActive,
       order: check.order,
       createdBy: check.createdBy,
@@ -131,6 +148,7 @@ export const createStationCheck = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     area: v.optional(v.string()),
+    isPriority: v.optional(v.boolean()),
     isActive: v.boolean(),
     order: v.optional(v.number()),
   },
@@ -165,6 +183,7 @@ export const createStationCheck = mutation({
       name: args.name,
       description: args.description,
       area: args.area,
+      isPriority: args.isPriority,
       isActive: args.isActive,
       order,
       // Use the current user ID
@@ -182,6 +201,7 @@ export const updateStationCheck = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     area: v.optional(v.string()),
+    isPriority: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     order: v.optional(v.number()),
   },
@@ -201,6 +221,7 @@ export const updateStationCheck = mutation({
       name?: string;
       description?: string | undefined;
       area?: string | undefined;
+      isPriority?: boolean;
       isActive?: boolean;
       order?: number;
       updatedAt: number;
@@ -218,6 +239,10 @@ export const updateStationCheck = mutation({
 
     if (args.area !== undefined) {
       updates.area = args.area;
+    }
+
+    if (args.isPriority !== undefined) {
+      updates.isPriority = args.isPriority;
     }
 
     if (args.isActive !== undefined) {
@@ -588,8 +613,8 @@ export const submitStationCheck = mutation({
       throw new Error("User not found");
     }
 
-    // Validate that all check items are completed
-    const incompleteItems = args.checkItems.filter(item => !item.isCompleted);
+    // Validate that all check items are resolved (completed or marked N/A)
+    const incompleteItems = args.checkItems.filter(item => !isResolved(item));
     if (incompleteItems.length > 0) {
       const incompleteNames = incompleteItems.map(item => item.name).join(", ");
       throw new Error(`Cannot complete station check: The following items are not completed: ${incompleteNames}`);
@@ -736,7 +761,9 @@ export const getStationCheckHistoryPage = query({
             checkId: v.optional(v.id("stationChecks")),
             name: v.string(),
             area: v.optional(v.string()),
+            isPriority: v.optional(v.boolean()),
             isCompleted: v.boolean(),
+            isNotApplicable: v.optional(v.boolean()),
             notes: v.optional(v.string()),
             isAdHoc: v.optional(v.boolean()),
             addedBy: v.optional(v.id("users")),
@@ -813,7 +840,9 @@ export const getStationCheckHistoryPage = query({
           checkId: item.checkId,
           name: item.name,
           area: item.area,
+          isPriority: item.isPriority,
           isCompleted: item.isCompleted,
+          isNotApplicable: item.isNotApplicable,
           notes: item.notes,
           isAdHoc: item.isAdHoc,
           addedBy: item.addedBy,

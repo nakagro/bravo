@@ -62,6 +62,12 @@ describe("formatKitValue", () => {
     expect(formatKitValue(workwear, false)).toBe("Not issued");
   });
 
+  it("renders a count, including a recorded zero", () => {
+    const sets = sizedItem({ tracks: "count", charts: [] });
+    expect(formatKitValue(sets, 2)).toBe("2");
+    expect(formatKitValue(sets, 0)).toBe("0");
+  });
+
   it("returns null for a value that was never recorded", () => {
     expect(formatKitValue(sizedItem(), undefined)).toBeNull();
     expect(formatKitValue(sizedItem(), null)).toBeNull();

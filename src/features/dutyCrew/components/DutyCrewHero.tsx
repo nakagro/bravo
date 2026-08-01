@@ -19,6 +19,7 @@ import {
   formatDate,
   getUserFullName,
   getUserInitials,
+  isItemResolved,
   type CheckItemData,
   type SubmissionStatus,
 } from "../types";
@@ -53,15 +54,27 @@ export function DutyCrewHero({
   onReopen,
   canReopen,
 }: DutyCrewHeroProps) {
-  const [showMemberNames, setShowMemberNames] = useState(false);
+  const [expandedMemberIds, setExpandedMemberIds] = useState<Set<string>>(
+    new Set()
+  );
+  const toggleMemberName = (id: string) =>
+    setExpandedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const dutyCrewMembers = useQuery(
     api.dutyCrewMembers.getDutyCrewMembers,
     assignment && !assignment.isSpecial ? { dutyCrewId: assignment.dutyCrew._id } : "skip"
   );
 
-  const completedCount = checkItems.filter((item) => item.isCompleted).length;
+  const resolvedCount = checkItems.filter(isItemResolved).length;
+  const naCount = checkItems.filter(
+    (item) => !item.isCompleted && item.isNotApplicable === true
+  ).length;
   const totalCount = checkItems.length;
-  const percentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const percentage = totalCount > 0 ? (resolvedCount / totalCount) * 100 : 0;
 
   const status = statusConfig[submissionStatus];
   const isSpecial = assignment?.isSpecial ?? false;
@@ -94,20 +107,24 @@ export function DutyCrewHero({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-11 w-11"
+          aria-label="Previous week"
           onClick={() => onWeekChange(weekOffset - 1)}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
         <div className="flex flex-col items-center">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            Week ending
+          </span>
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
             {formatDate(currentSunday.getTime())}
           </span>
           {weekOffset !== 0 && (
             <button
               onClick={() => onWeekChange(0)}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              className="min-h-[32px] px-2 -mb-1.5 flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
               Return to current week
             </button>
@@ -117,7 +134,8 @@ export function DutyCrewHero({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-11 w-11"
+          aria-label="Next week"
           onClick={() => onWeekChange(weekOffset + 1)}
         >
           <ChevronRight className="h-4 w-4" />
@@ -141,9 +159,14 @@ export function DutyCrewHero({
                 strokeWidth={5}
                 color={ringColor}
                 showLabel
-                label={`${completedCount}/${totalCount}`}
+                label={`${resolvedCount}/${totalCount}`}
                 labelClass="text-xs font-bold"
               />
+              {naCount > 0 && (
+                <p className="mt-1 text-center text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  {naCount} N/A
+                </p>
+              )}
             </div>
 
             {/* Crew info */}
@@ -169,7 +192,7 @@ export function DutyCrewHero({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="h-9 px-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     onClick={onReopen}
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />
@@ -198,11 +221,12 @@ export function DutyCrewHero({
                   {dutyCrewMembers.map((member) => (
                     <button
                       key={member._id}
-                      onClick={() => setShowMemberNames((v) => !v)}
+                      onClick={() => toggleMemberName(member._id)}
+                      aria-expanded={expandedMemberIds.has(member._id)}
                       aria-label={
-                        showMemberNames
-                          ? "Hide member names"
-                          : `Show member names (${getUserFullName(member)})`
+                        expandedMemberIds.has(member._id)
+                          ? `Hide name for ${getUserFullName(member)}`
+                          : `Show name for ${getUserFullName(member)}`
                       }
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors",
@@ -218,7 +242,11 @@ export function DutyCrewHero({
                         {getUserInitials(member)}
                       </span>
                       <span
-                        className={showMemberNames ? "inline" : "hidden sm:inline"}
+                        className={
+                          expandedMemberIds.has(member._id)
+                            ? "inline"
+                            : "hidden sm:inline"
+                        }
                       >
                         {getUserFullName(member)}
                       </span>

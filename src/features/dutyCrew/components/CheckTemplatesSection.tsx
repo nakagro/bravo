@@ -141,6 +141,14 @@ export function CheckTemplatesSection() {
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {check.name}
                       </h4>
+                      {check.isPriority && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex-shrink-0 uppercase"
+                        >
+                          Must do
+                        </Badge>
+                      )}
                       {!check.isActive && (
                         <Badge
                           variant="outline"
@@ -190,6 +198,7 @@ export function CheckTemplatesSection() {
                             name: check.name,
                             description: check.description ?? "",
                             area: check.area ?? "",
+                            isPriority: check.isPriority ?? false,
                             isActive: check.isActive,
                           })
                         }
@@ -217,7 +226,13 @@ export function CheckTemplatesSection() {
       {/* Create button */}
       <button
         onClick={() =>
-          setFormValue({ name: "", description: "", area: "", isActive: true })
+          setFormValue({
+            name: "",
+            description: "",
+            area: "",
+            isPriority: false,
+            isActive: true,
+          })
         }
         className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200 transition-colors active:scale-[0.98]"
       >

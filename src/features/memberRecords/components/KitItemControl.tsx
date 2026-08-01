@@ -95,6 +95,8 @@ export function KitItemControl({ item, value, onChange, compact = false }: KitIt
           )}
         </div>
       );
+    case "count":
+      return <CountControl item={item} value={value} onChange={onChange} compact={compact} />;
     case "serial":
       return (
         <Input
@@ -133,6 +135,73 @@ function ClearButton({ onClear }: { onClear: () => void }) {
     >
       Clear
     </Button>
+  );
+}
+
+/** Matches the backend's guard in `normaliseKitValue`. */
+const COUNT_MAX = 9999;
+
+/**
+ * A whole number, as in "structural gear sets allocated". Steppers do the work
+ * on a phone, where the typical answer is 1 or 2; the field itself stays
+ * editable for the rare larger number. A recorded 0 means "none allocated",
+ * which is not the same as *Not recorded*, so clearing is its own button.
+ */
+function CountControl({ item, value, onChange, compact }: KitItemControlProps) {
+  const current = typeof value === "number" ? value : null;
+
+  const step = (delta: number) => {
+    const next = (current ?? 0) + delta;
+    if (next < 0 || next > COUNT_MAX) return;
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => step(-1)}
+          disabled={current === null || current === 0}
+          aria-label={`Decrease ${item.name}`}
+          className="h-11 w-11 shrink-0 text-lg"
+        >
+          −
+        </Button>
+        <Input
+          value={current === null ? "" : String(current)}
+          onChange={(event) => {
+            const raw = event.target.value.trim();
+            if (raw === "") {
+              onChange(null);
+              return;
+            }
+            // Whole numbers only, so a stray "1.5" or "-" never reaches the
+            // backend and bounces back as an error.
+            if (!/^\d+$/.test(raw)) return;
+            const parsed = Number(raw);
+            if (parsed > COUNT_MAX) return;
+            onChange(parsed);
+          }}
+          inputMode="numeric"
+          placeholder="Not recorded"
+          aria-label={item.name}
+          className={`min-h-11 text-center tabular-nums ${compact ? "w-20" : "w-24"}`}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => step(1)}
+          disabled={current !== null && current >= COUNT_MAX}
+          aria-label={`Increase ${item.name}`}
+          className="h-11 w-11 shrink-0 text-lg"
+        >
+          +
+        </Button>
+      </div>
+      {current !== null && <ClearButton onClear={() => onChange(null)} />}
+    </div>
   );
 }
 

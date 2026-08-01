@@ -203,6 +203,47 @@ describe("recording values", () => {
     expect((await read())?.display).toBeUndefined();
   });
 
+  it("records a count, keeping a recorded zero distinct from not recorded", async () => {
+    const { as, memberId } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Structural gear sets",
+      tracks: "count",
+    });
+
+    const read = async () => {
+      const summary = await as.query(api.memberKit.getMemberKitSummary, { userId: memberId });
+      return summary?.standalone.entries[0];
+    };
+
+    await as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId, value: 2 });
+    expect((await read())?.value).toBe(2);
+    expect((await read())?.display).toBe("2");
+
+    await as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId, value: 0 });
+    expect((await read())?.value).toBe(0);
+    expect((await read())?.display).toBe("0");
+
+    await as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId, value: null });
+    expect((await read())?.value).toBeUndefined();
+  });
+
+  it("rejects a count that is not a whole number, negative, or absurd", async () => {
+    const { as, memberId } = await setup();
+    const itemId = await as.mutation(api.memberKitAdmin.createItem, {
+      name: "Structural gear sets",
+      tracks: "count",
+    });
+
+    for (const value of [1.5, -1, 10000]) {
+      await expect(
+        as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId, value }),
+      ).rejects.toThrow();
+    }
+    await expect(
+      as.mutation(api.memberKit.setKitEntry, { userId: memberId, itemId, value: "2" }),
+    ).rejects.toThrow();
+  });
+
   it("clears every item type through the same null path", async () => {
     const { as, memberId } = await setup();
 

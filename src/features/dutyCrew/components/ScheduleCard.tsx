@@ -27,11 +27,37 @@ interface ScheduleCardProps {
   assignment: ScheduleAssignment;
   isFirst?: boolean;
   onEdit?: () => void;
+  currentUserId?: Id<"users"> | null;
 }
 
-export function ScheduleCard({ assignment, isFirst, onEdit }: ScheduleCardProps) {
+const isUsersCrew = (
+  assignment: ScheduleAssignment,
+  currentUserId?: Id<"users"> | null
+) =>
+  !assignment.isSpecial &&
+  !!currentUserId &&
+  assignment.members.some((m) => m._id === currentUserId);
+
+function YourCrewBadge() {
+  return (
+    <Badge
+      variant="outline"
+      className="text-[10px] px-1.5 py-0 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 flex-shrink-0"
+    >
+      Your crew
+    </Badge>
+  );
+}
+
+export function ScheduleCard({
+  assignment,
+  isFirst,
+  onEdit,
+  currentUserId,
+}: ScheduleCardProps) {
   const leader = assignment.members.find((m) => m.isLeader);
   const isEdited = assignment.scheduleId !== undefined;
+  const isYourCrew = isUsersCrew(assignment, currentUserId);
 
   return (
     <div
@@ -123,6 +149,7 @@ export function ScheduleCard({ assignment, isFirst, onEdit }: ScheduleCardProps)
           >
             {assignment.dutyCrew.name}
           </h3>
+          {isYourCrew && <YourCrewBadge />}
         </div>
 
         {assignment.isSpecial && (
@@ -166,13 +193,15 @@ export function ScheduleCard({ assignment, isFirst, onEdit }: ScheduleCardProps)
 interface ScheduleRowProps {
   assignment: ScheduleAssignment;
   onEdit?: () => void;
+  currentUserId?: Id<"users"> | null;
 }
 
 // Compact single-row rendering for future Sundays (the current week gets the
 // full ScheduleCard treatment).
-export function ScheduleRow({ assignment, onEdit }: ScheduleRowProps) {
+export function ScheduleRow({ assignment, onEdit, currentUserId }: ScheduleRowProps) {
   const leader = assignment.members.find((m) => m.isLeader);
   const isEdited = assignment.scheduleId !== undefined;
+  const isYourCrew = isUsersCrew(assignment, currentUserId);
 
   return (
     <div
@@ -208,6 +237,7 @@ export function ScheduleRow({ assignment, onEdit }: ScheduleRowProps) {
           >
             {assignment.dutyCrew.name}
           </span>
+          {isYourCrew && <YourCrewBadge />}
           {isEdited && (
             <Badge
               variant="outline"

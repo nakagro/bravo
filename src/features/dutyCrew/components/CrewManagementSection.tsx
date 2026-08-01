@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   Users,
+  UserPlus,
   Crown,
   ArrowUp,
   ArrowDown,
@@ -82,6 +83,27 @@ export function CrewManagementSection() {
   };
 
   const deletingCrew = dutyCrews.find((c) => c._id === deletingId) ?? null;
+
+  // Members not allocated to any duty crew — the stragglers list
+  const allocatedIds = new Set(dutyCrews.flatMap((crew) => crew.members));
+  const unallocatedMembers = users.filter(
+    (user: any) => !allocatedIds.has(user._id)
+  );
+
+  const handleAddToCrew = async (
+    userId: Id<"users">,
+    crew: (typeof dutyCrews)[number]
+  ) => {
+    try {
+      await updateDutyCrew({
+        id: crew._id,
+        members: [...crew.members, userId],
+      });
+      toast.success(`Added to ${crew.name}`);
+    } catch {
+      toast.error("Failed to add member to crew");
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -196,6 +218,55 @@ export function CrewManagementSection() {
         <Plus className="h-4 w-4 inline mr-1" />
         New duty crew
       </button>
+
+      {/* Members without a crew */}
+      {unallocatedMembers.length > 0 && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">
+          <div className="px-3 py-2 border-b border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/20 flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              Not in a duty crew
+            </h4>
+            <span className="ml-auto text-xs font-medium text-amber-700 dark:text-amber-400 tabular-nums">
+              {unallocatedMembers.length}
+            </span>
+          </div>
+          <div className="divide-y divide-amber-100 dark:divide-amber-900/40">
+            {unallocatedMembers.map((user: any) => (
+              <div
+                key={user._id}
+                className="flex items-center gap-2 pl-3 pr-1 py-1 min-h-[48px]"
+              >
+                <span className="flex-1 min-w-0 text-sm text-gray-800 dark:text-gray-200 truncate">
+                  {getUserFullName(user)}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-10 px-3 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                    >
+                      <UserPlus className="h-3.5 w-3.5 mr-1" />
+                      Add to crew
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {dutyCrews.map((crew) => (
+                      <DropdownMenuItem
+                        key={crew._id}
+                        onClick={() => handleAddToCrew(user._id, crew)}
+                      >
+                        {crew.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Create/rename panel */}
       <CrewFormPanel value={formValue} onClose={() => setFormValue(null)} />

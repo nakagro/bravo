@@ -9,6 +9,7 @@ import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";
 import { eventRsvpProvider } from "./actionCentreProviders/events";
 import { tasksProvider } from "./actionCentreProviders/tasks";
 import { baSkillsLmsProvider } from "./actionCentreProviders/baSkills";
+import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   { run: eventRsvpProvider, membersOnly: true },
   { run: tasksProvider },
   { run: baSkillsLmsProvider },
+  { run: dutyCrewProvider, membersOnly: true },
 ];
 
 // ─── Validators ───────────────────────────────────────────────────────────────

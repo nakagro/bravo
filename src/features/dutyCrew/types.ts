@@ -4,13 +4,21 @@ export type CheckItemData = {
   checkId?: Id<"stationChecks">;
   name: string;
   area?: string;
+  isPriority?: boolean;
   isCompleted: boolean;
+  isNotApplicable?: boolean;
   notes?: string;
   completedBy?: Id<"users">;
   completedAt?: number;
   isAdHoc?: boolean;
   addedBy?: Id<"users">;
 };
+
+// An item counts toward submission when it is either completed or marked N/A
+export const isItemResolved = (item: {
+  isCompleted: boolean;
+  isNotApplicable?: boolean;
+}) => item.isCompleted || item.isNotApplicable === true;
 
 export type SubmissionStatus = "draft" | "completed";
 

@@ -1,7 +1,7 @@
 import { Id } from "../../../convex/_generated/dataModel";
 
 /** What a kit item tracks. Mirrors `kitTracksValidator` in convex/lib/memberKit.ts. */
-export type KitTracks = "size" | "serial" | "held" | "choice" | "date" | "note";
+export type KitTracks = "size" | "serial" | "held" | "choice" | "date" | "note" | "count";
 
 /** A chart/size pair, the value of a "size" item. */
 export interface KitSizeValue {
@@ -10,7 +10,7 @@ export interface KitSizeValue {
 }
 
 /** Interpreted via the owning item's `tracks`; dates are YYYY-MM-DD strings. */
-export type KitValue = string | boolean | KitSizeValue;
+export type KitValue = string | number | boolean | KitSizeValue;
 
 export interface KitSizeChart {
   _id: Id<"memberKitSizeCharts">;
@@ -57,6 +57,11 @@ export const KIT_TRACKS: { value: KitTracks; label: string; hint: string }[] = [
   { value: "serial", label: "Serial / text", hint: "Short free text, like a pager serial or an asset number" },
   { value: "held", label: "Issued / not issued", hint: "A yes/no: does this member have it?" },
   { value: "choice", label: "Choice", hint: "Pick one from a fixed list of options" },
+  {
+    value: "count",
+    label: "Number",
+    hint: "A whole number, like how many structural gear sets are allocated",
+  },
   { value: "date", label: "Date", hint: "A calendar date, such as issued or expires" },
   { value: "note", label: "Long text", hint: "Multi-line notes" },
 ];
@@ -106,6 +111,7 @@ export function formatKitValue(item: KitItemDef, value: KitValue | undefined | n
     return chart?.name ? `${chart.name} · ${value.size}` : value.size;
   }
   if (typeof value === "boolean") return value ? "Issued" : "Not issued";
+  if (typeof value === "number") return String(value);
   if (typeof value === "string") return value;
   return null;
 }

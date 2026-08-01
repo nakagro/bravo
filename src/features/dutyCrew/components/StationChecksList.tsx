@@ -1,9 +1,20 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
@@ -18,6 +29,7 @@ import {
 } from "@/components/ui/drawer";
 import {
   Check,
+  ChevronUp,
   Plus,
   MessageSquare,
   LoaderCircle,
@@ -26,7 +38,7 @@ import {
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StationCheckItem } from "./StationCheckItem";
-import type { CheckItemData, ItemUser } from "../types";
+import { isItemResolved, type CheckItemData, type ItemUser } from "../types";
 
 interface StationChecksListProps {
   checkItems: CheckItemData[];
@@ -39,7 +51,8 @@ interface StationChecksListProps {
   onNotesChange: (
     checkId: Id<"stationChecks"> | undefined,
     adHocName: string | undefined,
-    notes: string
+    notes: string,
+    isNotApplicable?: boolean
   ) => void;
   onGeneralNotesChange: (notes: string) => void;
   onSubmit: () => void;
@@ -51,6 +64,10 @@ interface StationChecksListProps {
   isAdmin: boolean;
   itemUsersById: Record<string, ItemUser>;
 }
+
+// Stable key for an item, used for scroll targets and highlight state
+const itemKey = (item: CheckItemData) =>
+  item.checkId ?? `adhoc-${item.name}`;
 
 export function StationChecksList({
   checkItems,
@@ -73,13 +90,18 @@ export function StationChecksList({
     checkId?: Id<"stationChecks">;
     adHocName?: string;
     currentValue: string;
+    isNotApplicable: boolean;
   } | null>(null);
   const [showAddAdHoc, setShowAddAdHoc] = useState(false);
   const [newAdHocName, setNewAdHocName] = useState("");
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null);
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
+  const highlightTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const templateItems = checkItems.filter((item) => !item.isAdHoc);
   const adHocItems = checkItems.filter((item) => item.isAdHoc);
-  const remainingCount = checkItems.filter((item) => !item.isCompleted).length;
+  const remainingCount = checkItems.filter((item) => !isItemResolved(item)).length;
   const canSubmit = remainingCount === 0 && checkItems.length > 0;
 
   // Group template items by area (first-seen order, following template order),
@@ -102,6 +124,13 @@ export function StationChecksList({
     if (general.length > 0) {
       named.push({ area: undefined, items: general });
     }
+    // Must-do checks surface at the top of their area (stable within each tier)
+    for (const group of named) {
+      group.items = [
+        ...group.items.filter((i) => i.isPriority),
+        ...group.items.filter((i) => !i.isPriority),
+      ];
+    }
     return named;
   })();
   const hasNamedAreas = groupedTemplateItems.some((g) => g.area);
@@ -109,15 +138,40 @@ export function StationChecksList({
   const getCompletedByUser = (item: CheckItemData) =>
     item.completedBy ? itemUsersById[item.completedBy] ?? null : null;
 
+  const scrollToNextUnresolved = () => {
+    const next = checkItems.find((item) => !isItemResolved(item));
+    if (!next) return;
+    const key = itemKey(next);
+    itemRefs.current.get(key)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    if (highlightTimeout.current) clearTimeout(highlightTimeout.current);
+    setHighlightedKey(key);
+    highlightTimeout.current = setTimeout(() => setHighlightedKey(null), 1600);
+  };
+
+  const registerItemRef = (key: string) => (el: HTMLDivElement | null) => {
+    if (el) itemRefs.current.set(key, el);
+    else itemRefs.current.delete(key);
+  };
+
+  // N/A requires a reason so history explains why the item wasn't done
+  const naNeedsReason =
+    editingNotes?.type === "item" &&
+    editingNotes.isNotApplicable &&
+    !editingNotes.currentValue.trim();
+
   const handleSaveNotes = () => {
-    if (!editingNotes) return;
+    if (!editingNotes || naNeedsReason) return;
     if (editingNotes.type === "general") {
       onGeneralNotesChange(editingNotes.currentValue);
     } else {
       onNotesChange(
         editingNotes.checkId,
         editingNotes.adHocName,
-        editingNotes.currentValue
+        editingNotes.currentValue,
+        editingNotes.isNotApplicable
       );
     }
     setEditingNotes(null);
@@ -130,6 +184,18 @@ export function StationChecksList({
     setShowAddAdHoc(false);
     toast.success("Ad-hoc item added");
   };
+
+  const openItemNotes = (item: CheckItemData) =>
+    setEditingNotes({
+      type: "item",
+      checkId: item.isAdHoc ? undefined : item.checkId,
+      adHocName: item.isAdHoc ? item.name : undefined,
+      currentValue: item.notes || "",
+      isNotApplicable: !item.isCompleted && item.isNotApplicable === true,
+    });
+
+  const sectionCount = (items: CheckItemData[]) =>
+    `${items.filter(isItemResolved).length}/${items.length}`;
 
   // Empty state
   if (checkItems.length === 0 && !isLeader && !isAdmin) {
@@ -146,6 +212,28 @@ export function StationChecksList({
   // Notes editing content (shared between Sheet and Drawer)
   const notesContent = editingNotes && (
     <div className="space-y-4 p-4">
+      {editingNotes.type === "item" && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20">
+          <div className="min-w-0">
+            <Label
+              htmlFor="na-toggle"
+              className="text-sm font-medium text-amber-900 dark:text-amber-200"
+            >
+              Couldn't be completed
+            </Label>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              Marks this item N/A so the week can still be submitted
+            </p>
+          </div>
+          <Switch
+            id="na-toggle"
+            checked={editingNotes.isNotApplicable}
+            onCheckedChange={(checked) =>
+              setEditingNotes({ ...editingNotes, isNotApplicable: checked })
+            }
+          />
+        </div>
+      )}
       <Textarea
         value={editingNotes.currentValue}
         onChange={(e) =>
@@ -154,19 +242,23 @@ export function StationChecksList({
         placeholder={
           editingNotes.type === "general"
             ? "Add general notes about this week's station checks..."
-            : "Add notes about this specific check..."
+            : editingNotes.isNotApplicable
+              ? "Why couldn't this be completed? (required)"
+              : "Add notes about this specific check..."
         }
         className="min-h-[120px] resize-none"
         autoFocus
       />
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        {editingNotes.currentValue.length} characters
+        {naNeedsReason
+          ? "A reason is required when marking an item N/A"
+          : `${editingNotes.currentValue.length} characters`}
       </p>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={() => setEditingNotes(null)}>
           Cancel
         </Button>
-        <Button onClick={handleSaveNotes}>
+        <Button onClick={handleSaveNotes} disabled={naNeedsReason}>
           <Check className="h-4 w-4 mr-1" />
           Save Notes
         </Button>
@@ -185,25 +277,24 @@ export function StationChecksList({
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 {group.area ?? "General"}
               </span>
+              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 tabular-nums">
+                {sectionCount(group.items)}
+              </span>
               <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
             </div>
           )}
           {group.items.map((item) => (
-            <StationCheckItem
-              key={item.checkId || `template-${item.name}`}
-              item={item}
-              completedByUser={getCompletedByUser(item)}
-              onToggle={() =>
-                onCheckToggle(item.checkId, undefined, !item.isCompleted)
-              }
-              onOpenNotes={() =>
-                setEditingNotes({
-                  type: "item",
-                  checkId: item.checkId,
-                  currentValue: item.notes || "",
-                })
-              }
-            />
+            <div key={item.checkId || `template-${item.name}`} ref={registerItemRef(itemKey(item))}>
+              <StationCheckItem
+                item={item}
+                completedByUser={getCompletedByUser(item)}
+                highlighted={highlightedKey === itemKey(item)}
+                onToggle={() =>
+                  onCheckToggle(item.checkId, undefined, !item.isCompleted)
+                }
+                onOpenNotes={() => openItemNotes(item)}
+              />
+            </div>
           ))}
         </div>
       ))}
@@ -217,26 +308,28 @@ export function StationChecksList({
               <span className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wider">
                 Additional Items
               </span>
+              <span className="text-xs font-medium text-purple-400 dark:text-purple-500 tabular-nums">
+                {sectionCount(adHocItems)}
+              </span>
               <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
             </div>
           )}
 
           {adHocItems.map((item, index) => (
-            <div key={`adhoc-${item.name}-${index}`} className="mb-3">
+            <div
+              key={`adhoc-${item.name}-${index}`}
+              className="mb-3"
+              ref={registerItemRef(itemKey(item))}
+            >
               <StationCheckItem
                 item={item}
                 completedByUser={getCompletedByUser(item)}
+                highlighted={highlightedKey === itemKey(item)}
                 onToggle={() =>
                   onCheckToggle(undefined, item.name, !item.isCompleted)
                 }
-                onOpenNotes={() =>
-                  setEditingNotes({
-                    type: "item",
-                    adHocName: item.name,
-                    currentValue: item.notes || "",
-                  })
-                }
-                onDelete={() => onRemoveAdHocItem(item.name)}
+                onOpenNotes={() => openItemNotes(item)}
+                onDelete={() => setConfirmDeleteName(item.name)}
               />
             </div>
           ))}
@@ -314,6 +407,7 @@ export function StationChecksList({
             setEditingNotes({
               type: "general",
               currentValue: generalNotes || "",
+              isNotApplicable: false,
             })
           }
         >
@@ -339,10 +433,11 @@ export function StationChecksList({
         )}
       </div>
 
-      {/* Submit button / progress status */}
-      <div className="pt-4 pb-2">
+      {/* Submit button / progress status — sticky so progress and the CTA
+          stay visible while scrolling a long checklist */}
+      <div className="sticky bottom-0 z-10 pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-gray-50 via-gray-50/95 to-transparent dark:from-gray-900 dark:via-gray-900/95">
         {submissionStatus === "completed" ? (
-          <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-sm font-medium text-green-700 dark:text-green-300">
+          <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-green-50/95 dark:bg-green-950/80 backdrop-blur border border-green-200 dark:border-green-800 text-sm font-medium text-green-700 dark:text-green-300 shadow-sm">
             <Check className="h-4 w-4" />
             All checks completed
           </div>
@@ -351,7 +446,7 @@ export function StationChecksList({
             onClick={onSubmit}
             disabled={isSubmitting}
             size="lg"
-            className="w-full text-base font-medium bg-green-600 hover:bg-green-700 text-white"
+            className="w-full text-base font-medium bg-green-600 hover:bg-green-700 text-white shadow-sm"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
@@ -366,11 +461,44 @@ export function StationChecksList({
             )}
           </Button>
         ) : (
-          <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-700 dark:text-amber-300">
+          <button
+            onClick={scrollToNextUnresolved}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-amber-50/95 dark:bg-amber-950/80 backdrop-blur border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-700 dark:text-amber-300 shadow-sm hover:bg-amber-100 dark:hover:bg-amber-950 transition-colors active:scale-[0.98]"
+          >
+            <ChevronUp className="h-4 w-4" />
             {remainingCount} item{remainingCount !== 1 ? "s" : ""} remaining
-          </div>
+            &middot; tap for next
+          </button>
         )}
       </div>
+
+      {/* Ad-hoc delete confirmation */}
+      <AlertDialog
+        open={confirmDeleteName !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteName(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove ad-hoc item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{confirmDeleteName}" and any notes on it will be removed from
+              this week's checklist.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (confirmDeleteName) onRemoveAdHocItem(confirmDeleteName);
+                setConfirmDeleteName(null);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Notes Sheet/Drawer */}
       {isMobile ? (
