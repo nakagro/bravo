@@ -87,8 +87,10 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
       description: isSpecial
         ? `All duty crew members attend this week (ending Sun ${sundayLabel}).`
         : `${crew.name} is on station duties for the week ending Sun ${sundayLabel}.`,
-      url: "/duty-crew",
-      actionLabel: "View checks",
+      // Route is /dutycrew (no hyphen); This Week is the default tab, which
+      // lands straight on the tickable station checks.
+      url: "/dutycrew",
+      actionLabel: "Tick off checks",
       priority: "medium",
       count: remaining,
       createdAt: monday.getTime(),

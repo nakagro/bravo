@@ -62,7 +62,7 @@ describe("duty crew action centre provider", () => {
     expect(actions).toHaveLength(1);
     expect(actions[0]).toMatchObject({
       kind: "dutyCrewWeek",
-      url: "/duty-crew",
+      url: "/dutycrew",
       priority: "medium",
     });
   });

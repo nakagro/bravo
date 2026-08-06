@@ -26,9 +26,13 @@ export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
   // Include an event when:
   //   - it has a respondBy date that hasn't passed yet, OR
   //   - it has no respondBy date and starts within 30 days
-  const relevantEvents = futureEvents.filter((event) =>
-    event.respondBy ? event.respondBy >= today : event.startDate <= thirtyDaysFromNow
-  );
+  // A closed event isn't asking anyone anything — the organiser sets who's
+  // going — so it must never raise an action, however soon it is.
+  const relevantEvents = futureEvents
+    .filter((event) => (event.memberResponses ?? "open") !== "closed")
+    .filter((event) =>
+      event.respondBy ? event.respondBy >= today : event.startDate <= thirtyDaysFromNow
+    );
 
   const actions = [];
 

@@ -119,6 +119,7 @@ const enrichedEventValidator = v.object({
   endTime: v.optional(v.string()),
   respondBy: v.optional(v.string()),
   hasShifts: v.optional(v.boolean()),
+  memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
   isAllDay: v.boolean(),
   cancelledBy: v.optional(v.id("users")),
   cancelledAt: v.optional(v.number()),
@@ -145,62 +146,89 @@ const enrichedEventValidator = v.object({
 });
 
 /**
- * The set of users who count as "going" to a slot event — anyone who expressed
- * interest OR was allocated by an admin (an admin may roster someone who never
- * ticked interest).
+ * Whether members may still opt *in* to an event. Absent means open, so every
+ * event that predates the field keeps behaving exactly as before.
  */
-async function slotAttendingUserIds(
+export function responsesAreOpen(event: Doc<"events">): boolean {
+  return (event.memberResponses ?? "open") !== "closed";
+}
+
+/**
+ * Who counts as going to an event, and who has declined.
+ *
+ * The roster (eventSlotAllocations) is always authoritative and always counts,
+ * for shift and shiftless events alike. Member-expressed responses — a shift
+ * pick, or an "attending" rsvp — only count while responses are open. That's
+ * what makes closing and reopening non-destructive: the rows stay exactly where
+ * they are, they just stop being consulted while the organiser owns the list.
+ *
+ * A "can't make it" always wins, even over a placement. A rostered decliner is
+ * a conflict for the organiser to resolve, not a head to count — which is why
+ * declining stays available even when responses are closed.
+ */
+async function attendanceFor(
   ctx: QueryCtx,
-  eventId: Id<"events">
-): Promise<Set<Id<"users">>> {
-  const [interest, allocations] = await Promise.all([
+  event: Doc<"events">
+): Promise<{
+  going: Set<Id<"users">>;
+  declined: Set<Id<"users">>;
+  rsvps: Doc<"eventRsvps">[];
+}> {
+  const [rsvps, allocations] = await Promise.all([
     ctx.db
-      .query("eventSlotResponses")
-      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .query("eventRsvps")
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
       .collect(),
     ctx.db
       .query("eventSlotAllocations")
-      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
       .collect(),
   ]);
-  const ids = new Set<Id<"users">>();
-  for (const r of interest) ids.add(r.userId);
-  for (const a of allocations) ids.add(a.userId);
-  return ids;
+
+  const going = new Set<Id<"users">>(allocations.map((a) => a.userId));
+
+  if (responsesAreOpen(event)) {
+    if (event.hasShifts) {
+      const interest = await ctx.db
+        .query("eventSlotResponses")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+      for (const r of interest) going.add(r.userId);
+    } else {
+      for (const r of rsvps) {
+        if (r.status === "attending") going.add(r.userId);
+      }
+    }
+  }
+
+  const declined = new Set(
+    rsvps.filter((r) => r.status === "notAttending").map((r) => r.userId)
+  );
+  for (const id of declined) going.delete(id);
+
+  return { going, declined, rsvps };
 }
 
 async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"users">) {
-  const rsvps = await ctx.db
-    .query("eventRsvps")
-    .withIndex("by_event", (q) => q.eq("eventId", event._id))
-    .collect();
+  const { going, declined, rsvps } = await attendanceFor(ctx, event);
 
-  const counts = { attending: 0, notAttending: 0, maybe: 0 };
+  const counts = { attending: going.size, notAttending: declined.size, maybe: 0 };
   let myRsvp: "attending" | "notAttending" | "maybe" | null = null;
 
-  if (event.hasShifts) {
-    // Slot event: "going" = interested ∪ allocated, not a top-level attending
-    // rsvp. "Can't make it" is still a notAttending rsvp, and it wins: a
-    // rostered member who declines shouldn't count (or see themselves) as
-    // going — the lingering allocation is a conflict for the admin to resolve.
-    const attendingUsers = await slotAttendingUserIds(ctx, event._id);
-    const declinedUsers = new Set(
-      rsvps.filter((r) => r.status === "notAttending").map((r) => r.userId)
-    );
-    for (const id of declinedUsers) attendingUsers.delete(id);
-    counts.attending = attendingUsers.size;
-    counts.notAttending = declinedUsers.size;
-    if (declinedUsers.has(userId)) {
-      myRsvp = "notAttending";
-    } else if (attendingUsers.has(userId)) {
-      myRsvp = "attending";
-    }
-  } else {
+  if (declined.has(userId)) {
+    myRsvp = "notAttending";
+  } else if (going.has(userId)) {
+    myRsvp = "attending";
+  }
+
+  // "Maybe" only exists on a plain open RSVP event — a shift event answers with
+  // a slot pick, and a closed event isn't asking. Stale maybes stay in the
+  // table either way, ready to count again if the event reopens.
+  if (!event.hasShifts && responsesAreOpen(event)) {
     for (const rsvp of rsvps) {
-      counts[rsvp.status]++;
-      if (rsvp.userId === userId) {
-        myRsvp = rsvp.status;
-      }
+      if (rsvp.status !== "maybe") continue;
+      counts.maybe++;
+      if (rsvp.userId === userId) myRsvp = "maybe";
     }
   }
 
@@ -275,9 +303,36 @@ type SlotInput = {
 };
 
 /**
+ * Move every slot allocation on an event up to the event level, deduped per
+ * member, so turning shifts off keeps the roster the organiser already built
+ * instead of silently emptying it. The people stay on; only the shift they were
+ * placed in — which no longer exists — is lost.
+ */
+async function liftAllocationsToEventLevel(ctx: MutationCtx, eventId: Id<"events">) {
+  const allocations = await ctx.db
+    .query("eventSlotAllocations")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+
+  const seen = new Set<Id<"users">>();
+  for (const allocation of allocations) {
+    if (seen.has(allocation.userId)) {
+      // A member rostered across several shifts collapses to one placement
+      await ctx.db.delete(allocation._id);
+      continue;
+    }
+    seen.add(allocation.userId);
+    if (allocation.slotId !== undefined) {
+      await ctx.db.patch(allocation._id, { slotId: undefined });
+    }
+  }
+}
+
+/**
  * Reconcile an event's slots to the desired list (insert new, patch existing by
- * _id, delete removed). Deleting a slot cascade-deletes its responses. Slot
- * order follows array order.
+ * _id, delete removed). Deleting a slot cascade-deletes its interest *and* its
+ * allocations — an allocation to a slot that no longer exists would otherwise
+ * linger as an invisible attendee. Slot order follows array order.
  */
 async function reconcileSlots(
   ctx: MutationCtx,
@@ -291,15 +346,21 @@ async function reconcileSlots(
 
   const keepIds = new Set(slots.filter((s) => s._id).map((s) => s._id as Id<"eventSlots">));
 
-  // Delete slots the organiser removed, plus their responses
+  // Delete slots the organiser removed, plus their responses and allocations
   for (const slot of existing) {
     if (!keepIds.has(slot._id)) {
-      const responses = await ctx.db
-        .query("eventSlotResponses")
-        .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
-        .collect();
-      for (const response of responses) {
-        await ctx.db.delete(response._id);
+      const [responses, allocations] = await Promise.all([
+        ctx.db
+          .query("eventSlotResponses")
+          .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+          .collect(),
+        ctx.db
+          .query("eventSlotAllocations")
+          .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+          .collect(),
+      ]);
+      for (const row of [...responses, ...allocations]) {
+        await ctx.db.delete(row._id);
       }
       await ctx.db.delete(slot._id);
     }
@@ -451,6 +512,10 @@ export const getEventAttendance = query({
   returns: v.union(
     v.object({
       attending: v.array(userNameValidator),
+      // Members placed on the event itself rather than a shift. Only ever
+      // non-empty on a shift event (where they'd otherwise be invisible,
+      // appearing in no shift's roster); the shiftless list is just `attending`.
+      rosteredNoShift: v.array(userNameValidator),
       breakdown: v.union(
         v.object({
           maybe: v.array(userNameValidator),
@@ -474,10 +539,7 @@ export const getEventAttendance = query({
       return null;
     }
 
-    const rsvps = await ctx.db
-      .query("eventRsvps")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .collect();
+    const { going: attendingIds, rsvps } = await attendanceFor(ctx, event);
 
     const nameOf = (user: Doc<"users">) => ({
       _id: user._id,
@@ -485,21 +547,6 @@ export const getEventAttendance = query({
       lastName: user.lastName,
       name: user.name,
     });
-
-    // "Going" is interested ∪ allocated for slot events, an attending rsvp
-    // otherwise. A "can't make it" always removes someone from going — a
-    // rostered decliner surfaces under Not going, not Who's coming.
-    let attendingIds: Set<Id<"users">>;
-    if (event.hasShifts) {
-      attendingIds = await slotAttendingUserIds(ctx, args.eventId);
-      for (const rsvp of rsvps) {
-        if (rsvp.status === "notAttending") attendingIds.delete(rsvp.userId);
-      }
-    } else {
-      attendingIds = new Set(
-        rsvps.filter((rsvp) => rsvp.status === "attending").map((rsvp) => rsvp.userId)
-      );
-    }
 
     // Attending list — visible to all signed-in members
     const attending = (
@@ -510,10 +557,24 @@ export const getEventAttendance = query({
       .filter((user): user is Doc<"users"> => user !== null && isMemberAccount(user))
       .map(nameOf);
 
+    const eventLevelIds = new Set(
+      (
+        await ctx.db
+          .query("eventSlotAllocations")
+          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+          .collect()
+      )
+        .filter((allocation) => allocation.slotId === undefined)
+        .map((allocation) => allocation.userId)
+    );
+    const rosteredNoShift = event.hasShifts
+      ? attending.filter((member) => eventLevelIds.has(member._id))
+      : [];
+
     // Full breakdown (incl. non-responders) is admin-only
     const isAdmin = (await hasEventsAdmin(ctx)) !== null;
     if (!isAdmin) {
-      return { attending, breakdown: null };
+      return { attending, rosteredNoShift, breakdown: null };
     }
 
     const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
@@ -525,17 +586,24 @@ export const getEventAttendance = query({
     const notAttending: Array<ReturnType<typeof nameOf>> = [];
     const noResponse: Array<ReturnType<typeof nameOf>> = [];
 
+    // A "maybe" is only a live answer on an open, shiftless event. Elsewhere the
+    // row may still exist (a leftover from before the event was closed, or from
+    // before shifts were turned on) but it isn't an answer to the question being
+    // asked, so those members read as not having responded.
+    const maybeCounts = !event.hasShifts && responsesAreOpen(event);
+
     for (const user of users) {
-      // Slot responders count as "going" — never double-count them below
+      // Going members are already listed above — never double-count them below
       if (attendingIds.has(user._id)) continue;
       const status = rsvpByUser.get(user._id);
-      if (status === "maybe") maybe.push(nameOf(user));
-      else if (status === "notAttending") notAttending.push(nameOf(user));
-      else if (!status) noResponse.push(nameOf(user));
+      if (status === "notAttending") notAttending.push(nameOf(user));
+      else if (status === "maybe" && maybeCounts) maybe.push(nameOf(user));
+      else if (status !== "attending") noResponse.push(nameOf(user));
     }
 
     return {
       attending,
+      rosteredNoShift,
       breakdown: { maybe, notAttending, noResponse, totalMembers: users.length },
     };
   },
@@ -610,6 +678,7 @@ export const createEvent = mutation({
     endTime: v.optional(v.string()),
     respondBy: v.optional(v.string()),
     hasShifts: v.optional(v.boolean()),
+    memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
     slots: v.optional(v.array(slotInputValidator)),
     isAllDay: v.boolean(),
   },
@@ -631,6 +700,7 @@ export const createEvent = mutation({
       endTime: args.endTime,
       respondBy: args.respondBy,
       hasShifts: args.hasShifts,
+      memberResponses: args.memberResponses,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
@@ -729,6 +799,12 @@ export const updateEvent = mutation({
     // changes — a slot-only edit must still apply).
     if (args.slots !== undefined) {
       const hasShifts = args.hasShifts ?? event.hasShifts ?? false;
+      // Turning shifts off drops the slots, so lift the roster to the event
+      // first — otherwise the cascade would take the organiser's placements
+      // with it and an event with known attendees would empty itself.
+      if (!hasShifts && event.hasShifts) {
+        await liftAllocationsToEventLevel(ctx, args.eventId);
+      }
       // Turning shifts off clears all slots; otherwise sync to the payload.
       await reconcileSlots(ctx, args.eventId, hasShifts ? args.slots : []);
     }
@@ -905,6 +981,11 @@ export const setRsvp = mutation({
     if (event.hasShifts && args.status !== "notAttending") {
       throw new Error("This event uses shifts — pick a shift on the event page instead");
     }
+    // Closed responses stop members opting *in*; declining always stays open so
+    // anyone the organiser rostered can still say they can't make it.
+    if (!responsesAreOpen(event) && args.status !== "notAttending") {
+      throw new Error("The organiser has set who's going to this event");
+    }
 
     const existing = await ctx.db
       .query("eventRsvps")
@@ -961,7 +1042,10 @@ export const toggleSlotResponse = mutation({
     if (!slot) {
       throw new Error("Shift not found");
     }
-    await requireOpenEvent(ctx, slot.eventId);
+    const event = await requireOpenEvent(ctx, slot.eventId);
+    if (!responsesAreOpen(event)) {
+      throw new Error("The organiser has set who's on each shift for this event");
+    }
 
     const existing = await ctx.db
       .query("eventSlotResponses")
@@ -1082,6 +1166,123 @@ export const toggleSlotAllocation = mutation({
 });
 
 /**
+ * Admin: place or remove a member on the event itself, for events with no
+ * shifts to place them into. Same roster as toggleSlotAllocation, one level up.
+ * Returns the new state.
+ */
+export const toggleEventAllocation = mutation({
+  args: {
+    eventId: v.id("events"),
+    userId: v.id("users"),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const adminId = await requireEventsAdmin(ctx);
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    const existing = (
+      await ctx.db
+        .query("eventSlotAllocations")
+        .withIndex("by_event_user", (q) =>
+          q.eq("eventId", args.eventId).eq("userId", args.userId)
+        )
+        .collect()
+    ).find((allocation) => allocation.slotId === undefined);
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return false;
+    }
+
+    await ctx.db.insert("eventSlotAllocations", {
+      eventId: args.eventId,
+      slotId: undefined,
+      userId: args.userId,
+      assignedBy: adminId,
+      createdAt: Date.now(),
+    });
+    return true;
+  },
+});
+
+/**
+ * Admin: open or close member responses.
+ *
+ * Deliberately non-destructive in both directions — it patches one field and
+ * never touches an rsvp, a shift pick or a placement. Closing an event that
+ * already collected interest doesn't discard it; it just stops counting until
+ * the organiser opens things back up, so this is safe to flip as often as the
+ * plan changes.
+ *
+ * `carryOverUserIds` is the one write it does make: when closing, the organiser
+ * can seed the roster from the people who had already said yes, rather than
+ * re-picking them by hand. Anyone already rostered is left alone.
+ */
+export const setMemberResponses = mutation({
+  args: {
+    eventId: v.id("events"),
+    mode: v.union(v.literal("open"), v.literal("closed")),
+    carryOverUserIds: v.optional(v.array(v.id("users"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const adminId = await requireEventsAdmin(ctx);
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    const current = event.memberResponses ?? "open";
+
+    if (args.mode === "closed" && args.carryOverUserIds && args.carryOverUserIds.length > 0) {
+      const existing = await ctx.db
+        .query("eventSlotAllocations")
+        .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+        .collect();
+      const alreadyRostered = new Set(existing.map((allocation) => allocation.userId));
+
+      const now = Date.now();
+      for (const userId of args.carryOverUserIds) {
+        if (alreadyRostered.has(userId)) continue;
+        alreadyRostered.add(userId);
+        await ctx.db.insert("eventSlotAllocations", {
+          eventId: args.eventId,
+          slotId: undefined,
+          userId,
+          assignedBy: adminId,
+          createdAt: now,
+        });
+      }
+    }
+
+    if (current === args.mode) {
+      return null;
+    }
+
+    await ctx.db.patch(args.eventId, {
+      memberResponses: args.mode,
+      updatedAt: Date.now(),
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId: adminId,
+      changeType: "field_change",
+      field: "memberResponses",
+      oldValue: current,
+      newValue: args.mode,
+    });
+
+    return null;
+  },
+});
+
+/**
  * Slots for an event (member-facing), ordered. Each carries the official
  * **allocated** roster and the **interested** members (both member-visible —
  * before allocation starts, interest per shift IS the turnout picture), plus
@@ -1193,10 +1394,12 @@ export const getEventSlots = query({
 });
 
 /**
- * Admin roster view for the allocation UI: all members plus, per slot, who is
- * interested and who is allocated. Returns null for non-admins.
+ * Admin roster view for the allocation UI: all members, who is allocated to the
+ * event itself, and per slot who is interested and who is allocated. A shiftless
+ * event simply has no slots and is rostered through `eventAllocatedIds`.
+ * Returns null for non-admins.
  */
-export const getSlotRoster = query({
+export const getEventRoster = query({
   args: { eventId: v.id("events") },
   returns: v.union(
     v.object({
@@ -1204,6 +1407,9 @@ export const getSlotRoster = query({
       // Members who marked "can't make it" (event-wide) — flag them in the
       // allocation UI, especially when they're still on the roster
       declinedIds: v.array(v.id("users")),
+      // Placed on the event rather than a shift (the whole roster for a
+      // shiftless event)
+      eventAllocatedIds: v.array(v.id("users")),
       slots: v.array(
         v.object({
           _id: v.id("eventSlots"),
@@ -1278,7 +1484,16 @@ export const getSlotRoster = query({
       .filter((r) => r.status === "notAttending")
       .map((r) => r.userId);
 
-    return { members, declinedIds, slots: slotsWithRoster };
+    const eventAllocatedIds = (
+      await ctx.db
+        .query("eventSlotAllocations")
+        .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+        .collect()
+    )
+      .filter((allocation) => allocation.slotId === undefined)
+      .map((allocation) => allocation.userId);
+
+    return { members, declinedIds, eventAllocatedIds, slots: slotsWithRoster };
   },
 });
 

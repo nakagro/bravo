@@ -18,8 +18,10 @@ import { RsvpButtons } from "../features/events/components/RsvpButtons";
 import { SlotPicker } from "../features/events/components/SlotPicker";
 import { ShiftBoard } from "../features/events/components/ShiftBoard";
 import { AllocateShiftsDialog } from "../features/events/components/AllocateShiftsDialog";
+import { ResponsesModeDialog } from "../features/events/components/ResponsesModeDialog";
+import { DeclineButton } from "../features/events/components/RsvpButtons";
 import { EventForm } from "../features/events/components/EventForm";
-import { EventTypeChip } from "../features/events/components/badges";
+import { EventTypeChip, SetListBadge } from "../features/events/components/badges";
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
@@ -39,7 +41,17 @@ import {
   TrashIcon,
   ChevronDownIcon,
   XMarkIcon,
+  LockClosedIcon,
+  LockOpenIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // The admin-only breakdown groups (the attending "Going" list lives in its own
 // member-visible "Who's coming" card, so it's deliberately not repeated here).
@@ -77,6 +89,7 @@ export function EventDetailPage() {
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [showAllocateDialog, setShowAllocateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showResponsesDialog, setShowResponsesDialog] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
   );
@@ -198,7 +211,11 @@ export function EventDetailPage() {
 
   const isCancelled = event.status === "cancelled";
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
+  // Whether there's still anything to ask *you* — the zone-2 card
   const showRsvp = !isCancelled && !isPast;
+  // The organiser has set who's going; members can't opt in, only decline
+  const responsesClosed = event.memberResponses === "closed";
+  const onRoster = event.myRsvp === "attending";
 
   const dateLine =
     event.endDate && event.endDate !== event.startDate
@@ -262,71 +279,95 @@ export function EventDetailPage() {
         eventTitle={event.title}
         onConfirm={handleDelete}
       />
-      {event.hasShifts && typedEventId && (
+      {typedEventId && (
         <AllocateShiftsDialog
           open={showAllocateDialog}
           onClose={() => setShowAllocateDialog(false)}
           eventId={typedEventId}
         />
       )}
+      {typedEventId && (
+        <ResponsesModeDialog
+          open={showResponsesDialog}
+          onClose={() => setShowResponsesDialog(false)}
+          eventId={typedEventId}
+          mode={responsesClosed ? "open" : "closed"}
+          hasShifts={event.hasShifts === true}
+          onNotify={() => setShowNotifyDialog(true)}
+        />
+      )}
 
       <div className="flex items-center justify-between gap-3">
         {backButton}
 
-        {/* Admin actions */}
+        {/* Admin actions. Edit is the one standing button; everything else —
+            including building the roster — lives behind the same overflow menu
+            the admin list uses. Six buttons in a row wrapped onto two lines and
+            crowded out the back link, on the page where reading the event
+            matters most. */}
         {canManageEvents && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setShowEditForm(true)}
               className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
             >
-              <PencilSquareIcon className="h-4 w-4 mr-1" />
+              <PencilSquareIcon className="h-4 w-4 mr-1.5" />
               Edit
             </button>
-            {event.hasShifts && event.status === "active" && (
-              <button
-                onClick={() => setShowAllocateDialog(true)}
-                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                aria-label={`More options for ${event.title}`}
               >
-                <UsersIcon className="h-4 w-4 mr-1" />
-                Allocate
-              </button>
-            )}
-            {event.status === "active" ? (
-              <>
-                <button
-                  onClick={() => setShowNotifyDialog(true)}
-                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
-                >
-                  <BellAlertIcon className="h-4 w-4 mr-1" />
-                  Notify
-                </button>
-                <button
-                  onClick={() => setShowCancelDialog(true)}
-                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
-                >
-                  <XCircleIcon className="h-4 w-4 mr-1" />
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleRestore}
-                  className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
-                >
-                  <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                  Restore
-                </button>
-                <button
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
-                >
-                  <TrashIcon className="h-4 w-4 mr-1" />
-                  Delete
-                </button>
-              </>
-            )}
+                <EllipsisVerticalIcon className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {event.status === "active" ? (
+                  <>
+                    <DropdownMenuItem onSelect={() => setShowAllocateDialog(true)}>
+                      <UsersIcon className="h-4 w-4" />
+                      {event.hasShifts ? "Allocate shifts" : "Set who's going"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowResponsesDialog(true)}>
+                      {responsesClosed ? (
+                        <LockOpenIcon className="h-4 w-4" />
+                      ) : (
+                        <LockClosedIcon className="h-4 w-4" />
+                      )}
+                      {responsesClosed ? "Open responses" : "Close responses"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowNotifyDialog(true)}>
+                      <BellAlertIcon className="h-4 w-4" />
+                      Notify
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setShowCancelDialog(true)}
+                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                    >
+                      <XCircleIcon className="h-4 w-4" />
+                      Cancel event
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={handleRestore}>
+                      <ArrowUturnLeftIcon className="h-4 w-4" />
+                      Restore
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setShowDeleteDialog(true)}
+                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
@@ -365,6 +406,7 @@ export function EventDetailPage() {
                 uppercase
                 className="text-[11px] font-bold"
               />
+              {responsesClosed && <SetListBadge />}
               {isCancelled && (
                 <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap">
                   Cancelled
@@ -398,7 +440,35 @@ export function EventDetailPage() {
           the read-only board below carries the turnout (it highlights "you"). */}
       {showRsvp && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
-          {event.hasShifts ? (
+          {responsesClosed ? (
+            // Nothing to opt into — the organiser set the list. All that's left
+            // is telling them if you can't make it after all, which stays
+            // available precisely because being rostered isn't the same as
+            // having agreed.
+            <div className="sm:flex sm:items-center sm:justify-between sm:gap-6">
+              <div className="mb-3 sm:mb-0">
+                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                  {onRoster
+                    ? "You're on for this one"
+                    : event.myRsvp === "notAttending"
+                      ? "You've said you can't make it"
+                      : "You're not on the list for this one"}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  The organiser has set who&apos;s going.
+                </div>
+              </div>
+              {(onRoster || event.myRsvp === "notAttending") && (
+                <div className="sm:w-auto w-full sm:min-w-[220px]">
+                  <DeclineButton
+                    eventId={event._id}
+                    declined={event.myRsvp === "notAttending"}
+                    size="lg"
+                  />
+                </div>
+              )}
+            </div>
+          ) : event.hasShifts ? (
             <>
               <div className="text-sm font-bold text-gray-900 dark:text-white mb-3">
                 Which shifts can you do?
@@ -460,8 +530,11 @@ export function EventDetailPage() {
                   {formatUserName(event.createdByUser)}
                 </span>
               )}
+              {/* A deadline for responses means nothing while responses are
+                  closed — but the stored date is kept, ready for reopening */}
               {event.respondBy &&
                 showRsvp &&
+                !responsesClosed &&
                 detailSection(
                   "Respond by",
                   <span className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
@@ -499,18 +572,40 @@ export function EventDetailPage() {
               in the Your-status card above, so nothing here is a control. */}
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-              Who&apos;s coming
+              {responsesClosed && !event.hasShifts ? "On the roster" : "Who's coming"}
               {!event.hasShifts && attendance ? ` (${attendance.attending.length})` : ""}
             </h3>
             {event.hasShifts ? (
-              <ShiftBoard eventId={event._id} />
+              <>
+                <ShiftBoard eventId={event._id} />
+                {/* Rostered, but not against any shift — otherwise they'd
+                    appear nowhere on this page */}
+                {attendance && attendance.rosteredNoShift.length > 0 && (
+                  <div className="mt-5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1">
+                      Rostered, no shift yet
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {attendance.rosteredNoShift.map((member) => (
+                        <MemberChip
+                          key={member._id}
+                          member={member}
+                          isMe={member._id === myUserId}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : !attendance ? (
               <Skeleton className="h-8 w-48 rounded" />
             ) : attendance.attending.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {showRsvp
-                  ? "No responses yet. Be the first to RSVP."
-                  : "Nobody marked themselves as going."}
+                {responsesClosed
+                  ? "Nobody on the roster yet."
+                  : showRsvp
+                    ? "No responses yet. Be the first to RSVP."
+                    : "Nobody marked themselves as going."}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -554,9 +649,9 @@ export function EventDetailPage() {
               )}
 
               {breakdownGroups
-                // Shift events have no "maybe" — picking a shift or declining
-                // are the only responses, so hide the impossible group
-                .filter(({ key }) => !(event.hasShifts && key === "maybe"))
+                // "Maybe" only exists on an open, shiftless event: a shift
+                // event answers with a slot pick, and a closed one isn't asking
+                .filter(({ key }) => !((event.hasShifts || responsesClosed) && key === "maybe"))
                 .map(({ key, label, dotClass, chipClass }) => {
                 const members = breakdown[key];
                 const isOpen = openGroups[key];

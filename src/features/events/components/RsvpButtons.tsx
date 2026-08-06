@@ -94,6 +94,63 @@ export function RsvpButtons({ eventId, myRsvp, disabled = false, size = "md" }: 
   );
 }
 
+interface DeclineButtonProps {
+  eventId: Id<"events">;
+  declined: boolean;
+  disabled?: boolean;
+  size?: "md" | "lg";
+}
+
+/**
+ * Standalone "can't make it" toggle, for events where opting *in* isn't on
+ * offer — a closed event where the organiser set the roster. Declining is never
+ * closed off: being placed on a list isn't the same as having agreed to it, and
+ * the organiser needs to hear about it while there's still time to backfill.
+ *
+ * Uses declineSlotEvent, which clears any slot picks and toggles back to "no
+ * response" on a second press.
+ */
+export function DeclineButton({
+  eventId,
+  declined,
+  disabled = false,
+  size = "md",
+}: DeclineButtonProps) {
+  const declineEvent = useMutation(api.events.declineSlotEvent);
+
+  const handleClick = async () => {
+    try {
+      await declineEvent({ eventId });
+    } catch (error) {
+      console.error("Error declining event:", error);
+      toast.error("Failed to save your response", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={handleClick}
+      aria-pressed={declined}
+      className={`${
+        size === "lg"
+          ? "w-full px-4 py-3 min-h-[52px] text-base font-semibold rounded-xl"
+          : "w-full px-3 py-2 min-h-[40px] text-sm font-medium rounded-lg"
+      } border transition-all flex items-center justify-center gap-1.5 ${
+        declined
+          ? "bg-red-600 text-white border-red-600 shadow-md scale-[1.02]"
+          : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      <XMarkIcon className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      {declined ? "Can't make it" : "I can't make it"}
+    </button>
+  );
+}
+
 interface ShiftRsvpButtonsProps {
   eventId: Id<"events">;
   /** "attending" = has a slot pick/allocation, "notAttending" = declined */

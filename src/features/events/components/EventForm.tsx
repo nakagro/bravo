@@ -47,6 +47,9 @@ const eventFormSchema = z
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
     hasShifts: z.boolean(),
+    // Create-time only. Afterwards the mode is flipped from the event page,
+    // which can offer to carry existing responses onto the roster.
+    responsesClosed: z.boolean(),
     slots: z.array(slotSchema),
     description: z.string(),
   })
@@ -87,6 +90,7 @@ const blankDefaults: EventFormValues = {
   isAllDay: false,
   isMultiDay: false,
   hasShifts: false,
+  responsesClosed: false,
   slots: [],
   description: "",
 };
@@ -162,6 +166,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         isMultiDay:
           !!existingEvent.endDate && existingEvent.endDate !== existingEvent.startDate,
         hasShifts: existingEvent.hasShifts ?? false,
+        responsesClosed: existingEvent.memberResponses === "closed",
         slots: existingSlots.map((slot) => ({
           _id: slot._id,
           label: slot.label,
@@ -237,6 +242,9 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           respondBy: fields.respondBy || undefined,
           description: fields.description || undefined,
           hasShifts: values.hasShifts,
+          // Only ever set at creation here — changing it later goes through
+          // setMemberResponses so the carry-over can be offered.
+          memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
           slots: values.hasShifts ? slots : undefined,
         });
         // Event saved — the draft has served its purpose.
@@ -569,6 +577,39 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Responses mode — create only. On an existing event this is flipped
+            from the event page, where closing can offer to carry the people who
+            already said yes straight onto the roster. */}
+        {!isEditing && (
+          <FormField
+            control={form.control}
+            name="responsesClosed"
+            render={({ field }) => (
+              <FormItem>
+                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                  <span>
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      I already know who&apos;s going
+                    </span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      Skips asking the brigade — you set the roster yourself. You can
+                      open it up later.
+                    </span>
+                  </span>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-label="I already know who's going"
+                      className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                    />
+                  </FormControl>
+                </label>
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Slots editor */}
         {watchHasShifts && (

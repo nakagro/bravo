@@ -88,6 +88,20 @@ export function ShiftsBadge({ className = "" }: { className?: string }) {
 }
 
 /**
+ * Small indicator that member responses are closed — the organiser has set the
+ * roster, so there's no point looking for an RSVP prompt on this one.
+ */
+export function SetListBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 ${className}`}
+    >
+      Set list
+    </span>
+  );
+}
+
+/**
  * Chip showing an RSVP status.
  */
 export function RsvpBadge({ status, className = "" }: { status: RsvpStatus; className?: string }) {

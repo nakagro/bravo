@@ -15,20 +15,25 @@ interface AllocateShiftsDialogProps {
 }
 
 /**
- * Admin roster editor for a shift event. Per slot, tap members to place/remove
- * them on the official roster. Interested members are flagged and sorted first,
- * but anyone can be allocated.
+ * Admin roster editor. Tap members to place/remove them on the official roster.
+ * Interested members are flagged and sorted first, but anyone can be allocated.
+ *
+ * A shift event gets one block per shift; a shiftless event gets a single block
+ * for the event itself, which is what makes "I already know who's going" work
+ * without inventing a shift nobody needed.
  */
 export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsDialogProps) {
-  const roster = useQuery(api.events.getSlotRoster, open ? { eventId } : "skip");
-  const toggleAllocation = useMutation(api.events.toggleSlotAllocation);
+  const roster = useQuery(api.events.getEventRoster, open ? { eventId } : "skip");
+  const toggleSlotAllocation = useMutation(api.events.toggleSlotAllocation);
+  const toggleEventAllocation = useMutation(api.events.toggleEventAllocation);
   const [search, setSearch] = useState("");
 
   const query = search.trim().toLowerCase();
 
-  const handleToggle = async (slotId: Id<"eventSlots">, userId: Id<"users">) => {
+  const handleToggle = async (slotId: Id<"eventSlots"> | null, userId: Id<"users">) => {
     try {
-      await toggleAllocation({ slotId, userId });
+      if (slotId) await toggleSlotAllocation({ slotId, userId });
+      else await toggleEventAllocation({ eventId, userId });
     } catch (error) {
       toast.error("Couldn't update the roster", {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
@@ -43,8 +48,49 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
     return roster.members.filter((m) => formatUserName(m).toLowerCase().includes(query));
   }, [roster, query]);
 
+  // One block per shift, or a single event-level block when there are none.
+  // A shift event that also has event-level placements (carried over when
+  // responses were closed, or left behind by a shift being deleted) gets an
+  // extra block so nobody on the roster is invisible.
+  const blocks = useMemo((): Array<{
+    key: string;
+    slotId: Id<"eventSlots"> | null;
+    label: string;
+    when: string;
+    targetCount?: number;
+    allocatedIds: Id<"users">[];
+    interestedIds: Id<"users">[];
+  }> => {
+    if (!roster) return [];
+    const eventBlock = {
+      key: "event",
+      slotId: null,
+      label: roster.slots.length > 0 ? "Not tied to a shift" : "Going",
+      when: "",
+      targetCount: undefined,
+      allocatedIds: roster.eventAllocatedIds,
+      interestedIds: [],
+    };
+    if (roster.slots.length === 0) return [eventBlock];
+    const slotBlocks = roster.slots.map((slot) => ({
+      key: slot._id,
+      slotId: slot._id as Id<"eventSlots"> | null,
+      label: slot.label,
+      when: formatSlotWhen(slot),
+      targetCount: slot.targetCount,
+      allocatedIds: slot.allocatedIds,
+      interestedIds: slot.interestedIds,
+    }));
+    return roster.eventAllocatedIds.length > 0 ? [...slotBlocks, eventBlock] : slotBlocks;
+  }, [roster]);
+
   return (
-    <ResponsiveModal open={open} onClose={onClose} title="Allocate shifts" drawerHeight="h-[92vh]">
+    <ResponsiveModal
+      open={open}
+      onClose={onClose}
+      title={roster && roster.slots.length === 0 ? "Set who's going" : "Allocate shifts"}
+      drawerHeight="h-[92vh]"
+    >
       {roster === undefined ? (
         <div className="space-y-3 pb-4">
           {[0, 1, 2].map((i) => (
@@ -54,10 +100,6 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
       ) : roster === null ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 pb-4">
           You don&apos;t have access to manage this roster.
-        </p>
-      ) : roster.slots.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 pb-4">
-          This event has no shifts to allocate.
         </p>
       ) : (
         <div className="space-y-5 pb-6">
@@ -72,11 +114,11 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
             />
           </div>
 
-          {roster.slots.map((slot) => {
+          {blocks.map((slot) => {
             const allocatedSet = new Set(slot.allocatedIds);
             const interestedSet = new Set(slot.interestedIds);
             const declinedSet = new Set(roster.declinedIds);
-            const when = formatSlotWhen(slot);
+            const when = slot.when;
             const underfilled = !!slot.targetCount && slot.allocatedIds.length < slot.targetCount;
 
             // Rostered decliners (conflicts) first, then interested members,
@@ -87,7 +129,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
 
             return (
               <div
-                key={slot._id}
+                key={slot.key}
                 className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
               >
                 <div className="px-3 py-2.5 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
@@ -126,7 +168,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                         <button
                           key={member._id}
                           type="button"
-                          onClick={() => handleToggle(slot._id, member._id)}
+                          onClick={() => handleToggle(slot.slotId, member._id)}
                           aria-pressed={isAllocated}
                           className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
                             needsReplacing

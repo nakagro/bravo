@@ -5,7 +5,13 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { formatTime, formatShortDate, formatMonthYear, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
+import {
+  DateBadge,
+  EventStatusBadge,
+  EventTypeChip,
+  SetListBadge,
+  ShiftsBadge,
+} from "./badges";
 import { EventForm } from "./EventForm";
 import { EventTypesManager } from "./EventTypesManager";
 import { CancelEventDialog } from "./CancelEventDialog";
@@ -182,6 +188,7 @@ export function AdminTab() {
             <span className="font-semibold text-gray-900 dark:text-white">{event.title}</span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             {event.hasShifts && <ShiftsBadge />}
+            {event.memberResponses === "closed" && <SetListBadge />}
             <EventStatusBadge status={event.status} />
           </div>
 

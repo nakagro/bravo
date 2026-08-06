@@ -688,7 +688,7 @@ export const submitStationCheck = mutation({
         conditionKey: CHECKS_SUBMITTED_KEY,
         title: "Duty crew checks submitted",
         description: notice.description,
-        url: "/duty-crew?tab=history",
+        url: "/dutycrew?tab=history",
         priority: notice.attention.length > 0 ? "medium" : "low",
         sourceEntityId: submissionId,
         actorUserId: currentUser._id,

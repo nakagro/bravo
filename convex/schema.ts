@@ -1026,6 +1026,12 @@ const applicationTables = {
     endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
     respondBy: v.optional(v.string()), // ISO date string — optional RSVP-by date
     hasShifts: v.optional(v.boolean()), // Opt-in: event collects per-slot interest (eventSlots)
+    // Whether members may still opt *in* (RSVP yes/maybe, or pick a shift).
+    // Absent = "open". "closed" means the organiser already knows who's going and
+    // sets the roster themselves via eventSlotAllocations — it never deletes
+    // existing responses, so flipping back to "open" restores them untouched.
+    // Declining ("can't make it") is always allowed, in either mode.
+    memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
     isAllDay: v.boolean(),
     cancelledBy: v.optional(v.id("users")),
     cancelledAt: v.optional(v.number()),
@@ -1084,11 +1090,14 @@ const applicationTables = {
     .index("by_event_user", ["eventId", "userId"])
     .index("by_slot_user", ["slotId", "userId"]),
 
-  // Admin-controlled allocation of a member to a slot (the official roster).
+  // Admin-controlled allocation of a member to an event (the official roster).
   // Distinct from interest — an admin can place anyone, interest is just a hint.
+  // The roster exists for every event, not just shift events: an absent slotId
+  // is an event-level placement ("you're on for the whole thing"), which is how
+  // a shiftless event with known attendees is rostered.
   eventSlotAllocations: defineTable({
     eventId: v.id("events"),
-    slotId: v.id("eventSlots"),
+    slotId: v.optional(v.id("eventSlots")),
     userId: v.id("users"),
     assignedBy: v.id("users"),
     createdAt: v.number(),

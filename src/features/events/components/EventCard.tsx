@@ -2,8 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
-import { DateBadge, EventStatusBadge, EventTypeChip, ShiftsBadge } from "./badges";
-import { RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
+import {
+  DateBadge,
+  EventStatusBadge,
+  EventTypeChip,
+  SetListBadge,
+  ShiftsBadge,
+} from "./badges";
+import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
@@ -20,9 +26,13 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
   const isCancelled = event.status === "cancelled";
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
   const showRsvp = !readOnly && !isCancelled && !isPast;
+  // The organiser set who's going — no opting in from the list
+  const responsesClosed = event.memberResponses === "closed";
+  const onRoster = event.myRsvp === "attending";
 
   const countsSummary = formatCountsSummary(event.counts);
-  const showRespondBy = showRsvp && !!event.respondBy && event.respondBy >= getTodayStr();
+  const showRespondBy =
+    showRsvp && !responsesClosed && !!event.respondBy && event.respondBy >= getTodayStr();
 
   const goToEvent = () => navigate(`/events/${event._id}`);
 
@@ -58,6 +68,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             </span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             {event.hasShifts && <ShiftsBadge />}
+            {responsesClosed && <SetListBadge />}
             <EventStatusBadge status={event.status} />
           </div>
 
@@ -102,7 +113,16 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
           {showRsvp && (
             // Stop clicks here from also opening the detail page
             <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-              {event.hasShifts ? (
+              {responsesClosed ? (
+                // Nothing to answer unless you're on the list, in which case the
+                // only answer left is "can't make it"
+                onRoster || event.myRsvp === "notAttending" ? (
+                  <DeclineButton
+                    eventId={event._id}
+                    declined={event.myRsvp === "notAttending"}
+                  />
+                ) : null
+              ) : event.hasShifts ? (
                 <ShiftRsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
               ) : (
                 <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
