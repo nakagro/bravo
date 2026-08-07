@@ -1,26 +1,33 @@
-import React from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { NotificationRecipientsSection } from "@/components/shared/NotificationRecipientsSection";
 import {
-  ClockIcon,
-  InboxIcon,
-  ArchiveBoxIcon,
-  ArrowTopRightOnSquareIcon,
-  TrashIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-} from "@heroicons/react/24/outline";
+  Clock,
+  Inbox,
+  Archive,
+  ExternalLink,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 interface InventoryAdminTabProps {
   isAuthenticated: boolean;
 }
 
-function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
+export function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
   const navigate = useNavigate();
+  const [pendingDelete, setPendingDelete] = useState<{
+    runId: Id<"applianceCheckRuns">;
+    templateName: string;
+  } | null>(null);
 
   const recentRuns = useQuery(api.inventoryCheckRuns.listRunSummaries, { limit: 50 });
   const deleteRun = useMutation(api.inventoryCheckRuns.deleteRun);
@@ -36,11 +43,7 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
     }
   };
 
-  const handleDeleteRun = async (runId: Id<"applianceCheckRuns">, templateName: string) => {
-    if (!confirm(`Are you sure you want to permanently delete this inventory check for "${templateName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+  const handleDeleteRun = async (runId: Id<"applianceCheckRuns">) => {
     try {
       await deleteRun({ runId });
       toast.success('Inventory check deleted');
@@ -68,11 +71,11 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'in_progress':
-        return <ClockIcon className="h-4 w-4" />;
+        return <Clock className="h-4 w-4" />;
       case 'completed':
-        return <CheckCircleIcon className="h-4 w-4" />;
+        return <CheckCircle2 className="h-4 w-4" />;
       case 'cancelled':
-        return <XCircleIcon className="h-4 w-4" />;
+        return <XCircle className="h-4 w-4" />;
       default:
         return null;
     }
@@ -87,10 +90,17 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+    <div className="space-y-4">
+      <NotificationRecipientsSection
+        conditionKey="inventory:checkCompleted"
+        title="Inventory check completed"
+        description="Tell the people who hold the equipment portfolio when an inventory check is completed, including anything missing, miscounted or left unchecked."
+      />
+
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
       <div className="p-3 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-medium flex items-center">
-          <ArchiveBoxIcon className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
+          <Archive className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
           Manage Inventory Checks
           <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal">
             (Last 50)
@@ -103,10 +113,11 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
       
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {!recentRuns || recentRuns.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <InboxIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">No inventory checks have been performed yet.</p>
-          </div>
+          <EmptyState
+            icon={<Inbox className="h-10 w-10 text-red-500 dark:text-red-400" />}
+            title="No inventory checks yet"
+            description="Completed and in-progress checks will appear here once someone starts one."
+          />
         ) : (
           recentRuns.map((summary) => {
             const { run, total, yes, no, unanswered, startedByUser } = summary;
@@ -167,14 +178,14 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
                       onClick={() => navigate(`/inventory/run/${run._id}`)}
                       className="px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
                     >
-                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 mr-1" />
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
                       <span className="hidden sm:inline">View</span>
                     </button>
                     <button
-                      onClick={() => handleDeleteRun(run._id, run.templateName)}
+                      onClick={() => setPendingDelete({ runId: run._id, templateName: run.templateName })}
                       className="px-2 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
                     >
-                      <TrashIcon className="h-3.5 w-3.5 mr-1" />
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
                       <span className="hidden sm:inline">Delete</span>
                     </button>
                   </div>
@@ -183,9 +194,23 @@ function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
             );
           })
         )}
+        </div>
       </div>
+
+      <DeleteConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="Delete inventory check?"
+        description={`This permanently deletes the inventory check for "${pendingDelete?.templateName ?? ""}". This action cannot be undone.`}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          const { runId } = pendingDelete;
+          setPendingDelete(null);
+          void handleDeleteRun(runId);
+        }}
+      />
     </div>
   );
 }
-
-export default InventoryAdminTab;

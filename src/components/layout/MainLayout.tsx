@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useLayoutEffect, useRef } from "react";
 import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
@@ -10,9 +10,28 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the app header's height so page-level sticky chrome can park
+  // directly beneath it instead of colliding with it. Measured rather than
+  // hardcoded — the header grows with the DEV badge and with font scaling.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        "--app-header-height",
+        `${el.offsetHeight}px`,
+      );
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
-      <div className="sticky top-0 z-10">
+      <div ref={headerRef} className="sticky top-0 z-30">
         <header className="bg-white dark:bg-gray-800 px-4 py-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
           <Link
             to="/"

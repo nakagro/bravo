@@ -78,14 +78,19 @@ export const CHECKS_SUBMITTED_KEY = "dutyCrew:checksSubmitted";
 
 // Build the notice a duty-crew submission raises. The point of the whole thing
 // is the exception detail: pen-and-paper sheets told nobody what was skipped or
-// what needed a second look, so N/A items and anything with a note are named.
-function buildSubmissionNotice(
+// what needed a second look, so untouched items, N/A items and anything with a
+// note are named.
+//
+// Naming the untouched items is what lets a week be submitted unfinished at
+// all: there is no submit gate, so this notice IS the follow-up mechanism.
+export function buildSubmissionNotice(
   items: SubmissionCheckItem[],
   crewName: string,
   weekEnding: number
 ) {
   const completed = items.filter((i) => i.isCompleted).length;
   const notApplicable = items.filter((i) => !i.isCompleted && i.isNotApplicable === true);
+  const notDone = items.filter((i) => !isResolved(i));
   const withNotes = items.filter((i) => i.notes && i.notes.trim().length > 0);
 
   const weekLabel = new Date(weekEnding).toLocaleDateString("en-AU", {
@@ -94,19 +99,24 @@ function buildSubmissionNotice(
   });
 
   const summary = [
-    `${completed} completed`,
+    `${completed} of ${items.length} completed`,
     notApplicable.length > 0 ? `${notApplicable.length} N/A` : null,
+    notDone.length > 0 ? `${notDone.length} not done` : null,
     withNotes.length > 0 ? `${withNotes.length} with notes` : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   const attention = [
+    // Untouched items lead: they're the ones nobody has accounted for.
+    ...notDone.map(
+      (i) => `${i.name} — not done${i.notes ? `: ${i.notes.trim()}` : ""}`
+    ),
     ...notApplicable.map(
       (i) => `${i.name} — marked N/A${i.notes ? `: ${i.notes.trim()}` : ""}`
     ),
     ...withNotes
-      .filter((i) => i.isNotApplicable !== true)
+      .filter((i) => i.isNotApplicable !== true && isResolved(i))
       .map((i) => `${i.name} — ${i.notes!.trim()}`),
   ];
 
@@ -114,6 +124,7 @@ function buildSubmissionNotice(
     weekLabel,
     summary,
     attention,
+    notDoneCount: notDone.length,
     description: `${crewName} · week ending Sun ${weekLabel} · ${summary}`,
   };
 }
@@ -660,12 +671,10 @@ export const submitStationCheck = mutation({
       throw new Error("User not found");
     }
 
-    // Validate that all check items are resolved (completed or marked N/A)
-    const incompleteItems = args.checkItems.filter(item => !isResolved(item));
-    if (incompleteItems.length > 0) {
-      const incompleteNames = incompleteItems.map(item => item.name).join(", ");
-      throw new Error(`Cannot complete station check: The following items are not completed: ${incompleteNames}`);
-    }
+    // Deliberately no completeness gate. Gating submission on a fully ticked
+    // sheet just left weeks sitting in draft forever, which told the officer
+    // nothing at all. An unfinished week submits, and the notice below names
+    // exactly what was left undone so it can be followed up.
 
     const now = Date.now();
 
@@ -689,10 +698,13 @@ export const submitStationCheck = mutation({
         title: "Duty crew checks submitted",
         description: notice.description,
         url: "/dutycrew?tab=history",
-        priority: notice.attention.length > 0 ? "medium" : "low",
+        priority: notice.notDoneCount > 0 || notice.attention.length > 0 ? "medium" : "low",
         sourceEntityId: submissionId,
         actorUserId: currentUser._id,
-        emailSubject: `Duty crew checks submitted — week ending Sun ${notice.weekLabel}`,
+        emailSubject:
+          notice.notDoneCount > 0
+            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding — week ending Sun ${notice.weekLabel}`
+            : `Duty crew checks submitted — week ending Sun ${notice.weekLabel}`,
         emailIntro: `${submitterName} submitted the station checks for ${crew?.name ?? "the duty crew"}.`,
         emailDetails: [
           { label: "Crew", value: crew?.name ?? "Unknown" },

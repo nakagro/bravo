@@ -1,6 +1,76 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Doc } from "./_generated/dataModel";
+import { notifyEvent } from "./lib/notifyEvent";
+
+// Condition key for "an inventory check was completed". Officers map it to
+// themselves in Inventory → Admin → Notifications.
+export const CHECK_COMPLETED_KEY = "inventory:checkCompleted";
+
+type RunItem = Doc<"applianceCheckRunItems">;
+
+const isQuantityItem = (item: RunItem) => item.expectedQuantity !== undefined;
+
+const isAnswered = (item: RunItem) =>
+  isQuantityItem(item)
+    ? item.actualQuantity !== undefined
+    : typeof item.value !== "undefined";
+
+/** A deviation: the appliance doesn't match what the template says it should carry. */
+const isDeviation = (item: RunItem) =>
+  isQuantityItem(item)
+    ? item.actualQuantity !== undefined && item.actualQuantity !== item.expectedQuantity
+    : item.value === "no";
+
+/**
+ * Build the notice a completed inventory check raises.
+ *
+ * Same shape as the duty-crew submission notice, and for the same reason: the
+ * point is the exception detail. A completed run tells the officer nothing on
+ * its own — what matters is what wasn't on the appliance, what was miscounted,
+ * and what nobody checked.
+ */
+export function buildRunCompletionNotice(items: RunItem[], templateName: string) {
+  const deviations = items.filter(isDeviation);
+  const notChecked = items.filter((i) => !isAnswered(i));
+  const ok = items.filter((i) => isAnswered(i) && !isDeviation(i));
+  const withNotes = items.filter((i) => i.notes && i.notes.trim().length > 0);
+
+  const summary = [
+    `${ok.length} of ${items.length} OK`,
+    deviations.length > 0 ? `${deviations.length} deviation${deviations.length === 1 ? "" : "s"}` : null,
+    notChecked.length > 0 ? `${notChecked.length} not checked` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const describeDeviation = (item: RunItem) => {
+    const detail = isQuantityItem(item)
+      ? `expected ${item.expectedQuantity}, found ${item.actualQuantity}`
+      : "not on the appliance";
+    return `${item.itemName} — ${detail}${item.notes?.trim() ? `: ${item.notes.trim()}` : ""}`;
+  };
+
+  const attention = [
+    // Deviations lead — they're the ones that affect whether the truck is ready.
+    ...deviations.map(describeDeviation),
+    ...notChecked.map(
+      (i) => `${i.itemName} — not checked${i.notes?.trim() ? `: ${i.notes.trim()}` : ""}`
+    ),
+    ...withNotes
+      .filter((i) => !isDeviation(i) && isAnswered(i))
+      .map((i) => `${i.itemName} — ${i.notes!.trim()}`),
+  ];
+
+  return {
+    summary,
+    attention,
+    deviationCount: deviations.length,
+    notCheckedCount: notChecked.length,
+    description: `${templateName} · ${summary}`,
+  };
+}
 
 export const startRun = mutation({
   args: {
@@ -182,12 +252,60 @@ export const completeRun = mutation({
     const run = await ctx.db.get(runId);
     if (!run) throw new Error("Run not found");
 
+    const runNotes = notes ?? run.notes;
+
     await ctx.db.patch(runId, {
       status: "completed",
       completedBy: userId,
       completedAt: Date.now(),
-      notes: notes ?? run.notes,
+      notes: runNotes,
     });
+
+    // Raise the "inventory check done" notice for whoever holds the equipment
+    // portfolio. Silent unless an officer has mapped the condition key.
+    const items = await ctx.db
+      .query("applianceCheckRunItems")
+      .withIndex("by_run", (q) => q.eq("runId", runId))
+      .collect();
+
+    const notice = buildRunCompletionNotice(items, run.templateName);
+    const currentUser = await ctx.db.get(userId);
+    const completedByName =
+      [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ") ||
+      currentUser?.name ||
+      "a member";
+
+    await notifyEvent(ctx, {
+      moduleId: "inventory",
+      conditionKey: CHECK_COMPLETED_KEY,
+      title: "Inventory check completed",
+      description: notice.description,
+      url: `/inventory/run/${runId}`,
+      // A missing or miscounted item is an appliance-readiness problem; an
+      // unchecked one is only an admin gap.
+      priority:
+        notice.deviationCount > 0
+          ? "high"
+          : notice.notCheckedCount > 0
+            ? "medium"
+            : "low",
+      sourceEntityId: runId,
+      actorUserId: userId,
+      emailSubject:
+        notice.deviationCount > 0
+          ? `Inventory check completed with ${notice.deviationCount} deviation${notice.deviationCount === 1 ? "" : "s"} — ${run.templateName}`
+          : `Inventory check completed — ${run.templateName}`,
+      emailIntro: `${completedByName} completed the inventory check for ${run.templateName}.`,
+      emailDetails: [
+        { label: "Checklist", value: run.templateName },
+        { label: "Completed by", value: completedByName },
+        { label: "Result", value: notice.summary },
+        ...(runNotes?.trim() ? [{ label: "Check notes", value: runNotes.trim() }] : []),
+      ],
+      emailListTitle: "Needs attention",
+      emailList: notice.attention,
+    });
+
     return true;
   },
 });

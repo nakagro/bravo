@@ -29,8 +29,13 @@ import {
   ChevronRight,
   ClipboardCheck,
   LoaderCircle,
-  Tag,
 } from "lucide-react";
+import { Accordion } from "@/components/ui/accordion";
+import {
+  ChecklistRow,
+  ChecklistSection,
+  summariseChecklist,
+} from "@/components/shared/checklist";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -40,6 +45,7 @@ import {
   formatTime,
   getUserFullName,
   isItemResolved,
+  checkItemStatus,
 } from "../types";
 
 const PAGE_SIZE = 12;
@@ -95,21 +101,28 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
   const adHocItems = submission.checkItems.filter((i) => i.isAdHoc);
 
   // Group template items by snapshotted area; unlabelled items last
-  const areaGroups: { area?: string; items: typeof templateItems }[] = [];
+  const areaGroups: { key: string; name: string; items: typeof templateItems }[] = [];
   const generalItems: typeof templateItems = [];
   for (const item of templateItems) {
     if (item.area) {
-      const group = areaGroups.find((g) => g.area === item.area);
+      const group = areaGroups.find((g) => g.name === item.area);
       if (group) group.items.push(item);
-      else areaGroups.push({ area: item.area, items: [item] });
+      else areaGroups.push({ key: `section-${item.area}`, name: item.area, items: [item] });
     } else {
       generalItems.push(item);
     }
   }
-  const hasNamedAreas = areaGroups.length > 0;
   if (generalItems.length > 0) {
-    areaGroups.push({ area: undefined, items: generalItems });
+    areaGroups.push({ key: "section-general", name: "General", items: generalItems });
   }
+  if (adHocItems.length > 0) {
+    areaGroups.push({ key: "section-adhoc", name: "Additional Items", items: adHocItems });
+  }
+
+  const sections = areaGroups.map((g) => ({
+    ...g,
+    progress: summariseChecklist(g.items.map(checkItemStatus)),
+  }));
 
   return (
     <div className="space-y-3 p-4 overflow-y-auto">
@@ -119,71 +132,47 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
         {formatTime(submission.completedAt)}
       </p>
 
-      {/* Template check items, grouped by area */}
-      {areaGroups.map((group) => (
-        <div key={group.area ?? "general"} className="space-y-1.5">
-          {hasNamedAreas && (
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              {group.area ?? "General"}
-            </p>
-          )}
-          {group.items.map((item, idx) => (
-            <div
-              key={`${item.checkId ?? idx}-${item.name}`}
-              className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800/60"
-            >
-              <ItemStatusIcon item={item} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 dark:text-gray-200">
-                  {item.name}
-                  {!item.isCompleted && item.isNotApplicable && (
-                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
-                      N/A
-                    </span>
-                  )}
-                </p>
-                {item.notes && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 italic">
-                    {item.notes}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* Ad-hoc items */}
-      {adHocItems.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 flex items-center gap-1">
-            <Tag className="h-3 w-3" /> Ad-hoc items
-          </p>
-          {adHocItems.map((item, idx) => (
-            <div
-              key={`adhoc-${idx}`}
-              className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40"
-            >
-              <ItemStatusIcon item={item} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 dark:text-gray-200">
-                  {item.name}
-                  {!item.isCompleted && item.isNotApplicable && (
-                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
-                      N/A
-                    </span>
-                  )}
-                </p>
-                {item.notes && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 italic">
-                    {item.notes}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <Accordion
+        type="multiple"
+        defaultValue={sections.map((s) => s.key)}
+        className="space-y-3"
+      >
+        {sections.map((section) => (
+          <ChecklistSection
+            key={section.key}
+            value={section.key}
+            name={section.name}
+            progress={section.progress}
+          >
+            {section.items.map((item, idx) => {
+              const status = checkItemStatus(item);
+              return (
+                <ChecklistRow
+                  key={`${item.checkId ?? idx}-${item.name}`}
+                  status={status}
+                  name={item.name}
+                  notes={item.notes}
+                  leading={<ItemStatusIcon item={item} />}
+                  badges={
+                    <>
+                      {status === "attention" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
+                          N/A
+                        </span>
+                      )}
+                      {item.isAdHoc && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                          Ad-hoc
+                        </span>
+                      )}
+                    </>
+                  }
+                />
+              );
+            })}
+          </ChecklistSection>
+        ))}
+      </Accordion>
 
       {/* General notes */}
       {submission.notes && submission.notes.trim() && (

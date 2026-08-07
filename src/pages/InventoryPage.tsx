@@ -1,56 +1,78 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { InventoryTemplateList } from "../features/inventory/components/InventoryTemplateList";
 import { InventoryRecentChecks } from "../features/inventory/components/InventoryRecentChecks";
 import { InventoryTemplateSelector } from "../features/inventory/components/InventoryTemplateSelector";
-import InventoryAdminTab from "../features/inventory/components/InventoryAdminTab";
+import { InventoryAdminTab } from "../features/inventory/components/InventoryAdminTab";
 import { api } from "../../convex/_generated/api";
+import { PageTabs } from "@/components/shared/PageTabs";
 import { Badge } from "@/components/ui/badge";
+
+type InventoryTab = "checks" | "history" | "templates" | "admin";
 
 export function InventoryPage() {
   const { isAuthenticated } = useConvexAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"checks" | "history" | "templates" | "admin">("checks");
+  const [searchParams, setSearchParams] = useSearchParams();
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
-  const hasTemplatesAccess = moduleAccess?.inventoryAdmin;
-  const hasAdminAccess = moduleAccess?.inventoryAdmin;
-  
+  const adminAccess = moduleAccess?.inventoryAdmin;
+
   // Get in-progress runs count for header context
   const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns);
   const activeCount = inProgressRuns?.length ?? 0;
-  
-  // Refs for tab animation
-  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
-  // Ensure we don't render a tab the user cannot access
+  const requestedTab = searchParams.get("tab");
+  const isKnownTab =
+    requestedTab === "history" ||
+    requestedTab === "templates" ||
+    requestedTab === "admin";
+  const isGatedTab = requestedTab === "templates" || requestedTab === "admin";
+  const activeTab: InventoryTab = !requestedTab || !isKnownTab
+    ? "checks"
+    : isGatedTab && adminAccess !== true
+      ? "checks"
+      : (requestedTab as InventoryTab);
+
+  // Normalize invalid/unauthorized tab values in the URL
   useEffect(() => {
-    if (activeTab === "templates" && hasTemplatesAccess === false) {
-      setActiveTab("checks");
-    }
-    if (activeTab === "admin" && hasAdminAccess === false) {
-      setActiveTab("checks");
-    }
-  }, [activeTab, hasTemplatesAccess, hasAdminAccess]);
-  
-  // Update indicator position when active tab changes
-  useEffect(() => {
-    const activeTabElement = tabRefs.current[activeTab];
-    if (activeTabElement) {
-      setIndicatorStyle({
-        left: activeTabElement.offsetLeft,
-        width: activeTabElement.offsetWidth,
-      });
-    }
-  }, [activeTab, hasTemplatesAccess, hasAdminAccess]);
+    if (!requestedTab) return;
+    if (isKnownTab && !(isGatedTab && adminAccess === false)) return;
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("tab");
+      return next;
+    }, { replace: true });
+  }, [adminAccess, isGatedTab, isKnownTab, requestedTab, setSearchParams]);
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "checks") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
+
+  const tabs: Array<{ key: InventoryTab; label: string; badgeCount?: number }> = [
+    { key: "checks", label: "Checks", badgeCount: activeCount },
+    { key: "history", label: "History" },
+  ];
+  if (adminAccess) {
+    tabs.push({ key: "templates", label: "Templates" });
+    tabs.push({ key: "admin", label: "Admin" });
+  }
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <h2 className="text-xl font-semibold mb-4">Please login to view this page</h2>
-        <button 
+        <button
           onClick={() => navigate('/login')}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
@@ -73,83 +95,26 @@ export function InventoryPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 relative">
-        <nav className="flex flex-wrap gap-x-2 sm:gap-x-4 -mb-px relative">
-          <button
-            ref={(el) => { tabRefs.current['checks'] = el; }}
-            onClick={() => setActiveTab("checks")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === "checks"
-                ? 'text-red-600 dark:text-red-400 font-bold'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            Checks
-          </button>
-          <button
-            ref={(el) => { tabRefs.current['history'] = el; }}
-            onClick={() => setActiveTab("history")}
-            className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-              activeTab === "history"
-                ? 'text-red-600 dark:text-red-400 font-bold'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-            }`}
-          >
-            History
-          </button>
-          {hasTemplatesAccess && (
-            <button
-              ref={(el) => { tabRefs.current['templates'] = el; }}
-              onClick={() => setActiveTab("templates")}
-              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-                activeTab === "templates"
-                  ? 'text-red-600 dark:text-red-400 font-bold'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-            >
-              Templates
-            </button>
-          )}
-          {hasAdminAccess && (
-            <button
-              ref={(el) => { tabRefs.current['admin'] = el; }}
-              onClick={() => setActiveTab("admin")}
-              className={`py-2 px-2 sm:px-3 text-sm transition-colors whitespace-nowrap ${
-                activeTab === "admin"
-                  ? 'text-red-600 dark:text-red-400 font-bold'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium'
-              }`}
-            >
-              Admin
-            </button>
-          )}
-        </nav>
-        {/* Animated indicator */}
-        <div
-          className="absolute bottom-0 h-0.5 bg-red-500 dark:bg-red-400 transition-all duration-300 ease-out"
-          style={{
-            left: `${indicatorStyle.left}px`,
-            width: `${indicatorStyle.width}px`,
-          }}
-        />
-      </div>
+      <PageTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={handleTabChange}
+        ariaLabel="Inventory tabs"
+      />
 
-      {/* Tab Content */}
-      <div className="mt-4">
-        {activeTab === "checks" && (
-          <InventoryTemplateSelector />
-        )}
+      <div
+        className="mt-4"
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
+        {activeTab === "checks" && <InventoryTemplateSelector />}
 
-        {activeTab === "history" && (
-          <InventoryRecentChecks />
-        )}
+        {activeTab === "history" && <InventoryRecentChecks />}
 
-        {activeTab === "templates" && hasTemplatesAccess && (
-          <InventoryTemplateList />
-        )}
+        {activeTab === "templates" && adminAccess && <InventoryTemplateList />}
 
-        {activeTab === "admin" && hasAdminAccess && (
+        {activeTab === "admin" && adminAccess && (
           <InventoryAdminTab isAuthenticated={isAuthenticated} />
         )}
       </div>

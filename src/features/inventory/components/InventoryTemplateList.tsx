@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/ui/dialog";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ApplianceTemplateDoc {
   _id: Id<"applianceTemplates">;
@@ -386,22 +387,13 @@ export function InventoryTemplateList() {
       </Dialog>
 
       {(!templates || templates.length === 0) && !showCreate && (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
-          <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-            <FileText className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No templates yet</h3>
-          <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
-            Create your first inventory check template to get started.
-          </p>
-          <Button
-            onClick={() => setShowCreate(true)}
-            className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create First Template
-          </Button>
-        </div>
+        <EmptyState
+          icon={<FileText className="h-10 w-10 text-red-500 dark:text-red-400" />}
+          title="No templates yet"
+          description="Create your first inventory check template to get started."
+          actionLabel="Create First Template"
+          onAction={() => setShowCreate(true)}
+        />
       )}
       {/* Editor moved to dedicated route */}
     </div>

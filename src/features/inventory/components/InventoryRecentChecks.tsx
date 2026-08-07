@@ -6,6 +6,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { CircleCheckBig, CircleX, Clock, User, History } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface RunSummary {
   run: {
@@ -113,20 +114,15 @@ export function InventoryRecentChecks() {
       {/* History List */}
       <div className="space-y-3">
         {(!filteredSummaries || filteredSummaries.length === 0) && (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-              <History className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {selectedTemplate === "all" ? "No check history" : `No history for ${selectedTemplate}`}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
-              {selectedTemplate === "all" 
+          <EmptyState
+            icon={<History className="h-10 w-10 text-red-500 dark:text-red-400" />}
+            title={selectedTemplate === "all" ? "No check history" : `No history for ${selectedTemplate}`}
+            description={
+              selectedTemplate === "all"
                 ? "Completed inventory checks will appear here."
                 : "Completed checks for this template will appear here."
-              }
-            </p>
-          </div>
+            }
+          />
         )}
 
         {filteredSummaries?.map((s) => {

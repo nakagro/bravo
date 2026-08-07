@@ -1,15 +1,39 @@
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Accordion } from "../../../components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
+import {
+  ChecklistActionBar,
+  ChecklistProgressHeader,
+  summariseChecklist,
+  useChecklistNavigation,
+} from "@/components/shared/checklist";
 import { InventoryCheckHeader } from "../components/InventoryCheckHeader";
 import { InventoryCheckSection } from "../components/InventoryCheckSection";
 import { InventoryExecutiveSummary } from "../components/InventoryExecutiveSummary";
 import { exportCheckToPdf } from "../utils/exportCheckToPdf";
-import type { RunItemDoc, GroupedSection, ProgressInfo } from "../types/inventory.types";
+import {
+  hasQuantityMismatch,
+  inventoryItemStatus,
+  isInventoryItemAnswered,
+} from "../utils/inventoryStatus";
+import type { RunItemDoc, GroupedSection } from "../types/inventory.types";
+
+const sectionKey = (order: number) => `section-${order}`;
 
 export function InventoryChecksTab() {
   const { runId } = useParams<{ runId: string }>();
@@ -23,10 +47,14 @@ export function InventoryChecksTab() {
 
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const sectionRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+
+  const items = useMemo(
+    () => (runData?.items as RunItemDoc[] | undefined) ?? [],
+    [runData]
+  );
 
   const grouped = useMemo((): GroupedSection[] => {
-    const items = (runData?.items as RunItemDoc[]) ?? [];
     const map = new Map<number, { sectionName: string; items: RunItemDoc[] }>();
     for (const item of items) {
       const key = item.sectionOrder;
@@ -35,143 +63,73 @@ export function InventoryChecksTab() {
     }
     return Array.from(map.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([order, { sectionName, items }]) => ({
+      .map(([order, { sectionName, items: sectionItems }]) => ({
         order,
         sectionName,
-        items: items.sort((a, b) => a.itemOrder - b.itemOrder),
+        items: sectionItems.sort((a, b) => a.itemOrder - b.itemOrder),
       }));
-  }, [runData]);
+  }, [items]);
 
   const run = runData?.run;
   const isReadOnly = run?.status !== "in_progress";
 
-  const progress = useMemo((): ProgressInfo => {
-    const items = (runData?.items as RunItemDoc[]) ?? [];
-    const answered = items.filter(i => {
-      if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
-      return typeof i.value !== "undefined";
-    }).length;
-    const total = items.length;
-    return { answered, total, percentage: total > 0 ? Math.round((answered / total) * 100) : 0 };
-  }, [runData]);
+  const progress = useMemo(
+    () => summariseChecklist(items.map(inventoryItemStatus)),
+    [items]
+  );
 
-  // Count deviations (No answers + quantity mismatches)
-  const deviationCount = useMemo(() => {
-    const items = (runData?.items as RunItemDoc[]) ?? [];
-    return items.filter(i => {
-      if (i.expectedQuantity !== undefined) {
-        return i.actualQuantity !== undefined && i.actualQuantity !== i.expectedQuantity;
-      }
-      return i.value === "no";
-    }).length;
-  }, [runData]);
+  const sectionProgress = useMemo(
+    () =>
+      grouped.map((section) => ({
+        section,
+        progress: summariseChecklist(section.items.map(inventoryItemStatus)),
+      })),
+    [grouped]
+  );
 
-  // Auto-expand: track which sections are open
-  // Start with all open, then auto-open next unanswered when a section completes
-  const [openSections, setOpenSections] = useState<string[]>([]);
-  const prevProgressRef = useRef<Map<number, number>>(new Map());
+  const navSections = useMemo(
+    () =>
+      sectionProgress.map(({ section, progress: p }) => ({
+        key: sectionKey(section.order),
+        answered: p.answered,
+        total: p.total,
+      })),
+    [sectionProgress]
+  );
 
-  // Initialize open sections when data loads
-  useEffect(() => {
-    if (grouped.length > 0 && openSections.length === 0) {
-      setOpenSections(grouped.map(s => `section-${s.order}`));
-    }
-  }, [grouped, openSections.length]);
+  const { registerSectionRef, openSections, setOpenSections } =
+    useChecklistNavigation({ sections: navSections, autoAdvance: !isReadOnly });
 
-  // Auto-expand next section when one completes
-  useEffect(() => {
-    if (isReadOnly || grouped.length === 0) return;
+  const unanswered = items.filter((i) => !isInventoryItemAnswered(i));
+  const mismatches = items.filter(hasQuantityMismatch);
 
-    for (const section of grouped) {
-      const answered = section.items.filter(i => {
-        if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
-        return typeof i.value !== "undefined";
-      }).length;
-      const total = section.items.length;
-      const prevAnswered = prevProgressRef.current.get(section.order) ?? 0;
-
-      // Section just completed
-      if (answered === total && prevAnswered < total) {
-        // Find next incomplete section
-        const nextIncomplete = grouped.find(s => {
-          if (s.order <= section.order) return false;
-          const a = s.items.filter(i => {
-            if (i.expectedQuantity !== undefined) return i.actualQuantity !== undefined;
-            return typeof i.value !== "undefined";
-          }).length;
-          return a < s.items.length;
-        });
-
-        if (nextIncomplete) {
-          const nextKey = `section-${nextIncomplete.order}`;
-          setOpenSections(prev => {
-            if (prev.includes(nextKey)) return prev;
-            return [...prev, nextKey];
-          });
-          // Scroll to next section
-          setTimeout(() => {
-            const el = sectionRefs.current.get(nextIncomplete.order);
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }, 200);
-        }
-      }
-
-      prevProgressRef.current.set(section.order, answered);
-    }
-  }, [grouped, isReadOnly]);
-
-  const handleNavigateSection = useCallback((sectionOrder: number) => {
-    const key = `section-${sectionOrder}`;
-    setOpenSections(prev => {
-      if (prev.includes(key)) return prev;
-      return [...prev, key];
-    });
-    setTimeout(() => {
-      const el = sectionRefs.current.get(sectionOrder);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 100);
-  }, []);
-
-  const handleComplete = async () => {
+  const runComplete = async () => {
     if (!run) return;
-    const items = (runData?.items as RunItemDoc[] | undefined) ?? [];
-
-    const unanswered = items.filter(i => {
-      if (i.expectedQuantity !== undefined) return i.actualQuantity === undefined;
-      return typeof i.value === "undefined";
-    });
-
-    if (unanswered.length > 0) {
-      const proceed = confirm(`There are ${unanswered.length} unchecked items. Complete anyway?`);
-      if (!proceed) return;
-    }
-
-    const mismatches = items.filter(i =>
-      i.expectedQuantity !== undefined &&
-      i.actualQuantity !== undefined &&
-      i.actualQuantity !== i.expectedQuantity
-    );
-
-    if (mismatches.length > 0) {
-      const mismatchNames = mismatches.map(i => i.itemName).join(", ");
-      const proceed = confirm(
-        `Warning: ${mismatches.length} item(s) have quantity mismatches (${mismatchNames}). ` +
-        `Consider adding notes to explain the discrepancy. Complete anyway?`
-      );
-      if (!proceed) return;
-    }
-
     setCompleting(true);
     try {
       await completeRun({ runId: run._id });
+      toast.success("Inventory check completed");
       navigate("/inventory");
+    } catch (error) {
+      console.error("Error completing inventory check:", error);
+      toast.error("Failed to complete inventory check", {
+        description:
+          error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
     } finally {
       setCompleting(false);
     }
+  };
+
+  const handleComplete = () => {
+    if (!run) return;
+    // One dialog stating everything outstanding, rather than two native
+    // confirm() prompts back to back.
+    if (unanswered.length > 0 || mismatches.length > 0) {
+      setShowCompleteConfirm(true);
+      return;
+    }
+    void runComplete();
   };
 
   const handleCancel = async () => {
@@ -179,20 +137,27 @@ export function InventoryChecksTab() {
     setCancelling(true);
     try {
       await cancelRun({ runId: run._id });
+      toast.success("Inventory check cancelled");
       navigate("/inventory");
+    } catch (error) {
+      console.error("Error cancelling inventory check:", error);
+      toast.error("Failed to cancel inventory check", {
+        description:
+          error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
     } finally {
       setCancelling(false);
     }
   };
 
   const handleExportPdf = () => {
-    if (!run || !runData?.items) return;
+    if (!run || items.length === 0) return;
 
-    const startedByName = runData.startedByUser
+    const startedByName = runData?.startedByUser
       ? `${runData.startedByUser.firstName || ""} ${runData.startedByUser.lastName || ""}`.trim() || runData.startedByUser.name || "Unknown"
       : undefined;
 
-    const completedByName = runData.completedByUser
+    const completedByName = runData?.completedByUser
       ? `${runData.completedByUser.firstName || ""} ${runData.completedByUser.lastName || ""}`.trim() || runData.completedByUser.name || "Unknown"
       : undefined;
 
@@ -206,7 +171,7 @@ export function InventoryChecksTab() {
         startedByName,
         completedByName,
       },
-      items: runData.items as RunItemDoc[],
+      items,
       groupedSections: grouped,
     });
   };
@@ -223,25 +188,32 @@ export function InventoryChecksTab() {
     );
   }
 
+  const completeConfirmDescription = [
+    unanswered.length > 0
+      ? `${unanswered.length} item${unanswered.length !== 1 ? "s" : ""} ${unanswered.length !== 1 ? "have" : "has"} not been checked.`
+      : null,
+    mismatches.length > 0
+      ? `${mismatches.length} item${mismatches.length !== 1 ? "s" : ""} ${mismatches.length !== 1 ? "have" : "has"} a quantity mismatch (${mismatches.map((i) => i.itemName).join(", ")}). Consider adding notes to explain the discrepancy.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="space-y-3 pb-4">
       <InventoryCheckHeader
         templateName={run.templateName}
         status={run.status}
-        progress={progress}
-        deviationCount={deviationCount}
         isReadOnly={isReadOnly}
-        completing={completing}
         cancelling={cancelling}
-        onComplete={handleComplete}
-        onCancel={handleCancel}
+        onCancel={() => void handleCancel()}
         onExportPdf={handleExportPdf}
-        sections={grouped}
-        onNavigateSection={handleNavigateSection}
       />
 
-      {isReadOnly && runData?.items && (
-        <InventoryExecutiveSummary items={runData.items as RunItemDoc[]} />
+      <ChecklistProgressHeader progress={progress} />
+
+      {isReadOnly && items.length > 0 && (
+        <InventoryExecutiveSummary items={items} />
       )}
 
       <Accordion
@@ -250,21 +222,53 @@ export function InventoryChecksTab() {
         onValueChange={setOpenSections}
         className="space-y-3"
       >
-        {grouped.map((section) => (
-          <div
+        {sectionProgress.map(({ section }) => (
+          <InventoryCheckSection
             key={section.order}
-            ref={(el) => {
-              if (el) sectionRefs.current.set(section.order, el);
-              else sectionRefs.current.delete(section.order);
-            }}
-          >
-            <InventoryCheckSection
-              section={section}
-              isReadOnly={isReadOnly}
-            />
-          </div>
+            ref={registerSectionRef(sectionKey(section.order))}
+            section={section}
+            isReadOnly={isReadOnly}
+          />
         ))}
       </Accordion>
+
+      <ChecklistActionBar
+        state={isReadOnly ? "completed" : "editable"}
+        primaryLabel="Complete Check"
+        onPrimary={handleComplete}
+        // Inventory can finish early — the outstanding items are surfaced in a
+        // confirmation dialog rather than gating the button.
+        primaryDisabled={false}
+        isSubmitting={completing}
+        completedLabel={
+          run.status === "cancelled" ? "Check cancelled" : "Check completed"
+        }
+      />
+
+      <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete this check anyway?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {completeConfirmDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Keep Checking
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setShowCompleteConfirm(false);
+                void runComplete();
+              }}
+            >
+              Complete anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

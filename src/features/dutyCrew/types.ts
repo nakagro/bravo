@@ -1,4 +1,5 @@
 import { Id } from "../../../convex/_generated/dataModel";
+import type { ChecklistItemStatus } from "@/components/shared/checklist";
 
 export type CheckItemData = {
   checkId?: Id<"stationChecks">;
@@ -19,6 +20,17 @@ export const isItemResolved = (item: {
   isCompleted: boolean;
   isNotApplicable?: boolean;
 }) => item.isCompleted || item.isNotApplicable === true;
+
+/** Duty Crew's adapter onto the shared checklist vocabulary. */
+export const checkItemStatus = (item: {
+  isCompleted: boolean;
+  isNotApplicable?: boolean;
+}): ChecklistItemStatus =>
+  item.isCompleted
+    ? "resolved"
+    : item.isNotApplicable === true
+      ? "attention"
+      : "unanswered";
 
 export type SubmissionStatus = "draft" | "completed";
 

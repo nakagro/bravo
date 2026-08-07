@@ -105,7 +105,7 @@ describe("event notices", () => {
 
     expect(notice).toBeDefined();
     expect(notice!.title).toBe("Duty crew checks submitted");
-    expect(notice!.description).toContain("1 completed");
+    expect(notice!.description).toContain("1 of 2 completed");
     expect(notice!.description).toContain("1 N/A");
     expect(notice!.dismissible).toBe(true);
   });

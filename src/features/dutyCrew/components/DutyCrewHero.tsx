@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { ProgressRing } from "@/components/common/ProgressRing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +18,6 @@ import {
   formatDate,
   getUserFullName,
   getUserInitials,
-  isItemResolved,
-  type CheckItemData,
   type SubmissionStatus,
 } from "../types";
 
@@ -38,7 +35,6 @@ interface DutyCrewHeroProps {
     isSpecial: boolean;
     notes?: string;
   } | null;
-  checkItems: CheckItemData[];
   submissionStatus: SubmissionStatus | "not_started";
   onReopen?: () => void;
   canReopen: boolean;
@@ -49,7 +45,6 @@ export function DutyCrewHero({
   onWeekChange,
   currentSunday,
   assignment,
-  checkItems,
   submissionStatus,
   onReopen,
   canReopen,
@@ -69,22 +64,8 @@ export function DutyCrewHero({
     assignment && !assignment.isSpecial ? { dutyCrewId: assignment.dutyCrew._id } : "skip"
   );
 
-  const resolvedCount = checkItems.filter(isItemResolved).length;
-  const naCount = checkItems.filter(
-    (item) => !item.isCompleted && item.isNotApplicable === true
-  ).length;
-  const totalCount = checkItems.length;
-  const percentage = totalCount > 0 ? (resolvedCount / totalCount) * 100 : 0;
-
   const status = statusConfig[submissionStatus];
   const isSpecial = assignment?.isSpecial ?? false;
-
-  const ringColor =
-    submissionStatus === "completed"
-      ? "stroke-green-500 dark:stroke-green-400"
-      : submissionStatus === "draft"
-        ? "stroke-yellow-500 dark:stroke-yellow-400"
-        : "stroke-gray-400 dark:stroke-gray-500";
 
   return (
     <div
@@ -124,7 +105,7 @@ export function DutyCrewHero({
           {weekOffset !== 0 && (
             <button
               onClick={() => onWeekChange(0)}
-              className="min-h-[32px] px-2 -mb-1.5 flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              className="min-h-[44px] px-2 -mb-1.5 flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
               Return to current week
             </button>
@@ -151,25 +132,8 @@ export function DutyCrewHero({
           </div>
         ) : (
           <div className="flex items-start gap-4">
-            {/* Progress ring */}
-            <div className="flex-shrink-0">
-              <ProgressRing
-                percentage={percentage}
-                size={64}
-                strokeWidth={5}
-                color={ringColor}
-                showLabel
-                label={`${resolvedCount}/${totalCount}`}
-                labelClass="text-xs font-bold"
-              />
-              {naCount > 0 && (
-                <p className="mt-1 text-center text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                  {naCount} N/A
-                </p>
-              )}
-            </div>
-
-            {/* Crew info */}
+            {/* Crew info — progress lives in the sticky ChecklistProgressHeader
+                below, so the ring isn't duplicated here */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2
@@ -192,7 +156,7 @@ export function DutyCrewHero({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="h-11 px-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     onClick={onReopen}
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />

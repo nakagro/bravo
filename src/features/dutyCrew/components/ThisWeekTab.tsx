@@ -314,7 +314,6 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         onWeekChange={setWeekOffset}
         currentSunday={currentSunday}
         assignment={currentAssignment}
-        checkItems={checkItems}
         submissionStatus={submissionStatus}
         onReopen={handleReopen}
         canReopen={isAdmin || isLeader === true}

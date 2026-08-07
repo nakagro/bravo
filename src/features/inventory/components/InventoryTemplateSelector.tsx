@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "../../../components/ui/alert-dialog";
 import { useState } from "react";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ApplianceTemplateDoc {
   _id: Id<"applianceTemplates">;
@@ -122,15 +123,11 @@ export function InventoryTemplateSelector() {
   // Empty state
   if (!templates || templates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-          <ClipboardList className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No checklists available</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
-          Contact an admin to create inventory check templates.
-        </p>
-      </div>
+      <EmptyState
+        icon={<ClipboardList className="h-10 w-10 text-red-500 dark:text-red-400" />}
+        title="No checklists available"
+        description="Contact an admin to create inventory check templates."
+      />
     );
   }
 

@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
+import { buildSubmissionNotice } from "./stationChecks";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -163,18 +164,89 @@ describe("station checks N/A handling", () => {
     expect(saved?.status).toBe("completed");
   });
 
-  it("rejects submission while any item is unresolved", async () => {
-    const { dutyCrewId, asUser } = await setup();
+  // There is deliberately no completeness gate — see submitStationCheck. A week
+  // that can't be finished must still be submittable, because the notification
+  // is what drives follow-up.
+  it("allows submission while items are still unresolved", async () => {
+    const { t, dutyCrewId, asUser } = await setup();
 
-    await expect(
-      asUser.mutation(api.stationChecks.submitStationCheck, {
+    const submissionId = await asUser.mutation(
+      api.stationChecks.submitStationCheck,
+      {
         date: SUNDAY,
         dutyCrewId,
         checkItems: [
           item("Sweep floor", { isCompleted: true }),
           item("Mow lawn"),
         ],
-      })
-    ).rejects.toThrow("Mow lawn");
+      }
+    );
+
+    const saved = await t.run((ctx) => ctx.db.get(submissionId));
+    expect(saved?.status).toBe("completed");
+    expect(saved?.checkItems[1].isCompleted).toBe(false);
+    expect(saved?.checkItems[1].isNotApplicable).toBeUndefined();
+  });
+});
+
+// The notice is the whole reason submission isn't gated: whatever was left
+// undone has to reach the officer by name, or nobody follows it up.
+describe("buildSubmissionNotice", () => {
+  const notice = (items: Array<{
+    name: string;
+    isCompleted: boolean;
+    isNotApplicable?: boolean;
+    notes?: string;
+  }>) => buildSubmissionNotice(items, "Duty Crew 1", SUNDAY);
+
+  it("names untouched items and counts them in the summary", () => {
+    const result = notice([
+      { name: "Sweep floor", isCompleted: true },
+      { name: "Mow lawn", isCompleted: false },
+    ]);
+
+    expect(result.notDoneCount).toBe(1);
+    expect(result.summary).toContain("1 of 2 completed");
+    expect(result.summary).toContain("1 not done");
+    expect(result.attention).toContain("Mow lawn — not done");
+  });
+
+  it("includes a note left on an untouched item", () => {
+    const result = notice([
+      { name: "Mow lawn", isCompleted: false, notes: "Mower is out for service" },
+    ]);
+
+    expect(result.attention).toEqual([
+      "Mow lawn — not done: Mower is out for service",
+    ]);
+  });
+
+  it("lists untouched items ahead of N/A items", () => {
+    const result = notice([
+      { name: "Check hoses", isCompleted: false, isNotApplicable: true, notes: "Truck away" },
+      { name: "Mow lawn", isCompleted: false },
+    ]);
+
+    expect(result.attention[0]).toBe("Mow lawn — not done");
+    expect(result.attention[1]).toBe("Check hoses — marked N/A: Truck away");
+  });
+
+  it("reports nothing needing attention for a clean week", () => {
+    const result = notice([
+      { name: "Sweep floor", isCompleted: true },
+      { name: "Check hoses", isCompleted: true },
+    ]);
+
+    expect(result.notDoneCount).toBe(0);
+    expect(result.attention).toEqual([]);
+    expect(result.summary).toBe("2 of 2 completed");
+  });
+
+  it("does not double-report a note on an item that is already flagged", () => {
+    const result = notice([
+      { name: "Mow lawn", isCompleted: false, notes: "Too wet" },
+    ]);
+
+    expect(result.attention).toHaveLength(1);
   });
 });
