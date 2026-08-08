@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
@@ -70,6 +70,57 @@ function applyItemAttribution(
     }
     return { ...item, completedBy: userId, completedAt: now };
   });
+}
+
+// A week's submission is keyed by its Sunday, but the client sends the Sunday
+// as end-of-day (23:59:59.999) while the reader used to normalise it to
+// midnight — so a draft was written under one key and looked up under another
+// and every tick appeared to vanish on reload. Match on the whole Mon–Sun
+// window instead, which is also tolerant of the timestamps already in the
+// database from before this was fixed.
+export function weekWindow(date: number) {
+  const base = new Date(date);
+  base.setHours(0, 0, 0, 0);
+  const day = base.getDay(); // 0 = Sunday
+
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  return { start: monday.getTime(), end: sunday.getTime(), sunday };
+}
+
+// Find the submission covering the week that `date` falls in. A week has one
+// submission; the duty crew is whatever it was saved under, not whatever the
+// rotation rule derives now, because the two can disagree (manual schedule
+// overrides, 5th Sundays) and a mismatch used to hide the draft entirely.
+async function findSubmissionForWeek(
+  ctx: QueryCtx,
+  date: number,
+  preferredCrewId?: Id<"dutyCrew">
+): Promise<Doc<"stationCheckSubmissions"> | null> {
+  const { start, end } = weekWindow(date);
+
+  const candidates = await ctx.db
+    .query("stationCheckSubmissions")
+    .withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
+    .collect();
+
+  if (candidates.length === 0) return null;
+  if (preferredCrewId) {
+    const forCrew = candidates.filter((s) => s.dutyCrewId === preferredCrewId);
+    if (forCrew.length > 0) candidates.splice(0, candidates.length, ...forCrew);
+  }
+  // Most recently touched wins if a duplicate ever slipped through
+  return candidates.reduce((latest, s) =>
+    (s.lastUpdatedAt ?? s._creationTime) > (latest.lastUpdatedAt ?? latest._creationTime)
+      ? s
+      : latest
+  );
 }
 
 // Condition key for "the week's station checks were submitted". Officers map it
@@ -388,32 +439,8 @@ export const getCurrentWeekCheckStatus = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    // Use the provided date or default to current date
-    const baseDate = args.date ? new Date(args.date) : new Date();
-    baseDate.setHours(0, 0, 0, 0);
-
-    // Calculate the week's boundaries (Monday to Sunday) for the given date
-    const calculateWeekBoundaries = (date: Date) => {
-      const currentDay = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-
-      // Find the week's Sunday (end of week)
-      const weekSunday = new Date(date);
-      const daysUntilSunday = currentDay === 0 ? 0 : 7 - currentDay;
-      weekSunday.setDate(date.getDate() + daysUntilSunday);
-
-      // Find the week's Monday (start of week)
-      const weekMonday = new Date(date);
-      const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
-      weekMonday.setDate(date.getDate() - daysSinceMonday);
-
-      return {
-        sunday: weekSunday,
-        monday: weekMonday
-      };
-    };
-
-    const { sunday: currentWeekSunday, monday: currentWeekMonday } = calculateWeekBoundaries(baseDate);
-    const sundayTimestamp = currentWeekSunday.getTime();
+    const { sunday: currentWeekSunday } = weekWindow(args.date ?? Date.now());
+    const sundayTimestamp = new Date(currentWeekSunday).setHours(0, 0, 0, 0);
 
     // If dutyCrewId is provided, use it; otherwise, find the duty crew for the current week's Sunday
     let dutyCrewId = args.dutyCrewId;
@@ -459,46 +486,20 @@ export const getCurrentWeekCheckStatus = query({
       }
     }
 
-    if (!dutyCrewId) {
-      return null;
-    }
-    const crewId = dutyCrewId;
-
-    // Find an existing submission for this week and duty crew
-    // We'll look for both draft and completed submissions
-    // We'll also look for submissions created anytime during the current week
-    const mondayTimestamp = currentWeekMonday.getTime();
-
-    // First, try to find a submission specifically for this Sunday
-    let submission = await ctx.db
-      .query("stationCheckSubmissions")
-      .withIndex("by_date_and_dutyCrew", (q) =>
-        q.eq("date", sundayTimestamp).eq("dutyCrewId", crewId)
-      )
-      .order("desc") // Get the most recent one first
-      .first();
-
-    // If no submission is found for this Sunday specifically,
-    // look for any submission created during the current week
-    if (!submission) {
-      submission = await ctx.db
-        .query("stationCheckSubmissions")
-        .withIndex("by_dutyCrew", (q) =>
-          q
-            .eq("dutyCrewId", crewId)
-            .gte("_creationTime", mondayTimestamp)
-            .lte("_creationTime", sundayTimestamp + 24 * 60 * 60 * 1000) // Include all of Sunday
-        )
-        .order("desc") // Get the most recent one first
-        .first();
-    }
+    // Find this week's submission (draft or completed). The crew derived above
+    // is only a preference — the submission's own crew is authoritative.
+    const submission = await findSubmissionForWeek(
+      ctx,
+      args.date ?? Date.now(),
+      dutyCrewId ?? undefined
+    );
 
     if (!submission) {
       return null;
     }
 
     // Get the duty crew information
-    const dutyCrew = await ctx.db.get(crewId);
+    const dutyCrew = await ctx.db.get(submission.dutyCrewId);
     if (!dutyCrew) {
       return null;
     }
@@ -602,13 +603,12 @@ export const saveDraftStationCheck = mutation({
 
       return args.existingSubmissionId;
     } else {
-      // Check if there's already a submission for this date and duty crew
-      const existingSubmission = await ctx.db
-        .query("stationCheckSubmissions")
-        .withIndex("by_date_and_dutyCrew", (q) =>
-          q.eq("date", args.date).eq("dutyCrewId", args.dutyCrewId)
-        )
-        .first();
+      // Check if this week already has a submission
+      const existingSubmission = await findSubmissionForWeek(
+        ctx,
+        args.date,
+        args.dutyCrewId
+      );
 
       if (existingSubmission) {
         // Update the existing submission
@@ -741,13 +741,12 @@ export const submitStationCheck = mutation({
       await notifySubmission(args.existingSubmissionId);
       return args.existingSubmissionId;
     } else {
-      // Check if there's already a submission for this date and duty crew
-      const existingSubmission = await ctx.db
-        .query("stationCheckSubmissions")
-        .withIndex("by_date_and_dutyCrew", (q) =>
-          q.eq("date", args.date).eq("dutyCrewId", args.dutyCrewId)
-        )
-        .first();
+      // Check if this week already has a submission
+      const existingSubmission = await findSubmissionForWeek(
+        ctx,
+        args.date,
+        args.dutyCrewId
+      );
 
       if (existingSubmission) {
         // Update the existing submission and mark as completed

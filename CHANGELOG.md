@@ -1,5 +1,19 @@
 # Changelog
 
+## [2026.08.08]
+- Duty Crew: Fixed ticked items not being remembered. Checks are saved as you go, so you can tick off an item or two, leave the page, and pick up where you left off, you no longer have to finish the whole week in one sitting. Previously a week's checks could only be found again if everything lined up exactly, so they often came back blank.
+- Duty Crew / Inventory: Admins can send themselves a test notification from the Notify section, to confirm the right people will be told before relying on it.
+
+## [2026.08.07]
+- Duty Crew and Inventory checklists now look and behave the same way. Both have a progress ring that stays in view as you scroll and a bottom bar that tells you how many items are left, tap it to jump to the next one. Sections can be collapsed, show their own count, and the notes, confirmation and empty screens are now identical across the two.
+- Inventory: Browser pop-ups replaced with proper in-app confirmations, and the tab you're on is now part of the address, so a link to an inventory check opens where you expect.
+- Inventory: When a check is completed, the people responsible are now told automatically, in the Action Centre and by email, with anything that came up short named in the notice. Choose who gets told under Inventory → Admin → Notify.
+- Duty Crew: A week no longer has to be fully ticked off before it can be submitted. Submitting with items outstanding asks you to confirm, and the notice sent to the duty crew officer names exactly what was left undone. Weeks were previously sitting in draft forever, which told nobody anything.
+
+## [2026.08.06]
+- Events: Organisers can now close member responses, useful once a roster is set. Members see a "Can't attend" button instead of the usual RSVP, so late changes still get through without reopening the whole event to everyone.
+- Events: Responses can be closed from the start when creating an event, and switching between open and closed asks what to do with people who have already responded.
+
 ## [2026.08.02]
 - Duty Crew: Check items can now be marked "couldn't be completed" (N/A) with a required reason, so one genuinely un-doable item no longer blocks the whole week from being submitted. N/A items show distinctly in the weekly list and in History, with the reason and who marked them.
 - Duty Crew: The progress bar now sticks to the bottom of the weekly checklist. When items are outstanding it's a button, tap it to jump to the next unresolved item. Area headings show their own count (e.g. KITCHEN 2/4).

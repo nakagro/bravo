@@ -40,6 +40,13 @@ export type NotifyEventArgs = {
   /** A heading plus lines, used for "these need attention" lists. */
   emailListTitle?: string;
   emailList?: string[];
+  /**
+   * Bypass audience resolution and deliver to exactly these users. Only for
+   * admin-triggered test sends, which must reach the person pressing the
+   * button — the normal path deliberately excludes the actor, so a test would
+   * otherwise skip the one person waiting to see it.
+   */
+  overrideRecipients?: Id<"users">[];
 };
 
 /**
@@ -94,7 +101,8 @@ export async function notifyEvent(
   const { mapping, userIds } = await resolveAudience(ctx, args.conditionKey);
   if (!mapping) return null;
 
-  const recipients = userIds.filter((id) => id !== args.actorUserId);
+  const recipients =
+    args.overrideRecipients ?? userIds.filter((id) => id !== args.actorUserId);
   if (recipients.length === 0) return null;
 
   const notifyInApp = mapping.notifyInApp !== false;

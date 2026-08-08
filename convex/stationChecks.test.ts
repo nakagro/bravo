@@ -250,3 +250,68 @@ describe("buildSubmissionNotice", () => {
     expect(result.attention).toHaveLength(1);
   });
 });
+
+// Exactly what ThisWeekTab computes for a week offset: the Sunday at end of day.
+// The reader used to normalise that to midnight and re-derive the duty crew from
+// the rotation rule, so a saved draft was invisible on reload and every tick
+// looked like it had been thrown away.
+function frontendSunday(weekOffset: number) {
+  const today = new Date();
+  const currentDay = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() + weekOffset * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return sunday.getTime();
+}
+
+describe("draft round trip", () => {
+  for (const weekOffset of [0, 1, -1]) {
+    it(`reads back a ticked item saved for week offset ${weekOffset}`, async () => {
+      const { dutyCrewId, asUser } = await setup();
+      const date = frontendSunday(weekOffset);
+
+      await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+        date,
+        dutyCrewId,
+        checkItems: [item("Mow lawn", { isCompleted: true })],
+      });
+
+      const status = await asUser.query(
+        api.stationChecks.getCurrentWeekCheckStatus,
+        { date }
+      );
+      expect(status?.submission.checkItems[0].isCompleted).toBe(true);
+      expect(status?.dutyCrew._id).toBe(dutyCrewId);
+    });
+  }
+
+  it("keeps a second tick on the same submission instead of forking a new one", async () => {
+    const { t, dutyCrewId, asUser } = await setup();
+    const date = frontendSunday(0);
+
+    await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date,
+      dutyCrewId,
+      checkItems: [item("Mow lawn", { isCompleted: true })],
+    });
+    // A later session ticks a second item without knowing the submission id
+    await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: date - 1000, // a slightly different clock, same week
+      dutyCrewId,
+      checkItems: [
+        item("Mow lawn", { isCompleted: true }),
+        item("Check hoses", { isCompleted: true }),
+      ],
+    });
+
+    const all = await t.run((ctx) =>
+      ctx.db.query("stationCheckSubmissions").collect()
+    );
+    expect(all).toHaveLength(1);
+    expect(all[0].checkItems).toHaveLength(2);
+  });
+});

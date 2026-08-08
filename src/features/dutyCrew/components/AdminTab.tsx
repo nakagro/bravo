@@ -47,6 +47,8 @@ export function AdminTab() {
       {section === "notifications" && (
         <NotificationRecipientsSection
           conditionKey="dutyCrew:checksSubmitted"
+          moduleId="dutyCrew"
+          url="/dutycrew?tab=history"
           title="Weekly station checks submitted"
           description="Tell the people who hold the duty crew portfolio when a crew submits their week's checks, including anything marked N/A or left with a note."
         />

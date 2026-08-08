@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, LoaderCircle, Mail } from "lucide-react";
+import { Bell, LoaderCircle, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -40,20 +40,27 @@ const NO_RANK = "__none__";
 interface NotificationRecipientsSectionProps {
   /** Audience key, conventionally "module:event" (e.g. "dutyCrew:checksSubmitted"). */
   conditionKey: string;
+  /** Module the notice belongs to; gates who can see it in the Action Centre. */
+  moduleId: string;
   /** What the event is, in the officer's words. */
   title: string;
   description: string;
+  /** Where a notice of this kind links to — used by the test send. */
+  url: string;
 }
 
 export function NotificationRecipientsSection({
   conditionKey,
+  moduleId,
   title,
   description,
+  url,
 }: NotificationRecipientsSectionProps) {
   const config = useQuery(api.actionAccountability.getAccountability, { conditionKey });
   const members = useQuery(api.users.getMemberUsers);
   const roles = useQuery(api.users.getRoles);
   const setAccountability = useMutation(api.actionAccountability.setAccountability);
+  const sendTest = useMutation(api.actionAccountability.sendTestNotification);
 
   const [isEnabled, setIsEnabled] = useState(false);
   const [notifyInApp, setNotifyInApp] = useState(true);
@@ -62,6 +69,7 @@ export function NotificationRecipientsSection({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [minimumRank, setMinimumRank] = useState<Rank | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   // Seed the form once from the server, then leave it alone — this is a live
@@ -124,6 +132,38 @@ export function NotificationRecipientsSection({
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // The test reads the saved row, not this form — say so rather than silently
+  // sending the previous settings.
+  const hasUnsavedChanges =
+    isEnabled !== config.isEnabled ||
+    notifyInApp !== config.notifyInApp ||
+    notifyEmail !== config.notifyEmail ||
+    minimumRank !== config.minimumRank ||
+    selectedRoles.length !== config.roles.length ||
+    selectedRoles.some((r) => !config.roles.includes(r)) ||
+    userIds.length !== config.userIds.length ||
+    userIds.some((id) => !config.userIds.includes(id));
+
+  const handleSendTest = async () => {
+    setIsTesting(true);
+    try {
+      const result = await sendTest({ conditionKey, moduleId, title, url });
+      const channels = [
+        result.inApp ? "the notification bell" : null,
+        result.emailedTo,
+      ].filter(Boolean);
+      toast.success("Test notification sent to you", {
+        description: `Check ${channels.join(" and ")}.`,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send the test notification"
+      );
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -266,8 +306,37 @@ export function NotificationRecipientsSection({
           </>
         )}
 
-        <div className="flex justify-end border-t border-gray-100 dark:border-gray-700 pt-4">
-          <Button onClick={handleSave} disabled={isSaving}>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+          {isEnabled ? (
+            <div className="min-w-0">
+              <Button
+                variant="outline"
+                onClick={handleSendTest}
+                disabled={isTesting || isSaving || hasUnsavedChanges}
+                className="w-full sm:w-auto"
+              >
+                {isTesting ? (
+                  <span className="flex items-center gap-2">
+                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Sending...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                    Send test to me
+                  </span>
+                )}
+              </Button>
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {hasUnsavedChanges
+                  ? "Save first — the test uses the saved settings."
+                  : "Goes only to you, using the saved settings. Nobody else is notified."}
+              </p>
+            </div>
+          ) : (
+            <span />
+          )}
+          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
             {isSaving ? (
               <span className="flex items-center gap-2">
                 <LoaderCircle className="h-4 w-4 animate-spin" />

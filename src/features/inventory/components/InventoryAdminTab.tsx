@@ -93,6 +93,8 @@ export function InventoryAdminTab({ isAuthenticated }: InventoryAdminTabProps) {
     <div className="space-y-4">
       <NotificationRecipientsSection
         conditionKey="inventory:checkCompleted"
+        moduleId="inventory"
+        url="/inventory?tab=history"
         title="Inventory check completed"
         description="Tell the people who hold the equipment portfolio when an inventory check is completed, including anything missing, miscounted or left unchecked."
       />
