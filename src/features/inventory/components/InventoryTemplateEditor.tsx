@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode, type ChangeEvent } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -9,9 +9,9 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Info, Image, X, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Info, Image, GripVertical } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
-import { compressImage, validateImageFile } from "../../../lib/imageCompression";
+import { DetailsEditorModal } from "./DetailsEditorModal";
 import {
   DndContext,
   closestCenter,
@@ -333,227 +333,34 @@ function SectionDetailsDialog({ section, onSave }: {
   section: ApplianceSection;
   onSave: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
 }) {
-  const [description, setDescription] = useState(section.description || "");
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { toast } = useToast();
-  const generateUploadUrl = useMutation(api.inventoryTemplates.generateUploadUrl);
-  const imageUrl = useQuery(
-    api.inventoryTemplates.getImageUrl,
-    section.imageStorageId ? { storageId: section.imageStorageId } : "skip"
-  );
-
-  useEffect(() => {
-    if (open) {
-      setDescription(section.description || "");
-      setImageFile(null);
-      setImagePreview(null);
-    }
-  }, [open, section.description]);
-
-  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      toast({ title: "Error", description: validation.error, variant: "destructive" });
-      return;
-    }
-
-    setImageFile(file);
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
-    setUploading(true);
-    try {
-      let newImageStorageId: Id<"_storage"> | undefined = undefined;
-
-      // Upload new image if selected
-      if (imageFile) {
-        const compressedFile = await compressImage(imageFile);
-        const uploadUrl = await generateUploadUrl();
-
-        const result = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": compressedFile.type },
-          body: compressedFile,
-        });
-
-        const { storageId } = await result.json();
-        newImageStorageId = storageId;
-      }
-
-      await onSave(
-        description.trim() || undefined,
-        newImageStorageId
-      );
-
-      toast({ title: "Success", description: "Section details updated successfully" });
-      setOpen(false);
-    } catch  {
-      toast({ title: "Error", description: "Failed to update section details", variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async () => {
-    try {
-      await onSave(description.trim() || undefined, null);
-      toast({ title: "Success", description: "Section image removed successfully" });
-    } catch  {
-      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
-    }
-  };
-
   const hasInfo = section.description || section.imageStorageId;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="default"
-          className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
-          title="Add section description or image"
-        >
-          <Image className="h-5 w-5" />
-          <span className="sr-only">Section details</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Section Details: {section.name}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Description */}
-          <div>
-            <label className="text-sm font-medium">Description</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe this section (e.g., 'Left side locker when facing the truck')..."
-              className="mt-1"
-              rows={3}
-              disabled={uploading}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Help users identify this section of the appliance
-            </p>
-          </div>
-
-          {/* Current Image */}
-          {imageUrl && !imagePreview && (
-            <div>
-              <label className="text-sm font-medium">Current Image</label>
-              <div className="relative mt-1">
-                <img
-                  src={imageUrl}
-                  alt={section.name}
-                  className="w-full rounded-lg border"
-                />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={handleRemoveImage}
-                  disabled={uploading}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Remove
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Image Preview */}
-          {imagePreview && (
-            <div>
-              <label className="text-sm font-medium">New Image Preview</label>
-              <div className="relative mt-1">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="w-full rounded-lg border"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Image Upload */}
-          {!imagePreview && (
-            <div>
-              <label className="text-sm font-medium">
-                {imageUrl ? 'Replace Image' : 'Add Reference Image'}
-              </label>
-              <div className="mt-1">
-                <label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                  <div className="text-center">
-                    <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Tap to select image
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG or WebP (max 50MB)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={handleImageSelect}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Take a photo of the section (e.g., locker door open) to help users identify it
-              </p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={uploading}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={uploading}
-              className="w-full sm:w-auto"
-            >
-              {uploading ? "Saving..." : "Save Details"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Button
+        variant="ghost"
+        size="default"
+        onClick={() => setOpen(true)}
+        className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
+        title="Add section description or image"
+      >
+        <Image className="h-5 w-5" />
+        <span className="sr-only">Section details</span>
+      </Button>
+      <DetailsEditorModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Section Details: ${section.name}`}
+        subjectName={section.name}
+        initialDescription={section.description}
+        imageStorageId={section.imageStorageId}
+        descriptionPlaceholder="Describe this section (e.g., 'Left side locker when facing the truck')..."
+        descriptionHint="Help users identify this section of the appliance"
+        uploadHint="Take a photo of the section (e.g., locker door open) to help users identify it"
+        onSave={onSave}
+      />
+    </>
   );
 }
 
@@ -562,227 +369,34 @@ function ItemDetailsDialog({ item, onSave }: {
   item: ApplianceItem;
   onSave: (description?: string, imageStorageId?: Id<"_storage"> | null) => Promise<void>;
 }) {
-  const [description, setDescription] = useState(item.description || "");
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const { toast } = useToast();
-  const generateUploadUrl = useMutation(api.inventoryTemplates.generateUploadUrl);
-  const imageUrl = useQuery(
-    api.inventoryTemplates.getImageUrl,
-    item.imageStorageId ? { storageId: item.imageStorageId } : "skip"
-  );
-
-  useEffect(() => {
-    if (open) {
-      setDescription(item.description || "");
-      setImageFile(null);
-      setImagePreview(null);
-    }
-  }, [open, item.description]);
-
-  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      toast({ title: "Error", description: validation.error, variant: "destructive" });
-      return;
-    }
-
-    setImageFile(file);
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
-    setUploading(true);
-    try {
-      let newImageStorageId: Id<"_storage"> | undefined = undefined;
-
-      // Upload new image if selected
-      if (imageFile) {
-        const compressedFile = await compressImage(imageFile);
-        const uploadUrl = await generateUploadUrl();
-
-        const result = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": compressedFile.type },
-          body: compressedFile,
-        });
-
-        const { storageId } = await result.json();
-        newImageStorageId = storageId;
-      }
-
-      await onSave(
-        description.trim() || undefined,
-        newImageStorageId
-      );
-
-      toast({ title: "Success", description: "Item details updated successfully" });
-      setOpen(false);
-    } catch  {
-      toast({ title: "Error", description: "Failed to update item details", variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async () => {
-    try {
-      await onSave(description.trim() || undefined, null);
-      toast({ title: "Success", description: "Image removed successfully" });
-    } catch  {
-      toast({ title: "Error", description: "Failed to remove image", variant: "destructive" });
-    }
-  };
-
   const hasInfo = item.description || item.imageStorageId;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="default"
-          className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
-          title="Add description or image"
-        >
-          <Info className="h-5 w-5" />
-          <span className="sr-only">Item details</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Item Details: {item.name}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Description */}
-          <div>
-            <label className="text-sm font-medium">Description</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Help text for users checking this item..."
-              className="mt-1"
-              rows={3}
-              disabled={uploading}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Explain what this item is and where to find it
-            </p>
-          </div>
-
-          {/* Current Image */}
-          {imageUrl && !imagePreview && (
-            <div>
-              <label className="text-sm font-medium">Current Image</label>
-              <div className="relative mt-1">
-                <img
-                  src={imageUrl}
-                  alt={item.name}
-                  className="w-full rounded-lg border"
-                />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={handleRemoveImage}
-                  disabled={uploading}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Remove
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Image Preview */}
-          {imagePreview && (
-            <div>
-              <label className="text-sm font-medium">New Image Preview</label>
-              <div className="relative mt-1">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="w-full rounded-lg border"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Image Upload */}
-          {!imagePreview && (
-            <div>
-              <label className="text-sm font-medium">
-                {imageUrl ? 'Replace Image' : 'Add Reference Image'}
-              </label>
-              <div className="mt-1">
-                <label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                  <div className="text-center">
-                    <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Tap to select image
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG or WebP (max 50MB)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={handleImageSelect}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Image will be compressed to ~300KB automatically
-              </p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={uploading}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={uploading}
-              className="w-full sm:w-auto"
-            >
-              {uploading ? "Saving..." : "Save Details"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Button
+        variant="ghost"
+        size="default"
+        onClick={() => setOpen(true)}
+        className={`min-h-[44px] min-w-[44px] p-0 ${hasInfo ? 'text-blue-600 dark:text-blue-400' : ''}`}
+        title="Add description or image"
+      >
+        <Info className="h-5 w-5" />
+        <span className="sr-only">Item details</span>
+      </Button>
+      <DetailsEditorModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Item Details: ${item.name}`}
+        subjectName={item.name}
+        initialDescription={item.description}
+        imageStorageId={item.imageStorageId}
+        descriptionPlaceholder="Help text for users checking this item..."
+        descriptionHint="Explain what this item is and where to find it"
+        uploadHint="Image will be compressed to ~300KB automatically"
+        onSave={onSave}
+      />
+    </>
   );
 }
 
@@ -820,52 +434,53 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors gap-3 min-h-[60px]"
+      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors gap-2 sm:gap-3 min-h-[60px]"
     >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
         <button
-          className="cursor-grab active:cursor-grabbing touch-none p-2 hover:bg-muted rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="cursor-grab active:cursor-grabbing touch-none p-2 hover:bg-muted rounded min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+          aria-label={`Reorder ${item.name}`}
           {...attributes}
           {...listeners}
         >
           <GripVertical className="h-6 w-6 text-muted-foreground" />
         </button>
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex-1 min-w-0">
-            <div className="text-base font-medium truncate">
-              {quantity ? `${quantity}x ` : ''}{item.name}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {quantity ? "Quantity item" : "Yes/No item"}
-            </div>
+        <div className="flex-1 min-w-0">
+          {/* No quantity prefix — the Qty box on this row is the same number */}
+          <div className="text-base font-medium break-words">
+            {item.name}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Input
-              type="number"
-              min="1"
-              step="1"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
-                  e.preventDefault();
-                }
-              }}
-              onBlur={() => {
-                const num = quantity.trim() ? parseInt(quantity.trim(), 10) : undefined;
-                if (typeof num !== "undefined" && !isNaN(num) && num >= 1) {
-                  onUpdateQuantity(num);
-                } else if (!quantity.trim()) {
-                  onUpdateQuantity(undefined);
-                }
-              }}
-              placeholder="Qty"
-              className="w-16 h-9 text-sm text-center"
-            />
+          <div className="text-xs text-muted-foreground">
+            {quantity ? "Quantity item" : "Yes/No item"}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Quantity and actions drop to their own line on phones. Inline, the
+          fixed chrome here (grip + qty + three 44px buttons) left barely
+          40px for the item name on a 390px screen. */}
+      <div className="flex items-center justify-end gap-1 sm:gap-2 flex-shrink-0">
+        <Input
+          type="number"
+          min="1"
+          step="1"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+              e.preventDefault();
+            }
+          }}
+          onBlur={() => {
+            const num = quantity.trim() ? parseInt(quantity.trim(), 10) : undefined;
+            if (typeof num !== "undefined" && !isNaN(num) && num >= 1) {
+              onUpdateQuantity(num);
+            } else if (!quantity.trim()) {
+              onUpdateQuantity(undefined);
+            }
+          }}
+          placeholder="Qty"
+          className="w-16 h-9 text-sm text-center"
+        />
         <ItemDetailsDialog
           item={item}
           onSave={onUpdateDetails}

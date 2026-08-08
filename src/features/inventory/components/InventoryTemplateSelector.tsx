@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
-import { Play, ClipboardList, CircleCheckBig, Clock } from "lucide-react";
+import { Play, ClipboardList, CircleCheckBig, Clock, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -105,12 +105,10 @@ export function InventoryTemplateSelector() {
     }
   };
 
+  // Templates with unpublished changes can't be started — the button is
+  // disabled and the card says why. `startRun` rejects them server-side too,
+  // and that error surfaces through doStartCheck's toast.
   const handleStartCheck = async (tpl: ApplianceTemplateDoc) => {
-    if (tpl.hasUnpublishedChanges) {
-      toast.error("This template has unpublished changes. Please publish before starting a check.");
-      return;
-    }
-
     const lastCompleted = lastCompletedRuns?.find((lc) => lc.templateId === tpl._id);
     if (isCompletedThisWeek(lastCompleted?.lastCompletedAt)) {
       setConfirmTemplate(tpl);
@@ -150,10 +148,15 @@ export function InventoryTemplateSelector() {
           );
           borderAccent = "border-l-4 border-l-blue-500";
         } else if (hasUnpublished) {
+          // Not an alarm — it's an admin housekeeping state that simply makes
+          // the template inert, so it reads as neutral rather than red.
           statusBadge = (
-            <Badge variant="destructive" className="border-0">Unpublished</Badge>
+            <Badge variant="secondary" className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-0">
+              <Lock className="w-3 h-3 mr-1" />
+              Unavailable
+            </Badge>
           );
-          borderAccent = "border-l-4 border-l-red-500";
+          borderAccent = "border-l-4 border-l-gray-400 dark:border-l-gray-600";
         } else if (completedThisWeek) {
           statusBadge = (
             <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white border-0">
@@ -177,14 +180,17 @@ export function InventoryTemplateSelector() {
             key={tpl._id}
             className={`bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 ${borderAccent} transition-all`}
           >
-            <div className="p-4 flex items-center gap-4">
+            {/* Stacks on phones: a long template name plus a wide action button
+                can't share one line on a 390px screen without the name losing
+                to the button */}
+            <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               {/* Left: Template info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                <div className="flex items-start gap-2 mb-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white break-words min-w-0">
                     {tpl.name}
                   </h3>
-                  {statusBadge}
+                  <span className="flex-shrink-0 mt-0.5">{statusBadge}</span>
                 </div>
 
                 {tpl.description && (
@@ -201,16 +207,26 @@ export function InventoryTemplateSelector() {
                       : "Never checked"}
                   </span>
                 </div>
+
+                {/* Say why the button is dead. Without this the card is inert
+                    with no explanation, and most members can't publish. */}
+                {hasUnpublished && (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    An admin needs to publish recent changes before this
+                    checklist can be used.
+                  </p>
+                )}
               </div>
 
-              {/* Right: Action button — large for tablet touch */}
+              {/* Right: Action button — large for tablet touch, full width on
+                  phones where it sits on its own line */}
               <div className="flex-shrink-0">
                 {run ? (
                   <Button
                     size="lg"
                     variant="secondary"
                     onClick={() => navigate(`/inventory/run/${run._id}`)}
-                    className="h-14 px-6 text-base font-semibold"
+                    className="w-full sm:w-auto h-14 px-6 text-base font-semibold"
                   >
                     <Play className="h-5 w-5 mr-2" />
                     Resume
@@ -220,7 +236,7 @@ export function InventoryTemplateSelector() {
                     size="lg"
                     onClick={() => handleStartCheck(tpl)}
                     disabled={hasUnpublished}
-                    className={`h-14 px-6 text-base font-semibold ${completedThisWeek
+                    className={`w-full sm:w-auto h-14 px-6 text-base font-semibold ${completedThisWeek
                       ? "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                       : hasUnpublished
                         ? ""
@@ -228,7 +244,7 @@ export function InventoryTemplateSelector() {
                       }`}
                   >
                     <Play className="h-5 w-5 mr-2" />
-                    {hasUnpublished ? "Unavailable" : completedThisWeek ? "Redo" : "Start"}
+                    {completedThisWeek && !hasUnpublished ? "Redo" : "Start"}
                   </Button>
                 )}
               </div>

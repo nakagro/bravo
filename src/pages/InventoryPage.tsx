@@ -7,7 +7,6 @@ import { InventoryTemplateSelector } from "../features/inventory/components/Inve
 import { InventoryAdminTab } from "../features/inventory/components/InventoryAdminTab";
 import { api } from "../../convex/_generated/api";
 import { PageTabs } from "@/components/shared/PageTabs";
-import { Badge } from "@/components/ui/badge";
 
 type InventoryTab = "checks" | "history" | "templates" | "admin";
 
@@ -84,15 +83,10 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-4" data-component="InventoryPage">
+      {/* The in-progress count lives on the Checks tab badge below — repeating
+          it here just stacked the same number twice on a phone. */}
       <div className="flex justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
-          {activeCount > 0 && (
-            <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-              {activeCount} in progress
-            </Badge>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
       </div>
 
       <PageTabs
