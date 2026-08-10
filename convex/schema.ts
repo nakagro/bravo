@@ -34,7 +34,7 @@ const extendedAuthTables = {
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
-    // What kind of login this is. Absent means "member" — the brigade's people.
+    // What kind of login this is. Absent means "member" - the brigade's people.
     // "shared" is a login that isn't a person: the Duty Officer phone, an appliance
     // tablet. Shared accounts keep a rank (module access is still gated on it) but
     // are excluded from member lists, member counts and member reminders.
@@ -1001,7 +1001,7 @@ const applicationTables = {
   // in the event form (replaces the old free-text eventType string).
   eventTypes: defineTable({
     name: v.string(),
-    color: v.string(), // Palette key — see eventTypeColors in src/features/events/types.ts
+    color: v.string(), // Palette key - see eventTypeColors in src/features/events/types.ts
     isActive: v.boolean(),
     order: v.number(),
     createdBy: v.id("users"),
@@ -1024,11 +1024,11 @@ const applicationTables = {
     endDate: v.optional(v.string()), // ISO date string, optional for single-day events
     startTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
     endTime: v.optional(v.string()), // Time string (HH:MM), optional for all-day events
-    respondBy: v.optional(v.string()), // ISO date string — optional RSVP-by date
+    respondBy: v.optional(v.string()), // ISO date string - optional RSVP-by date
     hasShifts: v.optional(v.boolean()), // Opt-in: event collects per-slot interest (eventSlots)
     // Whether members may still opt *in* (RSVP yes/maybe, or pick a shift).
     // Absent = "open". "closed" means the organiser already knows who's going and
-    // sets the roster themselves via eventSlotAllocations — it never deletes
+    // sets the roster themselves via eventSlotAllocations - it never deletes
     // existing responses, so flipping back to "open" restores them untouched.
     // Declining ("can't make it") is always allowed, in either mode.
     memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
@@ -1072,7 +1072,7 @@ const applicationTables = {
     startTime: v.optional(v.string()), // HH:MM
     endTime: v.optional(v.string()), // HH:MM
     date: v.optional(v.string()), // YYYY-MM-DD (multi-day sessions)
-    targetCount: v.optional(v.number()), // Soft target headcount — never enforced
+    targetCount: v.optional(v.number()), // Soft target headcount - never enforced
     order: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -1091,7 +1091,7 @@ const applicationTables = {
     .index("by_slot_user", ["slotId", "userId"]),
 
   // Admin-controlled allocation of a member to an event (the official roster).
-  // Distinct from interest — an admin can place anyone, interest is just a hint.
+  // Distinct from interest - an admin can place anyone, interest is just a hint.
   // The roster exists for every event, not just shift events: an absent slotId
   // is an event-level placement ("you're on for the whole thing"), which is how
   // a shiftless event with known attendees is rostered.
@@ -1345,7 +1345,7 @@ const applicationTables = {
     .index("by_ipIdentifier_attemptedAt", ["ipIdentifier", "attemptedAt"])
     .index("by_attemptedAt", ["attemptedAt"]),
 
-  // Action Centre — human-created tasks (derived actions are computed, not stored)
+  // Action Centre - human-created tasks (derived actions are computed, not stored)
   actionTasks: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
@@ -1403,7 +1403,7 @@ const applicationTables = {
     updatedBy: v.optional(v.id("users")),
   }).index("by_conditionKey", ["conditionKey"]),
 
-  // Action Centre — "this happened" notices raised by a module via notifyEvent().
+  // Action Centre - "this happened" notices raised by a module via notifyEvent().
   // Unlike derived actions these are stored, because the event they report is a
   // moment in time that nothing can recompute later.
   actionNotices: defineTable({

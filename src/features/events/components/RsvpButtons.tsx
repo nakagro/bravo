@@ -103,7 +103,7 @@ interface DeclineButtonProps {
 
 /**
  * Standalone "can't make it" toggle, for events where opting *in* isn't on
- * offer — a closed event where the organiser set the roster. Declining is never
+ * offer - a closed event where the organiser set the roster. Declining is never
  * closed off: being placed on a list isn't the same as having agreed to it, and
  * the organiser needs to hear about it while there's still time to backfill.
  *

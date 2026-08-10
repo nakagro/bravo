@@ -22,7 +22,7 @@ interface ResponsesModeDialogProps {
 /**
  * Confirms a switch between open and closed member responses.
  *
- * Neither direction destroys anything — the flag is all that moves, so an event
+ * Neither direction destroys anything - the flag is all that moves, so an event
  * can go back and forth as the plan firms up or falls apart. The one write on
  * offer is the carry-over when closing: the people who had already said yes get
  * placed on the roster, pre-ticked because that's usually the intent, but
@@ -125,7 +125,7 @@ export function ResponsesModeDialog({
         <div className="space-y-4 pb-4">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Members will stop being asked{" "}
-            {hasShifts ? "to pick a shift" : "to RSVP"} — you set the roster instead.
+            {hasShifts ? "to pick a shift" : "to RSVP"} - you set the roster instead.
             Nothing is deleted, so you can open responses again at any time and
             everything comes back.
           </p>
@@ -191,7 +191,7 @@ export function ResponsesModeDialog({
             this event goes back on their action list.
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Your roster stays exactly as it is — anyone you placed is still going and
+            Your roster stays exactly as it is - anyone you placed is still going and
             doesn&apos;t need to respond. Any responses from before you closed it
             start counting again.
           </p>

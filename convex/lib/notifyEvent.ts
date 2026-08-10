@@ -9,7 +9,7 @@ import { isMemberAccount } from "./accountType";
  *
  * Modules report an event; who hears about it and how is configuration, held in
  * `actionAccountability` and edited by officers in the admin UI. A module never
- * names a recipient in code — that mapping changes every time a portfolio
+ * names a recipient in code - that mapping changes every time a portfolio
  * changes hands, and code changes shouldn't.
  *
  * Delivery is in-app (an `actionNotices` row surfaced by `noticesProvider`) plus
@@ -31,7 +31,7 @@ export type NotifyEventArgs = {
   priority?: "low" | "medium" | "high";
   /** Stable id of the subject, so repeats update rather than stack. */
   sourceEntityId?: string;
-  /** Whoever triggered the event — never notified about their own action. */
+  /** Whoever triggered the event - never notified about their own action. */
   actorUserId?: Id<"users">;
   /** Email-only extras. The in-app card stays terse; the email can carry detail. */
   emailSubject?: string;
@@ -43,7 +43,7 @@ export type NotifyEventArgs = {
   /**
    * Bypass audience resolution and deliver to exactly these users. Only for
    * admin-triggered test sends, which must reach the person pressing the
-   * button — the normal path deliberately excludes the actor, so a test would
+   * button - the normal path deliberately excludes the actor, so a test would
    * otherwise skip the one person waiting to see it.
    */
   overrideRecipients?: Id<"users">[];
@@ -51,7 +51,7 @@ export type NotifyEventArgs = {
 
 /**
  * Resolve a condition key to the users accountable for it. Role, explicit user
- * and rank floor are ORed — any one of them makes you accountable. Returns an
+ * and rank floor are ORed - any one of them makes you accountable. Returns an
  * empty array when the key is unmapped or switched off.
  */
 export async function resolveAudience(
@@ -73,7 +73,7 @@ export async function resolveAudience(
   const matched = new Set<Id<"users">>(mapping.userIds);
 
   if (hasRoleReq || hasRankReq) {
-    // Roles are an array field, so there's no index to match on — the roster is
+    // Roles are an array field, so there's no index to match on - the roster is
     // scanned, as it is everywhere else that resolves role holders. Capped well
     // above brigade size so this can't turn into an unbounded read.
     const users = await ctx.db.query("users").take(1000);
@@ -113,7 +113,7 @@ export async function notifyEvent(
 
   if (notifyInApp) {
     // A repeat of the same event replaces the earlier notice, and clears the
-    // dismissals against it — the subject changed, so it's worth another look.
+    // dismissals against it - the subject changed, so it's worth another look.
     const existing = args.sourceEntityId
       ? await ctx.db
           .query("actionNotices")
@@ -173,7 +173,7 @@ export async function notifyEvent(
   return noticeId;
 }
 
-/** The Action Centre id for a stored notice — also its dismissal key. */
+/** The Action Centre id for a stored notice - also its dismissal key. */
 export function noticeActionId(noticeId: Id<"actionNotices">): string {
   return `notice:${noticeId}`;
 }

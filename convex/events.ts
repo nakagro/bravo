@@ -85,7 +85,7 @@ export async function hasEventsAdmin(ctx: QueryCtx): Promise<Id<"users"> | null>
 }
 
 // Today as a YYYY-MM-DD string in AEST (same hardcoded UTC+10 assumption as
-// crons.ts — drifts 1h during AEDT, accepted)
+// crons.ts - drifts 1h during AEDT, accepted)
 function aestTodayStr(): string {
   return new Date(Date.now() + 10 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
@@ -157,13 +157,13 @@ export function responsesAreOpen(event: Doc<"events">): boolean {
  * Who counts as going to an event, and who has declined.
  *
  * The roster (eventSlotAllocations) is always authoritative and always counts,
- * for shift and shiftless events alike. Member-expressed responses — a shift
- * pick, or an "attending" rsvp — only count while responses are open. That's
+ * for shift and shiftless events alike. Member-expressed responses - a shift
+ * pick, or an "attending" rsvp - only count while responses are open. That's
  * what makes closing and reopening non-destructive: the rows stay exactly where
  * they are, they just stop being consulted while the organiser owns the list.
  *
  * A "can't make it" always wins, even over a placement. A rostered decliner is
- * a conflict for the organiser to resolve, not a head to count — which is why
+ * a conflict for the organiser to resolve, not a head to count - which is why
  * declining stays available even when responses are closed.
  */
 async function attendanceFor(
@@ -221,7 +221,7 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
     myRsvp = "attending";
   }
 
-  // "Maybe" only exists on a plain open RSVP event — a shift event answers with
+  // "Maybe" only exists on a plain open RSVP event - a shift event answers with
   // a slot pick, and a closed event isn't asking. Stale maybes stay in the
   // table either way, ready to count again if the event reopens.
   if (!event.hasShifts && responsesAreOpen(event)) {
@@ -306,7 +306,7 @@ type SlotInput = {
  * Move every slot allocation on an event up to the event level, deduped per
  * member, so turning shifts off keeps the roster the organiser already built
  * instead of silently emptying it. The people stay on; only the shift they were
- * placed in — which no longer exists — is lost.
+ * placed in - which no longer exists - is lost.
  */
 async function liftAllocationsToEventLevel(ctx: MutationCtx, eventId: Id<"events">) {
   const allocations = await ctx.db
@@ -331,7 +331,7 @@ async function liftAllocationsToEventLevel(ctx: MutationCtx, eventId: Id<"events
 /**
  * Reconcile an event's slots to the desired list (insert new, patch existing by
  * _id, delete removed). Deleting a slot cascade-deletes its interest *and* its
- * allocations — an allocation to a slot that no longer exists would otherwise
+ * allocations - an allocation to a slot that no longer exists would otherwise
  * linger as an invisible attendee. Slot order follows array order.
  */
 async function reconcileSlots(
@@ -503,8 +503,8 @@ export const getEvent = query({
 
 /**
  * Attendance for an event. The *attending* list is visible to every signed-in
- * member (it's a turnout tool). The full breakdown — maybe / not going / and
- * especially the non-responders — is sensitive, so it's returned only to
+ * member (it's a turnout tool). The full breakdown - maybe / not going / and
+ * especially the non-responders - is sensitive, so it's returned only to
  * eventsAdmin (`breakdown` is null otherwise).
  */
 export const getEventAttendance = query({
@@ -548,7 +548,7 @@ export const getEventAttendance = query({
       name: user.name,
     });
 
-    // Attending list — visible to all signed-in members
+    // Attending list - visible to all signed-in members
     const attending = (
       await Promise.all([...attendingIds].map((id) => ctx.db.get(id)))
     )
@@ -593,7 +593,7 @@ export const getEventAttendance = query({
     const maybeCounts = !event.hasShifts && responsesAreOpen(event);
 
     for (const user of users) {
-      // Going members are already listed above — never double-count them below
+      // Going members are already listed above - never double-count them below
       if (attendingIds.has(user._id)) continue;
       const status = rsvpByUser.get(user._id);
       if (status === "notAttending") notAttending.push(nameOf(user));
@@ -663,7 +663,7 @@ export const getEventHistory = query({
 // ─── Mutations ──────────────────────────────────────────────────────────────
 
 /**
- * Create a new event (publishes immediately — no draft state).
+ * Create a new event (publishes immediately - no draft state).
  */
 export const createEvent = mutation({
   args: {
@@ -796,11 +796,11 @@ export const updateEvent = mutation({
     }
 
     // Reconcile slots whenever the form sends them (independent of column
-    // changes — a slot-only edit must still apply).
+    // changes - a slot-only edit must still apply).
     if (args.slots !== undefined) {
       const hasShifts = args.hasShifts ?? event.hasShifts ?? false;
       // Turning shifts off drops the slots, so lift the roster to the event
-      // first — otherwise the cascade would take the organiser's placements
+      // first - otherwise the cascade would take the organiser's placements
       // with it and an event with known attendees would empty itself.
       if (!hasShifts && event.hasShifts) {
         await liftAllocationsToEventLevel(ctx, args.eventId);
@@ -821,7 +821,7 @@ export const updateEvent = mutation({
 });
 
 /**
- * Cancel an event. Stays visible with a badge (no hard delete — preserves the
+ * Cancel an event. Stays visible with a badge (no hard delete - preserves the
  * audit trail). Does not auto-notify; the organiser uses the Notify action.
  */
 export const cancelEvent = mutation({
@@ -976,10 +976,10 @@ export const setRsvp = mutation({
     if ((event.endDate ?? event.startDate) < aestTodayStr()) {
       throw new Error("This event has already happened");
     }
-    // Shift events don't take yes/maybe RSVPs — picking a slot is the response
+    // Shift events don't take yes/maybe RSVPs - picking a slot is the response
     // (declineSlotEvent handles "can't make it").
     if (event.hasShifts && args.status !== "notAttending") {
-      throw new Error("This event uses shifts — pick a shift on the event page instead");
+      throw new Error("This event uses shifts - pick a shift on the event page instead");
     }
     // Closed responses stop members opting *in*; declining always stays open so
     // anyone the organiser rostered can still say they can't make it.
@@ -1128,7 +1128,7 @@ export const declineSlotEvent = mutation({
 
 /**
  * Admin: place or remove a member on a slot (the official roster). Allocation
- * is independent of interest — anyone can be placed. Returns the new state.
+ * is independent of interest - anyone can be placed. Returns the new state.
  */
 export const toggleSlotAllocation = mutation({
   args: {
@@ -1212,7 +1212,7 @@ export const toggleEventAllocation = mutation({
 /**
  * Admin: open or close member responses.
  *
- * Deliberately non-destructive in both directions — it patches one field and
+ * Deliberately non-destructive in both directions - it patches one field and
  * never touches an rsvp, a shift pick or a placement. Closing an event that
  * already collected interest doesn't discard it; it just stops counting until
  * the organiser opens things back up, so this is safe to flip as often as the
@@ -1284,7 +1284,7 @@ export const setMemberResponses = mutation({
 
 /**
  * Slots for an event (member-facing), ordered. Each carries the official
- * **allocated** roster and the **interested** members (both member-visible —
+ * **allocated** roster and the **interested** members (both member-visible -
  * before allocation starts, interest per shift IS the turnout picture), plus
  * whether the caller is interested in / allocated to it. Empty for non-slot
  * events.
@@ -1307,7 +1307,7 @@ export const getEventSlots = query({
           firstName: v.optional(v.string()),
           lastName: v.optional(v.string()),
           name: v.optional(v.string()),
-          // Rostered but has marked "can't make it" — a conflict to surface
+          // Rostered but has marked "can't make it" - a conflict to surface
           declined: v.boolean(),
         })
       ),
@@ -1404,7 +1404,7 @@ export const getEventRoster = query({
   returns: v.union(
     v.object({
       members: v.array(userNameValidator),
-      // Members who marked "can't make it" (event-wide) — flag them in the
+      // Members who marked "can't make it" (event-wide) - flag them in the
       // allocation UI, especially when they're still on the roster
       declinedIds: v.array(v.id("users")),
       // Placed on the event rather than a shift (the whole roster for a

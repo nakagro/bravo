@@ -1,7 +1,7 @@
 // Kiosk dashboard host. Owns the live data (door/area polling + scene state),
 // the firecall countdown tick, and the modal/confirm orchestration. Renders the
 // layout through GridRenderer. The layout is the hardcoded DEFAULT_LAYOUT today;
-// in Phase 3 it becomes a Convex query — nothing else here needs to change.
+// in Phase 3 it becomes a Convex query - nothing else here needs to change.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, RefreshCw, DoorOpen, LockOpen, Lock, ShieldAlert } from 'lucide-react';
@@ -152,7 +152,7 @@ export default function KioskDashboard({
     flashOf: (id) => flash[id] ?? null,
     openDoorControl: (id, name, secureLabel) => setModal({ type: 'door', id, name, secureLabel }),
     openAreaControl: (id, name) => setModal({ type: 'area', id, name }),
-    // No confirm dialog — the Firecall hero itself requires a 3-second press and
+    // No confirm dialog - the Firecall hero itself requires a 3-second press and
     // hold, so completing the hold IS the deliberate confirmation.
     toggleFirecall: () => runFlow(firecallActive ? cancelFirecall : runFirecall),
     toggleLockup: () => setConfirm(
@@ -181,7 +181,7 @@ export default function KioskDashboard({
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-950 text-slate-50 flex flex-col overflow-hidden select-none touch-none">
-      {/* Header — time top-left, date top-right; exit + refresh tucked beside them */}
+      {/* Header - time top-left, date top-right; exit + refresh tucked beside them */}
       <header className="flex-none flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
           <button
@@ -297,7 +297,7 @@ function HeaderTime() {
   return <span className="text-2xl md:text-3xl font-bold tabular-nums text-white">{hh}:{mm}</span>;
 }
 
-// e.g. "22 Jun" — day then shorthand month.
+// e.g. "22 Jun" - day then shorthand month.
 function HeaderDate() {
   const now = useNow(60_000);
   const day = now.getDate();

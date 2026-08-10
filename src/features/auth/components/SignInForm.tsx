@@ -111,7 +111,7 @@ export function SignInForm() {
       const signInResult = await signIn("password", formData);
 
       if (signInResult) {
-        // Store profile data — retry up to 3 times to handle auth system timing
+        // Store profile data - retry up to 3 times to handle auth system timing
         let stored = false;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {

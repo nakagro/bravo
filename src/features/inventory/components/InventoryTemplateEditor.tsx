@@ -446,7 +446,7 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
           <GripVertical className="h-6 w-6 text-muted-foreground" />
         </button>
         <div className="flex-1 min-w-0">
-          {/* No quantity prefix — the Qty box on this row is the same number */}
+          {/* No quantity prefix - the Qty box on this row is the same number */}
           <div className="text-base font-medium break-words">
             {item.name}
           </div>

@@ -34,7 +34,7 @@ async function resolveCrewForSunday(
   return { crew, isSpecial };
 }
 
-// A single gentle "you're on duty crew this week" reminder — deliberately one
+// A single gentle "you're on duty crew this week" reminder - deliberately one
 // action for the whole week, never one per check item. Disappears once the
 // week's checks are submitted.
 export const dutyCrewProvider: ActionProvider = async (ctx, p) => {

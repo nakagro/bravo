@@ -75,7 +75,7 @@ const breakdownGroups = [
     label: "No response",
     dotClass: "bg-gray-400",
     chipClass: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
-    // The longest list by far — collapsed so it doesn't swamp the page
+    // The longest list by far - collapsed so it doesn't swamp the page
     defaultOpen: false,
   },
 ] as const;
@@ -211,7 +211,7 @@ export function EventDetailPage() {
 
   const isCancelled = event.status === "cancelled";
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
-  // Whether there's still anything to ask *you* — the zone-2 card
+  // Whether there's still anything to ask *you* - the zone-2 card
   const showRsvp = !isCancelled && !isPast;
   // The organiser has set who's going; members can't opt in, only decline
   const responsesClosed = event.memberResponses === "closed";
@@ -300,8 +300,8 @@ export function EventDetailPage() {
       <div className="flex items-center justify-between gap-3">
         {backButton}
 
-        {/* Admin actions. Edit is the one standing button; everything else —
-            including building the roster — lives behind the same overflow menu
+        {/* Admin actions. Edit is the one standing button; everything else -
+            including building the roster - lives behind the same overflow menu
             the admin list uses. Six buttons in a row wrapped onto two lines and
             crowded out the back link, on the page where reading the event
             matters most. */}
@@ -372,7 +372,7 @@ export function EventDetailPage() {
         )}
       </div>
 
-      {/* Header — slim identity band. The left accent matches the list cards:
+      {/* Header - slim identity band. The left accent matches the list cards:
           red = active upcoming event, gray = past or cancelled */}
       <div
         className={`bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden border-l-4 p-4 sm:p-5 ${
@@ -434,14 +434,14 @@ export function EventDetailPage() {
         </div>
       </div>
 
-      {/* Zone 2 — Your status: only ever about *you* (your availability / your
+      {/* Zone 2 - Your status: only ever about *you* (your availability / your
           place on the roster). Interactive while the event is still open; once
           it's past or cancelled there's nothing to ask, so this drops away and
           the read-only board below carries the turnout (it highlights "you"). */}
       {showRsvp && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
           {responsesClosed ? (
-            // Nothing to opt into — the organiser set the list. All that's left
+            // Nothing to opt into - the organiser set the list. All that's left
             // is telling them if you can't make it after all, which stays
             // available precisely because being rostered isn't the same as
             // having agreed.
@@ -491,7 +491,7 @@ export function EventDetailPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-3 items-start">
-        {/* Details — all the event information lives here as labelled sections */}
+        {/* Details - all the event information lives here as labelled sections */}
         <div className={`space-y-4 ${breakdown ? "lg:col-span-2" : "lg:col-span-3"}`}>
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -531,7 +531,7 @@ export function EventDetailPage() {
                 </span>
               )}
               {/* A deadline for responses means nothing while responses are
-                  closed — but the stored date is kept, ready for reopening */}
+                  closed - but the stored date is kept, ready for reopening */}
               {event.respondBy &&
                 showRsvp &&
                 !responsesClosed &&
@@ -566,9 +566,9 @@ export function EventDetailPage() {
             )}
           </div>
 
-          {/* Zone 3 — the board: read-only turnout for everyone. Shift events get
+          {/* Zone 3 - the board: read-only turnout for everyone. Shift events get
               the per-shift ShiftBoard (roster + interested + coverage); simple
-              events get the flat "going" list. Purely display — all input lives
+              events get the flat "going" list. Purely display - all input lives
               in the Your-status card above, so nothing here is a control. */}
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
@@ -578,7 +578,7 @@ export function EventDetailPage() {
             {event.hasShifts ? (
               <>
                 <ShiftBoard eventId={event._id} />
-                {/* Rostered, but not against any shift — otherwise they'd
+                {/* Rostered, but not against any shift - otherwise they'd
                     appear nowhere on this page */}
                 {attendance && attendance.rosteredNoShift.length > 0 && (
                   <div className="mt-5">
@@ -617,7 +617,7 @@ export function EventDetailPage() {
           </div>
         </div>
 
-        {/* Responses panel — admin-only drill-down (Maybe / Not going / No
+        {/* Responses panel - admin-only drill-down (Maybe / Not going / No
             response). The "Going" list isn't repeated here; it's the
             member-visible "Who's coming" card above. */}
         {breakdown && (
@@ -706,7 +706,7 @@ interface ChipMember {
   firstName?: string;
   lastName?: string;
   name?: string;
-  /** Marked "can't make it" — struck through in red */
+  /** Marked "can't make it" - struck through in red */
   declined?: boolean;
 }
 

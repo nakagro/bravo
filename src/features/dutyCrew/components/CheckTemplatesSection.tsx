@@ -58,7 +58,7 @@ export function CheckTemplatesSection() {
   );
 
   // Group checks by area (first-seen order, following template order), with a
-  // trailing "General" bucket for checks without an area — mirrors how the
+  // trailing "General" bucket for checks without an area - mirrors how the
   // This Week checklist displays them.
   type Check = (typeof stationChecks)[number];
   const groupedChecks = (() => {

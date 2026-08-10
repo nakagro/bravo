@@ -83,7 +83,7 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-4" data-component="InventoryPage">
-      {/* The in-progress count lives on the Checks tab badge below — repeating
+      {/* The in-progress count lives on the Checks tab badge below - repeating
           it here just stacked the same number twice on a phone. */}
       <div className="flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>

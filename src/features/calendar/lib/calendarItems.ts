@@ -27,11 +27,11 @@ export interface CalendarItem {
   allDay: boolean;
   location?: string;
   description?: string;
-  /** caldav only — the raw ICS occurrence (edit/delete needs it) */
+  /** caldav only - the raw ICS occurrence (edit/delete needs it) */
   ics?: CalendarEvent;
-  /** event only — deep link target /events/:id */
+  /** event only - deep link target /events/:id */
   eventId?: string;
-  /** event only — eventTypes colour key (e.g. "blue") */
+  /** event only - eventTypes colour key (e.g. "blue") */
   eventTypeColor?: string;
   eventTypeName?: string;
   eventCounts?: { attending: number; maybe: number; notAttending: number };
@@ -40,7 +40,7 @@ export interface CalendarItem {
   resourceName?: string;
   bookedBy?: string;
   bookingBlocked?: boolean;
-  /** booking only — deep link target /bookings?tab=schedule&date=… */
+  /** booking only - deep link target /bookings?tab=schedule&date=… */
   bookingDate?: string;
 }
 

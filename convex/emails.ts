@@ -322,7 +322,7 @@ export const sendPasswordResetEmail = internalAction({
 });
 
 /**
- * The email half of notifyEvent() — one generic branded template every module
+ * The email half of notifyEvent() - one generic branded template every module
  * shares, so a new notification is a call site rather than another bespoke
  * email action. Deliberately never throws: a bounced notification must not roll
  * back the mutation that scheduled it.

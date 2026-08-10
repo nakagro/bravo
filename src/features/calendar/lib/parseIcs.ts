@@ -9,11 +9,11 @@ export interface CalendarEvent {
   location?: string;
   allDay: boolean;
   /**
-   * True when the VEVENT carries no DTEND/DURATION — the finish time isn't
+   * True when the VEVENT carries no DTEND/DURATION - the finish time isn't
    * known. `end` then equals `start`; treat it as open-ended when displaying.
    */
   endUnknown: boolean;
-  /** True for expanded RRULE occurrences — read-only in BRAVO (v1) */
+  /** True for expanded RRULE occurrences - read-only in BRAVO (v1) */
   recurring: boolean;
 }
 

@@ -6,9 +6,9 @@ import { ringColorFor, type ChecklistProgress } from "./checklistStatus";
 
 interface ChecklistProgressHeaderProps {
   progress: ChecklistProgress;
-  /** Rendered to the left of the ring — e.g. a back button. */
+  /** Rendered to the left of the ring - e.g. a back button. */
   leading?: React.ReactNode;
-  /** Rendered above the counts — e.g. a run title. */
+  /** Rendered above the counts - e.g. a run title. */
   title?: React.ReactNode;
   className?: string;
 }
@@ -59,12 +59,12 @@ function useIsStuck() {
  * The sticky top chrome shared by every checklist screen: how far through you
  * are and how much needs attention.
  *
- * It parks beneath the app header rather than at the viewport top — both were
+ * It parks beneath the app header rather than at the viewport top - both were
  * previously `sticky top-0 z-10`, so this bar painted straight over the
  * brigade title bar.
  *
  * There is deliberately no section quick-nav pill row. It only ever fitted on
- * a wide viewport — on a phone the later sections sat off-screen with no way
+ * a wide viewport - on a phone the later sections sat off-screen with no way
  * to reach them, so it was navigation that silently hid most of its targets.
  * The section headers themselves carry per-section progress.
  */

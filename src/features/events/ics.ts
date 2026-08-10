@@ -1,4 +1,4 @@
-// Client-side "Add to calendar" — builds a minimal RFC 5545 .ics file for an
+// Client-side "Add to calendar" - builds a minimal RFC 5545 .ics file for an
 // event and triggers a download. No backend required.
 
 interface IcsEvent {
@@ -49,7 +49,7 @@ function buildIcs(event: IcsEvent): string {
     lines.push(`DTSTART;VALUE=DATE:${stripDate(event.startDate)}`);
     lines.push(`DTEND;VALUE=DATE:${stripDate(nextDay(end))}`);
   } else {
-    // Floating local time (no TZID/Z) — avoids timezone math, matches how the
+    // Floating local time (no TZID/Z) - avoids timezone math, matches how the
     // brigade reads the time locally.
     const endDate = event.endDate ?? event.startDate;
     lines.push(`DTSTART:${stripDate(event.startDate)}T${stripTime(event.startTime)}`);
@@ -59,7 +59,7 @@ function buildIcs(event: IcsEvent): string {
   }
 
   lines.push(`SUMMARY:${escapeText(event.title)}`);
-  // Calendars carry a single LOCATION — join the venue name and address.
+  // Calendars carry a single LOCATION - join the venue name and address.
   const where = [event.location, event.address].filter(Boolean).join(", ");
   if (where) lines.push(`LOCATION:${escapeText(where)}`);
   if (event.description) lines.push(`DESCRIPTION:${escapeText(event.description)}`);

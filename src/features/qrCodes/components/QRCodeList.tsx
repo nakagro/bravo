@@ -424,7 +424,7 @@ function QRCard({ qrCode, onView, onEdit, onDelete }: QRCardProps) {
   return (
     <>
       <div className="group rounded-xl border bg-card overflow-hidden hover:shadow-md transition-all duration-200">
-        {/* QR Image — tap to zoom/view */}
+        {/* QR Image - tap to zoom/view */}
         <button
           className="w-full bg-white flex items-center justify-center p-5 cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           onClick={onView}

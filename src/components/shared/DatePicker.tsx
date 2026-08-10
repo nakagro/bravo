@@ -33,7 +33,7 @@ function toDateString(date: Date): string {
 /**
  * Inline collapsible calendar date picker.
  * Tap the date field to expand/collapse the calendar below it.
- * Works reliably inside Sheets, Drawers, Dialogs — no portals needed.
+ * Works reliably inside Sheets, Drawers, Dialogs - no portals needed.
  */
 export function DatePicker({
   value,

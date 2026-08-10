@@ -215,7 +215,7 @@ describe("action dismissal", () => {
     const noticeId = first.find((a) => a.kind === "notice")!.id;
     await asOfficer.mutation(api.actionCentre.dismissAction, { actionId: noticeId });
 
-    // Reopened and resubmitted — the checks changed, so it's worth another look.
+    // Reopened and resubmitted - the checks changed, so it's worth another look.
     await submit(asSubmitter, dutyCrewId, [
       { name: "Sweep bay", isCompleted: true },
       { name: "Mow lawn", isCompleted: false, isNotApplicable: true },

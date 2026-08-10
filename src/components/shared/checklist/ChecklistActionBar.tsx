@@ -14,7 +14,7 @@ interface ChecklistActionBarProps {
 /**
  * The sticky bottom chrome shared by every checklist screen: the primary
  * action, and nothing else. What's outstanding is reported once, by
- * `ChecklistProgressHeader` at the top — repeating it down here was noise.
+ * `ChecklistProgressHeader` at the top - repeating it down here was noise.
  */
 export function ChecklistActionBar({
   state,

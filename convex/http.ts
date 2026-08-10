@@ -52,7 +52,7 @@ http.route({
     try {
       // Get all users. `getUsers` deliberately still returns shared accounts (the
       // admin screen needs them), so the external CAD/paging consumer filters here
-      // — it must never be told the DO phone is "available".
+      // - it must never be told the DO phone is "available".
       const users = (await ctx.runQuery(api.users.getUsers)).filter(isMemberAccount);
 
       // Get all user IDs for batch skills query

@@ -49,7 +49,7 @@ export function ActionCard({ action }: ActionCardProps) {
   const declineSlotEvent = useMutation(api.events.declineSlotEvent);
   const dismissAction = useMutation(api.actionCentre.dismissAction);
   const [submitting, setSubmitting] = useState<RsvpStatus | null>(null);
-  // Hide straight away rather than waiting for the query to round-trip — the
+  // Hide straight away rather than waiting for the query to round-trip - the
   // card is under the user's thumb and a lingering one reads as a failed tap.
   const [dismissed, setDismissed] = useState(false);
 
@@ -132,7 +132,7 @@ export function ActionCard({ action }: ActionCardProps) {
 
   return (
     <div className={`relative rounded-r-md border-l-4 ${colorClass}`}>
-      {/* Sibling of the Link, never nested inside it — a dismiss tap must not
+      {/* Sibling of the Link, never nested inside it - a dismiss tap must not
           also navigate. */}
       {action.dismissible && (
         <button

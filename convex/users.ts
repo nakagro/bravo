@@ -36,7 +36,7 @@ export const getUsers = query({
 });
 
 /**
- * Members only — for pickers that are choosing a person, not an account.
+ * Members only - for pickers that are choosing a person, not an account.
  *
  * Deliberately separate from `getUsers`, which must keep returning shared
  * accounts so the admin User Management screen can see and edit them.
@@ -86,7 +86,7 @@ export const getRoles = query({
  * Mark a login as a member or a shared (non-person) account.
  *
  * Unlike the neighbouring `updateUserRank`/`updateUserRoles`, this checks
- * `isAdmin` server-side (following `convex/serviceAccounts.ts`) — a new mutation
+ * `isAdmin` server-side (following `convex/serviceAccounts.ts`) - a new mutation
  * shouldn't inherit an existing gap. Rank is deliberately left alone: module
  * access is gated on it, so clearing it would lock the account out of modules
  * with a `minimumRank`.

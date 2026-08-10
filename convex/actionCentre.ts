@@ -16,7 +16,7 @@ import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProv
 // ─── Provider registry ────────────────────────────────────────────────────────
 
 // Providers that raise a *member's* personal obligation are skipped for shared
-// accounts — the DO phone has no availability, no skills profile and no RSVP.
+// accounts - the DO phone has no availability, no skills profile and no RSVP.
 // Duty-driven providers stay: they fire only on explicit assignment or an
 // officer module the account would have to be deliberately granted.
 const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
@@ -28,7 +28,7 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   { run: baSkillsLmsProvider },
   { run: dutyCrewProvider, membersOnly: true },
   // Notices are addressed to named recipients, so they're never a broadcast a
-  // shared account could stumble into — no membersOnly gate needed.
+  // shared account could stumble into - no membersOnly gate needed.
   { run: noticesProvider },
 ];
 

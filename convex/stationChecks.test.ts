@@ -164,7 +164,7 @@ describe("station checks N/A handling", () => {
     expect(saved?.status).toBe("completed");
   });
 
-  // There is deliberately no completeness gate — see submitStationCheck. A week
+  // There is deliberately no completeness gate - see submitStationCheck. A week
   // that can't be finished must still be submittable, because the notification
   // is what drives follow-up.
   it("allows submission while items are still unresolved", async () => {
@@ -208,7 +208,7 @@ describe("buildSubmissionNotice", () => {
     expect(result.notDoneCount).toBe(1);
     expect(result.summary).toContain("1 of 2 completed");
     expect(result.summary).toContain("1 not done");
-    expect(result.attention).toContain("Mow lawn — not done");
+    expect(result.attention).toContain("Mow lawn - not done");
   });
 
   it("includes a note left on an untouched item", () => {
@@ -217,7 +217,7 @@ describe("buildSubmissionNotice", () => {
     ]);
 
     expect(result.attention).toEqual([
-      "Mow lawn — not done: Mower is out for service",
+      "Mow lawn - not done: Mower is out for service",
     ]);
   });
 
@@ -227,8 +227,8 @@ describe("buildSubmissionNotice", () => {
       { name: "Mow lawn", isCompleted: false },
     ]);
 
-    expect(result.attention[0]).toBe("Mow lawn — not done");
-    expect(result.attention[1]).toBe("Check hoses — marked N/A: Truck away");
+    expect(result.attention[0]).toBe("Mow lawn - not done");
+    expect(result.attention[1]).toBe("Check hoses - marked N/A: Truck away");
   });
 
   it("reports nothing needing attention for a clean week", () => {

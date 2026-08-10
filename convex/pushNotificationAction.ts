@@ -172,7 +172,7 @@ export const sendNotification = action({
 
 // Self-service test send, for the user settings page. Unlike sendNotification
 // (admin-only UI, can target any user or broadcast), this always sends to the
-// caller's own device(s), optionally narrowed to one specific device — used
+// caller's own device(s), optionally narrowed to one specific device - used
 // to help a user troubleshoot "why isn't this device getting notifications."
 export const sendTestNotificationToSelf = action({
   args: {

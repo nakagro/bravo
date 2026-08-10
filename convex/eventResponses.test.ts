@@ -92,7 +92,7 @@ describe("member responses: open ↔ closed", () => {
     await asAdmin.mutation(api.events.setMemberResponses, { eventId, mode: "closed" });
     expect(await goingIds(asAdmin, eventId)).toEqual([]);
 
-    // ...which the round trip proves — nothing had to be re-entered
+    // ...which the round trip proves - nothing had to be re-entered
     await asAdmin.mutation(api.events.setMemberResponses, { eventId, mode: "open" });
     expect(await goingIds(asAdmin, eventId)).toEqual([aliceId]);
   });
@@ -131,7 +131,7 @@ describe("member responses: open ↔ closed", () => {
       asAlice.mutation(api.events.setRsvp, { eventId, status: "maybe" })
     ).rejects.toThrow(/organiser/i);
 
-    // Being rostered isn't agreeing — the decline must get through, and it
+    // Being rostered isn't agreeing - the decline must get through, and it
     // beats the placement
     await asAlice.mutation(api.events.declineSlotEvent, { eventId });
     expect(await goingIds(asAdmin, eventId)).toEqual([]);

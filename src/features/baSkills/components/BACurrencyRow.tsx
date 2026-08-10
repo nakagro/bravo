@@ -74,7 +74,7 @@ export function BACurrencyRow({ member, onViewHistory }: BACurrencyRowProps) {
         )}
       </div>
 
-      {/* Progress bar — full width, visible on all viewports */}
+      {/* Progress bar - full width, visible on all viewports */}
       <div className="mt-2 flex items-center gap-2">
         <div
           className="h-1.5 flex-1 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden"

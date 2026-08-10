@@ -34,7 +34,7 @@ describe("buildRunCompletionNotice", () => {
 
     expect(result.deviationCount).toBe(1);
     expect(result.summary).toBe("1 of 2 OK · 1 deviation");
-    expect(result.attention).toContain("Spare torch — not on the appliance");
+    expect(result.attention).toContain("Spare torch - not on the appliance");
   });
 
   it("reports the expected and actual counts on a quantity mismatch", () => {
@@ -44,7 +44,7 @@ describe("buildRunCompletionNotice", () => {
 
     expect(result.deviationCount).toBe(1);
     expect(result.attention).toEqual([
-      "Whiteboard markers — expected 4, found 2",
+      "Whiteboard markers - expected 4, found 2",
     ]);
   });
 
@@ -67,9 +67,9 @@ describe("buildRunCompletionNotice", () => {
 
     expect(result.notCheckedCount).toBe(1);
     expect(result.summary).toBe("1 of 3 OK · 1 deviation · 1 not checked");
-    // Deviations lead — they affect whether the truck is ready.
-    expect(result.attention[0]).toBe("Spare torch — not on the appliance");
-    expect(result.attention[1]).toBe("First aid kit — not checked");
+    // Deviations lead - they affect whether the truck is ready.
+    expect(result.attention[0]).toBe("Spare torch - not on the appliance");
+    expect(result.attention[1]).toBe("First aid kit - not checked");
   });
 
   it("appends a note to the item it belongs to, without repeating it", () => {
@@ -79,8 +79,8 @@ describe("buildRunCompletionNotice", () => {
     ]);
 
     expect(result.attention).toEqual([
-      "Spare torch — not on the appliance: Sent for repair",
-      "Hose reel — Slight kink in the line",
+      "Spare torch - not on the appliance: Sent for repair",
+      "Hose reel - Slight kink in the line",
     ]);
   });
 

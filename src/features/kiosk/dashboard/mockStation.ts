@@ -1,7 +1,7 @@
 // In-memory simulation of the station (wvfb-api) for local dev, where the
 // station LAN is unreachable. gateApi swaps these in for the real fetch/post
 // functions when USE_MOCK is set (auto-on in the dev server, never in prod).
-// Nothing else in the kiosk imports this — it's confined to the gateApi seam.
+// Nothing else in the kiosk imports this - it's confined to the gateApi seam.
 
 import type { SceneToggles } from './gateApi';
 

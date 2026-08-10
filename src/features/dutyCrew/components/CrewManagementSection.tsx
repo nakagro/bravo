@@ -84,7 +84,7 @@ export function CrewManagementSection() {
 
   const deletingCrew = dutyCrews.find((c) => c._id === deletingId) ?? null;
 
-  // Members not allocated to any duty crew — the stragglers list
+  // Members not allocated to any duty crew - the stragglers list
   const allocatedIds = new Set(dutyCrews.flatMap((crew) => crew.members));
   const unallocatedMembers = users.filter(
     (user: any) => !allocatedIds.has(user._id)

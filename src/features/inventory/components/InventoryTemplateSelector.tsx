@@ -105,7 +105,7 @@ export function InventoryTemplateSelector() {
     }
   };
 
-  // Templates with unpublished changes can't be started — the button is
+  // Templates with unpublished changes can't be started - the button is
   // disabled and the card says why. `startRun` rejects them server-side too,
   // and that error surfaces through doStartCheck's toast.
   const handleStartCheck = async (tpl: ApplianceTemplateDoc) => {
@@ -148,7 +148,7 @@ export function InventoryTemplateSelector() {
           );
           borderAccent = "border-l-4 border-l-blue-500";
         } else if (hasUnpublished) {
-          // Not an alarm — it's an admin housekeeping state that simply makes
+          // Not an alarm - it's an admin housekeeping state that simply makes
           // the template inert, so it reads as neutral rather than red.
           statusBadge = (
             <Badge variant="secondary" className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-0">
@@ -218,7 +218,7 @@ export function InventoryTemplateSelector() {
                 )}
               </div>
 
-              {/* Right: Action button — large for tablet touch, full width on
+              {/* Right: Action button - large for tablet touch, full width on
                   phones where it sits on its own line */}
               <div className="flex-shrink-0">
                 {run ? (

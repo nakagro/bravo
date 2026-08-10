@@ -1,6 +1,6 @@
 import { ActionProvider } from "./types";
 
-// Audience policy: Role (via module access) — the `baSkillsAdmin` module is
+// Audience policy: Role (via module access) - the `baSkillsAdmin` module is
 // already scoped to Training Officers/admins, so no separate
 // actionAccountability mapping is needed.
 // Triggers when: one or more baRecords have not yet been entered into the CFA LMS.

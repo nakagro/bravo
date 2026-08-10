@@ -34,7 +34,7 @@ crons.interval(
   {}
 );
 
-// "Living sandbox" simulator — churns member statuses so the cloud dev board
+// "Living sandbox" simulator - churns member statuses so the cloud dev board
 // looks actively used. No-ops on any deployment without SIMULATION_ENABLED=true
 // (so this is inert on the live VPS even though the cron ships there).
 crons.interval(

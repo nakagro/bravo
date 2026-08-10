@@ -30,7 +30,7 @@ const CONFIG = {
 
 type Status = NonNullable<Doc<"users">["currentStatus"]>;
 
-// Weighted pool — higher weight = more likely.
+// Weighted pool - higher weight = more likely.
 const STATUS_WEIGHTS: Record<Status, number> = {
   "available - station": 30,
   "available - at station": 10,
@@ -126,7 +126,7 @@ export const tick = internalMutation({
 
 /**
  * Manual one-shot you can run from the dashboard to immediately churn a chosen
- * fraction (defaults to everyone) — handy for seeding a lively initial state.
+ * fraction (defaults to everyone) - handy for seeding a lively initial state.
  * Still env-gated for safety.
  */
 export const runOnce = internalMutation({

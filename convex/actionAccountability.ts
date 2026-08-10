@@ -9,7 +9,7 @@ import { notifyEvent, resolveAudience } from "./lib/notifyEvent";
  *
  * One row per condition key. Modules raising events through notifyEvent() read
  * this table, so adding a notification to a new module is configuration plus a
- * single notifyEvent() call — no new tables, mutations or admin screens.
+ * single notifyEvent() call - no new tables, mutations or admin screens.
  */
 
 const rankValidator = v.union(
@@ -133,7 +133,7 @@ export const setAccountability = mutation({
  *
  * Deliberately addressed to the caller alone rather than the mapped audience:
  * a test that emails a dozen officers is a test nobody runs twice. Note this
- * also sidesteps the normal path's actor exclusion — an officer mapped to
+ * also sidesteps the normal path's actor exclusion - an officer mapped to
  * their own key would otherwise never see their own test.
  *
  * It goes through `notifyEvent` rather than reimplementing delivery, so what
@@ -189,7 +189,7 @@ export const sendTestNotification = mutation({
       moduleId: args.moduleId,
       conditionKey: args.conditionKey,
       title: `[TEST] ${args.title}`,
-      description: "Sample notification — nothing has actually been submitted.",
+      description: "Sample notification - nothing has actually been submitted.",
       url: args.url,
       priority: "low",
       // Stable, so repeated tests replace each other instead of stacking up
@@ -201,13 +201,13 @@ export const sendTestNotification = mutation({
       emailIntro: `This is a test of the "${args.title}" notification, sent to ${name} from the admin settings. A real one is sent automatically when the event happens.`,
       emailDetails: [
         { label: "Notification", value: args.title },
-        { label: "Sent to", value: `${name} (test send — recipients aren't notified)` },
+        { label: "Sent to", value: `${name} (test send - recipients aren't notified)` },
         { label: "Result", value: "Sample data · 2 need attention" },
       ],
       emailListTitle: "Needs attention",
       emailList: [
-        "Sample item — not done: this is where an outstanding item appears",
-        "Sample item — a note left against an item appears like this",
+        "Sample item - not done: this is where an outstanding item appears",
+        "Sample item - a note left against an item appears like this",
       ],
     });
 

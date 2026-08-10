@@ -236,7 +236,7 @@ export function InventoryChecksTab() {
         state={isReadOnly ? "completed" : "editable"}
         primaryLabel="Complete Check"
         onPrimary={handleComplete}
-        // Inventory can finish early — the outstanding items are surfaced in a
+        // Inventory can finish early - the outstanding items are surfaced in a
         // confirmation dialog rather than gating the button.
         primaryDisabled={false}
         isSubmitting={completing}

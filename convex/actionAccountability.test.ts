@@ -83,7 +83,7 @@ const sendTest = (
 describe("sendTestNotification", () => {
   it("notifies the caller even though they are the actor", async () => {
     const { t, otherId, asAdmin } = await setup();
-    // Mapped to someone else entirely — the test still reaches the tester.
+    // Mapped to someone else entirely - the test still reaches the tester.
     await map(t, [otherId]);
 
     const result = await sendTest(asAdmin);

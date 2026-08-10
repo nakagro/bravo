@@ -169,7 +169,7 @@ export function StationChecksList({
     item.completedBy ? itemUsersById[item.completedBy] ?? null : null;
 
   // No submit gate. A week that can't be finished still gets submitted, and the
-  // notification names the outstanding items so the officer can follow up —
+  // notification names the outstanding items so the officer can follow up -
   // gating it just left weeks sitting in draft, telling nobody anything.
   const handleSubmit = () => {
     if (remainingCount > 0) {

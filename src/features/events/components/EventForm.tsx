@@ -242,12 +242,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           respondBy: fields.respondBy || undefined,
           description: fields.description || undefined,
           hasShifts: values.hasShifts,
-          // Only ever set at creation here — changing it later goes through
+          // Only ever set at creation here - changing it later goes through
           // setMemberResponses so the carry-over can be offered.
           memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
           slots: values.hasShifts ? slots : undefined,
         });
-        // Event saved — the draft has served its purpose.
+        // Event saved - the draft has served its purpose.
         newEventDraft = null;
         guard.release();
         toast.success("Event created");
@@ -578,7 +578,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           )}
         />
 
-        {/* Responses mode — create only. On an existing event this is flipped
+        {/* Responses mode - create only. On an existing event this is flipped
             from the event page, where closing can offer to carry the people who
             already said yes straight onto the roster. */}
         {!isEditing && (
@@ -593,7 +593,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                       I already know who&apos;s going
                     </span>
                     <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      Skips asking the brigade — you set the roster yourself. You can
+                      Skips asking the brigade - you set the roster yourself. You can
                       open it up later.
                     </span>
                   </span>

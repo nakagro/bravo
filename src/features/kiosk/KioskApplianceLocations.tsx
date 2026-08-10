@@ -20,7 +20,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
     const [customLocationFor, setCustomLocationFor] = useState<string | null>(null);
     const [customLocation, setCustomLocation] = useState('');
 
-    // On-screen keyboard — this kiosk runs Edge in assigned-access mode with no
+    // On-screen keyboard - this kiosk runs Edge in assigned-access mode with no
     // physical keyboard, and Windows won't reliably auto-invoke its touch
     // keyboard there, so we render our own inside the custom-location modal.
     const keyboardRef = useRef<{ setInput: (v: string) => void } | null>(null);
@@ -240,7 +240,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
                             />
                         </div>
 
-                        {/* On-screen keyboard — the kiosk has no physical keyboard */}
+                        {/* On-screen keyboard - the kiosk has no physical keyboard */}
                         <Keyboard
                             keyboardRef={(r) => { keyboardRef.current = r; }}
                             layoutName={keyboardLayout}
@@ -294,7 +294,7 @@ function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
                     display: none;
                 }
 
-                /* On-screen keyboard — themed to match the kiosk's big-touch dark UI */
+                /* On-screen keyboard - themed to match the kiosk's big-touch dark UI */
                 .kioskKeyboard.simple-keyboard {
                     background: transparent;
                     padding: 0;

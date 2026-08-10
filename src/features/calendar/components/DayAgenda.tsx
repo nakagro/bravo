@@ -23,7 +23,7 @@ function timeColumn(item: CalendarItem, date: Date) {
   return (
     <>
       {startsToday ? format(item.start, "HH:mm") : "…"}
-      {/* No finish recorded — the start time stands on its own */}
+      {/* No finish recorded - the start time stands on its own */}
       {!item.endUnknown && (
         <span className="mt-0.5 block font-normal text-gray-500 dark:text-gray-400">
           {endsToday ? format(item.end, "HH:mm") : "…"}

@@ -1,4 +1,4 @@
-# Keys Module — UX Improvements (2026-03-24)
+# Keys Module - UX Improvements (2026-03-24)
 
 ## Summary
 Comprehensive UX overhaul of the Key Management module to improve daily usability, especially for quick lookups during callouts.
@@ -57,13 +57,13 @@ Comprehensive UX overhaul of the Key Management module to improve daily usabilit
 ## Files Changed
 | File | Change Type |
 |------|------------|
-| `convex/keys.ts` | Modified — added `itemSummary` to list query |
-| `src/features/keys/components/KeyInventory.tsx` | Rewritten — instant search, item summaries, click-to-view, URL params |
-| `src/features/keys/components/KeyDetailPanel.tsx` | **New** — read-only detail panel with copy actions |
-| `src/features/keys/components/KeyForm.tsx` | Simplified — removed tabs, items inline, single scroll view |
-| `src/features/keys/components/KeyItems.tsx` | Rewritten — AlertDialog, lucide icons, better empty state |
-| `src/features/keys/components/KeyComments.tsx` | Rewritten — AlertDialog, shadcn components, better empty state |
-| `src/components/ui/sheet.tsx` | **New** — shadcn Sheet component (installed via CLI) |
+| `convex/keys.ts` | Modified - added `itemSummary` to list query |
+| `src/features/keys/components/KeyInventory.tsx` | Rewritten - instant search, item summaries, click-to-view, URL params |
+| `src/features/keys/components/KeyDetailPanel.tsx` | **New** - read-only detail panel with copy actions |
+| `src/features/keys/components/KeyForm.tsx` | Simplified - removed tabs, items inline, single scroll view |
+| `src/features/keys/components/KeyItems.tsx` | Rewritten - AlertDialog, lucide icons, better empty state |
+| `src/features/keys/components/KeyComments.tsx` | Rewritten - AlertDialog, shadcn components, better empty state |
+| `src/components/ui/sheet.tsx` | **New** - shadcn Sheet component (installed via CLI) |
 
 ## Dependencies Added
 - `@radix-ui/react-dialog` (already present, used by Sheet)

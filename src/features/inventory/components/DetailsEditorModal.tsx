@@ -28,7 +28,7 @@ interface DetailsEditorModalProps {
 }
 
 /**
- * Description + reference photo editor, shared by sections and items — the two
+ * Description + reference photo editor, shared by sections and items - the two
  * were byte-for-byte duplicates apart from their copy.
  *
  * Built on ResponsiveModal (drawer on phones) rather than a raw Dialog. That is

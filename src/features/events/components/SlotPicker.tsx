@@ -8,17 +8,17 @@ import { formatSlotWhen, slotCoverageLabel, RsvpStatus } from "../types";
 
 interface SlotPickerProps {
   eventId: Id<"events">;
-  /** The caller's overall state — "notAttending" means they hit "Can't make it" */
+  /** The caller's overall state - "notAttending" means they hit "Can't make it" */
   myRsvp: RsvpStatus | null;
 }
 
 /**
- * Zone 2 input surface for a shift event — purely about the **caller's own**
+ * Zone 2 input surface for a shift event - purely about the **caller's own**
  * availability. A vertical list of shift toggles; tap one to say "I can do
  * this".
  *
  * Deliberately shows NO other members: the communal roster / interest picture
- * lives in the read-only `ShiftBoard` (Zone 3). That split is the whole point —
+ * lives in the read-only `ShiftBoard` (Zone 3). That split is the whole point -
  * this card is what's asked of *you*, the board is what everyone can see. The
  * only names here are your own standing (the "you're rostered on" banner).
  */
@@ -99,7 +99,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
           // Once you're rostered anywhere, the roster is what you're doing:
           // rostered shifts take the strong styling and leftover interest
           // picks demote to a muted hint so they can't be misread as "my
-          // shifts". Rostered cards don't toggle — removing interest there
+          // shifts". Rostered cards don't toggle - removing interest there
           // would silently erase your standing if the roster later changes.
           const cardState: "rostered" | "interested" | "offered" | "idle" = slot.mineAllocated
             ? "rostered"
@@ -186,7 +186,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
         })}
       </div>
 
-      {/* Can't make it — toggles a notAttending rsvp and clears interest */}
+      {/* Can't make it - toggles a notAttending rsvp and clears interest */}
       <button
         type="button"
         onClick={handleDecline}

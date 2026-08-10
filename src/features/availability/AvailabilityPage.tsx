@@ -50,7 +50,7 @@ function AvailabilityPage() {
   const hasAdminTabAccess = moduleAccess?.availabilityAdmin;
 
   // A shared account (DO phone, appliance tablet) has no personal status, so the
-  // "You" tab means nothing to it — it opens straight on the brigade board.
+  // "You" tab means nothing to it - it opens straight on the brigade board.
   const isShared = isSharedAccount(userStatus);
   const defaultTab: AvailabilityTab = isShared ? "brigade" : "you";
 

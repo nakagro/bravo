@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface ChecklistNavSection {
-  /** Stable key — also the Accordion item value. */
+  /** Stable key - also the Accordion item value. */
   key: string;
   answered: number;
   total: number;
@@ -18,7 +18,7 @@ interface UseChecklistNavigationOptions {
 
 /**
  * Section open state, section refs and optional auto-advance for a checklist.
- * One implementation for both modules — this logic had drifted into two.
+ * One implementation for both modules - this logic had drifted into two.
  */
 export function useChecklistNavigation({
   sections,

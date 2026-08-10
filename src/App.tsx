@@ -438,7 +438,7 @@ function UnauthenticatedApp() {
   return (
     <RouteSuspense>
       <Routes>
-        {/* Service login is full-screen — must not be wrapped in AuthLayout */}
+        {/* Service login is full-screen - must not be wrapped in AuthLayout */}
         <Route path="/service-login" element={<ServiceLoginPage />} />
         {/* Kiosk devices should use service PIN login, not user sign-in */}
         <Route path="/kiosk/*" element={<KioskToServiceLoginRedirect />} />

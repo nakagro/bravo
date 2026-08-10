@@ -28,7 +28,7 @@ const isDeviation = (item: RunItem) =>
  *
  * Same shape as the duty-crew submission notice, and for the same reason: the
  * point is the exception detail. A completed run tells the officer nothing on
- * its own — what matters is what wasn't on the appliance, what was miscounted,
+ * its own - what matters is what wasn't on the appliance, what was miscounted,
  * and what nobody checked.
  */
 export function buildRunCompletionNotice(items: RunItem[], templateName: string) {
@@ -49,18 +49,18 @@ export function buildRunCompletionNotice(items: RunItem[], templateName: string)
     const detail = isQuantityItem(item)
       ? `expected ${item.expectedQuantity}, found ${item.actualQuantity}`
       : "not on the appliance";
-    return `${item.itemName} — ${detail}${item.notes?.trim() ? `: ${item.notes.trim()}` : ""}`;
+    return `${item.itemName} - ${detail}${item.notes?.trim() ? `: ${item.notes.trim()}` : ""}`;
   };
 
   const attention = [
-    // Deviations lead — they're the ones that affect whether the truck is ready.
+    // Deviations lead - they're the ones that affect whether the truck is ready.
     ...deviations.map(describeDeviation),
     ...notChecked.map(
-      (i) => `${i.itemName} — not checked${i.notes?.trim() ? `: ${i.notes.trim()}` : ""}`
+      (i) => `${i.itemName} - not checked${i.notes?.trim() ? `: ${i.notes.trim()}` : ""}`
     ),
     ...withNotes
       .filter((i) => !isDeviation(i) && isAnswered(i))
-      .map((i) => `${i.itemName} — ${i.notes!.trim()}`),
+      .map((i) => `${i.itemName} - ${i.notes!.trim()}`),
   ];
 
   return {
@@ -293,8 +293,8 @@ export const completeRun = mutation({
       actorUserId: userId,
       emailSubject:
         notice.deviationCount > 0
-          ? `Inventory check completed with ${notice.deviationCount} deviation${notice.deviationCount === 1 ? "" : "s"} — ${run.templateName}`
-          : `Inventory check completed — ${run.templateName}`,
+          ? `Inventory check completed with ${notice.deviationCount} deviation${notice.deviationCount === 1 ? "" : "s"} - ${run.templateName}`
+          : `Inventory check completed - ${run.templateName}`,
       emailIntro: `${completedByName} completed the inventory check for ${run.templateName}.`,
       emailDetails: [
         { label: "Checklist", value: run.templateName },

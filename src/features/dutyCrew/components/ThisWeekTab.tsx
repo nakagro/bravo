@@ -124,7 +124,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       if (currentWeekStatus?.submission?.status === "completed" && submissionId) {
         await reopenStationCheck({ submissionId });
         toast.info(
-          "Week reopened — tap Complete Checks again when you're finished."
+          "Week reopened - tap Complete Checks again when you're finished."
         );
       }
 
@@ -156,7 +156,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         ? item.checkId === checkId
         : item.isAdHoc && item.name === adHocName
     );
-    // Toggling an item someone else resolved rewrites their attribution —
+    // Toggling an item someone else resolved rewrites their attribution -
     // offer an undo instead of doing it silently
     const overwritesOther =
       target &&

@@ -8,7 +8,7 @@ import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { type Severity, SEVERITY_ICON_COLOR, SEVERITY_RING, formatRemaining } from './gateApi';
 
 // NavTile/SceneToggleTile icons come from either lucide-react (LucideIcon) or
-// react-icons (e.g. FaMaskVentilator, to match the hamburger menu) — both are
+// react-icons (e.g. FaMaskVentilator, to match the hamburger menu) - both are
 // just components that accept a className.
 export type NavIcon = ComponentType<{ className?: string }>;
 
@@ -18,7 +18,7 @@ export interface ResolvedState {
   severity: Severity;
 }
 
-// A live status tile — tap opens the matching control modal. Used for both
+// A live status tile - tap opens the matching control modal. Used for both
 // doors and the alarm area; both resolve to { label, icon, severity }.
 export function StatusTile({
   name, info, error, onClick,
@@ -52,7 +52,7 @@ export function StatusTile({
 const FIRECALL_HOLD_MS = 1500;
 
 // The Firecall hero. BOTH starting and cancelling require a press-and-hold (a
-// progress fill sweeps across; releasing early aborts) — this guards the start
+// progress fill sweeps across; releasing early aborts) - this guards the start
 // against accidental taps and, just as importantly, stops a stray tap killing an
 // active firecall mid-incident.
 export function FirecallHero({

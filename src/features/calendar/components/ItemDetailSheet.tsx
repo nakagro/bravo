@@ -33,7 +33,7 @@ function formatItemRange(item: CalendarItem): string {
     return `${format(item.start, "EEE d MMM")} – ${format(lastDay, "EEE d MMM yyyy")} · All day`;
   }
   if (item.endUnknown) {
-    // No finish recorded — don't imply one
+    // No finish recorded - don't imply one
     return `${format(item.start, "EEEE d MMMM yyyy")} · from ${format(item.start, "HH:mm")}`;
   }
   if (isSameDay(item.start, item.end)) {

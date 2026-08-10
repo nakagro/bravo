@@ -84,7 +84,7 @@ export const deleteSubscription = mutation({
 
 // Internal-only: raw subscriptions (including push keys) for the calling
 // user, for use by pushNotificationAction's self-test sender. Never exposed
-// to the client directly — use getMySubscriptions for that.
+// to the client directly - use getMySubscriptions for that.
 export const getMySubscriptionsRaw = internalQuery({
   args: {},
   returns: v.array(

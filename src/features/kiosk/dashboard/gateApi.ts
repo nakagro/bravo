@@ -1,7 +1,7 @@
 // Station (wvfb-api) access layer for the kiosk dashboard.
 //
 // This talks to the LOCAL node API (`wvfb-api` at 192.0.2.10:3000, proxied as
-// /gate-api), NOT Convex — door/area control must stay on the local network for
+// /gate-api), NOT Convex - door/area control must stay on the local network for
 // security. Single source of truth for door + area state interpretation and the
 // control/scene endpoints, shared by every dashboard widget and modal.
 
@@ -58,7 +58,7 @@ export function interpretState(s: number): DoorStateInfo {
   return { label: 'Secured', sub: 'Closed and locked', icon: Lock, severity: 'normal' };
 }
 
-// Inception AreaState — bit 1 (0x1) = Armed.
+// Inception AreaState - bit 1 (0x1) = Armed.
 const AREA_ARMED_BIT = 1;
 export interface AreaStateInfo { label: string; armed: boolean; severity: Severity; icon: LucideIcon; }
 export function interpretArea(s: number): AreaStateInfo {
@@ -115,7 +115,7 @@ async function postJson(url: string, body: unknown): Promise<unknown> {
   });
   const data = await res.json().catch(() => ({}));
   // Scene endpoints return 207 + ok:false when a step failed but the request
-  // itself was well-formed — surface the first failing step's error.
+  // itself was well-formed - surface the first failing step's error.
   if (!res.ok || (data && typeof data === 'object' && 'ok' in data && data.ok === false)) {
     const failed = Array.isArray((data as any)?.results)
       ? (data as any).results.find((r: any) => !r.ok)
@@ -137,7 +137,7 @@ export const setCommunityLockup = USE_MOCK
   ? mock.setCommunityLockup
   : (engage: boolean) => postJson(`${GATE_API_BASE}/scenes/community-lockup`, { engage });
 export const setShed = USE_MOCK ? mock.setShed : (secure: boolean) => postJson(`${GATE_API_BASE}/scenes/shed`, { secure });
-// Alarm-only arm/disarm — leaves the PA door untouched.
+// Alarm-only arm/disarm - leaves the PA door untouched.
 // NOTE: requires wvfb-api to expose POST /scenes/shed-alarm { arm: boolean }.
 export const setShedAlarm = USE_MOCK ? mock.setShedAlarm : (arm: boolean) => postJson(`${GATE_API_BASE}/scenes/shed-alarm`, { arm });
 

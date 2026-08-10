@@ -10,7 +10,7 @@ interface ChecklistRowProps {
   badges?: ReactNode;
   /** Existing note; rendered as a one-line preview under the name. */
   notes?: string;
-  /** Attribution, expected-quantity hints, etc. — under the notes preview. */
+  /** Attribution, expected-quantity hints, etc. - under the notes preview. */
   meta?: ReactNode;
   /** Rendered before the name, e.g. Duty Crew's tri-state circle. */
   leading?: ReactNode;
@@ -27,7 +27,7 @@ interface ChecklistRowProps {
    * omitted the row is inert and `control` owns interaction (Inventory).
    */
   onActivate?: () => void;
-  /** Red left edge while unanswered — Duty Crew's Priority items. */
+  /** Red left edge while unanswered - Duty Crew's Priority items. */
   emphasis?: "priority";
   /** 300ms tap acknowledgement. */
   flash?: "resolved" | "attention" | null;
@@ -47,8 +47,8 @@ const nameToneFor = (status: ChecklistItemStatus) =>
 
 /**
  * The shared checklist row anatomy. The *control* differs by module on purpose
- * — "did you sweep the floor?" wants a row-tap checkbox, "is it on the truck?"
- * needs an explicit No — but everything around it is identical.
+ * - "did you sweep the floor?" wants a row-tap checkbox, "is it on the truck?"
+ * needs an explicit No - but everything around it is identical.
  */
 export const ChecklistRow = forwardRef<HTMLDivElement, ChecklistRowProps>(
   function ChecklistRow(

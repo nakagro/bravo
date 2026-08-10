@@ -91,7 +91,7 @@ export const notifyEventMembers = action({
       body =
         event.status === "cancelled"
           ? `Cancelled: ${parts.join(" · ")}`
-          : `${parts.join(" · ")} — tap to RSVP`;
+          : `${parts.join(" · ")} - tap to RSVP`;
     }
 
     await sendEventPush(ctx, {

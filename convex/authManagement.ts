@@ -393,7 +393,7 @@ export const purgeOrphanedTokensBatch = internalMutation({
   handler: async (ctx, args) => {
     const BATCH_SIZE = 200; // Can process more since we're just checking existence
 
-    // Get a page of refresh tokens (Convex built-in cursor pagination — never
+    // Get a page of refresh tokens (Convex built-in cursor pagination - never
     // loads all ~12k tokens at once)
     const result = await ctx.db
       .query("authRefreshTokens")

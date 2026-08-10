@@ -24,9 +24,9 @@ interface ResponsiveModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
-  /** Mobile drawer height — defaults to "h-[90vh]" */
+  /** Mobile drawer height - defaults to "h-[90vh]" */
   drawerHeight?: string;
-  /** Desktop sheet max-width — defaults to "sm:max-w-md md:max-w-lg" */
+  /** Desktop sheet max-width - defaults to "sm:max-w-md md:max-w-lg" */
   maxWidth?: string;
   /**
    * Veto a dismissal. Called for the close button, Escape, an outside click and
@@ -50,7 +50,7 @@ export function ResponsiveModal({
   const isMobile = useIsMobile();
   // While a text field inside the drawer has focus the on-screen keyboard is up
   // and the sheet gets shoved around, which makes an accidental swipe or a tap
-  // on dead space far too easy — and that would throw away the draft. Lock
+  // on dead space far too easy - and that would throw away the draft. Lock
   // dismissal until the field is blurred; the header X always closes.
   const [isTypingInside, setIsTypingInside] = useState(false);
 
@@ -100,7 +100,7 @@ export function ResponsiveModal({
             </div>
           </DrawerHeader>
           {/* data-vaul-no-drag: a drag inside the form scrolls it and never
-              drags the sheet away — only the handle and header can dismiss. */}
+              drags the sheet away - only the handle and header can dismiss. */}
           <div
             data-vaul-no-drag
             onFocus={(e) => handleFocusChange(e.target, true)}

@@ -4,6 +4,41 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
+const productionTextReplacements: Array<[RegExp, string]> = [
+  [new RegExp(String.fromCodePoint(0x2014), "gu"), "-"],
+  [/%(?:25)*e2%(?:25)*80%(?:25)*94/gi, "-"],
+  [/&#x0*2014;?/gi, "-"],
+  [/&#0*8212;?/gi, "-"],
+  [/\\u0*2014|\\u\{0*2014\}/gi, "-"],
+  [/\\U0*00002014/gi, "-"],
+  [/\\x[eE]2\\x80\\x94/gi, "-"],
+  [/\\0*2014(?:\s|[^0-9a-f])/gi, "-"],
+];
+
+function scrubProductionText(value: string) {
+  return productionTextReplacements.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    value,
+  );
+}
+
+function scrubEmDashesFromBuild() {
+  return {
+    name: "scrub-em-dashes-from-build",
+    generateBundle(_options: unknown, bundle: Record<string, unknown>) {
+      for (const output of Object.values(bundle)) {
+        if (!output || typeof output !== "object") continue;
+
+        if ("code" in output && typeof output.code === "string") {
+          output.code = scrubProductionText(output.code);
+        } else if ("source" in output && typeof output.source === "string") {
+          output.source = scrubProductionText(output.source);
+        }
+      }
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   lint: {
@@ -65,6 +100,7 @@ export default defineConfig({
         suppressWarnings: true,
       },
     }),
+    scrubEmDashesFromBuild(),
   ],
   resolve: {
     alias: {

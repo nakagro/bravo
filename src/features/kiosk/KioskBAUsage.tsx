@@ -35,7 +35,7 @@ const USAGE_TYPES: Array<{ key: UsageType; title: string; Icon: typeof Flame }> 
     { key: 'drill', title: 'Training', Icon: GraduationCap },
 ];
 
-// Local-date helpers — Date#toISOString() is UTC, which silently rolls
+// Local-date helpers - Date#toISOString() is UTC, which silently rolls
 // "today" back a day for AEDT/AEST users in the early morning.
 function formatISO(d: Date): string {
     const y = d.getFullYear();
@@ -76,7 +76,7 @@ interface MemberLite {
     rank?: string;
 }
 
-// Tap-only tile grid — this kiosk's touch keyboard is unreliable, so member
+// Tap-only tile grid - this kiosk's touch keyboard is unreliable, so member
 // and verifier pickers avoid typed search entirely in favour of a full list.
 function MemberTileGrid({
     members,
@@ -130,7 +130,7 @@ function MemberTileGrid({
     );
 }
 
-// Full-screen date picker — big "Today"/"Yesterday" shortcuts plus a calendar
+// Full-screen date picker - big "Today"/"Yesterday" shortcuts plus a calendar
 // grid for anything older. Native <input type="date"> renders a tiny, fiddly
 // picker on this tablet's browser, so this replaces it entirely.
 function DatePickerModal({
@@ -257,7 +257,7 @@ function DatePickerModal({
     );
 }
 
-// Full-screen numeric keypad for the custom duration field — bigger, more
+// Full-screen numeric keypad for the custom duration field - bigger, more
 // reliable touch targets than relying on the tablet's native numeric keyboard.
 function NumberPadModal({
     value,
@@ -361,7 +361,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isDurationPadOpen, setIsDurationPadOpen] = useState(false);
 
-    // On-screen keyboard for the notes field — job/address info is the one
+    // On-screen keyboard for the notes field - job/address info is the one
     // thing on this page that must be typed.
     const [isNotesEditorOpen, setIsNotesEditorOpen] = useState(false);
     const [notesDraft, setNotesDraft] = useState('');
@@ -567,7 +567,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
                     </div>
                 </section>
 
-                {/* Job info / notes — the one field that needs typing */}
+                {/* Job info / notes - the one field that needs typing */}
                 <section>
                     <h2 className="text-xl font-bold text-white mb-3">Job info / notes</h2>
                     <button
@@ -627,7 +627,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
                 </button>
             </main>
 
-            {/* Notes editor — full-screen on-screen keyboard, this kiosk has no physical one */}
+            {/* Notes editor - full-screen on-screen keyboard, this kiosk has no physical one */}
             {isNotesEditorOpen && (
                 <div className="fixed inset-0 z-[120] bg-slate-950 flex flex-col">
                     <header className="flex-none flex items-center justify-between px-6 py-4 border-b border-slate-800">

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 export function ActionBell() {
   const actions = useQuery(api.actionCentre.getMyActions);
 
-  // Show the bell to all signed-in users — the /actions page is already gated
+  // Show the bell to all signed-in users - the /actions page is already gated
   // by ProtectedRoute. Only hide while actions are still loading.
   if (actions === undefined) return null;
 

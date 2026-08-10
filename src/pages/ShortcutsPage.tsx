@@ -93,7 +93,7 @@ export default function ShortcutsPage() {
 
     const endpointUrl = `${httpBaseUrl}/api/shortcuts/availability`;
 
-    // Mask token for display — show only last 8 characters
+    // Mask token for display - show only last 8 characters
     const maskedToken = token
         ? `${"•".repeat(Math.max(0, token.length - 8))}${token.slice(-8)}`
         : "";

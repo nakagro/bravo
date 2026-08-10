@@ -21,7 +21,7 @@ const whenValidator = v.union(
     kind: v.literal("timed"),
     /** ms since epoch */
     start: v.number(),
-    /** Omitted when the finish time isn't known — the VEVENT gets no DTEND */
+    /** Omitted when the finish time isn't known - the VEVENT gets no DTEND */
     end: v.optional(v.number()),
   }),
   v.object({
@@ -354,7 +354,7 @@ export const createEvent = action({
     );
     const uid = `bravo-${crypto.randomUUID()}`;
     const ics = buildVEventCalendar(uid, args);
-    // If-None-Match: * — never overwrite an existing resource on create
+    // If-None-Match: * - never overwrite an existing resource on create
     await putEvent(`${collectionUrl()}${uid}.ics`, ics, { ifNoneMatch: "*" });
     return uid;
   },

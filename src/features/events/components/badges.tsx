@@ -58,7 +58,7 @@ export function DateBadge({ dateStr }: { dateStr: string }) {
 }
 
 /**
- * Status chip for an event. Only cancelled events get a badge — "active" is
+ * Status chip for an event. Only cancelled events get a badge - "active" is
  * the unremarkable default.
  */
 export function EventStatusBadge({ status, className = "" }: { status: string; className?: string }) {
@@ -88,7 +88,7 @@ export function ShiftsBadge({ className = "" }: { className?: string }) {
 }
 
 /**
- * Small indicator that member responses are closed — the organiser has set the
+ * Small indicator that member responses are closed - the organiser has set the
  * roster, so there's no point looking for an RSVP prompt on this one.
  */
 export function SetListBadge({ className = "" }: { className?: string }) {

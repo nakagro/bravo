@@ -1,6 +1,6 @@
 /**
  * Frontend mirror of `convex/lib/accountType.ts`. Hand-mirrored rather than
- * imported across the boundary — see the note at
+ * imported across the boundary - see the note at
  * `src/features/memberRecords/types.ts:3`.
  */
 export type AccountType = "member" | "shared";

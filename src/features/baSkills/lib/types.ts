@@ -31,7 +31,7 @@ export const STATUS_GROUP_ORDER: CurrencyStatus[] = [
   "current",
 ];
 
-/** Default expanded state per status — open the at-risk groups, collapse the rest */
+/** Default expanded state per status - open the at-risk groups, collapse the rest */
 export const DEFAULT_GROUP_OPEN: Record<CurrencyStatus, boolean> = {
   expired: true,
   warning: true,

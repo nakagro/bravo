@@ -15,28 +15,28 @@ interface SlotMember {
   firstName?: string;
   lastName?: string;
   name?: string;
-  /** Rostered but has since marked "can't make it" — a conflict to surface */
+  /** Rostered but has since marked "can't make it" - a conflict to surface */
   declined?: boolean;
 }
 
 /**
- * Zone 3 read-only turnout board for a shift event — the communal noticeboard.
+ * Zone 3 read-only turnout board for a shift event - the communal noticeboard.
  *
  * Purely display: no toggles, no input (the caller expresses interest in the
  * SlotPicker card above). Because nothing here is interactive, showing the
  * confirmed roster and the interested bench side by side reads plainly as "who's
  * on / who's available", not as a control.
  *
- * Each shift shows two tiers that only ever grow — the roster never wipes out
+ * Each shift shows two tiers that only ever grow - the roster never wipes out
  * the interest list:
- *  - "Rostered" — the confirmed people the organiser has allocated (solid).
- *  - "Interested" / "Also interested" — everyone who put their hand up but isn't
+ *  - "Rostered" - the confirmed people the organiser has allocated (solid).
+ *  - "Interested" / "Also interested" - everyone who put their hand up but isn't
  *    (yet) rostered (muted). Before allocation this is the whole story; after,
  *    it's the bench, so nobody who offered ever disappears.
  */
 export function ShiftBoard({ eventId }: ShiftBoardProps) {
   const slots = useQuery(api.events.getEventSlots, { eventId });
-  // Marks "you" in the lists — the one thing you can't work out by looking,
+  // Marks "you" in the lists - the one thing you can't work out by looking,
   // since offers get spread across shifts by the organiser
   const myUserId = useQuery(api.messages.getCurrentUserId);
 
@@ -131,8 +131,8 @@ export function ShiftBoard({ eventId }: ShiftBoardProps) {
 
 /**
  * A labelled row of member chips inside a shift block. Two tones:
- *  - "rostered" — confirmed, solid indigo.
- *  - "interested" — expressed interest, muted with a dashed edge so the bench
+ *  - "rostered" - confirmed, solid indigo.
+ *  - "interested" - expressed interest, muted with a dashed edge so the bench
  *    reads lighter than the roster without disappearing.
  * "You" (red) and "can't make it" (struck-through red) always win over the tone.
  */

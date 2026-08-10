@@ -283,7 +283,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         )}
       </div>
 
-      {/* Verifier — REQUIRED */}
+      {/* Verifier - REQUIRED */}
       <MemberCombobox
         label="Verified by"
         required
@@ -300,7 +300,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         }
       />
 
-      {/* Notes — required */}
+      {/* Notes - required */}
       <div className="space-y-2">
         <Label htmlFor="notes">
           Notes <span className="text-red-500">*</span>

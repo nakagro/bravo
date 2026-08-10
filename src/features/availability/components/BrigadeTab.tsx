@@ -117,7 +117,7 @@ function BrigadeTab({
 
   return (
     <>
-      {/* Top info row — Duty Officer/Crew + Appliance Locations side by side */}
+      {/* Top info row - Duty Officer/Crew + Appliance Locations side by side */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         {/* Duty Officer + Duty Crew */}
         <div className="bg-white dark:bg-gray-800 shadow-sm p-3 rounded space-y-2">

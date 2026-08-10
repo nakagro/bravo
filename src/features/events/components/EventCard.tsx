@@ -26,7 +26,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
   const isCancelled = event.status === "cancelled";
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
   const showRsvp = !readOnly && !isCancelled && !isPast;
-  // The organiser set who's going — no opting in from the list
+  // The organiser set who's going - no opting in from the list
   const responsesClosed = event.memberResponses === "closed";
   const onRoster = event.myRsvp === "attending";
 

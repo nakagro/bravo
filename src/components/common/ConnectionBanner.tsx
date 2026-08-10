@@ -8,7 +8,7 @@ const OFFLINE_GRACE_MS = 2500;
 
 /**
  * Persistent banner shown while the Convex WebSocket is disconnected.
- * Critical for availability accuracy — members need to know when their
+ * Critical for availability accuracy - members need to know when their
  * status changes aren't reaching the server.
  */
 export function ConnectionBanner() {

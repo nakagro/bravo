@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "2026.08.08",
+  "version": "2026.08.11",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:vps:frontend",
@@ -12,8 +12,8 @@
     "dev:cloud:frontend": "vp dev --open --mode cloud",
     "dev:cloud:backend": "CONVEX_DEPLOYMENT=precious-magpie-647 convex dev",
     "build": "npm run build:vps",
-    "build:vps": "vp build --mode vps",
-    "build:cloud": "vp build --mode cloud",
+    "build:vps": "vp build --mode vps && npm run check:no-em-dashes",
+    "build:cloud": "vp build --mode cloud && npm run check:no-em-dashes",
     "preview": "vp preview",
     "preview:vps": "npm run build:vps && vp preview",
     "preview:cloud": "npm run build:cloud && vp preview",
@@ -27,12 +27,13 @@
     "keys:generate": "node scripts/generate-keys.mjs",
     "serve:dist": "node scripts/serve-app.js",
     "test:api-key": "bash scripts/test-api-key.sh",
+    "check:no-em-dashes": "node scripts/check-no-em-dashes.mjs",
     "version:sync": "node scripts/set-build-version.js",
     "test": "vp test run",
     "test:watch": "vp test",
     "lint:code": "vp lint",
     "typecheck": "tsc -p convex --noEmit --pretty false && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",
-    "lint": "vp lint && npm run typecheck && vp test run && convex dev --once && vp build",
+    "lint": "vp lint && npm run typecheck && vp test run && convex dev --once && vp build && npm run check:no-em-dashes",
     "prepare": "husky"
   },
   "dependencies": {

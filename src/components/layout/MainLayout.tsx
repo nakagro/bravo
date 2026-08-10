@@ -14,7 +14,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   // Publish the app header's height so page-level sticky chrome can park
   // directly beneath it instead of colliding with it. Measured rather than
-  // hardcoded — the header grows with the DEV badge and with font scaling.
+  // hardcoded - the header grows with the DEV badge and with font scaling.
   useLayoutEffect(() => {
     const el = headerRef.current;
     if (!el) return;

@@ -240,7 +240,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
           )}
         />
 
-        {/* Step 2: Date/Time — only after resource selected */}
+        {/* Step 2: Date/Time - only after resource selected */}
         {watchResourceId && (
           <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
             {/* Start Date */}
@@ -449,7 +449,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
           </div>
         )}
 
-        {/* Step 3: Reason — only after date selected */}
+        {/* Step 3: Reason - only after date selected */}
         {watchResourceId && watchStartDate && (
           <FormField
             control={form.control}

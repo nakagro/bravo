@@ -7,7 +7,7 @@ import { v } from "convex/values";
  * Usage:
  *   npx convex run seed:seedDevDatabase --env-file .env.cloud
  *
- * This mutation is idempotent — it checks for existing skills before inserting
+ * This mutation is idempotent - it checks for existing skills before inserting
  * and will skip seeding if data already exists.
  */
 export const seedDevDatabase = mutation({
@@ -20,7 +20,7 @@ export const seedDevDatabase = mutation({
     // ── Idempotency check ──────────────────────────────────────────────
     const existingSkills = await ctx.db.query("skills").first();
     if (existingSkills) {
-      return "Database already seeded — skipping. Delete all data first if you want to re-seed.";
+      return "Database already seeded - skipping. Delete all data first if you want to re-seed.";
     }
 
     // ── 1. Bootstrap admin user ────────────────────────────────────────

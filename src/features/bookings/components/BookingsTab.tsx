@@ -126,7 +126,7 @@ export function BookingsTab() {
       {/* Pending Approvals */}
       <PendingApprovals title="Pending Your Approval" />
 
-      {/* Request New Booking Button — inline on desktop only */}
+      {/* Request New Booking Button - inline on desktop only */}
       <button
         onClick={() => setShowRequestForm(true)}
         className="hidden sm:flex w-full p-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors items-center justify-center gap-2 shadow-sm"
@@ -135,7 +135,7 @@ export function BookingsTab() {
         Request a Booking
       </button>
 
-      {/* Floating action button — mobile, always in thumb reach */}
+      {/* Floating action button - mobile, always in thumb reach */}
       <button
         onClick={() => setShowRequestForm(true)}
         className="sm:hidden fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-40 h-14 pl-4 pr-5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium rounded-full shadow-lg flex items-center gap-2"

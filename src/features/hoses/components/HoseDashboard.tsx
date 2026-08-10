@@ -427,7 +427,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           </AccordionContent>
         </AccordionItem>
 
-        {/* Fleet Breakdown — replaces the empty Analytics placeholder */}
+        {/* Fleet Breakdown - replaces the empty Analytics placeholder */}
         <AccordionItem value="fleet" className="border rounded-lg px-4 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <AccordionTrigger className="hover:no-underline py-4">
             <div className="flex items-center gap-2">

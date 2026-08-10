@@ -184,7 +184,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
     <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
       {/* Left: Form */}
       <div className="space-y-5">
-        {/* URL — required */}
+        {/* URL - required */}
         <div className="space-y-1.5">
           <Label htmlFor="url" className="flex items-center gap-2 text-sm font-medium">
             <Link2 className="w-4 h-4" />
@@ -211,7 +211,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
           )}
         </div>
 
-        {/* Name — optional */}
+        {/* Name - optional */}
         <div className="space-y-1.5">
           <Label htmlFor="name" className="flex items-center gap-2 text-sm font-medium">
             <Tag className="w-4 h-4" />
@@ -261,7 +261,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
           </div>
         </div>
 
-        {/* Action buttons — appear once QR is ready */}
+        {/* Action buttons - appear once QR is ready */}
         {svgData && (
           <div className="flex flex-wrap gap-2 pt-1 border-t pt-4">
             <Button variant="outline" size="sm" onClick={handleCopyImage}>

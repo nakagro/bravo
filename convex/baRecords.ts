@@ -193,7 +193,7 @@ export const createRecord = mutation({
     if (!userId) {
       const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
       if (!serviceAccountId) throw new Error("You must be signed in to log BA usage");
-      // Kiosk tablets authenticate as a service account, not a real user —
+      // Kiosk tablets authenticate as a service account, not a real user -
       // attribute the record to the verifier, who confirmed it on the device.
       userId = args.verifiedBy;
     }

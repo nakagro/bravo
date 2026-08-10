@@ -9,7 +9,7 @@ import type { RunItemDoc } from "../types/inventory.types";
  * item is answered by a yes/no, and "no" needs attention.
  *
  * Note the asymmetry with the control: the **No button** stays red because it
- * is a destructive-ish action, but the resulting row state is amber — what
+ * is a destructive-ish action, but the resulting row state is amber - what
  * Inventory's own executive summary already calls a "deviation". Red is
  * reserved for Duty Crew's unresolved Priority edge.
  */
@@ -25,7 +25,7 @@ export function inventoryItemStatus(item: RunItemDoc): ChecklistItemStatus {
 export const isInventoryItemAnswered = (item: RunItemDoc) =>
   inventoryItemStatus(item) !== "unanswered";
 
-/** The Yes control's pressed state — distinct from "resolved". */
+/** The Yes control's pressed state - distinct from "resolved". */
 export const isAnsweredYes = (item: RunItemDoc) =>
   item.expectedQuantity !== undefined
     ? item.actualQuantity !== undefined && item.actualQuantity > 0

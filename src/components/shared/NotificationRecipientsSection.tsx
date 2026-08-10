@@ -20,7 +20,7 @@ import { toast } from "sonner";
  * Reusable "who gets told when this happens" editor.
  *
  * Any module that raises an event through `notifyEvent()` gets its admin UI by
- * dropping this in with the matching `conditionKey` — no per-module backend or
+ * dropping this in with the matching `conditionKey` - no per-module backend or
  * screen. Duty Crew uses it for submitted station checks; Inventory will use it
  * for completed stock checks the same way.
  */
@@ -45,7 +45,7 @@ interface NotificationRecipientsSectionProps {
   /** What the event is, in the officer's words. */
   title: string;
   description: string;
-  /** Where a notice of this kind links to — used by the test send. */
+  /** Where a notice of this kind links to - used by the test send. */
   url: string;
 }
 
@@ -72,7 +72,7 @@ export function NotificationRecipientsSection({
   const [isTesting, setIsTesting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Seed the form once from the server, then leave it alone — this is a live
+  // Seed the form once from the server, then leave it alone - this is a live
   // query, and re-seeding on every update would fight the officer's edits.
   useEffect(() => {
     if (!config || loaded) return;
@@ -85,7 +85,7 @@ export function NotificationRecipientsSection({
     setLoaded(true);
   }, [config, loaded]);
 
-  // `config` is null for a signed-out caller — nothing useful to render either way.
+  // `config` is null for a signed-out caller - nothing useful to render either way.
   if (config == null || members === undefined || roles === undefined) {
     return (
       <div className="flex justify-center py-8">
@@ -135,7 +135,7 @@ export function NotificationRecipientsSection({
     }
   };
 
-  // The test reads the saved row, not this form — say so rather than silently
+  // The test reads the saved row, not this form - say so rather than silently
   // sending the previous settings.
   const hasUnsavedChanges =
     isEnabled !== config.isEnabled ||
@@ -238,7 +238,7 @@ export function NotificationRecipientsSection({
                   Roles
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Anyone holding the role is notified — survives a handover without
+                  Anyone holding the role is notified - survives a handover without
                   editing this list.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ export function NotificationRecipientsSection({
                 </p>
               ) : (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                  No recipients selected — nobody will be notified.
+                  No recipients selected - nobody will be notified.
                 </p>
               )}
             </div>
@@ -329,7 +329,7 @@ export function NotificationRecipientsSection({
               </Button>
               <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                 {hasUnsavedChanges
-                  ? "Save first — the test uses the saved settings."
+                  ? "Save first - the test uses the saved settings."
                   : "Goes only to you, using the saved settings. Nobody else is notified."}
               </p>
             </div>

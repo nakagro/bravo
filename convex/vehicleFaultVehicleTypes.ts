@@ -106,7 +106,7 @@ export const updateVehicleType = mutation({
   },
 });
 
-// Mutation to delete a vehicle type (admin only) — soft delete if used by existing faults
+// Mutation to delete a vehicle type (admin only) - soft delete if used by existing faults
 export const deleteVehicleType = mutation({
   args: {
     id: v.id("vehicleFaultVehicleTypes"),
@@ -129,13 +129,13 @@ export const deleteVehicleType = mutation({
       .first();
 
     if (faultsUsingType) {
-      // Soft delete — deactivate instead
+      // Soft delete - deactivate instead
       await ctx.db.patch(args.id, {
         isActive: false,
         updatedAt: Date.now(),
       });
     } else {
-      // Hard delete — no faults reference this type
+      // Hard delete - no faults reference this type
       await ctx.db.delete(args.id);
     }
   },

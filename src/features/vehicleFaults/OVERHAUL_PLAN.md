@@ -98,7 +98,7 @@ Refactored table view:
 - Add attachment count column (paperclip icon + count)
 - Import colors from `types.ts`
 
-### `VehicleFaultAttachments.tsx` (~150 lines) — NEW
+### `VehicleFaultAttachments.tsx` (~150 lines) - NEW
 Photo/file attachment component:
 - Upload button using `generateUploadUrl` pattern (same as inventory templates)
 - Accept `image/*` and `application/pdf`
@@ -108,7 +108,7 @@ Photo/file attachment component:
 - Two modes: `view` (in DetailPanel) and `edit` (in Form)
 
 ### `VehicleFaultComments.tsx` (~170 lines)
-Minor cleanup of existing component — mostly reusable as-is.
+Minor cleanup of existing component - mostly reusable as-is.
 
 ### `VehicleFaultHistory.tsx` (~100 lines)
 Per-fault change history, extracted as standalone collapsible section:
@@ -117,7 +117,7 @@ Per-fault change history, extracted as standalone collapsible section:
 - Before/after value display
 
 ### `VehicleFaultAuditTrail.tsx` (~230 lines)
-Global audit tab — move as-is from old directory.
+Global audit tab - move as-is from old directory.
 
 ---
 
@@ -156,17 +156,17 @@ vehicleFaultAttachments: defineTable({
 ```
 
 ### New file: `convex/vehicleFaultVehicleTypes.ts`
-- `getVehicleTypes` query — returns active types ordered by `order`
-- `addVehicleType` mutation — admin only
-- `updateVehicleType` mutation — admin only (rename/reorder/deactivate)
-- `deleteVehicleType` mutation — admin only, soft delete (isActive=false) if used by existing faults
+- `getVehicleTypes` query - returns active types ordered by `order`
+- `addVehicleType` mutation - admin only
+- `updateVehicleType` mutation - admin only (rename/reorder/deactivate)
+- `deleteVehicleType` mutation - admin only, soft delete (isActive=false) if used by existing faults
 
 ### Modified: `convex/vehicleFaults.ts`
 - Relax `vehicle` validators from union to `v.string()` in all mutations
 - Add `generateUploadUrl` mutation (auth-gated, same pattern as `convex/inventoryTemplates.ts`)
-- Add `getAttachments(faultId)` query — returns attachments with storage URLs
+- Add `getAttachments(faultId)` query - returns attachments with storage URLs
 - Add `addAttachment(faultId, storageId, fileName, fileType)` mutation
-- Add `deleteAttachment(attachmentId)` mutation — deletes from `_storage` and table
+- Add `deleteAttachment(attachmentId)` mutation - deletes from `_storage` and table
 
 ---
 
@@ -188,7 +188,7 @@ Add a vehicle type management section. Options:
 - **Option A**: Add to an existing admin page as a section
 - **Option B**: Add as a settings section within the Vehicle Faults module (gear icon → Sheet/Drawer with type list)
 
-Recommend **Option B** — a gear icon in the inventory toolbar (visible to admins) opens a Sheet with:
+Recommend **Option B** - a gear icon in the inventory toolbar (visible to admins) opens a Sheet with:
 - List of vehicle types with drag/reorder or up/down arrows
 - Add new type (inline input + add button)
 - Toggle active/inactive
@@ -265,19 +265,19 @@ import { toast } from "sonner";
 ## Existing Backend Functions to Reuse
 
 ### `convex/vehicleFaults.ts`
-- `getVehicleFaults()` — all faults with user details
-- `getVehicleFault(faultId)` — single fault
-- `createVehicleFault(...)` — create with audit trail
-- `updateVehicleFault(...)` — update with per-field history
-- `deleteVehicleFault(faultId)` — admin delete with audit
-- `getVehicleFaultComments(faultId)` — comments list
-- `addVehicleFaultComment(faultId, text)` — add comment
+- `getVehicleFaults()` - all faults with user details
+- `getVehicleFault(faultId)` - single fault
+- `createVehicleFault(...)` - create with audit trail
+- `updateVehicleFault(...)` - update with per-field history
+- `deleteVehicleFault(faultId)` - admin delete with audit
+- `getVehicleFaultComments(faultId)` - comments list
+- `addVehicleFaultComment(faultId, text)` - add comment
 
 ### `convex/vehicleFaultAuditTrail.ts`
-- `getRecentChanges(limit?)` — global audit trail
+- `getRecentChanges(limit?)` - global audit trail
 
 ## Verification Checklist
-- [ ] `npm run lint` — TypeScript check passes
+- [ ] `npm run lint` - TypeScript check passes
 - [ ] Detail panel opens as Sheet on desktop, Drawer on mobile
 - [ ] Form opens as Dialog on desktop, Drawer on mobile
 - [ ] Photo upload: select image → uploads → thumbnail appears

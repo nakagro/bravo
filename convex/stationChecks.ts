@@ -41,7 +41,7 @@ const checkItemValidator = v.object({
 // Stamp per-item completedBy/completedAt server-side. Attribution set when an
 // item is newly resolved (completed or marked N/A), preserved when it was
 // already resolved the same way in the existing submission, and cleared when
-// unresolved. Completed and N/A are mutually exclusive — completed wins if a
+// unresolved. Completed and N/A are mutually exclusive - completed wins if a
 // client ever sends both. Ad-hoc items (no checkId) match by name.
 function applyItemAttribution(
   incoming: SubmissionCheckItem[],
@@ -74,7 +74,7 @@ function applyItemAttribution(
 
 // A week's submission is keyed by its Sunday, but the client sends the Sunday
 // as end-of-day (23:59:59.999) while the reader used to normalise it to
-// midnight — so a draft was written under one key and looked up under another
+// midnight - so a draft was written under one key and looked up under another
 // and every tick appeared to vanish on reload. Match on the whole Mon–Sun
 // window instead, which is also tolerant of the timestamps already in the
 // database from before this was fixed.
@@ -161,14 +161,14 @@ export function buildSubmissionNotice(
   const attention = [
     // Untouched items lead: they're the ones nobody has accounted for.
     ...notDone.map(
-      (i) => `${i.name} — not done${i.notes ? `: ${i.notes.trim()}` : ""}`
+      (i) => `${i.name} - not done${i.notes ? `: ${i.notes.trim()}` : ""}`
     ),
     ...notApplicable.map(
-      (i) => `${i.name} — marked N/A${i.notes ? `: ${i.notes.trim()}` : ""}`
+      (i) => `${i.name} - marked N/A${i.notes ? `: ${i.notes.trim()}` : ""}`
     ),
     ...withNotes
       .filter((i) => i.isNotApplicable !== true && isResolved(i))
-      .map((i) => `${i.name} — ${i.notes!.trim()}`),
+      .map((i) => `${i.name} - ${i.notes!.trim()}`),
   ];
 
   return {
@@ -369,7 +369,7 @@ export const updateStationCheck = mutation({
 
 // Delete a station check
 // Historical submissions store check data (name, result, notes) inline as a snapshot,
-// so deleting the template does not affect past records — checkId is optional.
+// so deleting the template does not affect past records - checkId is optional.
 export const deleteStationCheck = mutation({
   args: {
     id: v.id("stationChecks"),
@@ -487,7 +487,7 @@ export const getCurrentWeekCheckStatus = query({
     }
 
     // Find this week's submission (draft or completed). The crew derived above
-    // is only a preference — the submission's own crew is authoritative.
+    // is only a preference - the submission's own crew is authoritative.
     const submission = await findSubmissionForWeek(
       ctx,
       args.date ?? Date.now(),
@@ -703,8 +703,8 @@ export const submitStationCheck = mutation({
         actorUserId: currentUser._id,
         emailSubject:
           notice.notDoneCount > 0
-            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding — week ending Sun ${notice.weekLabel}`
-            : `Duty crew checks submitted — week ending Sun ${notice.weekLabel}`,
+            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding - week ending Sun ${notice.weekLabel}`
+            : `Duty crew checks submitted - week ending Sun ${notice.weekLabel}`,
         emailIntro: `${submitterName} submitted the station checks for ${crew?.name ?? "the duty crew"}.`,
         emailDetails: [
           { label: "Crew", value: crew?.name ?? "Unknown" },
@@ -923,7 +923,7 @@ export const getStationCheckHistoryPage = query({
       }
       if (!user) continue;
 
-      // Explicitly construct the return object — never spread the raw document
+      // Explicitly construct the return object - never spread the raw document
       // to avoid leaking undeclared fields (_creationTime, status, etc.)
       page.push({
         _id: submission._id,

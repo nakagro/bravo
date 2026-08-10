@@ -1,4 +1,4 @@
-# Inventory Module — UX Improvements (2026-03-24)
+# Inventory Module - UX Improvements (2026-03-24)
 
 ## Summary
 Comprehensive UX overhaul of the Inventory Check module, optimized for iPad/tablet and mobile phone use. Primary focus: making the core "walk around the truck tapping Yes/No" workflow as fast and touch-friendly as possible.
@@ -17,7 +17,7 @@ Comprehensive UX overhaul of the Inventory Check module, optimized for iPad/tabl
 
 ## 3. Inline Stepper Quantity Input
 **Before:** Quantity adjustment required opening a dialog, typing a number, and saving. Small input field difficult to use on mobile.
-**After:** Large +/- stepper buttons appear inline below quantity items. No dialog needed — tap minus/plus to adjust. Round 40px touch-friendly buttons. Yes/No still works as quick set (Yes = expected qty, No = 0).
+**After:** Large +/- stepper buttons appear inline below quantity items. No dialog needed - tap minus/plus to adjust. Round 40px touch-friendly buttons. Yes/No still works as quick set (Yes = expected qty, No = 0).
 **Files:** `InventoryCheckItem.tsx`, `StepperInput.tsx` (new reusable component)
 
 ## 4. Section Quick-Nav Floating Pill Bar
@@ -43,7 +43,7 @@ Comprehensive UX overhaul of the Inventory Check module, optimized for iPad/tabl
 ## 7. Improved Check Item Layout
 **Before:** Small Yes/No buttons (default Button size), notes button competing for attention, quantity items cluttered.
 **After:**
-- Yes/No buttons are 48px tall, 64-80px wide — easy to hit with a finger or gloved hand
+- Yes/No buttons are 48px tall, 64-80px wide - easy to hit with a finger or gloved hand
 - Notes button is visually secondary (icon-only, left of Yes/No)
 - Notes indicator (blue icon) shows inline when notes exist
 - Quantity mismatch badge shows +/- difference inline
@@ -75,10 +75,10 @@ Touch-friendly +/- number input. Props: value, onChange, min, max, step, disable
 ## Files Changed
 | File | Change Type |
 |------|------------|
-| `src/components/common/ProgressRing.tsx` | **New** — reusable progress donut |
-| `src/components/common/StepperInput.tsx` | **New** — reusable touch-friendly stepper |
-| `src/features/inventory/components/InventoryCheckItem.tsx` | Rewritten — larger targets, inline stepper, tap feedback |
-| `src/features/inventory/components/InventoryCheckSection.tsx` | Rewritten — All OK button, progress ring, issue badges |
-| `src/features/inventory/components/InventoryCheckHeader.tsx` | Rewritten — progress ring, deviation counter, section nav |
-| `src/features/inventory/components/InventoryTemplateSelector.tsx` | Rewritten — mobile-first cards, large buttons, AlertDialog |
-| `src/features/inventory/pages/InventoryChecksTab.tsx` | Rewritten — auto-expand, section refs, deviation counting, nav callbacks |
+| `src/components/common/ProgressRing.tsx` | **New** - reusable progress donut |
+| `src/components/common/StepperInput.tsx` | **New** - reusable touch-friendly stepper |
+| `src/features/inventory/components/InventoryCheckItem.tsx` | Rewritten - larger targets, inline stepper, tap feedback |
+| `src/features/inventory/components/InventoryCheckSection.tsx` | Rewritten - All OK button, progress ring, issue badges |
+| `src/features/inventory/components/InventoryCheckHeader.tsx` | Rewritten - progress ring, deviation counter, section nav |
+| `src/features/inventory/components/InventoryTemplateSelector.tsx` | Rewritten - mobile-first cards, large buttons, AlertDialog |
+| `src/features/inventory/pages/InventoryChecksTab.tsx` | Rewritten - auto-expand, section refs, deviation counting, nav callbacks |

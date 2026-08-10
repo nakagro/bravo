@@ -231,7 +231,7 @@ export function AdminTab() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             {mode === "past" ? (
-              // Past events are an immutable record — the only management action
+              // Past events are an immutable record - the only management action
               // is removing one from the archive. The row links to the detail
               // page for the full attendance/audit view.
               <DropdownMenuItem
@@ -350,7 +350,7 @@ export function AdminTab() {
           </div>
         </div>
 
-        {/* Upcoming / Past switch — two different jobs share one admin home */}
+        {/* Upcoming / Past switch - two different jobs share one admin home */}
         <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
           <div className="inline-flex rounded-lg bg-gray-100 dark:bg-gray-900 p-0.5">
             {(["upcoming", "past"] as const).map((view) => (

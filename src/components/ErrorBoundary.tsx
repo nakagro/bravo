@@ -30,12 +30,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     this.setState({ componentStack: errorInfo.componentStack ?? null });
     try {
       // React swallows boundary-caught errors in production, so PostHog's
-      // window-level autocapture never sees them — report explicitly.
+      // window-level autocapture never sees them - report explicitly.
       posthog.captureException(error, {
         componentStack: errorInfo.componentStack,
       });
     } catch {
-      // PostHog unavailable — already logged to console above
+      // PostHog unavailable - already logged to console above
     }
   }
 
@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
       }
     } catch (cleanupError) {
-      // Cleanup is best-effort — still reload so the user isn't stuck
+      // Cleanup is best-effort - still reload so the user isn't stuck
       console.error("Hard refresh cleanup failed:", cleanupError);
     }
     window.location.reload();

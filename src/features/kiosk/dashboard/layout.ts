@@ -4,7 +4,7 @@
 // cells on a 12-column grid). The renderer is the only thing that knows both.
 // Authoring the default layout in GridStack coordinates now means Phase 2 can
 // feed this exact array to GridStack, and Phase 3 can swap the source of this
-// array from a constant to a Convex query — without changing any widget.
+// array from a constant to a Convex query - without changing any widget.
 // See docs/KIOSK_DASHBOARD_PLAN.md.
 
 import { MapPin, BookOpen } from 'lucide-react';
@@ -25,7 +25,7 @@ export type WidgetSpec =
   | { kind: 'nav'; target: KioskOverlay; title: string; icon: NavIcon };
 
 export interface PlacedWidget {
-  /** Stable key — also the future persistence key. */
+  /** Stable key - also the future persistence key. */
   id: string;
   x: number;
   y: number;
@@ -39,7 +39,7 @@ export const GRID_COLS = 12;
 export const GRID_ROWS = 6;
 
 // Default dashboard: 4 status tiles (row 0–1), Firecall hero (row 2–3),
-// and the bottom section of 4 — Appliances, Contacts, Community Lockup, BA Usage (row 4–5).
+// and the bottom section of 4 - Appliances, Contacts, Community Lockup, BA Usage (row 4–5).
 export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { id: 'gate',      x: 0, y: 0, w: 3, h: 2, widget: { kind: 'doorStatus', doorId: GATE_DOOR_ID,    name: 'Carpark Gate' } },
   { id: 'turnout',   x: 3, y: 0, w: 3, h: 2, widget: { kind: 'doorStatus', doorId: TURNOUT_DOOR_ID, name: 'Turnout Entry' } },

@@ -10,7 +10,7 @@ import { ProgressRing } from "@/components/common/ProgressRing";
 import { ringColorFor, type ChecklistProgress } from "./checklistStatus";
 
 interface ChecklistSectionProps {
-  /** Accordion value — must match the key used for navigation. */
+  /** Accordion value - must match the key used for navigation. */
   value: string;
   name: string;
   progress: ChecklistProgress;

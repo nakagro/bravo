@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import type { Infer } from "convex/values";
 
 /**
- * What kind of login a `users` row is. Absent means "member" — the brigade's
- * people — so existing rows keep their behaviour with no backfill.
+ * What kind of login a `users` row is. Absent means "member" - the brigade's
+ * people - so existing rows keep their behaviour with no backfill.
  */
 export const accountTypeValidator = v.union(v.literal("member"), v.literal("shared"));
 

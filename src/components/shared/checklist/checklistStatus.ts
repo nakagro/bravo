@@ -1,7 +1,7 @@
 /**
  * The shared vocabulary behind Duty Crew and Inventory.
  *
- * Both modules are the same workflow — work through a list, resolve every row —
+ * Both modules are the same workflow - work through a list, resolve every row -
  * and both had independently grown the same tri-state without ever naming it:
  *
  * - `resolved`    Duty Crew "completed"; Inventory "yes" / quantity matches expected

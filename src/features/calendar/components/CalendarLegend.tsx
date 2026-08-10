@@ -12,7 +12,7 @@ function LegendDot({ className }: { className: string }) {
 }
 
 /**
- * Colour key for the month grid — most useful on mobile where items collapse
+ * Colour key for the month grid - most useful on mobile where items collapse
  * to unlabelled dots. Event-type entries come from the live event-type list
  * so they stay in sync with whatever colours admins have assigned.
  */

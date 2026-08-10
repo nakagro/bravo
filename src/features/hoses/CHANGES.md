@@ -1,4 +1,4 @@
-# Hoses Module — UX Improvements (2026-03-24)
+# Hoses Module - UX Improvements (2026-03-24)
 
 ## Summary
 Comprehensive UX overhaul of the Hose Management module, mirroring the patterns established in the Keys module. Also introduces shared reusable components for consistency across all future modules.
@@ -75,10 +75,10 @@ Six new shared components extracted from common patterns across Keys and Hoses:
 | File | Change Type |
 |------|------------|
 | `convex/hoses.ts` | Added `get` query |
-| `src/features/hoses/components/HoseInventory.tsx` | Rewritten — instant search, URL params, click-to-view, shared components |
-| `src/features/hoses/components/HoseForm.tsx` | Simplified — removed tabs, single scroll view |
-| `src/features/hoses/components/HoseComments.tsx` | Rewritten — AlertDialog, avatars, relative time, textarea |
-| `src/pages/HosesPage.tsx` | Refactored — uses shared PageTabs |
+| `src/features/hoses/components/HoseInventory.tsx` | Rewritten - instant search, URL params, click-to-view, shared components |
+| `src/features/hoses/components/HoseForm.tsx` | Simplified - removed tabs, single scroll view |
+| `src/features/hoses/components/HoseComments.tsx` | Rewritten - AlertDialog, avatars, relative time, textarea |
+| `src/pages/HosesPage.tsx` | Refactored - uses shared PageTabs |
 
 ## Files Deprecated
 | File | Reason |

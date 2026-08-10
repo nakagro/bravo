@@ -122,7 +122,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
             const underfilled = !!slot.targetCount && slot.allocatedIds.length < slot.targetCount;
 
             // Rostered decliners (conflicts) first, then interested members,
-            // then the rest — all already name-sorted
+            // then the rest - all already name-sorted
             const rank = (id: Id<"users">) =>
               allocatedSet.has(id) && declinedSet.has(id) ? 0 : interestedSet.has(id) ? 1 : 2;
             const ordered = [...filteredMembers].sort((a, b) => rank(a._id) - rank(b._id));
@@ -162,7 +162,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                       const isAllocated = allocatedSet.has(member._id);
                       const isInterested = interestedSet.has(member._id);
                       const isDeclined = declinedSet.has(member._id);
-                      // Rostered but declined — the conflict the admin must fix
+                      // Rostered but declined - the conflict the admin must fix
                       const needsReplacing = isAllocated && isDeclined;
                       return (
                         <button

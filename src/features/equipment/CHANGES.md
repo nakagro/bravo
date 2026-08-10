@@ -1,4 +1,4 @@
-# Equipment Module — UX Improvements (2026-03-24)
+# Equipment Module - UX Improvements (2026-03-24)
 
 ## Summary
 Comprehensive UX overhaul of the Equipment module across all three tabs (Take, Stock, Manage). Focus on feedback, discoverability, and reducing friction for common operations.
@@ -23,7 +23,7 @@ Comprehensive UX overhaul of the Equipment module across all three tabs (Take, S
 ## 4. History Tab Type Filters + Pagination
 **Before:** History tab showed only the last 10 transactions with no filtering.
 **After:** Horizontal filter pills (All, Takes, Replenish, Adjustments) filter by transaction type. Shows 25 results by default with a "Load more" button for pagination. Backend query accepts optional `type` parameter.
-**Files:** `EquipmentRecentActivity.tsx`, `convex/equipment.ts` (getRecentTransactions — added `type` filter arg)
+**Files:** `EquipmentRecentActivity.tsx`, `convex/equipment.ts` (getRecentTransactions - added `type` filter arg)
 
 ## 5. Quick Restock from Stock Tab
 **Before:** Restocking required navigating to Manage → Replenish tab, searching for the item, and going through the full replenish flow.
@@ -47,15 +47,15 @@ Per-item transaction history list. Props: `itemId`. Fetches and displays up to 3
 ## Backend Changes
 | File | Change |
 |------|--------|
-| `convex/equipment.ts` | `getRecentTransactions` — added optional `type` filter parameter |
-| `convex/equipment.ts` | `getMyRecentTakes` — **new query** returning current user's recent take transactions |
+| `convex/equipment.ts` | `getRecentTransactions` - added optional `type` filter parameter |
+| `convex/equipment.ts` | `getMyRecentTakes` - **new query** returning current user's recent take transactions |
 
 ## 7. Replenish Promoted to Top-Level Tab
 **Before:** Replenish was nested inside the Manage tab behind a shadcn TabsList toggle ("Replenish Stock" / "Categories & Items"). This was visually inconsistent with the rest of the app (which uses red underline tabs, not pill toggles) and buried a frequent operation two levels deep.
-**After:** Replenish is now its own top-level tab (Take / Stock / Replenish / History / Manage) using the same red underline tab pattern as the rest of the app. The Manage tab is now purely for Categories & Items CRUD — no nested tabs needed.
+**After:** Replenish is now its own top-level tab (Take / Stock / Replenish / History / Manage) using the same red underline tab pattern as the rest of the app. The Manage tab is now purely for Categories & Items CRUD - no nested tabs needed.
 **Files:** `EquipmentPage.tsx`, `EquipmentReplenishTab.tsx` (new), `EquipmentManageTab.tsx`
 
-## 8. Manage Tab Cleanup — AlertDialogs & Better Design
+## 8. Manage Tab Cleanup - AlertDialogs & Better Design
 **Before:** Delete confirmations used `window.confirm()`. Empty category state was a plain text line. No low stock indicators on category items.
 **After:** All delete actions use proper AlertDialog with descriptive messages. Empty categories show an inline "Add one" link. Low stock badges shown on items within categories. Category action buttons separated with a border for clarity.
 **Files:** `EquipmentManageTab.tsx`
@@ -65,12 +65,12 @@ Per-item transaction history list. Props: `itemId`. Fetches and displays up to 3
 ## Files Changed
 | File | Change Type |
 |------|------------|
-| `src/pages/EquipmentPage.tsx` | Modified — added Replenish as top-level tab |
-| `src/features/equipment/components/EquipmentTakeTab.tsx` | Modified — toast notifications, recent takes section |
-| `src/features/equipment/components/EquipmentStockTab.tsx` | Rewritten — search, low stock filter, clickable items, history panel, quick restock |
-| `src/features/equipment/components/EquipmentReplenishTab.tsx` | **New** — extracted from ManageTab, standalone replenish tab |
-| `src/features/equipment/components/EquipmentManageTab.tsx` | Rewritten — stripped replenish, removed nested tabs, AlertDialogs, better empty states |
-| `src/features/equipment/components/EquipmentRecentActivity.tsx` | Rewritten — type filter pills, pagination |
-| `src/features/equipment/components/EquipmentItemHistory.tsx` | **New** — per-item transaction history |
-| `src/features/equipment/components/index.ts` | Modified — added EquipmentReplenishTab export |
-| `convex/equipment.ts` | Modified — type filter on getRecentTransactions, new getMyRecentTakes query |
+| `src/pages/EquipmentPage.tsx` | Modified - added Replenish as top-level tab |
+| `src/features/equipment/components/EquipmentTakeTab.tsx` | Modified - toast notifications, recent takes section |
+| `src/features/equipment/components/EquipmentStockTab.tsx` | Rewritten - search, low stock filter, clickable items, history panel, quick restock |
+| `src/features/equipment/components/EquipmentReplenishTab.tsx` | **New** - extracted from ManageTab, standalone replenish tab |
+| `src/features/equipment/components/EquipmentManageTab.tsx` | Rewritten - stripped replenish, removed nested tabs, AlertDialogs, better empty states |
+| `src/features/equipment/components/EquipmentRecentActivity.tsx` | Rewritten - type filter pills, pagination |
+| `src/features/equipment/components/EquipmentItemHistory.tsx` | **New** - per-item transaction history |
+| `src/features/equipment/components/index.ts` | Modified - added EquipmentReplenishTab export |
+| `convex/equipment.ts` | Modified - type filter on getRecentTransactions, new getMyRecentTakes query |
