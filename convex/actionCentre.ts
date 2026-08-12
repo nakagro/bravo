@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc } from "./_generated/dataModel";
 import { isSharedAccount } from "./lib/accountType";
+import { moduleSettingAllows } from "./modules";
 import { availabilityProvider } from "./actionCentreProviders/availability";
 import { profileProvider } from "./actionCentreProviders/profile";
 import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";
@@ -84,30 +85,9 @@ export async function requireActionsAdmin(ctx: QueryCtx | MutationCtx) {
     .withIndex("by_moduleId", (q) => q.eq("moduleId", "actionsAdmin"))
     .first();
 
-  if (!moduleSetting || !moduleSetting.isEnabled) {
+  if (!moduleSettingAllows(user, moduleSetting)) {
     throw new Error("You do not have access to manage tasks");
   }
-  if (moduleSetting.adminOnly && !user.isAdmin) {
-    throw new Error("You do not have access to manage tasks");
-  }
-
-  const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-  const hasRankReq = !!moduleSetting.minimumRank;
-  let roleOk = true;
-  if (hasRoleReq) {
-    const userRoles = user.roles ?? [];
-    roleOk = moduleSetting.requiredRoles!.some((r: string) => userRoles.includes(r));
-  }
-  let rankOk = true;
-  if (hasRankReq) {
-    const userRank = user.rank;
-    if (!userRank) {
-      rankOk = false;
-    } else {
-      rankOk = (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[moduleSetting.minimumRank!] ?? 0);
-    }
-  }
-  if (!(roleOk && rankOk)) throw new Error("You do not have access to manage tasks");
 
   return userId;
 }
@@ -119,27 +99,7 @@ function buildModuleAccessChecker(
   if (user.isAdmin) return () => true;
 
   return (moduleId: string) => {
-    const setting = moduleMap.get(moduleId);
-    if (!setting || !setting.isEnabled) return false;
-    if (setting.adminOnly) return false;
-
-    const hasRoleReq = !!(setting.requiredRoles && setting.requiredRoles.length > 0);
-    const hasRankReq = !!setting.minimumRank;
-    let roleOk = true;
-    if (hasRoleReq) {
-      const userRoles = user.roles ?? [];
-      roleOk = setting.requiredRoles!.some((r) => userRoles.includes(r));
-    }
-    let rankOk = true;
-    if (hasRankReq) {
-      const userRank = user.rank;
-      if (!userRank) {
-        rankOk = false;
-      } else {
-        rankOk = (RANK_ORDER[userRank] ?? 0) >= (RANK_ORDER[setting.minimumRank!] ?? 0);
-      }
-    }
-    return roleOk && rankOk;
+    return moduleSettingAllows(user, moduleMap.get(moduleId));
   };
 }
 

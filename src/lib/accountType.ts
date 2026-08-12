@@ -9,3 +9,8 @@ export type AccountType = "member" | "shared";
 export function isSharedAccount(user: { accountType?: string | null } | null | undefined): boolean {
   return user?.accountType === "shared";
 }
+
+/** Someone who has left the brigade: the row is kept for history, the login is off. */
+export function isDisabledAccount(user: { isDisabled?: boolean | null } | null | undefined): boolean {
+  return user?.isDisabled === true;
+}

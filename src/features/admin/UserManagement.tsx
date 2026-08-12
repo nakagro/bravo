@@ -6,16 +6,10 @@ import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { isSharedAccount, type AccountType } from "@/lib/accountType";
+import { isSharedAccount, isDisabledAccount, type AccountType } from "@/lib/accountType";
 
 // --- shadcn ui imports ---
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import {
   Select,
   SelectTrigger,
@@ -35,6 +29,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Format user display name
 const formatUserName = (user: {
@@ -75,6 +79,10 @@ const getStrengthText = (strength: number) => {
   return "Strong";
 };
 
+// The Update button lives in the modal's footer, outside the <form>, so it
+// submits by id rather than by nesting.
+const USER_FORM_ID = "user-settings-form";
+
 function UserManagement() {
   // "Brigade Member" is the floor rank (non-operational members); every user has at least this rank.
   const DEFAULT_RANK = "Brigade Member";
@@ -101,12 +109,20 @@ function UserManagement() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
+  // Account lifecycle state (disable / delete)
+  const [isChangingDisabled, setIsChangingDisabled] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Fetch users and roles from Convex
   const users = useQuery(api.users.getUsers);
   const roles = useQuery(api.users.getRoles);
+  const currentUser = useQuery(api.auth.loggedInUser);
 
   // Mutations
   const updateRank = useMutation(api.users.updateUserRank);
+  const setUserDisabled = useMutation(api.users.setUserDisabled);
+  const deleteUser = useMutation(api.users.deleteUser);
   const updateAccountType = useMutation(api.users.updateUserAccountType);
   const updateRoles = useMutation(api.users.updateUserRoles);
   const updateAdminStatus = useMutation(api.users.updateUserAdminStatus);
@@ -117,6 +133,9 @@ function UserManagement() {
 
   // Get the selected user
   const selectedUser = users?.find((user) => user._id === selectedUserId);
+  const selectedUserIsDisabled = isDisabledAccount(selectedUser);
+  // The server refuses these too - this just keeps the buttons honest.
+  const isSelfSelected = !!currentUser && currentUser._id === selectedUserId;
 
   // Update state when a user is selected
   useEffect(() => {
@@ -251,6 +270,53 @@ function UserManagement() {
       });
     } finally {
       setIsResettingPassword(false);
+    }
+  };
+
+  // Disable / re-enable the selected account
+  const handleDisabledToggle = async (disable: boolean) => {
+    if (!selectedUserId) return;
+
+    setIsChangingDisabled(true);
+    setStatusMessage(null);
+    try {
+      await setUserDisabled({ userId: selectedUserId, isDisabled: disable });
+      setStatusMessage({
+        type: "success",
+        message: disable
+          ? "Account disabled. They have been signed out and removed from member lists."
+          : "Account re-enabled. They can sign in again with their existing password.",
+      });
+    } catch (error) {
+      setStatusMessage({
+        type: "error",
+        message: `Error updating account: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      setIsChangingDisabled(false);
+    }
+  };
+
+  // Permanently delete the selected account
+  const handleDelete = async () => {
+    if (!selectedUserId) return;
+
+    setIsDeleting(true);
+    setStatusMessage(null);
+    try {
+      await deleteUser({ userId: selectedUserId });
+      setDeleteConfirmOpen(false);
+      // The user is gone, so there's nothing left for the dialog to edit.
+      setDialogOpen(false);
+      setSelectedUserId(null);
+    } catch (error) {
+      setStatusMessage({
+        type: "error",
+        message: `Error deleting user: ${error instanceof Error ? error.message : String(error)}`,
+      });
+      setDeleteConfirmOpen(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -396,6 +462,16 @@ function UserManagement() {
                                   Shared
                                 </span>
                               )}
+                              {isDisabledAccount(user) && (
+                                <span
+                                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${active
+                                    ? "bg-white/20 text-white"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                                    }`}
+                                >
+                                  Disabled
+                                </span>
+                              )}
                             </span>
                             {selected ? (
                               <span
@@ -416,30 +492,46 @@ function UserManagement() {
         </Combobox>
       </div>
 
-      {/* Settings Dialog */}
-      <Dialog
+      {/* Settings modal - drawer on mobile, side sheet on desktop, like the
+          rest of the app's detail panels. */}
+      <ResponsiveModal
         open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setSelectedUserId(null);
-          }
+        onClose={() => {
+          setDialogOpen(false);
+          setSelectedUserId(null);
         }}
+        title={selectedUser ? formatUserName(selectedUser) : "User Settings"}
+        footer={
+          selectedUser ? (
+            <div className="border-t border-border p-4">
+              <Button
+                type="submit"
+                form={USER_FORM_ID}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? "Updating..." : "Update User"}
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedUser ? formatUserName(selectedUser) : "User Settings"}
-            </DialogTitle>
-            {selectedUser?.email && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {selectedUser.email}
-              </p>
-            )}
-          </DialogHeader>
+        <>
+          {selectedUser?.email && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {selectedUser.email}
+            </p>
+          )}
+
+          {selectedUserIsDisabled && (
+            <div className="rounded-md bg-red-100 p-2 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-300">
+              This account is disabled. They can't sign in and don't appear in member
+              lists. Rank and role changes below still save, and apply if you re-enable them.
+            </div>
+          )}
 
           {selectedUser && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form id={USER_FORM_ID} onSubmit={handleSubmit} className="space-y-6 pb-2">
               {/* Rank selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium dark:text-gray-200" htmlFor="rank-select">
@@ -657,6 +749,74 @@ function UserManagement() {
                 </AccordionItem>
               </Accordion>
 
+              <Separator />
+
+              {/* Account lifecycle: for members who have left the brigade. */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="account-status" className="border-none">
+                  <AccordionTrigger className="text-lg font-medium text-red-600 dark:text-red-400 hover:no-underline py-2">
+                    Account Status
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-4">
+                      {isSelfSelected ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          You can't disable or delete your own account. Ask another
+                          administrator to do it.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="space-y-2 rounded-md border border-gray-200 dark:border-gray-600 p-3">
+                            <p className="text-sm font-medium dark:text-gray-200">
+                              {selectedUserIsDisabled ? "Re-enable account" : "Disable account"}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {selectedUserIsDisabled
+                                ? "Restores sign-in and puts them back in member lists, with their rank, roles and password unchanged."
+                                : "Signs them out everywhere and removes them from member lists, rosters and reminders. Their history stays intact and this can be undone at any time."}
+                            </p>
+                            <Button
+                              type="button"
+                              variant={selectedUserIsDisabled ? "outline" : "destructive"}
+                              className="w-full"
+                              disabled={isChangingDisabled}
+                              onClick={() => void handleDisabledToggle(!selectedUserIsDisabled)}
+                            >
+                              {isChangingDisabled
+                                ? "Working..."
+                                : selectedUserIsDisabled
+                                  ? "Re-enable Account"
+                                  : "Disable Account"}
+                            </Button>
+                          </div>
+
+                          <div className="space-y-2 rounded-md border border-red-200 dark:border-red-900 p-3">
+                            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                              Delete account permanently
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Removes the account and frees their email address for reuse.
+                              Records they created or completed stay in the system but will
+                              no longer show their name. Prefer disabling for anyone with
+                              brigade history.
+                            </p>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              className="w-full"
+                              disabled={isDeleting}
+                              onClick={() => setDeleteConfirmOpen(true)}
+                            >
+                              Delete Account
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
               {/* Status message */}
               {statusMessage && (
                 <div
@@ -669,15 +829,41 @@ function UserManagement() {
                 </div>
               )}
 
-              <DialogFooter>
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting ? "Updating..." : "Update User"}
-                </Button>
-              </DialogFooter>
             </form>
           )}
-        </DialogContent>
-      </Dialog>
+        </>
+      </ResponsiveModal>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedUser ? formatUserName(selectedUser) : "this account"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the account and its login. Anything they
+              recorded stays in the system but will no longer show their name, and
+              this can't be undone. Disable the account instead if you may need
+              their history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                // Keep the dialog up while the mutation runs, so a failure can
+                // be reported instead of vanishing with the dialog.
+                e.preventDefault();
+                void handleDelete();
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? "Deleting..." : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

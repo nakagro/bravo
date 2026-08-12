@@ -196,6 +196,28 @@ function compareItems(a: CalendarItem, b: CalendarItem): number {
 }
 
 /**
+ * The next `limit` items, soonest first, for summary views like the dashboard
+ * card. Anything still running counts as upcoming: an all-day item today
+ * started at midnight, so filtering on start alone would drop today's events
+ * by mid-morning.
+ */
+export function selectUpcomingItems(
+  items: CalendarItem[],
+  limit: number,
+  now: Date = new Date(),
+): CalendarItem[] {
+  return items
+    .filter((item) => (item.endUnknown ? item.start >= now : item.end > now))
+    // Chronological across days, unlike compareItems, which floats all-day
+    // items to the top of a single day's agenda.
+    .sort(
+      (a, b) =>
+        a.start.getTime() - b.start.getTime() || a.title.localeCompare(b.title),
+    )
+    .slice(0, limit);
+}
+
+/**
  * Group items under every day they cover (multi-day items appear on each),
  * all-day first then by start time within a day.
  */

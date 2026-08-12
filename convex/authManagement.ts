@@ -2,6 +2,7 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { logAction } from "./lib/logging";
 import { internal } from "./_generated/api";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * Search for users by name or email (lightweight query for user list)
@@ -603,5 +604,224 @@ export const getAuthStats = query({
       expiredTokenCount: expiredCount,
       orphanedTokenCount: orphanedCount,
     };
+  },
+});
+
+/**
+ * "When was each member last on BRAVO?" for the whole roster.
+ *
+ * There is no explicit last-seen field on `users`, but the auth tables already
+ * record it as a side effect: a session row is created at sign-in, and the
+ * client mints a fresh refresh token every time it exchanges its access token
+ * while the app is open. The newest of those timestamps is the last time the
+ * app was demonstrably running for that person.
+ *
+ * That makes this retroactive - it works for activity that happened long before
+ * this query existed - at the cost of granularity: it answers "had the app open
+ * around then", not "tapped a button at 09:41". Someone who signed out shows as
+ * never seen, because signing out deletes the evidence.
+ */
+export const getMemberActivity = query({
+  args: {},
+  returns: v.array(v.object({
+    userId: v.id("users"),
+    name: v.string(),
+    email: v.optional(v.string()),
+    rank: v.optional(v.string()),
+    isAdmin: v.boolean(),
+    isShared: v.boolean(),
+    isDisabled: v.boolean(),
+    /** Newest session or refresh-token timestamp; absent means no live session. */
+    lastSeenAt: v.optional(v.number()),
+    /** When they first signed in on a session that is still alive. */
+    firstSessionAt: v.optional(v.number()),
+    /** Live sessions, i.e. roughly how many devices they're signed in on. */
+    deviceCount: v.number(),
+    /** Their last availability change - activity that outlives a sign-out. */
+    statusUpdatedAt: v.optional(v.number()),
+    /**
+     * Last availability change from `memberStatusHistory`. Unlike
+     * `statusUpdatedAt`, the nightly reset doesn't wipe it, so it's the honest
+     * answer to "when did this member last tell us anything".
+     */
+    lastStatusChangeAt: v.optional(v.number()),
+  })),
+  handler: async (ctx) => {
+    const actorId = await getAuthUserId(ctx);
+    if (!actorId) throw new Error("You must be signed in");
+    const actor = await ctx.db.get(actorId);
+    if (!actor || !actor.isAdmin) {
+      throw new Error("Only administrators can view member activity");
+    }
+
+    const users = await ctx.db.query("users").collect();
+    const sessions = await ctx.db.query("authSessions").collect();
+
+    // Newest refresh token per session. Reading only the first row of the
+    // sessionId index keeps this cheap on a table with thousands of tokens.
+    const latestTokenBySession = new Map<string, number>();
+    for (const session of sessions) {
+      const newest = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .order("desc")
+        .first();
+      if (newest) latestTokenBySession.set(session._id, newest._creationTime);
+    }
+
+    const activityByUser = new Map<
+      string,
+      { lastSeenAt: number; firstSessionAt: number; deviceCount: number }
+    >();
+    for (const session of sessions) {
+      const seen = Math.max(
+        session._creationTime,
+        latestTokenBySession.get(session._id) ?? 0,
+      );
+      const existing = activityByUser.get(session.userId);
+      if (existing) {
+        existing.lastSeenAt = Math.max(existing.lastSeenAt, seen);
+        existing.firstSessionAt = Math.min(existing.firstSessionAt, session._creationTime);
+        existing.deviceCount += 1;
+      } else {
+        activityByUser.set(session.userId, {
+          lastSeenAt: seen,
+          firstSessionAt: session._creationTime,
+          deviceCount: 1,
+        });
+      }
+    }
+
+    const people = users.filter(
+      // Bare auth rows with no name aren't people anyone can act on.
+      (user) => !user.isAnonymous && (user.firstName || user.lastName || user.name),
+    );
+
+    return await Promise.all(
+      people.map(async (user) => {
+        const activity = activityByUser.get(user._id);
+        const lastStatusChange = await ctx.db
+          .query("memberStatusHistory")
+          .withIndex("by_user_and_timestamp", (q) => q.eq("userId", user._id))
+          .order("desc")
+          .first();
+        const name = user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.name || user.email || "Unknown user";
+        return {
+          userId: user._id,
+          name,
+          email: user.email,
+          rank: user.rank,
+          isAdmin: user.isAdmin === true,
+          isShared: user.accountType === "shared",
+          isDisabled: user.isDisabled === true,
+          lastSeenAt: activity?.lastSeenAt,
+          firstSessionAt: activity?.firstSessionAt,
+          deviceCount: activity?.deviceCount ?? 0,
+          statusUpdatedAt: user.statusUpdatedAt,
+          lastStatusChangeAt: lastStatusChange?.timestamp,
+        };
+      }),
+    );
+  },
+});
+
+/**
+ * The sessions behind one member's "last seen", newest first.
+ *
+ * These are live sessions only - roughly "devices currently signed in" - because
+ * signing out or expiring deletes the row. So this is a short history of how
+ * they're using the app, not a permanent sign-in log.
+ */
+export const getUserSessionHistory = query({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.object({
+    sessionId: v.id("authSessions"),
+    startedAt: v.number(),
+    /** Newest refresh in this session, i.e. last confirmed use of the app. */
+    lastSeenAt: v.number(),
+    /** How many times the app refreshed its token on this session. */
+    refreshCount: v.number(),
+    expiresAt: v.number(),
+  })),
+  handler: async (ctx, args) => {
+    const actorId = await getAuthUserId(ctx);
+    if (!actorId) throw new Error("You must be signed in");
+    const actor = await ctx.db.get(actorId);
+    if (!actor || !actor.isAdmin) {
+      throw new Error("Only administrators can view member activity");
+    }
+
+    const sessions = await ctx.db
+      .query("authSessions")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const rows = [];
+    for (const session of sessions) {
+      const tokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+      const newest = tokens.reduce(
+        (max, token) => Math.max(max, token._creationTime),
+        session._creationTime,
+      );
+      rows.push({
+        sessionId: session._id,
+        startedAt: session._creationTime,
+        lastSeenAt: newest,
+        refreshCount: tokens.length,
+        expiresAt: session.expirationTime,
+      });
+    }
+
+    return rows
+      .sort((a, b) => b.lastSeenAt - a.lastSeenAt)
+      .slice(0, args.limit ?? 10);
+  },
+});
+
+/**
+ * One member's recent availability changes, newest first.
+ *
+ * `memberStatusHistory` records every deliberate set - in-app, iOS Shortcut, or
+ * an automatic timed transition - but nothing is written when a status is
+ * cleared by the 04:00 reset or by expiry, so the trail shows what they set and
+ * when, not when it lapsed.
+ */
+export const getUserStatusHistory = query({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.object({
+    _id: v.id("memberStatusHistory"),
+    status: v.string(),
+    timestamp: v.number(),
+  })),
+  handler: async (ctx, args) => {
+    const actorId = await getAuthUserId(ctx);
+    if (!actorId) throw new Error("You must be signed in");
+    const actor = await ctx.db.get(actorId);
+    if (!actor || !actor.isAdmin) {
+      throw new Error("Only administrators can view member activity");
+    }
+
+    const entries = await ctx.db
+      .query("memberStatusHistory")
+      .withIndex("by_user_and_timestamp", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(args.limit ?? 10);
+
+    return entries.map((entry) => ({
+      _id: entry._id,
+      status: entry.status,
+      timestamp: entry.timestamp,
+    }));
   },
 });

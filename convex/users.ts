@@ -2,6 +2,58 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+/**
+ * Shared gate for the account-lifecycle mutations below: only a signed-in admin
+ * may run them, and never against their own account (an admin locking themselves
+ * out of the only admin screen is unrecoverable from inside the app).
+ */
+async function requireAdminActingOnSomeoneElse(
+  ctx: MutationCtx,
+  targetUserId: Id<"users">,
+  verb: string,
+) {
+  const actorId = await getAuthUserId(ctx);
+  if (!actorId) throw new Error("You must be signed in");
+
+  const actor = await ctx.db.get(actorId);
+  if (!actor || !actor.isAdmin) {
+    throw new Error(`Only administrators can ${verb} accounts`);
+  }
+  if (actorId === targetUserId) {
+    throw new Error(`You cannot ${verb} your own account`);
+  }
+
+  const target = await ctx.db.get(targetUserId);
+  if (!target) throw new Error(`User with ID ${targetUserId} not found`);
+
+  return { actorId, target };
+}
+
+/**
+ * Drop every live session for a user, so an account that was just disabled or
+ * deleted stops working on devices that are already signed in rather than at
+ * the next login. Refresh tokens hang off sessions and must go with them.
+ */
+async function revokeSessions(ctx: MutationCtx, userId: Id<"users">) {
+  const sessions = await ctx.db
+    .query("authSessions")
+    .withIndex("userId", (q) => q.eq("userId", userId))
+    .collect();
+
+  for (const session of sessions) {
+    const refreshTokens = await ctx.db
+      .query("authRefreshTokens")
+      .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+      .collect();
+    for (const token of refreshTokens) {
+      await ctx.db.delete(token._id);
+    }
+    await ctx.db.delete(session._id);
+  }
+}
 
 /**
  * One-off backfill: assign the floor rank "Brigade Member" to any user that
@@ -331,8 +383,67 @@ export const deleteRole = mutation({
 });
 
 /**
- * Delete a user and their associated auth accounts
- * This ensures the email can be reused after deletion
+ * Disable or re-enable an account.
+ *
+ * This is the intended way to retire someone who has left the brigade: the
+ * `users` row stays, so every record that points at them (station checks, BA
+ * records, kit history, event responses) still resolves to a name, but they
+ * lose their login and drop out of every member-facing list via
+ * `isMemberAccount`. Reversible - re-enabling restores them with their rank,
+ * roles and password intact.
+ */
+export const setUserDisabled = mutation({
+  args: {
+    userId: v.id("users"),
+    isDisabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, target } = await requireAdminActingOnSomeoneElse(
+      ctx,
+      args.userId,
+      args.isDisabled ? "disable" : "enable",
+    );
+
+    if (args.isDisabled) {
+      await ctx.db.patch(args.userId, {
+        isDisabled: true,
+        disabledAt: Date.now(),
+        disabledBy: actorId,
+        // A departed member can't be left holding the standing Duty Officer flag.
+        ...(target.isDutyOfficer ? { isDutyOfficer: false } : {}),
+      });
+
+      // Sign them out everywhere, and stop their phone getting brigade pushes.
+      await revokeSessions(ctx, args.userId);
+      const subscriptions = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+      for (const subscription of subscriptions) {
+        await ctx.db.delete(subscription._id);
+      }
+    } else {
+      await ctx.db.patch(args.userId, {
+        isDisabled: false,
+        disabledAt: undefined,
+        disabledBy: undefined,
+      });
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Permanently delete a user and their auth accounts, freeing the email address
+ * for reuse.
+ *
+ * Deliberately narrow: it removes the login and the person's row, not the
+ * brigade records they touched. Those keep a now-dangling `v.id("users")` and
+ * will render as an unknown user - which is why `setUserDisabled` is the right
+ * tool for anyone with history, and this one is for mistaken or duplicate
+ * signups.
  */
 export const deleteUser = mutation({
   args: {
@@ -341,26 +452,40 @@ export const deleteUser = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { userId } = args;
-    
-    // Verify the user exists
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error(`User with ID ${userId} not found`);
-    }
-    
+
+    await requireAdminActingOnSomeoneElse(ctx, userId, "delete");
+
     // Find and delete all auth accounts associated with this user
     const authAccounts = await ctx.db
       .query("authAccounts")
       .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
       .collect();
-    
+
     for (const account of authAccounts) {
+      // Outstanding verification codes point at the account, not the user.
+      const codes = await ctx.db
+        .query("authVerificationCodes")
+        .withIndex("accountId", (q) => q.eq("accountId", account._id))
+        .collect();
+      for (const code of codes) {
+        await ctx.db.delete(code._id);
+      }
       await ctx.db.delete(account._id);
     }
-    
+
+    await revokeSessions(ctx, userId);
+
+    const subscriptions = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const subscription of subscriptions) {
+      await ctx.db.delete(subscription._id);
+    }
+
     // Delete the user
     await ctx.db.delete(userId);
-    
+
     return null;
   },
 });

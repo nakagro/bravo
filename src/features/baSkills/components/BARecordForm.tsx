@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MemberCombobox, MemberOption } from "./MemberCombobox";
+import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
 import {
   LoaderCircle,
   Save,

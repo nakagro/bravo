@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { moduleSettingAllows } from "./modules";
 
  async function requireSignedIn(ctx: any) {
    const userId = await getAuthUserId(ctx);
@@ -20,49 +21,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
      .withIndex("by_moduleId", (q: any) => q.eq("moduleId", "inventoryAdmin"))
      .first();
 
-   if (!moduleSetting || !moduleSetting.isEnabled) {
+   if (!moduleSettingAllows(user, moduleSetting)) {
      throw new Error("You do not have access to manage inventory templates");
-   }
-
-   if (moduleSetting.adminOnly) {
-     throw new Error("You do not have access to manage inventory templates");
-   }
-
-   const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-   const hasRankReq = !!moduleSetting.minimumRank;
-
-   let roleOk = true;
-   if (hasRoleReq) {
-     const userRoles = user.roles || [];
-     roleOk = moduleSetting.requiredRoles.some((role: string) => userRoles.includes(role));
-   }
-
-   let rankOk = true;
-   if (hasRankReq) {
-     const rankOrder: Record<string, number> = {
-       "Brigade Member": 0,
-       Probationary: 1,
-       Firefighter: 2,
-       Lieutenant: 3,
-       Captain: 4,
-     };
-
-     const userRank = user.rank;
-     if (!userRank) {
-       rankOk = false;
-     } else {
-       rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank];
-     }
-   }
-
-   if (hasRoleReq && hasRankReq) {
-     if (!(roleOk || rankOk)) {
-       throw new Error("You do not have access to manage inventory templates");
-     }
-   } else {
-     if (!(roleOk && rankOk)) {
-       throw new Error("You do not have access to manage inventory templates");
-     }
    }
 
    return userId;

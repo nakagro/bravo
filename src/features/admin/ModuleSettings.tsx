@@ -30,6 +30,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedRank, setSelectedRank] = useState<"Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined>(undefined);
   const [isAdminOnly, setIsAdminOnly] = useState<boolean>(false);
+  const [requirementMode, setRequirementMode] = useState<"all" | "any">("all");
   
   // State for role management dialog
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
@@ -80,6 +81,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       const rank = module.minimumRank as "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined;
       setSelectedRank(rank);
       setIsAdminOnly(module.adminOnly || false);
+      setRequirementMode(module.requirementMode === "any" ? "any" : "all");
     }
   };
   
@@ -93,6 +95,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
         adminOnly: isAdminOnly,
         requiredRoles: selectedRoles,
         minimumRank: selectedRank,
+        requirementMode,
       });
       setEditingModuleId(null);
     } catch (error) {
@@ -105,6 +108,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
     setEditingModuleId(null);
     setSelectedRoles([]);
     setSelectedRank(undefined);
+    setRequirementMode("all");
   };
   
   // Toggle a role selection
@@ -437,7 +441,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {moduleSettings?.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No module settings found. Please initialize settings.
                 </td>
               </tr>
@@ -494,13 +498,20 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {module.minimumRank ? (
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs">
-                            {module.minimumRank}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">None</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {module.requiredRoles && module.requiredRoles.length > 0 && module.minimumRank && (
+                            <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded text-xs font-semibold">
+                              {module.requirementMode === "any" ? "OR" : "AND"}
+                            </span>
+                          )}
+                          {module.minimumRank ? (
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs">
+                              {module.minimumRank}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500">None</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <button
@@ -515,7 +526,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                     {/* Edit requirements panel */}
                     {editingModuleId === module.moduleId && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-4">
+                        <td colSpan={6} className="px-6 py-4">
                           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
                               Edit Access Requirements for {module.moduleName}
@@ -645,6 +656,52 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                               </div>
                             </div>
                             
+                            {/* How role and rank combine; only bites when both are set */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                When both a role and a rank are set
+                              </label>
+                              <div className="space-y-2">
+                                {([
+                                  {
+                                    value: "all" as const,
+                                    label: "Must meet both (rank AND role)",
+                                    hint: "Strictest. A member needs the minimum rank and one of the roles.",
+                                  },
+                                  {
+                                    value: "any" as const,
+                                    label: "Either is enough (rank OR role)",
+                                    hint: "e.g. Lieutenant and above, or anyone with the Social Admin role.",
+                                  },
+                                ]).map(option => (
+                                  <div key={option.value} className="flex items-start">
+                                    <input
+                                      type="radio"
+                                      id={`mode-${module.moduleId}-${option.value}`}
+                                      name={`mode-${module.moduleId}`}
+                                      checked={requirementMode === option.value}
+                                      onChange={() => setRequirementMode(option.value)}
+                                      className="mt-0.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-500"
+                                    />
+                                    <label
+                                      htmlFor={`mode-${module.moduleId}-${option.value}`}
+                                      className="ml-2 block text-sm text-gray-900 dark:text-gray-200"
+                                    >
+                                      {option.label}
+                                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                                        {option.hint}
+                                      </span>
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+                              {(selectedRoles.length === 0 || !selectedRank) && (
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                  Has no effect until both a role and a minimum rank are set.
+                                </p>
+                              )}
+                            </div>
+
                             {/* Action buttons */}
                             <div className="flex justify-end space-x-2 mt-4">
                               <button
@@ -678,7 +735,10 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
           <li>Admin users always have access to all enabled modules</li>
           <li>If role requirements are set, users must have at least one of the required roles</li>
           <li>If a minimum rank is set, users must have at least that rank</li>
-          <li>If both role and rank requirements are set, users must meet both conditions</li>
+          <li>
+            If both role and rank requirements are set, the module&apos;s AND/OR setting decides
+            whether users must meet both conditions or just one of them
+          </li>
         </ul>
       </div>
     </div>

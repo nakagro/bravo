@@ -3,14 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
-
-const RANK_ORDER = {
-  "Brigade Member": 0,
-  Probationary: 1,
-  Firefighter: 2,
-  Lieutenant: 3,
-  Captain: 4,
-} as const;
+import { moduleSettingAllows } from "./modules";
 
 /**
  * Whether the user can manage booking resources (bookingsAdmin module or system admin).
@@ -28,19 +21,7 @@ async function hasBookingsAdminAccess(
     .withIndex("by_moduleId", (q) => q.eq("moduleId", "bookingsAdmin"))
     .first();
 
-  if (!moduleSetting || !moduleSetting.isEnabled) return false;
-  if (moduleSetting.adminOnly && !user.isAdmin) return false;
-
-  const requiredRoles = moduleSetting.requiredRoles ?? [];
-  const roleOk =
-    requiredRoles.length === 0 || requiredRoles.some((role) => (user.roles ?? []).includes(role));
-
-  const requiredRank = moduleSetting.minimumRank;
-  const rankOk =
-    requiredRank === undefined ||
-    (user.rank !== undefined && RANK_ORDER[user.rank] >= RANK_ORDER[requiredRank]);
-
-  return roleOk && rankOk;
+  return moduleSettingAllows(user, moduleSetting);
 }
 
 async function requireBookingsAdmin(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {

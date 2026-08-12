@@ -5,6 +5,7 @@ import {
   fromBrigadeEvents,
   fromIcsEvents,
   groupItemsByDay,
+  selectUpcomingItems,
   type BookingInput,
   type BrigadeEventInput,
   type CalendarItem,
@@ -189,5 +190,71 @@ describe("groupItemsByDay", () => {
     const byDay = groupItemsByDay([...timedLate, ...timedEarly, ...allDay]);
     const titles = (byDay.get("2026-07-15") ?? []).map((item: CalendarItem) => item.title);
     expect(titles).toEqual(["Sausage sizzle", "Early", "Late"]);
+  });
+});
+
+describe("selectUpcomingItems", () => {
+  const now = new Date(2026, 6, 15, 12, 0);
+
+  it("merges CalDAV and brigade events into one chronological list", () => {
+    const items = [
+      ...fromIcsEvents([
+        icsEvent({
+          uid: "ics-late",
+          summary: "Truck check",
+          start: new Date(2026, 6, 20, 18, 0),
+          end: new Date(2026, 6, 20, 19, 0),
+        }),
+      ]),
+      ...fromBrigadeEvents([brigadeEvent({ startDate: "2026-07-17" })]),
+    ];
+    expect(selectUpcomingItems(items, 5, now).map((i) => i.title)).toEqual([
+      "Sausage sizzle",
+      "Truck check",
+    ]);
+  });
+
+  it("keeps an all-day event running today, which a start-only filter would drop", () => {
+    const todayAllDay = fromBrigadeEvents([brigadeEvent({ startDate: "2026-07-15" })]);
+    expect(selectUpcomingItems(todayAllDay, 5, now)).toHaveLength(1);
+  });
+
+  it("drops events that have already finished", () => {
+    const finished = fromIcsEvents([
+      icsEvent({
+        uid: "done",
+        start: new Date(2026, 6, 15, 8, 0),
+        end: new Date(2026, 6, 15, 9, 0),
+      }),
+    ]);
+    expect(selectUpcomingItems(finished, 5, now)).toEqual([]);
+  });
+
+  it("excludes cancelled brigade events and honours the limit", () => {
+    const items = fromBrigadeEvents([
+      brigadeEvent({ _id: "a", title: "A", startDate: "2026-07-16" }),
+      brigadeEvent({ _id: "b", title: "B", startDate: "2026-07-17" }),
+      brigadeEvent({ _id: "c", title: "C", startDate: "2026-07-18", status: "cancelled" }),
+      brigadeEvent({ _id: "d", title: "D", startDate: "2026-07-19" }),
+    ]);
+    expect(selectUpcomingItems(items, 2, now).map((i) => i.title)).toEqual(["A", "B"]);
+  });
+
+  it("sorts strictly by start across days, not all-day-first like a day agenda", () => {
+    const items = [
+      ...fromBrigadeEvents([brigadeEvent({ title: "All-day later", startDate: "2026-07-18" })]),
+      ...fromIcsEvents([
+        icsEvent({
+          uid: "sooner",
+          summary: "Timed sooner",
+          start: new Date(2026, 6, 16, 9, 0),
+          end: new Date(2026, 6, 16, 10, 0),
+        }),
+      ]),
+    ];
+    expect(selectUpcomingItems(items, 5, now).map((i) => i.title)).toEqual([
+      "Timed sooner",
+      "All-day later",
+    ]);
   });
 });

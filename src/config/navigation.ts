@@ -187,16 +187,18 @@ export const NAV_ITEMS: NavItem[] = [
     },
   },
   // --- Brigade ---
+  // Order here is the order tiles appear in the menu and dashboard grids.
   {
-    id: "bookings",
-    label: "Bookings",
-    path: "/bookings",
-    icon: Calendar,
+    id: "events",
+    label: "Events",
+    path: "/events",
+    icon: CalendarCheck,
     group: "brigade",
+    hideOnDashboard: true,
     color: {
-      bg: "bg-indigo-100 dark:bg-indigo-900/20",
-      bgHover: "group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40",
-      fg: "text-indigo-600 dark:text-indigo-400",
+      bg: "bg-emerald-100 dark:bg-emerald-900/20",
+      bgHover: "group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/40",
+      fg: "text-emerald-600 dark:text-emerald-400",
     },
   },
   {
@@ -212,16 +214,15 @@ export const NAV_ITEMS: NavItem[] = [
     },
   },
   {
-    id: "events",
-    label: "Events",
-    path: "/events",
-    icon: CalendarCheck,
+    id: "bookings",
+    label: "Bookings",
+    path: "/bookings",
+    icon: Calendar,
     group: "brigade",
-    hideOnDashboard: true,
     color: {
-      bg: "bg-emerald-100 dark:bg-emerald-900/20",
-      bgHover: "group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/40",
-      fg: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-indigo-100 dark:bg-indigo-900/20",
+      bgHover: "group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40",
+      fg: "text-indigo-600 dark:text-indigo-400",
     },
   },
   {

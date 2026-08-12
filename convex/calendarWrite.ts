@@ -9,6 +9,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { fetchCalendarData } from "./calendarProxy";
+import { moduleSettingAllows } from "./modules";
 
 // Calendar reads and CalDAV writes are authenticated Convex actions, so the
 // browser never sees Radicale or its credentials. Read and write access use
@@ -267,28 +268,7 @@ async function requireCalendarAccess(
       ? "You do not have access to view the calendar"
       : "You do not have access to modify the calendar";
 
-  if (!moduleSetting?.isEnabled || moduleSetting.adminOnly) {
-    throw new Error(deniedMessage);
-  }
-
-  const requiredRoles = moduleSetting.requiredRoles ?? [];
-  const hasRequiredRole =
-    requiredRoles.length === 0 ||
-    requiredRoles.some((role) => user.roles?.includes(role));
-
-  const rankOrder = {
-    "Brigade Member": 0,
-    Probationary: 1,
-    Firefighter: 2,
-    Lieutenant: 3,
-    Captain: 4,
-  } as const;
-  const hasRequiredRank = moduleSetting.minimumRank
-    ? user.rank !== undefined &&
-      rankOrder[user.rank] >= rankOrder[moduleSetting.minimumRank]
-    : true;
-
-  if (!hasRequiredRole || !hasRequiredRank) {
+  if (!moduleSettingAllows(user, moduleSetting)) {
     throw new Error(deniedMessage);
   }
 }

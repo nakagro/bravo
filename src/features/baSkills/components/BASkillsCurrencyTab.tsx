@@ -16,7 +16,7 @@ import { BACurrencyHealthBar } from "./BACurrencyHealthBar";
 import { BACurrencyToolbar } from "./BACurrencyToolbar";
 import { BACurrencyGroup } from "./BACurrencyGroup";
 import { BACurrencyRow } from "./BACurrencyRow";
-import { MemberOption } from "./MemberCombobox";
+import { MemberOption } from "@/components/shared/MemberCombobox";
 
 interface BASkillsCurrencyTabProps {
   onViewMemberHistory?: (userId: Id<"users">) => void;

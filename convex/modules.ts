@@ -17,15 +17,23 @@ export const RANK_ORDER: Record<string, number> = {
 };
 
 /**
- * Does this user satisfy a module's gate? Role and rank requirements are ANDed;
- * a missing or disabled module denies. Admins are handled by the callers, which
- * short-circuit before getting here.
+ * Does this user satisfy a module's gate? A missing or disabled module denies.
+ * Admins are handled by the callers, which short-circuit before getting here.
+ *
+ * When both a role list and a minimum rank are set, `requirementMode` decides
+ * how they combine: "all" (the default, and what every row written before this
+ * field existed means) requires both, "any" requires either. "any" exists for
+ * gates like Events Admin, where the officers qualify on rank and the social
+ * crew qualify on role, and nobody should need both.
  */
 export function moduleSettingAllows(
   user: Doc<"users">,
   moduleSetting: Doc<"moduleSettings"> | null | undefined,
 ): boolean {
   if (!moduleSetting || !moduleSetting.isEnabled) return false;
+  // A disabled account keeps its rank and roles (so re-enabling is a single
+  // switch) but reaches nothing while it's off - including admin-only modules.
+  if (user.isDisabled) return false;
   if (moduleSetting.adminOnly && !user.isAdmin) return false;
 
   const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
@@ -41,6 +49,11 @@ export function moduleSettingAllows(
   if (hasRankReq) {
     const userRank = user.rank;
     rankOk = userRank ? RANK_ORDER[userRank] >= RANK_ORDER[moduleSetting.minimumRank!] : false;
+  }
+
+  // The mode only means anything when there are two requirements to combine.
+  if (hasRoleReq && hasRankReq && moduleSetting.requirementMode === "any") {
+    return roleOk || rankOk;
   }
 
   return roleOk && rankOk;
@@ -718,9 +731,10 @@ export const updateModuleRequirements = mutation({
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
+    requirementMode: v.optional(v.union(v.literal("all"), v.literal("any"))),
   },
   handler: async (ctx, args) => {
-    const { moduleId, adminOnly, requiredRoles, minimumRank } = args;
+    const { moduleId, adminOnly, requiredRoles, minimumRank, requirementMode } = args;
 
     // Get the authenticated user ID
     const userId = await getAuthUserId(ctx);
@@ -743,6 +757,7 @@ export const updateModuleRequirements = mutation({
       adminOnly,
       requiredRoles,
       minimumRank,
+      requirementMode: requirementMode ?? "all",
       updatedAt: Date.now(),
       updatedBy: userId,
     });

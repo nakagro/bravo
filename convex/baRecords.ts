@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
+import { moduleSettingAllows } from "./modules";
 
 const usageTypeValidator = v.union(
   v.literal("firecall"),
@@ -46,14 +47,6 @@ async function resolveKioskServiceAccount(
 }
 
 const BA_RECORD_DELETE_WINDOW_MS = 15 * 60 * 1000;
-const RANK_ORDER = {
-  "Brigade Member": 0,
-  Probationary: 1,
-  Firefighter: 2,
-  Lieutenant: 3,
-  Captain: 4,
-} as const;
-
 const recordReturnValidator = v.object({
   _id: v.id("baRecords"),
   _creationTime: v.number(),
@@ -109,19 +102,7 @@ async function userHasModuleAccess(
     .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
     .first();
 
-  if (!moduleSetting || !moduleSetting.isEnabled) return false;
-  if (moduleSetting.adminOnly && !user.isAdmin) return false;
-
-  const requiredRoles = moduleSetting.requiredRoles ?? [];
-  const roleOk =
-    requiredRoles.length === 0 || requiredRoles.some((role) => (user.roles ?? []).includes(role));
-
-  const requiredRank = moduleSetting.minimumRank;
-  const rankOk =
-    requiredRank === undefined ||
-    (user.rank !== undefined && RANK_ORDER[user.rank] >= RANK_ORDER[requiredRank]);
-
-  return roleOk && rankOk;
+  return moduleSettingAllows(user, moduleSetting);
 }
 
 /**

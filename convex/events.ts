@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
+import { moduleSettingAllows } from "./modules";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -30,42 +31,7 @@ export async function requireEventsAdmin(ctx: QueryCtx | MutationCtx) {
     .withIndex("by_moduleId", (q) => q.eq("moduleId", "eventsAdmin"))
     .first();
 
-  if (!moduleSetting || !moduleSetting.isEnabled) {
-    throw new Error("You do not have access to manage events");
-  }
-
-  if (moduleSetting.adminOnly) {
-    throw new Error("You do not have access to manage events");
-  }
-
-  const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-  const hasRankReq = !!moduleSetting.minimumRank;
-
-  let roleOk = true;
-  if (hasRoleReq) {
-    const userRoles = user.roles || [];
-    roleOk = moduleSetting.requiredRoles!.some((role: string) => userRoles.includes(role));
-  }
-
-  let rankOk = true;
-  if (hasRankReq) {
-    const rankOrder: Record<string, number> = {
-      "Brigade Member": 0,
-      Probationary: 1,
-      Firefighter: 2,
-      Lieutenant: 3,
-      Captain: 4,
-    };
-
-    const userRank = user.rank;
-    if (!userRank) {
-      rankOk = false;
-    } else {
-      rankOk = rankOrder[userRank] >= rankOrder[moduleSetting.minimumRank!];
-    }
-  }
-
-  if (!(roleOk && rankOk)) {
+  if (!moduleSettingAllows(user, moduleSetting)) {
     throw new Error("You do not have access to manage events");
   }
 
@@ -816,6 +782,59 @@ export const updateEvent = mutation({
     updateData.updatedAt = Date.now();
 
     await ctx.db.patch(args.eventId, updateData);
+    return null;
+  },
+});
+
+/**
+ * Hand an event to a different organiser.
+ *
+ * The current organiser can always do this, even if their rank or roles have
+ * since dropped below the eventsAdmin bar - someone who is standing down needs
+ * to be able to pass their events on. Anyone with eventsAdmin can also
+ * reassign, which covers the organiser who has left the brigade entirely.
+ *
+ * Kept separate from updateEvent so handing an event over is its own audited
+ * act rather than a field buried in a form save.
+ */
+export const changeOrganiser = mutation({
+  args: {
+    eventId: v.id("events"),
+    organiserId: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const signedInId = await requireSignedIn(ctx);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+
+    const userId =
+      event.createdBy === signedInId ? signedInId : await requireEventsAdmin(ctx);
+
+    if (event.createdBy === args.organiserId) return null;
+
+    const newOrganiser = await ctx.db.get(args.organiserId);
+    if (!newOrganiser) throw new Error("That member no longer exists");
+    // Shared accounts (truck tablets, the DO phone) are devices, not people;
+    // an event handed to one would have nobody accountable for it.
+    if (!isMemberAccount(newOrganiser)) {
+      throw new Error("Pick a member, not a shared account");
+    }
+
+    await ctx.db.patch(args.eventId, {
+      createdBy: args.organiserId,
+      updatedAt: Date.now(),
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId,
+      changeType: "organiser_change",
+      field: "organiser",
+      oldValue: event.createdBy,
+      newValue: args.organiserId,
+    });
+
     return null;
   },
 });

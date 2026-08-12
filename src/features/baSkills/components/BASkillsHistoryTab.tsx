@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { MemberCombobox, MemberOption } from "./MemberCombobox";
+import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
 import { Download, LoaderCircle } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { BARecordCard } from "./BARecordCard";

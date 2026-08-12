@@ -1,5 +1,8 @@
 import { Fragment, Suspense, lazy, useEffect, type ReactNode } from "react";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
+import { isDisabledAccount } from "./lib/accountType";
+import { AccountDisabled } from "./components/AccountDisabled";
 import {
   BrowserRouter,
   Routes,
@@ -225,6 +228,14 @@ function AuthenticatedApp() {
   // Identify user with PostHog for analytics
   usePostHogIdentify();
 
+  // A disabled account is a member who has left: every module gate on the server
+  // already denies them, so render the explanation instead of an app full of
+  // Access Denied pages.
+  const currentUser = useQuery(api.auth.loggedInUser);
+  if (isDisabledAccount(currentUser)) {
+    return <AccountDisabled />;
+  }
+
   return (
     <MainLayout>
       <PushNotifier />
@@ -346,8 +357,11 @@ function AuthenticatedApp() {
               <EventDetailPage />
             </ProtectedRoute>
           } />
+          {/* The PWA's start_url is /availability, so non-operational members
+              land here on every app launch without choosing to. Send them to
+              the dashboard rather than a dead end they can't act on. */}
           <Route path="/availability" element={
-            <ProtectedRoute moduleId="availability">
+            <ProtectedRoute moduleId="availability" fallbackPath="/">
               <AvailabilityPage />
             </ProtectedRoute>
           } />
@@ -395,7 +409,7 @@ function AuthenticatedApp() {
           <Route path="/extras" element={<ExtrasPage />} />
           <Route path="/contacts" element={<ContactDirectoryPage />} />
           <Route path="/shortcuts" element={
-            <ProtectedRoute moduleId="availability">
+            <ProtectedRoute moduleId="availability" fallbackPath="/">
               <ShortcutsPage />
             </ProtectedRoute>
           } />

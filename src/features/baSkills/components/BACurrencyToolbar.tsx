@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SortKey } from "../lib/types";
-import { MemberCombobox, MemberOption } from "./MemberCombobox";
+import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 interface BACurrencyToolbarProps {

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MemberCombobox, type MemberOption } from "@/components/shared/MemberCombobox";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,6 +38,8 @@ const eventFormSchema = z
   .object({
     title: z.string().min(1, "Please enter a title"),
     eventTypeId: z.string(),
+    // Edit mode only; the creator is the organiser of a brand new event
+    organiserId: z.string(),
     location: z.string(),
     address: z.string(),
     startDate: z.string().min(1, "Please select a date"),
@@ -79,6 +82,7 @@ type EventFormValues = z.infer<typeof eventFormSchema>;
 const blankDefaults: EventFormValues = {
   title: "",
   eventTypeId: "",
+  organiserId: "",
   location: "",
   address: "",
   startDate: "",
@@ -119,6 +123,24 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   );
   const createEvent = useMutation(api.events.createEvent);
   const updateEvent = useMutation(api.events.updateEvent);
+  const changeOrganiser = useMutation(api.events.changeOrganiser);
+  // Only needed to populate the hand-over picker when editing
+  const members = useQuery(api.users.getMemberUsers, eventId ? {} : "skip");
+  const memberOptions: MemberOption[] = useMemo(
+    () =>
+      (members ?? [])
+        .map((member) => ({
+          _id: member._id,
+          name:
+            [member.firstName, member.lastName].filter(Boolean).join(" ") ||
+            member.name ||
+            member.email ||
+            "Unnamed member",
+          rank: member.rank,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [members],
+  );
 
   const isEditing = eventId !== null;
 
@@ -155,6 +177,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       form.reset({
         title: existingEvent.title,
         eventTypeId: existingEvent.eventTypeId || "",
+        organiserId: existingEvent.createdBy,
         location: existingEvent.location || "",
         address: existingEvent.address || "",
         startDate: existingEvent.startDate,
@@ -220,6 +243,14 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
 
     try {
       if (isEditing && eventId) {
+        // Hand-over is its own mutation (own permission rule, own audit entry),
+        // so it goes before the field save; if it fails, nothing else is written.
+        if (values.organiserId && values.organiserId !== existingEvent?.createdBy) {
+          await changeOrganiser({
+            eventId,
+            organiserId: values.organiserId as Id<"users">,
+          });
+        }
         await updateEvent({
           eventId,
           ...fields,
@@ -337,6 +368,29 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Organiser. Edit only: a new event belongs to whoever creates it. */}
+        {isEditing && (
+          <FormField
+            control={form.control}
+            name="organiserId"
+            render={({ field }) => (
+              <FormItem>
+                <MemberCombobox
+                  label="Organiser"
+                  options={memberOptions}
+                  value={(field.value || null) as Id<"users"> | null}
+                  // An event always has an organiser, so a cleared selection
+                  // (the combobox allows null) keeps the current one.
+                  onChange={(value) => value && field.onChange(value)}
+                  placeholder="Search for a member"
+                  helperText="Hands the event over. The new organiser can edit it and gets the responses to manage."
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Location */}
         <FormField

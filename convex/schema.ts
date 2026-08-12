@@ -74,6 +74,13 @@ const extendedAuthTables = {
     )), // Status to transition to after duration expires
     nextStatusAt: v.optional(v.number()), // Timestamp when to transition to next status
     isDutyOfficer: v.optional(v.boolean()),
+    // Disabled accounts are people who have left the brigade. The row stays so
+    // every historical reference to them (checklists, BA records, kit history)
+    // still resolves, but they can't sign in, hold module access, or appear in
+    // any member-facing list. Absent means "active" - no backfill needed.
+    isDisabled: v.optional(v.boolean()),
+    disabledAt: v.optional(v.number()),
+    disabledBy: v.optional(v.id("users")),
   })
     .index("by_email", ["email"])
     .index("by_memberNumber", ["memberNumber"])
@@ -133,6 +140,11 @@ const applicationTables = {
       v.literal("Lieutenant"),
       v.literal("Captain")
     )),
+    // How the role and rank requirements combine when both are set.
+    // "all" (default, and what every existing row means) = must meet both.
+    // "any" = meeting either one is enough, e.g. Lieutenant+ OR Social Admin.
+    // Ignored unless both a role list and a minimum rank are set.
+    requirementMode: v.optional(v.union(v.literal("all"), v.literal("any"))),
     // Optional module-specific configuration
     config: v.optional(v.any()),
     // Last updated timestamp
@@ -167,7 +179,10 @@ const applicationTables = {
     timestamp: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    // Ordering by insertion time is only a proxy for `timestamp` - a backfill or
+    // the simulator writes rows out of order - so read a member's history here.
+    .index("by_user_and_timestamp", ["userId", "timestamp"]),
 
   // Duty officer history table
   dutyOfficerHistory: defineTable({
