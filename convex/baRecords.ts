@@ -59,6 +59,7 @@ const recordReturnValidator = v.object({
   verifiedBy: v.id("users"),
   verifierName: v.string(),
   submittedBy: v.id("users"),
+  submittedByServiceAccount: v.optional(v.id("serviceAccounts")),
   submitterName: v.string(),
   submittedOnBehalf: v.boolean(),
   lmsEnteredAt: v.optional(v.number()),
@@ -75,17 +76,20 @@ function userDisplayName(user: Doc<"users"> | null | undefined): string {
 }
 
 async function decorateRecord(ctx: QueryCtx, record: Doc<"baRecords">) {
-  const [member, verifier, submitter, lmsEnteredBy] = await Promise.all([
+  const [member, verifier, submitter, submitterServiceAccount, lmsEnteredBy] = await Promise.all([
     ctx.db.get(record.memberId),
     ctx.db.get(record.verifiedBy),
     ctx.db.get(record.submittedBy),
+    record.submittedByServiceAccount
+      ? ctx.db.get(record.submittedByServiceAccount)
+      : Promise.resolve(null),
     record.lmsEnteredBy ? ctx.db.get(record.lmsEnteredBy) : Promise.resolve(null),
   ]);
   return {
     ...record,
     memberName: userDisplayName(member),
     verifierName: userDisplayName(verifier),
-    submitterName: userDisplayName(submitter),
+    submitterName: submitterServiceAccount?.name ?? userDisplayName(submitter),
     lmsEnteredByName: record.lmsEnteredBy ? userDisplayName(lmsEnteredBy) : undefined,
   };
 }
@@ -170,14 +174,13 @@ export const createRecord = mutation({
   },
   returns: v.id("baRecords"),
   handler: async (ctx, args) => {
-    let userId = await getAuthUserId(ctx);
-    if (!userId) {
-      const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
-      if (!serviceAccountId) throw new Error("You must be signed in to log BA usage");
-      // Kiosk tablets authenticate as a service account, not a real user -
-      // attribute the record to the verifier, who confirmed it on the device.
-      userId = args.verifiedBy;
-    }
+    const authenticatedUserId = await getAuthUserId(ctx);
+    const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
+    const userId = serviceAccountId ? args.verifiedBy : authenticatedUserId;
+    if (!userId) throw new Error("You must be signed in to log BA usage");
+    // Keep the existing user foreign key for ownership/deletion compatibility,
+    // while separately recording the kiosk account used to submit the record.
+    const submittedBy = serviceAccountId ? args.verifiedBy : userId;
 
     if (args.durationMinutes < 1 || args.durationMinutes > 480) {
       throw new Error("Duration must be between 1 and 480 minutes");
@@ -203,7 +206,8 @@ export const createRecord = mutation({
       usageType: args.usageType,
       notes: trimmedNotes,
       verifiedBy: args.verifiedBy,
-      submittedBy: userId,
+      submittedBy,
+      ...(serviceAccountId ? { submittedByServiceAccount: serviceAccountId } : {}),
       submittedOnBehalf,
       createdAt: now,
       updatedAt: now,

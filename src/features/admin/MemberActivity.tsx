@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ArrowsUpDownIcon } from "@heroicons/react/24/outline";
+import { ArrowsUpDownIcon, ArrowPathIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,63 @@ import { Label } from "@/components/ui/label";
 import { formatDateTime, getRelativeTimeString } from "@/utils/dateUtils";
 
 const DAY = 24 * 60 * 60 * 1000;
+
+// The nightly reset cron fires at a fixed UTC time (see convex/crons.ts:
+// "nightly reset statuses", 18:30 UTC), which is 04:30 AEST / 05:30 AEDT.
+const RESET_HOUR_UTC = 18;
+const RESET_MINUTE_UTC = 30;
+
+/**
+ * Every nightly-reset instant strictly between two timestamps, oldest first.
+ *
+ * The reset clears statuses without writing history, so these are derived, not
+ * recorded - we know when it ran because the cron time is fixed.
+ */
+function resetsBetween(afterMs: number, beforeMs: number): number[] {
+  const out: number[] = [];
+  const d = new Date(afterMs);
+  // First candidate: the reset on the same UTC day as `afterMs`.
+  let t = Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    RESET_HOUR_UTC,
+    RESET_MINUTE_UTC,
+  );
+  while (t <= afterMs) t += DAY;
+  while (t < beforeMs) {
+    out.push(t);
+    t += DAY;
+  }
+  return out;
+}
+
+/**
+ * "12 Jul, 3:04 pm" - the long-form `formatDateTime` blows out the narrow
+ * secondary column on a phone, and the year is noise for recent activity.
+ */
+function formatCompact(timestamp: number): string {
+  const d = new Date(timestamp);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleString("en-AU", {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "2-digit" }),
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  });
+}
+
+/** "5h 32m", "12m" - how long after the reset the member set a status. */
+function formatGap(ms: number): string {
+  const mins = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days >= 1) return `${days}d ${hours % 24}h`;
+  if (hours >= 1) return `${hours}h ${mins % 60}m`;
+  return `${mins}m`;
+}
 
 interface MemberActivityProps {
   showTitle?: boolean;
@@ -57,14 +114,14 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
 
   if (activity === undefined) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading activity...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 space-y-4">
       {showTitle && (
         <h2 className="text-xl font-semibold dark:text-white">Member Activity</h2>
       )}
@@ -78,21 +135,26 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-md border border-gray-200 dark:border-gray-700 p-3"
+            className="rounded-md border border-gray-200 dark:border-gray-700 p-2.5 sm:p-3"
           >
-            <p className="text-2xl font-semibold dark:text-white">{stat.value}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
+            <p className="text-xl sm:text-2xl font-semibold leading-tight dark:text-white">
+              {stat.value}
+            </p>
+            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+              {stat.label}
+            </p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Stacked on a phone so neither control gets squeezed or orphaned. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={() => setOldestFirst((v) => !v)}
-          className="flex items-center gap-2"
+          className="flex w-full items-center justify-center gap-2 sm:w-auto"
         >
           <ArrowsUpDownIcon className="h-4 w-4" />
           {oldestFirst ? "Least recent first" : "Most recent first"}
@@ -118,43 +180,48 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         )}
         {rows.map((row) => (
           <li key={row.userId}>
+            {/* Name column flexes, the "last seen" column keeps its natural
+                width, and nothing wraps into a stray right-aligned block. */}
             <button
               type="button"
               onClick={() => setOpenUser({ id: row.userId, name: row.name })}
-              className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md py-3 px-2 text-left transition-colors hover:bg-accent/50"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-3 text-left transition-colors hover:bg-accent/50 min-h-[56px]"
             >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium dark:text-gray-100">{row.name}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="truncate font-medium dark:text-gray-100">{row.name}</span>
                   {row.rank && (
                     <span className="text-xs text-gray-500 dark:text-gray-400">{row.rank}</span>
                   )}
                   {row.isShared && <Badge variant="outline">Shared</Badge>}
                   {row.isDisabled && <Badge variant="destructive">Disabled</Badge>}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">
                   {row.lastSeenAt
-                    ? `Signed in on ${row.deviceCount} ${row.deviceCount === 1 ? "device" : "devices"}`
+                    ? `${row.deviceCount} ${row.deviceCount === 1 ? "device" : "devices"}`
                     : "No live session"}
                   {row.lastStatusChangeAt
-                    ? ` · availability set ${getRelativeTimeString(row.lastStatusChangeAt)}`
+                    ? ` · availability ${getRelativeTimeString(row.lastStatusChangeAt)}`
                     : " · never set availability"}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="shrink-0 text-right">
                 {row.lastSeenAt ? (
                   <>
-                    <p className="text-sm font-medium dark:text-gray-100">
+                    <p className="text-xs font-medium dark:text-gray-100 sm:text-sm">
                       {getRelativeTimeString(row.lastSeenAt)}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDateTime(row.lastSeenAt)}
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 sm:text-xs">
+                      {formatCompact(row.lastSeenAt)}
                     </p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Not signed in</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                    Not signed in
+                  </p>
                 )}
               </div>
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
             </button>
           </li>
         ))}
@@ -166,12 +233,20 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         onClose={() => setOpenUser(null)}
       />
 
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        Last seen is derived from sign-in sessions and the token refreshes the app
-        makes while it's open, so it's accurate to roughly the hour and means "the
-        app was running", not "they tapped something". Signing out or being
-        disabled clears the session, which shows here as no live session.
-      </p>
+      {/* Folded away by default - it's a caveat, and on a phone it was as tall
+          as several member rows. */}
+      <details className="text-xs text-gray-500 dark:text-gray-400">
+        <summary className="cursor-pointer py-1 select-none">
+          What "last seen" actually means
+        </summary>
+        <p className="pt-1 leading-relaxed">
+          Last seen is derived from sign-in sessions and the token refreshes the
+          app makes while it's open, so it's accurate to roughly the hour and
+          means "the app was running", not "they tapped something". Signing out
+          or being disabled clears the session, which shows here as no live
+          session.
+        </p>
+      </details>
     </div>
   );
 }
@@ -214,27 +289,46 @@ function MemberSessionsModal({
             </p>
           ) : (
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-              {statusHistory.map((entry) => (
-                <li key={entry._id} className="flex items-baseline justify-between gap-3 py-2">
-                  <span className="text-sm font-medium capitalize dark:text-gray-100">
-                    {entry.status}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      {getRelativeTimeString(entry.timestamp)}
-                    </span>
-                    <span className="block text-xs text-gray-400 dark:text-gray-500">
-                      {formatDateTime(entry.timestamp)}
-                    </span>
-                  </span>
-                </li>
-              ))}
+              {statusHistory.map((entry, i) => {
+                // Newest first, so "up" the list is forward in time.
+                const upper = i === 0 ? Date.now() : statusHistory[i - 1].timestamp;
+                // Resets since this entry (between it and the next change, or now).
+                const resetsAfter = resetsBetween(entry.timestamp, upper);
+                const lastReset = resetsAfter[resetsAfter.length - 1];
+                return (
+                  <li key={entry._id}>
+                    {resetsAfter.length > 0 && (
+                      <ResetMarker
+                        timestamps={resetsAfter}
+                        // Only the newest row can be "still waiting" - otherwise
+                        // the entry above is what they set after the reset.
+                        gapMs={i === 0 ? undefined : upper - lastReset}
+                        pending={i === 0}
+                      />
+                    )}
+                    <div className="flex items-baseline justify-between gap-3 py-2">
+                      <span className="min-w-0 truncate text-sm font-medium capitalize dark:text-gray-100">
+                        {entry.status}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">
+                          {getRelativeTimeString(entry.timestamp)}
+                        </span>
+                        <span className="block text-[11px] text-gray-400 dark:text-gray-500">
+                          {formatCompact(entry.timestamp)}
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Statuses they set, in the app or via the iOS Shortcut, plus automatic
-            timed transitions. The 04:00 reset clears a status without recording
-            anything, so it doesn't appear here.
+            timed transitions. The nightly reset clears a status without
+            recording anything, so the reset lines are worked out from the cron's
+            fixed time (04:30 AEST / 05:30 AEDT) rather than read from history.
           </p>
         </div>
 
@@ -276,6 +370,48 @@ function MemberSessionsModal({
         </div>
       </div>
     </ResponsiveModal>
+  );
+}
+
+/**
+ * A "the nightly reset ran here" divider between two status entries.
+ *
+ * Nothing is stored for the reset, so this is inferred from the cron time - it
+ * exists to make "not available overnight, available at 10am" legible as a
+ * reset plus a response, and to show how long that response took.
+ */
+function ResetMarker({
+  timestamps,
+  gapMs,
+  pending,
+}: {
+  timestamps: number[];
+  gapMs?: number;
+  pending: boolean;
+}) {
+  const latest = timestamps[timestamps.length - 1];
+  const count = timestamps.length;
+  const when =
+    count === 1
+      ? formatCompact(latest)
+      : `${formatCompact(timestamps[0])} - ${formatCompact(latest)}`;
+
+  return (
+    // A banded row rather than centred text between rules: the text stays
+    // left-aligned and wraps cleanly instead of ragging about on a phone.
+    <div className="my-1 flex items-start gap-2 rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-2.5 py-1.5 text-[11px] leading-snug text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/5 dark:text-amber-400">
+      <ArrowPathIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0">
+        <span className="font-medium">
+          {count === 1 ? "Nightly reset" : `${count} nightly resets`}
+        </span>
+        <span className="text-amber-600/80 dark:text-amber-500/70"> · {when}</span>
+        {gapMs !== undefined && (
+          <span className="block font-medium">Status set {formatGap(gapMs)} later</span>
+        )}
+        {pending && <span className="block">No status set since</span>}
+      </span>
+    </div>
   );
 }
 

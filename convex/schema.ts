@@ -1220,6 +1220,7 @@ const applicationTables = {
     notes: v.string(), // REQUIRED: free-form context (location, incident detail, etc.)
     verifiedBy: v.id("users"), // REQUIRED: member who verifies this use (must differ from memberId)
     submittedBy: v.id("users"), // User who submitted this record (may differ from memberId)
+    submittedByServiceAccount: v.optional(v.id("serviceAccounts")), // Service account that submitted it, when applicable
     submittedOnBehalf: v.boolean(), // True if submitted by someone else on behalf of the member
     lmsEnteredAt: v.optional(v.number()), // Timestamp when the record was entered into CFA LMS
     lmsEnteredBy: v.optional(v.id("users")), // Training officer who marked the LMS entry complete
