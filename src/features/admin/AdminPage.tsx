@@ -1,4 +1,5 @@
 import UserManagement from "./UserManagement";
+import CreateUser from "./CreateUser";
 import ModuleSettings from "./ModuleSettings";
 import MemberActivity from "./MemberActivity";
 import ServiceAccountSettings from "./ServiceAccountSettings";
@@ -23,8 +24,12 @@ export default function AdminPage() {
   return (
     <div className="space-y-6" data-component="AdminPage">
       <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Admin Settings
+        </h1>
       </div>
+
+      <CreateUser />
 
       {/* Keep User Management always visible */}
       <UserManagement />
@@ -32,35 +37,45 @@ export default function AdminPage() {
       {/* Collapsible sections */}
       <Accordion type="multiple" className="w-full space-y-2">
         <AccordionItem value="moduleSettings">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Module Settings</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Module Settings
+          </AccordionTrigger>
           <AccordionContent>
             <ModuleSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="memberActivity">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Member Activity</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Member Activity
+          </AccordionTrigger>
           <AccordionContent>
             <MemberActivity showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="serviceAccountSettings">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Service Accounts</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Service Accounts
+          </AccordionTrigger>
           <AccordionContent>
             <ServiceAccountSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="links">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Links</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Links
+          </AccordionTrigger>
           <AccordionContent>
             <LinksManager showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="feedback">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Feedback Management</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Feedback Management
+          </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
@@ -79,11 +94,14 @@ export default function AdminPage() {
         </AccordionItem>
 
         <AccordionItem value="authManagement">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Auth Management</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Auth Management
+          </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                View user authentication data, active sessions, and refresh tokens. Useful for debugging sign-out issues.
+                View user authentication data, active sessions, and refresh
+                tokens. Useful for debugging sign-out issues.
               </p>
               <Button
                 onClick={() => navigate("/admin/auth")}
@@ -98,28 +116,36 @@ export default function AdminPage() {
         </AccordionItem>
 
         <AccordionItem value="notificationTester">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Tester</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Notification Tester
+          </AccordionTrigger>
           <AccordionContent>
             <NotificationTester showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="notificationSettings">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Notification Settings</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Notification Settings
+          </AccordionTrigger>
           <AccordionContent>
             <NotificationSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="emailSettings">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Email Settings</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Email Settings
+          </AccordionTrigger>
           <AccordionContent>
             <EmailSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="adminTasks">
-          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">Admin Tasks</AccordionTrigger>
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Admin Tasks
+          </AccordionTrigger>
           <AccordionContent>
             <AdminTasks showTitle={false} />
           </AccordionContent>

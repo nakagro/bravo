@@ -1,4 +1,4 @@
-import { query, mutation, type QueryCtx } from "./_generated/server";
+import { query, mutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
@@ -7,6 +7,8 @@ import { notifyEvent } from "./lib/notifyEvent";
 
 type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
+  subItemId?: Id<"stationCheckSubitems">;
+  parentCheckId?: Id<"stationChecks">;
   name: string;
   area?: string;
   isPriority?: boolean;
@@ -26,6 +28,8 @@ const isResolved = (item: { isCompleted: boolean; isNotApplicable?: boolean }) =
 // Reusable validator for a single submission check item
 const checkItemValidator = v.object({
   checkId: v.optional(v.id("stationChecks")),
+  subItemId: v.optional(v.id("stationCheckSubitems")),
+  parentCheckId: v.optional(v.id("stationChecks")),
   name: v.string(),
   area: v.optional(v.string()),
   isPriority: v.optional(v.boolean()),
@@ -37,6 +41,69 @@ const checkItemValidator = v.object({
   isAdHoc: v.optional(v.boolean()),
   addedBy: v.optional(v.id("users")),
 });
+
+const subItemValidator = v.object({
+  _id: v.id("stationCheckSubitems"),
+  name: v.string(),
+  order: v.number(),
+});
+
+const MAX_SUBITEMS_PER_CHECK = 20;
+
+function normalizeSubItemNames(names: string[]) {
+  if (names.length > MAX_SUBITEMS_PER_CHECK) {
+    throw new Error(`A check can have at most ${MAX_SUBITEMS_PER_CHECK} subitems`);
+  }
+
+  const normalized = names.map((name) => name.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  for (const name of normalized) {
+    const key = name.toLocaleLowerCase();
+    if (seen.has(key)) {
+      throw new Error("Subitem names must be unique within a check");
+    }
+    seen.add(key);
+  }
+  return normalized;
+}
+
+async function replaceStationCheckSubitems(
+  ctx: MutationCtx,
+  stationCheckId: Id<"stationChecks">,
+  names: string[],
+  now: number
+) {
+  const normalized = normalizeSubItemNames(names);
+  const existing = await ctx.db
+    .query("stationCheckSubitems")
+    .withIndex("by_stationCheckId_and_order", (q) =>
+      q.eq("stationCheckId", stationCheckId)
+    )
+    .take(MAX_SUBITEMS_PER_CHECK + 1);
+
+  for (let index = 0; index < normalized.length; index++) {
+    const current = existing[index];
+    if (current) {
+      await ctx.db.patch(current._id, {
+        name: normalized[index],
+        order: index,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("stationCheckSubitems", {
+        stationCheckId,
+        name: normalized[index],
+        order: index,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  for (const stale of existing.slice(normalized.length)) {
+    await ctx.db.delete(stale._id);
+  }
+}
 
 // Stamp per-item completedBy/completedAt server-side. Attribution set when an
 // item is newly resolved (completed or marked N/A), preserved when it was
@@ -54,9 +121,11 @@ function applyItemAttribution(
     if (!isResolved(item)) {
       return { ...item, completedBy: undefined, completedAt: undefined };
     }
-    const prev = existing?.find((e) =>
-      item.checkId ? e.checkId === item.checkId : !e.checkId && e.name === item.name
-    );
+    const prev = existing?.find((e) => {
+      if (item.subItemId) return e.subItemId === item.subItemId;
+      if (item.checkId) return e.checkId === item.checkId;
+      return !e.checkId && !e.subItemId && e.name === item.name;
+    });
     const sameResolution =
       prev &&
       prev.isCompleted === item.isCompleted &&
@@ -198,19 +267,37 @@ export const getAllStationChecks = query({
       createdBy: v.id("users"),
       createdAt: v.number(),
       updatedAt: v.number(),
+      subItems: v.array(subItemValidator),
     })
   ),
   handler: async (ctx, args) => {
     const includeInactive = args.includeInactive ?? false;
 
     const checks = includeInactive
-      ? await ctx.db.query("stationChecks").collect()
+      ? await ctx.db.query("stationChecks").take(500)
       : await ctx.db
           .query("stationChecks")
           .withIndex("by_isActive", (q) => q.eq("isActive", true))
-          .collect();
+          .take(500);
 
-    return checks.sort((a, b) => a.order - b.order);
+    const orderedChecks = checks.sort((a, b) => a.order - b.order);
+    const subItemGroups = await Promise.all(
+      orderedChecks.map((check) =>
+        ctx.db
+          .query("stationCheckSubitems")
+          .withIndex("by_stationCheckId_and_order", (q) =>
+            q.eq("stationCheckId", check._id)
+          )
+          .take(MAX_SUBITEMS_PER_CHECK)
+      )
+    );
+
+    return orderedChecks
+      .map((check, index) => ({
+        ...check,
+        subItems: subItemGroups[index]
+          .map(({ _id, name, order }) => ({ _id, name, order })),
+      }));
   },
 });
 
@@ -230,12 +317,19 @@ export const getStationCheck = query({
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    subItems: v.array(subItemValidator),
   }),
   handler: async (ctx, args) => {
     const check = await ctx.db.get(args.id);
     if (!check) {
       throw new Error("Station check not found");
     }
+    const subItems = await ctx.db
+      .query("stationCheckSubitems")
+      .withIndex("by_stationCheckId_and_order", (q) =>
+        q.eq("stationCheckId", check._id)
+      )
+      .take(MAX_SUBITEMS_PER_CHECK);
     return {
       _id: check._id,
       name: check.name,
@@ -247,6 +341,7 @@ export const getStationCheck = query({
       createdBy: check.createdBy,
       createdAt: check.createdAt,
       updatedAt: check.updatedAt,
+      subItems: subItems.map(({ _id, name, order }) => ({ _id, name, order })),
     };
   },
 });
@@ -260,6 +355,7 @@ export const createStationCheck = mutation({
     isPriority: v.optional(v.boolean()),
     isActive: v.boolean(),
     order: v.optional(v.number()),
+    subItems: v.optional(v.array(v.string())),
   },
   returns: v.id("stationChecks"),
   handler: async (ctx, args): Promise<Id<"stationChecks">> => {
@@ -288,7 +384,7 @@ export const createStationCheck = mutation({
     }
 
     const now = Date.now();
-    return await ctx.db.insert("stationChecks", {
+    const stationCheckId = await ctx.db.insert("stationChecks", {
       name: args.name,
       description: args.description,
       area: args.area,
@@ -300,6 +396,8 @@ export const createStationCheck = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await replaceStationCheckSubitems(ctx, stationCheckId, args.subItems ?? [], now);
+    return stationCheckId;
   },
 });
 
@@ -313,6 +411,7 @@ export const updateStationCheck = mutation({
     isPriority: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     order: v.optional(v.number()),
+    subItems: v.optional(v.array(v.string())),
   },
   returns: v.id("stationChecks"),
   handler: async (ctx, args): Promise<Id<"stationChecks">> => {
@@ -363,6 +462,9 @@ export const updateStationCheck = mutation({
     }
 
     await ctx.db.patch(args.id, updates);
+    if (args.subItems !== undefined) {
+      await replaceStationCheckSubitems(ctx, args.id, args.subItems, updates.updatedAt);
+    }
     return args.id;
   },
 });
@@ -381,6 +483,15 @@ export const deleteStationCheck = mutation({
       throw new Error("Not authenticated");
     }
 
+    const subItems = await ctx.db
+      .query("stationCheckSubitems")
+      .withIndex("by_stationCheckId_and_order", (q) =>
+        q.eq("stationCheckId", args.id)
+      )
+      .take(MAX_SUBITEMS_PER_CHECK + 1);
+    for (const subItem of subItems) {
+      await ctx.db.delete(subItem._id);
+    }
     await ctx.db.delete(args.id);
     return true;
   },
@@ -861,6 +972,8 @@ export const getStationCheckHistoryPage = query({
         checkItems: v.array(
           v.object({
             checkId: v.optional(v.id("stationChecks")),
+            subItemId: v.optional(v.id("stationCheckSubitems")),
+            parentCheckId: v.optional(v.id("stationChecks")),
             name: v.string(),
             area: v.optional(v.string()),
             isPriority: v.optional(v.boolean()),
@@ -940,6 +1053,8 @@ export const getStationCheckHistoryPage = query({
         },
         checkItems: submission.checkItems.map((item) => ({
           checkId: item.checkId,
+          subItemId: item.subItemId,
+          parentCheckId: item.parentCheckId,
           name: item.name,
           area: item.area,
           isPriority: item.isPriority,

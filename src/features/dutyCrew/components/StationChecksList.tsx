@@ -27,10 +27,14 @@ import {
   useChecklistNavigation,
 } from "@/components/shared/checklist";
 import { StationCheckItem } from "./StationCheckItem";
+import { CheckAssignmentMenu } from "./CheckAssignmentMenu";
 import {
+  allocationTargetKey,
   checkItemStatus,
   isItemResolved,
+  type AllocationTarget,
   type CheckItemData,
+  type CrewAssignmentMember,
   type ItemUser,
 } from "../types";
 
@@ -39,11 +43,13 @@ interface StationChecksListProps {
   generalNotes: string;
   onCheckToggle: (
     checkId: Id<"stationChecks"> | undefined,
+    subItemId: Id<"stationCheckSubitems"> | undefined,
     adHocName: string | undefined,
     isCompleted: boolean
   ) => void;
   onNotesChange: (
     checkId: Id<"stationChecks"> | undefined,
+    subItemId: Id<"stationCheckSubitems"> | undefined,
     adHocName: string | undefined,
     notes: string,
     isNotApplicable?: boolean
@@ -57,10 +63,18 @@ interface StationChecksListProps {
   isLeader: boolean;
   isAdmin: boolean;
   itemUsersById: Record<string, ItemUser>;
+  crewMembers: CrewAssignmentMember[];
+  allocationByTarget: Record<string, Id<"users">>;
+  canAssign: boolean;
+  onAllocationChange: (
+    target: AllocationTarget,
+    assignedTo: Id<"users"> | undefined
+  ) => void;
 }
 
 // Stable key for an item, used for scroll targets and highlight state
-const itemKey = (item: CheckItemData) => item.checkId ?? `adhoc-${item.name}`;
+const itemKey = (item: CheckItemData) =>
+  item.subItemId ?? item.checkId ?? `adhoc-${item.name}`;
 
 const AD_HOC_SECTION = "section-adhoc";
 
@@ -78,10 +92,15 @@ export function StationChecksList({
   isLeader,
   isAdmin,
   itemUsersById,
+  crewMembers,
+  allocationByTarget,
+  canAssign,
+  onAllocationChange,
 }: StationChecksListProps) {
   const [editingNotes, setEditingNotes] = useState<{
     type: "item" | "general";
     checkId?: Id<"stationChecks">;
+    subItemId?: Id<"stationCheckSubitems">;
     adHocName?: string;
     currentValue: string;
     isNotApplicable: boolean;
@@ -107,15 +126,34 @@ export function StationChecksList({
   // Group template items by area (first-seen order, following template order),
   // with a trailing "General" bucket for items without an area.
   const groupedTemplateItems = useMemo(() => {
-    const named: { key: string; name: string; items: CheckItemData[] }[] = [];
+    const named: {
+      key: string;
+      name: string;
+      area?: string;
+      items: CheckItemData[];
+    }[] = [];
     const general: CheckItemData[] = [];
+    const parentItems = templateItems.filter((item) => !item.parentCheckId);
+    const childrenByParent = new Map<string, CheckItemData[]>();
     for (const item of templateItems) {
+      if (!item.parentCheckId) continue;
+      const children = childrenByParent.get(item.parentCheckId) ?? [];
+      children.push(item);
+      childrenByParent.set(item.parentCheckId, children);
+    }
+
+    for (const item of parentItems) {
       if (item.area) {
         const group = named.find((g) => g.name === item.area);
         if (group) {
           group.items.push(item);
         } else {
-          named.push({ key: `section-${item.area}`, name: item.area, items: [item] });
+          named.push({
+            key: `section-${item.area}`,
+            name: item.area,
+            area: item.area,
+            items: [item],
+          });
         }
       } else {
         general.push(item);
@@ -126,10 +164,14 @@ export function StationChecksList({
     }
     // Priority checks surface at the top of their area (stable within each tier)
     for (const group of named) {
-      group.items = [
+      const sortedParents = [
         ...group.items.filter((i) => i.isPriority),
         ...group.items.filter((i) => !i.isPriority),
       ];
+      group.items = sortedParents.flatMap((item) => [
+        item,
+        ...(item.checkId ? childrenByParent.get(item.checkId) ?? [] : []),
+      ]);
     }
     return named;
   }, [templateItems]);
@@ -140,10 +182,18 @@ export function StationChecksList({
         ...groupedTemplateItems.map((g) => ({
           key: g.key,
           name: g.name,
+          area: g.area,
           items: g.items,
         })),
         ...(showAdHocSection
-          ? [{ key: AD_HOC_SECTION, name: "Additional Items", items: adHocItems }]
+          ? [
+              {
+                key: AD_HOC_SECTION,
+                name: "Additional Items",
+                area: undefined,
+                items: adHocItems,
+              },
+            ]
           : []),
       ].map((s) => ({
         ...s,
@@ -186,6 +236,7 @@ export function StationChecksList({
     } else {
       onNotesChange(
         editingNotes.checkId,
+        editingNotes.subItemId,
         editingNotes.adHocName,
         editingNotes.currentValue,
         editingNotes.isNotApplicable
@@ -206,6 +257,7 @@ export function StationChecksList({
     setEditingNotes({
       type: "item",
       checkId: item.isAdHoc ? undefined : item.checkId,
+      subItemId: item.subItemId,
       adHocName: item.isAdHoc ? item.name : undefined,
       currentValue: item.notes || "",
       isNotApplicable: !item.isCompleted && item.isNotApplicable === true,
@@ -291,27 +343,94 @@ export function StationChecksList({
             name={section.name}
             progress={section.progress}
             headerAction={
-              section.key === AD_HOC_SECTION ? addAdHocControls : undefined
+              section.area ? (
+                <CheckAssignmentMenu
+                  members={crewMembers}
+                  effectiveAssignedTo={
+                    allocationByTarget[
+                      allocationTargetKey({ kind: "area", area: section.area })
+                    ]
+                  }
+                  directAssignedTo={
+                    allocationByTarget[
+                      allocationTargetKey({ kind: "area", area: section.area })
+                    ]
+                  }
+                  canAssign={canAssign}
+                  contextLabel={`Assign ${section.name} area`}
+                  onAssign={(assignedTo) =>
+                    onAllocationChange(
+                      { kind: "area", area: section.area! },
+                      assignedTo
+                    )
+                  }
+                />
+              ) : section.key === AD_HOC_SECTION ? (
+                addAdHocControls
+              ) : undefined
             }
           >
-            {section.items.map((item) => (
-              <StationCheckItem
-                key={itemKey(item)}
-                item={item}
-                completedByUser={getCompletedByUser(item)}
-                onToggle={() =>
-                  onCheckToggle(
-                    item.isAdHoc ? undefined : item.checkId,
-                    item.isAdHoc ? item.name : undefined,
-                    !item.isCompleted
-                  )
-                }
-                onOpenNotes={() => openItemNotes(item)}
-                onDelete={
-                  item.isAdHoc ? () => setConfirmDeleteName(item.name) : undefined
-                }
-              />
-            ))}
+            {section.items.map((item) => {
+              const target: AllocationTarget | null = item.subItemId
+                ? { kind: "subitem", subItemId: item.subItemId }
+                : item.checkId
+                  ? { kind: "check", checkId: item.checkId }
+                  : null;
+              const directAssignedTo = target
+                ? allocationByTarget[allocationTargetKey(target)]
+                : undefined;
+              const areaAssignedTo = item.area
+                ? allocationByTarget[
+                    allocationTargetKey({ kind: "area", area: item.area })
+                  ]
+                : undefined;
+              const effectiveAssignedTo = directAssignedTo ?? areaAssignedTo;
+
+              return (
+                <div
+                  key={itemKey(item)}
+                  className={
+                    item.parentCheckId
+                      ? "ml-5 border-l-2 border-muted pl-3 sm:ml-8"
+                      : undefined
+                  }
+                >
+                  <StationCheckItem
+                    item={item}
+                    completedByUser={getCompletedByUser(item)}
+                    onToggle={() =>
+                      onCheckToggle(
+                        item.isAdHoc ? undefined : item.checkId,
+                        item.subItemId,
+                        item.isAdHoc ? item.name : undefined,
+                        !item.isCompleted
+                      )
+                    }
+                    onOpenNotes={() => openItemNotes(item)}
+                    onDelete={
+                      item.isAdHoc
+                        ? () => setConfirmDeleteName(item.name)
+                        : undefined
+                    }
+                    assignment={
+                      target ? (
+                        <CheckAssignmentMenu
+                          members={crewMembers}
+                          effectiveAssignedTo={effectiveAssignedTo}
+                          directAssignedTo={directAssignedTo}
+                          inheritedFromArea={!!areaAssignedTo}
+                          canAssign={canAssign}
+                          contextLabel={`Assign ${item.name}`}
+                          onAssign={(assignedTo) =>
+                            onAllocationChange(target, assignedTo)
+                          }
+                        />
+                      ) : undefined
+                    }
+                  />
+                </div>
+              );
+            })}
           </ChecklistSection>
         ))}
       </Accordion>

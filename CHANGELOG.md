@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.08.16]
+- Duty Crew: Template checks can now include required subitems for the individual steps that must be completed alongside a larger check. Each subitem is shown under its parent check and can be ticked off separately, while completed weeks keep the exact checklist they were submitted with.
+- Duty Crew: Crew leaders can optionally allocate a whole area, an individual check or a subitem to someone in that week's crew. Individual allocations override an area allocation, and everyone can see who each task is assigned to.
+- Member Records: Members are now listed by rank, with Captains first, then Lieutenants, followed by everyone else alphabetically by surname. Search results use the same ordering.
+- BA Skills / Kiosk: BA usage logged from the station tablet now records and displays the tablet service account as the submitter, instead of making it appear that the verifying member submitted it.
+- Events: An existing event can now be handed over to another member by changing its organiser. The new organiser gains edit access and responsibility for managing responses.
+- Dashboard: Upcoming Events now includes events created in BRAVO alongside the external calendar feed, including multi-day events that are already in progress. BRAVO events link directly to their event and RSVP details.
+- Admin: Member accounts can now be disabled and later re-enabled without losing their history, or permanently deleted when appropriate. Disabling signs the member out and removes them from active member lists, rosters and reminders.
+- Admin: When a module has both role and minimum-rank requirements, admins can choose whether members must meet both requirements or either one.
+
 ## [2026.08.08]
 - Duty Crew: Fixed ticked items not being remembered. Checks are saved as you go, so you can tick off an item or two, leave the page, and pick up where you left off, you no longer have to finish the whole week in one sitting. Previously a week's checks could only be found again if everything lined up exactly, so they often came back blank.
 - Duty Crew / Inventory: Admins can send themselves a test notification from the Notify section, to confirm the right people will be told before relying on it.

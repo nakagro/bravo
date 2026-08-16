@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { Check, CircleSlash, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChecklistRow } from "@/components/shared/checklist";
@@ -14,6 +14,7 @@ interface StationCheckItemProps {
   onToggle: () => void;
   onOpenNotes: () => void;
   onDelete?: () => void;
+  assignment?: ReactNode;
   completedByUser?: {
     firstName?: string;
     lastName?: string;
@@ -23,7 +24,7 @@ interface StationCheckItemProps {
 
 export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps>(
   function StationCheckItem(
-    { item, onToggle, onOpenNotes, onDelete, completedByUser },
+    { item, onToggle, onOpenNotes, onDelete, assignment, completedByUser },
     ref,
   ) {
     const status = checkItemStatus(item);
@@ -109,15 +110,18 @@ export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps
           ) : null
         }
         trailing={
-          item.isAdHoc && onDelete ? (
-            <button
-              aria-label={`Remove ${item.name}`}
-              className="flex items-center justify-center h-11 w-11 rounded-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors active:scale-95"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-            </button>
-          ) : null
+          <>
+            {assignment}
+            {item.isAdHoc && onDelete ? (
+              <button
+                aria-label={`Remove ${item.name}`}
+                className="flex items-center justify-center h-11 w-11 rounded-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors active:scale-95"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </>
         }
       />
     );

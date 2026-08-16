@@ -357,6 +357,40 @@ const applicationTables = {
     .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
 
+  // Required steps attached to a station check template. These are separate
+  // documents so a template can be edited without growing the parent record.
+  stationCheckSubitems: defineTable({
+    stationCheckId: v.id("stationChecks"),
+    name: v.string(),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_stationCheckId_and_order", ["stationCheckId", "order"]),
+
+  // Optional, week-specific planning by a duty crew leader. Area allocations
+  // provide a default; individual check or subitem allocations override them.
+  stationCheckAllocations: defineTable({
+    weekStart: v.number(),
+    dutyCrewId: v.id("dutyCrew"),
+    targetKind: v.union(
+      v.literal("area"),
+      v.literal("check"),
+      v.literal("subitem")
+    ),
+    targetKey: v.string(),
+    area: v.optional(v.string()),
+    checkId: v.optional(v.id("stationChecks")),
+    subItemId: v.optional(v.id("stationCheckSubitems")),
+    assignedTo: v.id("users"),
+    assignedBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_weekStart_and_dutyCrewId_and_targetKey", [
+    "weekStart",
+    "dutyCrewId",
+    "targetKey",
+  ]),
+
   // Station Check Submissions table to record completed checklists
   stationCheckSubmissions: defineTable({
     date: v.number(), // Timestamp for the date of submission (usually a Sunday)
@@ -372,6 +406,8 @@ const applicationTables = {
     checkItems: v.array(
       v.object({
         checkId: v.optional(v.id("stationChecks")), // Reference to the check item (optional for ad-hoc items)
+        subItemId: v.optional(v.id("stationCheckSubitems")), // Reference to a required child step
+        parentCheckId: v.optional(v.id("stationChecks")), // Parent template for a child step
         name: v.string(), // Name of the check at the time of submission (in case it changes later)
         area: v.optional(v.string()), // Area snapshot at time of submission (like name)
         isPriority: v.optional(v.boolean()), // Priority snapshot at time of submission (like name)

@@ -19,6 +19,7 @@ import type * as actionCentreProviders_notices from "../actionCentreProviders/no
 import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
 import type * as actionCentreProviders_tasks from "../actionCentreProviders/tasks.js";
 import type * as actionCentreProviders_types from "../actionCentreProviders/types.js";
+import type * as adminUsers from "../adminUsers.js";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
 import type * as applianceLocations from "../applianceLocations.js";
 import type * as auth from "../auth.js";
@@ -83,6 +84,7 @@ import type * as serviceAccounts from "../serviceAccounts.js";
 import type * as shortcuts from "../shortcuts.js";
 import type * as simulation from "../simulation.js";
 import type * as skills from "../skills.js";
+import type * as stationCheckAllocations from "../stationCheckAllocations.js";
 import type * as stationChecks from "../stationChecks.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
@@ -108,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   "actionCentreProviders/profile": typeof actionCentreProviders_profile;
   "actionCentreProviders/tasks": typeof actionCentreProviders_tasks;
   "actionCentreProviders/types": typeof actionCentreProviders_types;
+  adminUsers: typeof adminUsers;
   apiKeyAuth: typeof apiKeyAuth;
   applianceLocations: typeof applianceLocations;
   auth: typeof auth;
@@ -172,6 +175,7 @@ declare const fullApi: ApiFromModules<{
   shortcuts: typeof shortcuts;
   simulation: typeof simulation;
   skills: typeof skills;
+  stationCheckAllocations: typeof stationCheckAllocations;
   stationChecks: typeof stationChecks;
   users: typeof users;
   utils: typeof utils;

@@ -3,6 +3,8 @@ import type { ChecklistItemStatus } from "@/components/shared/checklist";
 
 export type CheckItemData = {
   checkId?: Id<"stationChecks">;
+  subItemId?: Id<"stationCheckSubitems">;
+  parentCheckId?: Id<"stationChecks">;
   name: string;
   area?: string;
   isPriority?: boolean;
@@ -39,6 +41,24 @@ export type ItemUser = {
   name: string;
   firstName?: string;
   lastName?: string;
+};
+
+export type AllocationTarget =
+  | { kind: "area"; area: string }
+  | { kind: "check"; checkId: Id<"stationChecks"> }
+  | { kind: "subitem"; subItemId: Id<"stationCheckSubitems"> };
+
+export type CrewAssignmentMember = {
+  _id: Id<"users">;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+export const allocationTargetKey = (target: AllocationTarget) => {
+  if (target.kind === "area") return `area:${target.area.trim()}`;
+  if (target.kind === "check") return `check:${target.checkId}`;
+  return `subitem:${target.subItemId}`;
 };
 
 export const statusConfig = {

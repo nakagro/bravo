@@ -163,6 +163,13 @@ export function CheckTemplatesSection() {
                         {check.description}
                       </p>
                     )}
+                    {check.subItems.length > 0 && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {check.subItems.length} required subitem
+                        {check.subItems.length === 1 ? "" : "s"}: {" "}
+                        {check.subItems.map((item) => item.name).join(", ")}
+                      </p>
+                    )}
                   </div>
 
                   <DropdownMenu>
@@ -198,6 +205,7 @@ export function CheckTemplatesSection() {
                             name: check.name,
                             description: check.description ?? "",
                             area: check.area ?? "",
+                            subItems: check.subItems.map((item) => item.name),
                             isPriority: check.isPriority ?? false,
                             isActive: check.isActive,
                           })
@@ -230,6 +238,7 @@ export function CheckTemplatesSection() {
             name: "",
             description: "",
             area: "",
+            subItems: [],
             isPriority: false,
             isActive: true,
           })

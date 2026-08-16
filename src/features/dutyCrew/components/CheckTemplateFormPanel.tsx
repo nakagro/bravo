@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export interface TemplateFormValue {
@@ -18,6 +18,7 @@ export interface TemplateFormValue {
   name: string;
   description: string;
   area: string;
+  subItems: string[];
   isPriority: boolean;
   isActive: boolean;
 }
@@ -41,6 +42,7 @@ export function CheckTemplateFormPanel({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [area, setArea] = useState("");
+  const [subItems, setSubItems] = useState<string[]>([]);
   const [isPriority, setIsPriority] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +52,7 @@ export function CheckTemplateFormPanel({
       setName(value.name);
       setDescription(value.description);
       setArea(value.area);
+      setSubItems(value.subItems);
       setIsPriority(value.isPriority);
       setIsActive(value.isActive);
     }
@@ -62,6 +65,7 @@ export function CheckTemplateFormPanel({
     (name !== value.name ||
       description !== value.description ||
       area !== value.area ||
+      JSON.stringify(subItems) !== JSON.stringify(value.subItems) ||
       isPriority !== value.isPriority ||
       isActive !== value.isActive);
   const guard = useDirtyDraftGuard(isDirty, onClose);
@@ -80,6 +84,7 @@ export function CheckTemplateFormPanel({
           name: name.trim(),
           description: description.trim() || undefined,
           area: area.trim() || undefined,
+          subItems: subItems.map((item) => item.trim()).filter(Boolean),
           isPriority,
           isActive,
         });
@@ -89,6 +94,7 @@ export function CheckTemplateFormPanel({
           name: name.trim(),
           description: description.trim() || undefined,
           area: area.trim() || undefined,
+          subItems: subItems.map((item) => item.trim()).filter(Boolean),
           isPriority,
           isActive,
         });
@@ -189,6 +195,55 @@ export function CheckTemplateFormPanel({
               placeholder="Add detailed instructions..."
               className="mt-1 resize-none h-20 text-base md:text-sm"
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div>
+              <Label>Required subitems (Optional)</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add the steps that must be checked off alongside this item.
+              </p>
+            </div>
+            {subItems.map((subItem, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  value={subItem}
+                  onChange={(event) =>
+                    setSubItems((current) =>
+                      current.map((item, itemIndex) =>
+                        itemIndex === index ? event.target.value : item
+                      )
+                    )
+                  }
+                  aria-label={`Subitem ${index + 1}`}
+                  placeholder={`Required step ${index + 1}`}
+                  className="text-base md:text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove subitem ${index + 1}`}
+                  onClick={() =>
+                    setSubItems((current) =>
+                      current.filter((_, itemIndex) => itemIndex !== index)
+                    )
+                  }
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setSubItems((current) => [...current, ""])}
+            >
+              <Plus data-icon="inline-start" aria-hidden="true" />
+              Add subitem
+            </Button>
           </div>
 
           <div className="flex items-center justify-between gap-3 py-1">

@@ -189,6 +189,91 @@ describe("station checks N/A handling", () => {
   });
 });
 
+describe("station check template subitems", () => {
+  it("creates, updates, and returns ordered required subitems", async () => {
+    const { asUser } = await setup();
+
+    const checkId = await asUser.mutation(
+      api.stationChecks.createStationCheck,
+      {
+        name: "Weekly pumper inspection",
+        isPriority: true,
+        isActive: true,
+        subItems: ["Check fuel level", "Run the pump"],
+      }
+    );
+
+    let checks = await asUser.query(api.stationChecks.getAllStationChecks, {});
+    expect(checks).toHaveLength(1);
+    expect(checks[0].subItems.map((subItem) => subItem.name)).toEqual([
+      "Check fuel level",
+      "Run the pump",
+    ]);
+
+    const firstSubItemId = checks[0].subItems[0]._id;
+    await asUser.mutation(api.stationChecks.updateStationCheck, {
+      id: checkId,
+      subItems: ["Check diesel level", "Run the pump", "Test scene lights"],
+    });
+
+    checks = await asUser.query(api.stationChecks.getAllStationChecks, {});
+    expect(checks[0].subItems.map((subItem) => subItem.name)).toEqual([
+      "Check diesel level",
+      "Run the pump",
+      "Test scene lights",
+    ]);
+    expect(checks[0].subItems[0]._id).toBe(firstSubItemId);
+  });
+
+  it("preserves a subitem's parent relationship in a weekly submission", async () => {
+    const { t, userId, dutyCrewId, asUser } = await setup();
+    const checkId = await t.run((ctx) =>
+      ctx.db.insert("stationChecks", {
+        name: "Weekly tanker inspection",
+        isActive: true,
+        order: 10,
+        createdBy: userId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+    const subItemId = await t.run((ctx) =>
+      ctx.db.insert("stationCheckSubitems", {
+        stationCheckId: checkId,
+        name: "Test warning lights",
+        order: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+
+    const submissionId = await asUser.mutation(
+      api.stationChecks.saveDraftStationCheck,
+      {
+        date: SUNDAY,
+        dutyCrewId,
+        checkItems: [
+          { checkId, name: "Weekly tanker inspection", isCompleted: false },
+          {
+            subItemId,
+            parentCheckId: checkId,
+            name: "Test warning lights",
+            isCompleted: true,
+          },
+        ],
+      }
+    );
+
+    const saved = await t.run((ctx) => ctx.db.get(submissionId));
+    expect(saved?.checkItems[1]).toMatchObject({
+      subItemId,
+      parentCheckId: checkId,
+      isCompleted: true,
+      completedBy: userId,
+    });
+  });
+});
+
 // The notice is the whole reason submission isn't gated: whatever was left
 // undone has to reach the officer by name, or nobody follows it up.
 describe("buildSubmissionNotice", () => {

@@ -63,6 +63,8 @@ interface HistorySubmission {
   };
   checkItems: Array<{
     checkId?: Id<"stationChecks">;
+    subItemId?: Id<"stationCheckSubitems">;
+    parentCheckId?: Id<"stationChecks">;
     name: string;
     area?: string;
     isPriority?: boolean;
@@ -147,27 +149,35 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
             {section.items.map((item, idx) => {
               const status = checkItemStatus(item);
               return (
-                <ChecklistRow
-                  key={`${item.checkId ?? idx}-${item.name}`}
-                  status={status}
-                  name={item.name}
-                  notes={item.notes}
-                  leading={<ItemStatusIcon item={item} />}
-                  badges={
-                    <>
-                      {status === "attention" && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
-                          N/A
-                        </span>
-                      )}
-                      {item.isAdHoc && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
-                          Ad-hoc
-                        </span>
-                      )}
-                    </>
+                <div
+                  key={`${item.subItemId ?? item.checkId ?? idx}-${item.name}`}
+                  className={
+                    item.parentCheckId
+                      ? "ml-5 border-l-2 border-muted pl-3 sm:ml-8"
+                      : undefined
                   }
-                />
+                >
+                  <ChecklistRow
+                    status={status}
+                    name={item.name}
+                    notes={item.notes}
+                    leading={<ItemStatusIcon item={item} />}
+                    badges={
+                      <>
+                        {status === "attention" && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
+                            N/A
+                          </span>
+                        )}
+                        {item.isAdHoc && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                            Ad-hoc
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
+                </div>
               );
             })}
           </ChecklistSection>

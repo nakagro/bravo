@@ -19,6 +19,7 @@
     "preview:cloud": "npm run build:cloud && vp preview",
     "deploy:convex:vps": "convex deploy --env-file .env.vps",
     "deploy:vps": "npm run deploy:convex:vps",
+    "codegen:convex:vps": "CONVEX_DEPLOYMENT= CI=1 node --env-file=.env.vps node_modules/convex/bin/main.js codegen",
     "deploy:convex:cloud": "CONVEX_DEPLOYMENT=precious-magpie-647 convex dev --once",
     "export:vps": "convex export --env-file .env.vps --path ./exports/convex/vps-export-$(date +%Y%m%d-%H%M%S).zip",
     "import:vps": "convex import --env-file .env.vps --replace-all",
@@ -33,7 +34,7 @@
     "test:watch": "vp test",
     "lint:code": "vp lint",
     "typecheck": "tsc -p convex --noEmit --pretty false && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",
-    "lint": "vp lint && npm run typecheck && vp test run && convex dev --once && vp build && npm run check:no-em-dashes",
+    "lint": "vp lint && npm run typecheck && vp test run && npm run codegen:convex:vps && vp build && npm run check:no-em-dashes",
     "prepare": "husky"
   },
   "dependencies": {

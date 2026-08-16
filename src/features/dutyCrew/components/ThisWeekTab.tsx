@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { DutyCrewHero } from "./DutyCrewHero";
 import { StationChecksList } from "./StationChecksList";
 import {
+  allocationTargetKey,
   getUserFullName,
   isItemResolved,
+  type AllocationTarget,
   type CheckItemData,
   type ItemUser,
 } from "../types";
@@ -57,11 +59,26 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     );
   }) ?? null;
 
+  const dutyCrewIdForWeek =
+    currentAssignment?.dutyCrew._id ??
+    currentWeekStatus?.submission.dutyCrewId ??
+    null;
+
   // Leader check
   const isLeader = useQuery(
     api.dutyCrew.isCurrentUserDutyCrewLeader,
-    currentAssignment
-      ? { dutyCrewId: currentAssignment.dutyCrew._id }
+    dutyCrewIdForWeek
+      ? { dutyCrewId: dutyCrewIdForWeek }
+      : "skip"
+  );
+  const crewMembers = useQuery(
+    api.dutyCrewMembers.getDutyCrewMembers,
+    dutyCrewIdForWeek ? { dutyCrewId: dutyCrewIdForWeek } : "skip"
+  );
+  const allocations = useQuery(
+    api.stationCheckAllocations.getWeekAllocations,
+    dutyCrewIdForWeek
+      ? { date: currentSunday.getTime(), dutyCrewId: dutyCrewIdForWeek }
       : "skip"
   );
 
@@ -71,6 +88,9 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     api.stationChecks.saveDraftStationCheck
   );
   const reopenStationCheck = useMutation(api.stationChecks.reopenStationCheck);
+  const setCheckAllocation = useMutation(
+    api.stationCheckAllocations.setAllocation
+  );
 
   // Local state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +98,13 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const [generalNotes, setGeneralNotes] = useState("");
 
   const loggedInUser = useQuery(api.auth.loggedInUser);
+  const allocationByTarget = useMemo(() => {
+    const result: Record<string, Id<"users">> = {};
+    for (const allocation of allocations ?? []) {
+      result[allocationTargetKey(allocation.target)] = allocation.assignedTo;
+    }
+    return result;
+  }, [allocations]);
 
   // Map of user id -> user info for per-item "checked by" attribution
   const itemUsersById: Record<string, ItemUser> = {};
@@ -93,13 +120,22 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         setGeneralNotes(currentWeekStatus.submission.notes || "");
       } else {
         setCheckItems(
-          stationChecks.map((check) => ({
-            checkId: check._id,
-            name: check.name,
-            area: check.area,
-            isPriority: check.isPriority,
-            isCompleted: false,
-          }))
+          stationChecks.flatMap((check) => [
+            {
+              checkId: check._id,
+              name: check.name,
+              area: check.area,
+              isPriority: check.isPriority,
+              isCompleted: false,
+            },
+            ...check.subItems.map((subItem) => ({
+              subItemId: subItem._id,
+              parentCheckId: check._id,
+              name: subItem.name,
+              area: check.area,
+              isCompleted: false,
+            })),
+          ])
         );
         setGeneralNotes("");
       }
@@ -147,14 +183,17 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
 
   const handleCheckToggle = async (
     checkId: Id<"stationChecks"> | undefined,
+    subItemId: Id<"stationCheckSubitems"> | undefined,
     adHocName: string | undefined,
     isCompleted: boolean
   ) => {
     const prevItems = checkItems;
     const target = checkItems.find((item) =>
-      checkId
-        ? item.checkId === checkId
-        : item.isAdHoc && item.name === adHocName
+      subItemId
+        ? item.subItemId === subItemId
+        : checkId
+          ? item.checkId === checkId
+          : item.isAdHoc && item.name === adHocName
     );
     // Toggling an item someone else resolved rewrites their attribution -
     // offer an undo instead of doing it silently
@@ -166,6 +205,9 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       target.completedBy !== loggedInUser._id;
 
     const newItems = checkItems.map((item) => {
+      if (subItemId && item.subItemId === subItemId) {
+        return { ...item, isCompleted, isNotApplicable: undefined };
+      }
       if (checkId && item.checkId === checkId) {
         // Completing an item clears any N/A marking
         return { ...item, isCompleted, isNotApplicable: undefined };
@@ -200,12 +242,14 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
 
   const handleNotesChange = async (
     checkId: Id<"stationChecks"> | undefined,
+    subItemId: Id<"stationCheckSubitems"> | undefined,
     adHocName: string | undefined,
     notes: string,
     isNotApplicable?: boolean
   ) => {
     const newItems = checkItems.map((item) => {
       if (
+        (subItemId && item.subItemId === subItemId) ||
         (checkId && item.checkId === checkId) ||
         (adHocName && item.isAdHoc && item.name === adHocName)
       ) {
@@ -248,6 +292,25 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     );
     setCheckItems(newItems);
     await saveDraft(newItems, generalNotes);
+  };
+
+  const handleAllocationChange = async (
+    target: AllocationTarget,
+    assignedTo: Id<"users"> | undefined
+  ) => {
+    if (!dutyCrewIdForWeek) return;
+    try {
+      await setCheckAllocation({
+        date: currentSunday.getTime(),
+        dutyCrewId: dutyCrewIdForWeek,
+        target,
+        assignedTo,
+      });
+      toast.success(assignedTo ? "Task allocated" : "Allocation cleared");
+    } catch (error) {
+      console.error("Error updating check allocation:", error);
+      toast.error("Failed to update task allocation");
+    }
   };
 
   const handleSubmit = async () => {
@@ -333,6 +396,12 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         isLeader={isLeader === true}
         isAdmin={isAdmin}
         itemUsersById={itemUsersById}
+        crewMembers={crewMembers ?? []}
+        allocationByTarget={allocationByTarget}
+        canAssign={
+          isLeader === true && submissionStatus !== "completed"
+        }
+        onAllocationChange={handleAllocationChange}
       />
     </div>
   );
