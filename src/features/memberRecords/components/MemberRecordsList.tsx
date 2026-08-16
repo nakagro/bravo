@@ -9,6 +9,24 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { api } from "../../../../convex/_generated/api";
 import { formatKitDate } from "./MemberKitHeader";
 
+const PRIORITY_RANKS: Record<string, number> = {
+  Captain: 0,
+  Lieutenant: 1,
+};
+
+function compareMembers(
+  a: { name: string; lastName?: string; rank?: string },
+  b: { name: string; lastName?: string; rank?: string },
+) {
+  const rankDifference =
+    (PRIORITY_RANKS[a.rank ?? ""] ?? 2) - (PRIORITY_RANKS[b.rank ?? ""] ?? 2);
+  if (rankDifference !== 0) return rankDifference;
+
+  return (a.lastName || a.name).localeCompare(b.lastName || b.name, undefined, {
+    sensitivity: "base",
+  });
+}
+
 /** The Members tab: search, then a row per member linking to their profile. */
 export function MemberRecordsList() {
   const members = useQuery(api.memberKit.listMembers);
@@ -17,12 +35,15 @@ export function MemberRecordsList() {
   const visible = useMemo(() => {
     if (!members) return [];
     const query = search.trim().toLowerCase();
-    if (!query) return members;
-    return members.filter(
-      (member) =>
-        member.name.toLowerCase().includes(query) ||
-        (member.memberNumber ?? "").toLowerCase().includes(query),
-    );
+    const filtered = query
+      ? members.filter(
+          (member) =>
+            member.name.toLowerCase().includes(query) ||
+            (member.memberNumber ?? "").toLowerCase().includes(query),
+        )
+      : members;
+
+    return [...filtered].sort(compareMembers);
   }, [members, search]);
 
   if (members === undefined) {

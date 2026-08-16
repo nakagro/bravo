@@ -5,7 +5,6 @@ export { BACurrencyToolbar } from "./BACurrencyToolbar";
 export { BACurrencyRow } from "./BACurrencyRow";
 export { BACurrencyGroup } from "./BACurrencyGroup";
 export { BAMyCurrencyCard } from "./BAMyCurrencyCard";
-export { MemberCombobox } from "./MemberCombobox";
 export { BASkillsLogTab } from "./BASkillsLogTab";
 export { BASkillsMyRecordsTab } from "./BASkillsMyRecordsTab";
 export { BASkillsHistoryTab } from "./BASkillsHistoryTab";
