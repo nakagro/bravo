@@ -16,6 +16,11 @@ interface ChecklistSectionProps {
   progress: ChecklistProgress;
   /** Slot in the section body above the rows, e.g. a bulk "All OK" button. */
   headerAction?: ReactNode;
+  /**
+   * Slot in the collapsed header itself, under the counts - for anything the
+   * user needs to see without expanding the section (e.g. who's allocated).
+   */
+  headerMeta?: ReactNode;
   children: ReactNode;
 }
 
@@ -24,7 +29,10 @@ interface ChecklistSectionProps {
  * so collapsing is an escape hatch for long lists rather than the norm.
  */
 export const ChecklistSection = forwardRef<HTMLDivElement, ChecklistSectionProps>(
-  function ChecklistSection({ value, name, progress, headerAction, children }, ref) {
+  function ChecklistSection(
+    { value, name, progress, headerAction, headerMeta, children },
+    ref,
+  ) {
     const allAnswered = progress.total > 0 && progress.answered === progress.total;
 
     return (
@@ -71,6 +79,7 @@ export const ChecklistSection = forwardRef<HTMLDivElement, ChecklistSectionProps
                         </Badge>
                       )}
                     </div>
+                    {headerMeta}
                   </div>
                 </div>
               </AccordionTrigger>

@@ -313,6 +313,28 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     }
   };
 
+  const handleClearAllAllocations = async () => {
+    if (!dutyCrewIdForWeek) return;
+    const current = allocations ?? [];
+    if (current.length === 0) return;
+    try {
+      await Promise.all(
+        current.map((allocation) =>
+          setCheckAllocation({
+            date: currentSunday.getTime(),
+            dutyCrewId: dutyCrewIdForWeek,
+            target: allocation.target,
+            assignedTo: undefined,
+          })
+        )
+      );
+      toast.success("All allocations cleared");
+    } catch (error) {
+      console.error("Error clearing check allocations:", error);
+      toast.error("Failed to clear allocations");
+    }
+  };
+
   const handleSubmit = async () => {
     const dutyCrewId = getDutyCrewId();
     if (!dutyCrewId) {
@@ -402,6 +424,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
           isLeader === true && submissionStatus !== "completed"
         }
         onAllocationChange={handleAllocationChange}
+        onClearAllAllocations={() => void handleClearAllAllocations()}
       />
     </div>
   );

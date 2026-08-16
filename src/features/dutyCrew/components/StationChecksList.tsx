@@ -14,7 +14,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, MessageSquare, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  MessageSquare,
+  AlertCircle,
+  Trash2,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -27,10 +35,14 @@ import {
   useChecklistNavigation,
 } from "@/components/shared/checklist";
 import { StationCheckItem } from "./StationCheckItem";
-import { CheckAssignmentMenu } from "./CheckAssignmentMenu";
+import {
+  AssignmentChip,
+  MemberPickerSheet,
+} from "./CheckAssignmentControls";
 import {
   allocationTargetKey,
   checkItemStatus,
+  getUserFullName,
   isItemResolved,
   type AllocationTarget,
   type CheckItemData,
@@ -70,6 +82,8 @@ interface StationChecksListProps {
     target: AllocationTarget,
     assignedTo: Id<"users"> | undefined
   ) => void;
+  /** Drops every allocation for the week in one go. */
+  onClearAllAllocations: () => void;
 }
 
 // Stable key for an item, used for scroll targets and highlight state
@@ -96,6 +110,7 @@ export function StationChecksList({
   allocationByTarget,
   canAssign,
   onAllocationChange,
+  onClearAllAllocations,
 }: StationChecksListProps) {
   const [editingNotes, setEditingNotes] = useState<{
     type: "item" | "general";
@@ -109,6 +124,25 @@ export function StationChecksList({
   const [newAdHocName, setNewAdHocName] = useState("");
   const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  // Allocating is an optional side-activity for the leader, so it lives behind
+  // a mode rather than putting an "Assign" control on every single row.
+  const [allocateMode, setAllocateMode] = useState(false);
+  const [picker, setPicker] = useState<{
+    target: AllocationTarget;
+    title: string;
+    selectedId?: Id<"users">;
+    canClear: boolean;
+    clearLabel?: string;
+  } | null>(null);
+
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
+  const allocationCount = Object.keys(allocationByTarget).length;
+
+  const memberById = useMemo(() => {
+    const map: Record<string, CrewAssignmentMember> = {};
+    for (const member of crewMembers) map[member._id] = member;
+    return map;
+  }, [crewMembers]);
 
   const templateItems = useMemo(
     () => checkItems.filter((item) => !item.isAdHoc),
@@ -201,6 +235,39 @@ export function StationChecksList({
       })),
     [groupedTemplateItems, adHocItems, showAdHocSection],
   );
+
+  // Who's on the hook for each section, shown on the collapsed header so a
+  // member can spot their own name without opening every area.
+  const allocationSummaryBySection = useMemo(() => {
+    const summary: Record<string, { areaName?: string; itemNames: string[] }> = {};
+    for (const section of sections) {
+      const areaAssignedTo = section.area
+        ? allocationByTarget[
+            allocationTargetKey({ kind: "area", area: section.area })
+          ]
+        : undefined;
+      const itemNames: string[] = [];
+      for (const item of section.items) {
+        const target: AllocationTarget | null = item.subItemId
+          ? { kind: "subitem", subItemId: item.subItemId }
+          : item.checkId
+            ? { kind: "check", checkId: item.checkId }
+            : null;
+        if (!target) continue;
+        const assignedTo = allocationByTarget[allocationTargetKey(target)];
+        if (!assignedTo || assignedTo === areaAssignedTo) continue;
+        const member = memberById[assignedTo];
+        const label = member ? getUserFullName(member) : undefined;
+        if (label && !itemNames.includes(label)) itemNames.push(label);
+      }
+      const areaMember = areaAssignedTo ? memberById[areaAssignedTo] : undefined;
+      summary[section.key] = {
+        areaName: areaMember ? getUserFullName(areaMember) : undefined,
+        itemNames,
+      };
+    }
+    return summary;
+  }, [sections, allocationByTarget, memberById]);
 
   const navSections = useMemo(
     () =>
@@ -327,7 +394,57 @@ export function StationChecksList({
 
   return (
     <div className="space-y-3">
-      <ChecklistProgressHeader progress={progress} />
+      <ChecklistProgressHeader
+        progress={progress}
+        trailing={
+          canAssign ? (
+            <Button
+              variant={allocateMode ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9 text-muted-foreground data-[active=true]:text-blue-700 dark:data-[active=true]:text-blue-300"
+              data-active={allocateMode}
+              aria-pressed={allocateMode}
+              onClick={() => setAllocateMode((prev) => !prev)}
+            >
+              {allocateMode ? (
+                <X className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+              ) : (
+                <UsersRound className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+              )}
+              {allocateMode ? "Done" : "Allocate tasks"}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {canAssign && allocateMode && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/40">
+          <div className="flex items-start gap-2">
+            <UsersRound
+              className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400"
+              aria-hidden="true"
+            />
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              Tap a task or an area to hand it to someone, or tap the{" "}
+              <X className="inline size-3" aria-hidden="true" /> beside a name to
+              unassign. Allocating is optional - anyone on the crew can still tick
+              anything off.
+            </p>
+          </div>
+          {allocationCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+              onClick={() => setShowClearAllConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+              Clear all {allocationCount} allocation
+              {allocationCount === 1 ? "" : "s"}
+            </Button>
+          )}
+        </div>
+      )}
 
       <Accordion
         type="multiple"
@@ -342,32 +459,73 @@ export function StationChecksList({
             value={section.key}
             name={section.name}
             progress={section.progress}
+            headerMeta={(() => {
+              const summary = allocationSummaryBySection[section.key];
+              if (!summary || (!summary.areaName && summary.itemNames.length === 0))
+                return undefined;
+              return (
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-blue-700 dark:text-blue-300">
+                  <UserRound className="size-3 shrink-0" aria-hidden="true" />
+                  {summary.areaName ? (
+                    <span>
+                      {summary.areaName}
+                      <span className="text-muted-foreground"> (whole area)</span>
+                    </span>
+                  ) : null}
+                  {summary.areaName && summary.itemNames.length > 0 ? (
+                    <span className="text-muted-foreground">-</span>
+                  ) : null}
+                  {summary.itemNames.length > 0 ? (
+                    <span>{summary.itemNames.join(", ")}</span>
+                  ) : null}
+                </p>
+              );
+            })()}
             headerAction={
-              section.area ? (
-                <CheckAssignmentMenu
-                  members={crewMembers}
-                  effectiveAssignedTo={
-                    allocationByTarget[
-                      allocationTargetKey({ kind: "area", area: section.area })
-                    ]
-                  }
-                  directAssignedTo={
-                    allocationByTarget[
-                      allocationTargetKey({ kind: "area", area: section.area })
-                    ]
-                  }
-                  canAssign={canAssign}
-                  contextLabel={`Assign ${section.name} area`}
-                  onAssign={(assignedTo) =>
-                    onAllocationChange(
-                      { kind: "area", area: section.area! },
-                      assignedTo
-                    )
-                  }
-                />
-              ) : section.key === AD_HOC_SECTION ? (
-                addAdHocControls
-              ) : undefined
+              <>
+                {section.area
+                  ? (() => {
+                      const target: AllocationTarget = {
+                        kind: "area",
+                        area: section.area,
+                      };
+                      const assignedTo =
+                        allocationByTarget[allocationTargetKey(target)];
+                      const member = assignedTo
+                        ? memberById[assignedTo]
+                        : undefined;
+                      if (!member && !allocateMode) return null;
+                      return (
+                        <div className="flex items-center gap-2 pb-1">
+                          <span className="text-xs text-muted-foreground">
+                            Whole area:
+                          </span>
+                          <AssignmentChip
+                            member={member}
+                            label={`Assign ${section.name} area`}
+                            onPress={
+                              allocateMode
+                                ? () =>
+                                    setPicker({
+                                      target,
+                                      title: `Assign ${section.name}`,
+                                      selectedId: assignedTo,
+                                      canClear: !!assignedTo,
+                                    })
+                                : undefined
+                            }
+                            onClear={
+                              allocateMode
+                                ? () => onAllocationChange(target, undefined)
+                                : undefined
+                            }
+                          />
+                        </div>
+                      );
+                    })()
+                  : null}
+                {section.key === AD_HOC_SECTION ? addAdHocControls : null}
+              </>
             }
           >
             {section.items.map((item) => {
@@ -414,15 +572,32 @@ export function StationChecksList({
                     }
                     assignment={
                       target ? (
-                        <CheckAssignmentMenu
-                          members={crewMembers}
-                          effectiveAssignedTo={effectiveAssignedTo}
-                          directAssignedTo={directAssignedTo}
-                          inheritedFromArea={!!areaAssignedTo}
-                          canAssign={canAssign}
-                          contextLabel={`Assign ${item.name}`}
-                          onAssign={(assignedTo) =>
-                            onAllocationChange(target, assignedTo)
+                        <AssignmentChip
+                          member={
+                            effectiveAssignedTo
+                              ? memberById[effectiveAssignedTo]
+                              : undefined
+                          }
+                          inherited={!directAssignedTo && !!areaAssignedTo}
+                          label={`Assign ${item.name}`}
+                          onPress={
+                            allocateMode
+                              ? () =>
+                                  setPicker({
+                                    target,
+                                    title: `Assign "${item.name}"`,
+                                    selectedId: directAssignedTo,
+                                    canClear: !!directAssignedTo,
+                                    clearLabel: areaAssignedTo
+                                      ? "Use area allocation"
+                                      : "Clear allocation",
+                                  })
+                              : undefined
+                          }
+                          onClear={
+                            allocateMode && directAssignedTo
+                              ? () => onAllocationChange(target, undefined)
+                              : undefined
                           }
                         />
                       ) : undefined
@@ -533,6 +708,33 @@ export function StationChecksList({
         onConfirm={() => {
           if (confirmDeleteName) onRemoveAdHocItem(confirmDeleteName);
           setConfirmDeleteName(null);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={showClearAllConfirm}
+        onOpenChange={setShowClearAllConfirm}
+        title="Clear all allocations?"
+        description={`All ${allocationCount} task allocation${
+          allocationCount === 1 ? "" : "s"
+        } for this week will be removed. The checks themselves and anything already ticked off are untouched.`}
+        confirmLabel="Clear all"
+        onConfirm={() => {
+          onClearAllAllocations();
+          setShowClearAllConfirm(false);
+        }}
+      />
+
+      <MemberPickerSheet
+        open={picker !== null}
+        onClose={() => setPicker(null)}
+        title={picker?.title ?? "Assign task"}
+        members={crewMembers}
+        selectedId={picker?.selectedId}
+        canClear={picker?.canClear ?? false}
+        clearLabel={picker?.clearLabel}
+        onSelect={(userId) => {
+          if (picker) onAllocationChange(picker.target, userId);
         }}
       />
 

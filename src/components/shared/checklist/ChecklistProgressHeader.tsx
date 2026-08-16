@@ -10,6 +10,8 @@ interface ChecklistProgressHeaderProps {
   leading?: React.ReactNode;
   /** Rendered above the counts - e.g. a run title. */
   title?: React.ReactNode;
+  /** Rendered at the right end of the bar - e.g. a mode toggle. */
+  trailing?: React.ReactNode;
   className?: string;
 }
 
@@ -72,6 +74,7 @@ export function ChecklistProgressHeader({
   progress,
   leading,
   title,
+  trailing,
   className,
 }: ChecklistProgressHeaderProps) {
   const { sentinelRef, stuck } = useIsStuck();
@@ -117,6 +120,7 @@ export function ChecklistProgressHeader({
               )}
             </div>
           </div>
+          {trailing ? <div className="shrink-0">{trailing}</div> : null}
         </div>
       </div>
     </>
