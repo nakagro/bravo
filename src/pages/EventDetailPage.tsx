@@ -10,8 +10,8 @@ import {
   formatUserName,
   formatWeekday,
   formatMonth,
+  compareUserNames,
   getDayNum,
-  getInitials,
   getTodayStr,
 } from "../features/events/types";
 import { RsvpButtons } from "../features/events/components/RsvpButtons";
@@ -53,9 +53,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-// The admin-only breakdown groups (the attending "Going" list lives in its own
-// member-visible "Who's coming" card, so it's deliberately not repeated here).
 const breakdownGroups = [
+  {
+    key: "attending",
+    label: "Yes",
+    dotClass: "bg-green-500",
+    chipClass: "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200",
+    defaultOpen: true,
+  },
   {
     key: "maybe",
     label: "Maybe",
@@ -65,7 +70,7 @@ const breakdownGroups = [
   },
   {
     key: "notAttending",
-    label: "Not going",
+    label: "No",
     dotClass: "bg-red-500",
     chipClass: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200",
     defaultOpen: true,
@@ -586,7 +591,7 @@ export function EventDetailPage() {
                       Rostered, no shift yet
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {attendance.rosteredNoShift.map((member) => (
+                      {[...attendance.rosteredNoShift].sort(compareUserNames).map((member) => (
                         <MemberChip
                           key={member._id}
                           member={member}
@@ -609,7 +614,7 @@ export function EventDetailPage() {
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {attendance.attending.map((member) => (
+                {[...attendance.attending].sort(compareUserNames).map((member) => (
                   <MemberChip key={member._id} member={member} isMe={member._id === myUserId} />
                 ))}
               </div>
@@ -617,9 +622,7 @@ export function EventDetailPage() {
           </div>
         </div>
 
-        {/* Responses panel - admin-only drill-down (Maybe / Not going / No
-            response). The "Going" list isn't repeated here; it's the
-            member-visible "Who's coming" card above. */}
+        {/* Responses panel - admin-only drill-down of every response state. */}
         {breakdown && (
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
             <div className="px-5 py-3.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -653,46 +656,44 @@ export function EventDetailPage() {
                 // event answers with a slot pick, and a closed one isn't asking
                 .filter(({ key }) => !((event.hasShifts || responsesClosed) && key === "maybe"))
                 .map(({ key, label, dotClass, chipClass }) => {
-                const members = breakdown[key];
-                const isOpen = openGroups[key];
-                return (
-                  <div key={key}>
-                    <button
-                      onClick={() => toggleGroup(key)}
-                      aria-expanded={isOpen}
-                      className="w-full flex items-center gap-2 text-left group min-h-[32px]"
-                    >
-                      <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-                      <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                        {label}
-                      </span>
-                      <span className={`px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${chipClass}`}>
-                        {members.length}
-                      </span>
-                      <ChevronDownIcon
-                        className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    {isOpen &&
-                      (members.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-gray-500 pl-4 mt-1">
-                          Nobody yet
-                        </p>
-                      ) : (
-                        <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
-                          {members.map((member) => (
-                            <li key={member._id} className="flex items-center gap-2">
-                              <span className="h-5 w-5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                                {getInitials(member)}
-                              </span>
-                              {formatUserName(member)}
-                            </li>
-                          ))}
-                        </ul>
-                      ))}
-                  </div>
-                );
-              })}
+                  const members =
+                    key === "attending" ? (attendance?.attending ?? []) : breakdown[key];
+                  const isOpen = openGroups[key];
+                  return (
+                    <div key={key}>
+                      <button
+                        onClick={() => toggleGroup(key)}
+                        aria-expanded={isOpen}
+                        className="w-full flex items-center gap-2 text-left group min-h-[32px]"
+                      >
+                        <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                          {label}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${chipClass}`}
+                        >
+                          {members.length}
+                        </span>
+                        <ChevronDownIcon
+                          className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      {isOpen &&
+                        (members.length === 0 ? (
+                          <p className="text-sm text-gray-400 dark:text-gray-500 pl-4 mt-1">
+                            Nobody yet
+                          </p>
+                        ) : (
+                          <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
+                            {[...members].sort(compareUserNames).map((member) => (
+                              <li key={member._id}>{formatUserName(member)}</li>
+                            ))}
+                          </ul>
+                        ))}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -711,7 +712,7 @@ interface ChipMember {
 }
 
 /**
- * Avatar name chip for the simple (non-shift) attending list. "You" and "can't
+ * Name chip for the simple (non-shift) attending list. "You" and "can't
  * make it" get their own accents so you can find yourself and spot conflicts at
  * a glance. Shift events render their own chips inside the ShiftBoard.
  */
@@ -731,19 +732,12 @@ function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boole
   }
   return (
     <span
-      className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border text-sm ${
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm ${
         isMe
           ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-gray-900 dark:text-white font-medium"
           : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
       }`}
     >
-      <span
-        className={`h-6 w-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
-          isMe ? "bg-red-600" : "bg-gray-500 dark:bg-gray-600"
-        }`}
-      >
-        {getInitials(member)}
-      </span>
       {formatUserName(member)}
       {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
     </span>

@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { formatSlotWhen, slotCoverageLabel, getInitials, formatUserName } from "../types";
+import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
 
 interface ShiftBoardProps {
   eventId: Id<"events">;
@@ -71,11 +71,13 @@ export function ShiftBoard({ eventId }: ShiftBoardProps) {
     <div className="space-y-5">
       {slots.map((slot) => {
         const when = formatSlotWhen(slot);
-        const rostered = slot.allocated;
+        const rostered = [...slot.allocated].sort(compareUserNames);
         // The bench: interested but not on the roster. Dedupe against the roster
         // so someone interested who then got allocated only shows once (rostered).
         const rosteredIds = new Set(rostered.map((m) => m._id));
-        const interested = slot.interested.filter((m) => !rosteredIds.has(m._id));
+        const interested = slot.interested
+          .filter((m) => !rosteredIds.has(m._id))
+          .sort(compareUserNames);
         const underfilled = !!slot.targetCount && slot.allocatedCount < slot.targetCount;
         const empty = rostered.length === 0 && interested.length === 0;
         return (
@@ -191,7 +193,7 @@ function BoardChip({
   const muted = tone === "interested" && !isMe;
   return (
     <span
-      className={`inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full border text-xs ${
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs ${
         isMe
           ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-gray-900 dark:text-white font-medium"
           : muted
@@ -199,17 +201,6 @@ function BoardChip({
             : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
       }`}
     >
-      <span
-        className={`h-5 w-5 rounded-full text-[9px] font-bold flex items-center justify-center ${
-          isMe
-            ? "bg-red-600 text-white"
-            : muted
-              ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-              : "bg-indigo-600 text-white"
-        }`}
-      >
-        {getInitials(member)}
-      </span>
       {formatUserName(member)}
       {isMe && <span className="text-[10px] text-red-700 dark:text-red-300">you</span>}
     </span>

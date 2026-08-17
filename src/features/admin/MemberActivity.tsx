@@ -2,9 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ArrowsUpDownIcon, ArrowPathIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -82,7 +81,6 @@ interface MemberActivityProps {
  */
 export function MemberActivity({ showTitle = true }: MemberActivityProps) {
   const activity = useQuery(api.authManagement.getMemberActivity);
-  const [oldestFirst, setOldestFirst] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [openUser, setOpenUser] = useState<{ id: Id<"users">; name: string } | null>(null);
 
@@ -92,23 +90,17 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
       ? activity
       : activity.filter((row) => !row.isShared && !row.isDisabled);
 
-    return [...visible].sort((a, b) => {
-      // Never-seen accounts are the point of the list, so they sort to whichever
-      // end "oldest" is, rather than falling out of the ordering entirely.
-      const aSeen = a.lastSeenAt ?? 0;
-      const bSeen = b.lastSeenAt ?? 0;
-      return oldestFirst ? aSeen - bSeen : bSeen - aSeen;
-    });
-  }, [activity, oldestFirst, includeInactive]);
+    return [...visible].sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0));
+  }, [activity, includeInactive]);
 
   const summary = useMemo(() => {
     const people = (activity ?? []).filter((row) => !row.isShared && !row.isDisabled);
     const now = Date.now();
     return {
       total: people.length,
+      day: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < DAY).length,
       week: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < 7 * DAY).length,
       month: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < 30 * DAY).length,
-      never: people.filter((r) => !r.lastSeenAt).length,
     };
   }, [activity]);
 
@@ -126,50 +118,37 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         <h2 className="text-xl font-semibold dark:text-white">Member Activity</h2>
       )}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         {[
           { label: "Members", value: summary.total },
-          { label: "Past 7 days", value: summary.week },
-          { label: "Past 30 days", value: summary.month },
-          { label: "No live session", value: summary.never },
+          { label: "Past 24h", value: summary.day },
+          { label: "Past 7d", value: summary.week },
+          { label: "Past 30d", value: summary.month },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-md border border-gray-200 dark:border-gray-700 p-2.5 sm:p-3"
+            className="min-w-0 rounded-md border border-gray-200 p-2 dark:border-gray-700 sm:p-3"
           >
-            <p className="text-xl sm:text-2xl font-semibold leading-tight dark:text-white">
+            <p className="text-lg font-semibold leading-tight dark:text-white sm:text-2xl">
               {stat.value}
             </p>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+            <p className="whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-400 sm:text-xs">
               {stat.label}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Stacked on a phone so neither control gets squeezed or orphaned. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setOldestFirst((v) => !v)}
-          className="flex w-full items-center justify-center gap-2 sm:w-auto"
-        >
-          <ArrowsUpDownIcon className="h-4 w-4" />
-          {oldestFirst ? "Least recent first" : "Most recent first"}
-        </Button>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="include-inactive"
-            checked={includeInactive}
-            onCheckedChange={setIncludeInactive}
-            className="dark:data-[state=unchecked]:bg-gray-600"
-          />
-          <Label htmlFor="include-inactive" className="text-sm dark:text-gray-200">
-            Include shared &amp; disabled
-          </Label>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <Switch
+          id="include-inactive"
+          checked={includeInactive}
+          onCheckedChange={setIncludeInactive}
+          className="dark:data-[state=unchecked]:bg-gray-600"
+        />
+        <Label htmlFor="include-inactive" className="text-sm dark:text-gray-200">
+          Include shared &amp; disabled
+        </Label>
       </div>
 
       <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -196,30 +175,30 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
                   {row.isShared && <Badge variant="outline">Shared</Badge>}
                   {row.isDisabled && <Badge variant="destructive">Disabled</Badge>}
                 </div>
-                <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">
-                  {row.lastSeenAt
-                    ? `${row.deviceCount} ${row.deviceCount === 1 ? "device" : "devices"}`
-                    : "No live session"}
-                  {row.lastStatusChangeAt
-                    ? ` · availability ${getRelativeTimeString(row.lastStatusChangeAt)}`
-                    : " · never set availability"}
-                </p>
+                <div className="mt-1 flex flex-col gap-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">
+                  <span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      Signed-in devices:
+                    </span>{" "}
+                    {row.deviceCount}
+                  </span>
+                  <span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      Status last updated:
+                    </span>{" "}
+                    {row.lastStatusChangeAt
+                      ? getRelativeTimeString(row.lastStatusChangeAt)
+                      : "Never"}
+                  </span>
+                </div>
               </div>
               <div className="shrink-0 text-right">
-                {row.lastSeenAt ? (
-                  <>
-                    <p className="text-xs font-medium dark:text-gray-100 sm:text-sm">
-                      {getRelativeTimeString(row.lastSeenAt)}
-                    </p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 sm:text-xs">
-                      {formatCompact(row.lastSeenAt)}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    Not signed in
-                  </p>
-                )}
+                <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:text-[11px]">
+                  Last seen
+                </p>
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-100 sm:text-sm">
+                  {row.lastSeenAt ? getRelativeTimeString(row.lastSeenAt) : "Never"}
+                </p>
               </div>
               <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
             </button>

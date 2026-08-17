@@ -136,6 +136,19 @@ export function formatUserName(
   return "Unknown User";
 }
 
+const userNameCollator = new Intl.Collator("en-AU", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+/** Sort members alphabetically by the same full display name shown in the UI. */
+export function compareUserNames(
+  a: { firstName?: string; lastName?: string; name?: string },
+  b: { firstName?: string; lastName?: string; name?: string }
+): number {
+  return userNameCollator.compare(formatUserName(a), formatUserName(b));
+}
+
 // Parse a YYYY-MM-DD string to a local Date (avoids timezone issues)
 export function parseEventDate(dateStr: string): Date {
   return parse(dateStr, "yyyy-MM-dd", new Date());

@@ -29,13 +29,20 @@ export default function AdminPage() {
         </h1>
       </div>
 
-      <CreateUser />
-
       {/* Keep User Management always visible */}
       <UserManagement />
 
       {/* Collapsible sections */}
       <Accordion type="multiple" className="w-full space-y-2">
+        <AccordionItem value="createUser">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Create User
+          </AccordionTrigger>
+          <AccordionContent>
+            <CreateUser showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
         <AccordionItem value="moduleSettings">
           <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
             Module Settings

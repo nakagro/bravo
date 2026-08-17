@@ -43,7 +43,11 @@ const initialForm = {
   rank: "Brigade Member" as Rank,
 };
 
-export default function CreateUser() {
+interface CreateUserProps {
+  showTitle?: boolean;
+}
+
+export default function CreateUser({ showTitle = true }: CreateUserProps) {
   const createUser = useAction(api.adminUsers.createUser);
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,7 +93,7 @@ export default function CreateUser() {
   return (
     <Card data-component="CreateUser">
       <CardHeader>
-        <CardTitle>Create user</CardTitle>
+        {showTitle && <CardTitle>Create user</CardTitle>}
         <CardDescription>
           Create a member account and set their temporary sign-in details on
           their behalf.
