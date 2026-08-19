@@ -163,10 +163,25 @@ export const deleteDutyCrew = mutation({
   },
 });
 
-// Get the duty crew assigned to a specific date
+// The crew fields getDutyCrewForDate returns. Spreading the raw doc instead
+// leaks _creationTime/createdAt/updatedAt and fails the returns validator.
+function pickCrew(crew: Doc<"dutyCrew">) {
+  return {
+    _id: crew._id,
+    name: crew.name,
+    number: crew.number,
+    members: crew.members,
+    leader: crew.leader,
+  };
+}
+
+// Get the duty crew assigned to a specific date.
+// Callers must pass UTC midnight of the Sunday (Date.UTC(y, m, d)). This
+// handler reads the timestamp with local Date methods and Convex runs in UTC,
+// so a browser-local midnight from AEST lands on the Saturday and returns null.
 export const getDutyCrewForDate = query({
   args: {
-    date: v.number(), // Timestamp for the date
+    date: v.number(), // UTC midnight of the date - see note above
   },
   returns: v.union(
     v.object({
@@ -194,7 +209,7 @@ export const getDutyCrewForDate = query({
       const dutyCrew = await ctx.db.get(schedule.dutyCrewId);
       if (dutyCrew) {
         return {
-          ...dutyCrew,
+          ...pickCrew(dutyCrew),
           isSpecial: schedule.isSpecial,
           notes: schedule.notes,
           date: args.date,
@@ -236,7 +251,7 @@ export const getDutyCrewForDate = query({
 
       if (dutyCrew) {
         return {
-          ...dutyCrew,
+          ...pickCrew(dutyCrew),
           isSpecial: false,
           notes: undefined,
           date: args.date,
@@ -250,7 +265,7 @@ export const getDutyCrewForDate = query({
 
       if (firstDutyCrew) {
         return {
-          ...firstDutyCrew,
+          ...pickCrew(firstDutyCrew),
           name: "All Duty Crews",
           number: 0,
           members: allMembers,

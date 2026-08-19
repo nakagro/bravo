@@ -421,6 +421,26 @@ const applicationTables = {
       })
     ),
     notes: v.optional(v.string()), // Optional general notes for the entire submission
+    // Who was on the crew when this week was worked. The dutyCrew doc only
+    // holds today's roster, so without this snapshot past weeks silently
+    // rewrite themselves as members move between crews. Absent on
+    // submissions created before the snapshot existed.
+    crewSnapshot: v.optional(
+      v.object({
+        name: v.string(), // Crew name at the time
+        number: v.number(),
+        capturedAt: v.number(),
+        members: v.array(
+          v.object({
+            userId: v.id("users"),
+            name: v.optional(v.string()),
+            firstName: v.optional(v.string()),
+            lastName: v.optional(v.string()),
+            isLeader: v.boolean(),
+          })
+        ),
+      })
+    ),
   })
     .index("by_date", ["date"])
     .index("by_dutyCrew", ["dutyCrewId"])

@@ -42,6 +42,80 @@ const checkItemValidator = v.object({
   addedBy: v.optional(v.id("users")),
 });
 
+// The crew roster as it stood when the week was worked - see the schema note
+// on stationCheckSubmissions.crewSnapshot for why it is stored rather than
+// re-read from the dutyCrew doc.
+const crewSnapshotValidator = v.object({
+  name: v.string(),
+  number: v.number(),
+  capturedAt: v.number(),
+  members: v.array(
+    v.object({
+      userId: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      isLeader: v.boolean(),
+    })
+  ),
+});
+
+type CrewSnapshot = {
+  name: string;
+  number: number;
+  capturedAt: number;
+  members: Array<{
+    userId: Id<"users">;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    isLeader: boolean;
+  }>;
+};
+
+// Names are denormalized so a member who later leaves the brigade still shows
+// on the week they worked.
+async function buildCrewSnapshot(
+  ctx: MutationCtx,
+  dutyCrewId: Id<"dutyCrew">
+): Promise<CrewSnapshot | undefined> {
+  const crew = await ctx.db.get(dutyCrewId);
+  if (!crew) return undefined;
+
+  const members: CrewSnapshot["members"] = [];
+  for (const memberId of crew.members) {
+    const member = await ctx.db.get(memberId);
+    if (!member) continue;
+    members.push({
+      userId: member._id,
+      name: member.name,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      isLeader: crew.leader === member._id,
+    });
+  }
+
+  return {
+    name: crew.name,
+    number: crew.number,
+    capturedAt: Date.now(),
+    members,
+  };
+}
+
+// Fill the snapshot in on an existing submission that predates it. Once
+// captured it is left alone, so the roster reflects the week as worked rather
+// than the roster at the moment of the last edit.
+async function crewSnapshotPatch(
+  ctx: MutationCtx,
+  submission: Doc<"stationCheckSubmissions"> | null | undefined,
+  dutyCrewId: Id<"dutyCrew">
+): Promise<{ crewSnapshot?: CrewSnapshot }> {
+  if (!submission || submission.crewSnapshot) return {};
+  const crewSnapshot = await buildCrewSnapshot(ctx, dutyCrewId);
+  return crewSnapshot ? { crewSnapshot } : {};
+}
+
 const subItemValidator = v.object({
   _id: v.id("stationCheckSubitems"),
   name: v.string(),
@@ -517,6 +591,7 @@ export const getCurrentWeekCheckStatus = query({
         lastUpdatedAt: v.optional(v.number()),
         checkItems: v.array(checkItemValidator),
         notes: v.optional(v.string()),
+        crewSnapshot: v.optional(crewSnapshotValidator),
       }),
       dutyCrew: v.object({
         _id: v.id("dutyCrew"),
@@ -710,6 +785,7 @@ export const saveDraftStationCheck = mutation({
         notes: args.notes,
         lastUpdatedBy: currentUser._id,
         lastUpdatedAt: now,
+        ...(await crewSnapshotPatch(ctx, existing, args.dutyCrewId)),
       });
 
       return args.existingSubmissionId;
@@ -733,6 +809,7 @@ export const saveDraftStationCheck = mutation({
           notes: args.notes,
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
+          ...(await crewSnapshotPatch(ctx, existingSubmission, args.dutyCrewId)),
         });
 
         return existingSubmission._id;
@@ -753,6 +830,7 @@ export const saveDraftStationCheck = mutation({
           status: "draft",
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
+          crewSnapshot: await buildCrewSnapshot(ctx, args.dutyCrewId),
         });
       }
     }
@@ -847,6 +925,7 @@ export const submitStationCheck = mutation({
         status: "completed",
         lastUpdatedBy: currentUser._id,
         lastUpdatedAt: now,
+        ...(await crewSnapshotPatch(ctx, existing, args.dutyCrewId)),
       });
 
       await notifySubmission(args.existingSubmissionId);
@@ -874,6 +953,7 @@ export const submitStationCheck = mutation({
           status: "completed",
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
+          ...(await crewSnapshotPatch(ctx, existingSubmission, args.dutyCrewId)),
         });
 
         await notifySubmission(existingSubmission._id);
@@ -895,6 +975,7 @@ export const submitStationCheck = mutation({
           status: "completed",
           lastUpdatedBy: currentUser._id,
           lastUpdatedAt: now,
+          crewSnapshot: await buildCrewSnapshot(ctx, args.dutyCrewId),
         });
 
         await notifySubmission(submissionId);

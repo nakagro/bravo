@@ -34,6 +34,28 @@ export const checkItemStatus = (item: {
       ? "attention"
       : "unanswered";
 
+/** The Mon 00:00 - Sun 23:59 window for a week `weekOffset` weeks from `now`, in local time. */
+export const weekBoundaries = (weekOffset: number, now: Date = new Date()) => {
+  const currentDay = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() + weekOffset * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { monday, sunday };
+};
+
+/**
+ * A local date as UTC midnight of the same calendar day, for backend queries
+ * that key on a day. Convex runs in UTC, so sending a local midnight from AEST
+ * lands the server on the previous day - which silently emptied the Duty Crew
+ * hero for every week until it was caught.
+ */
+export const toUtcMidnight = (date: Date) =>
+  Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+
 export type SubmissionStatus = "draft" | "completed";
 
 export type ItemUser = {

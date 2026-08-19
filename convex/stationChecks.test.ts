@@ -400,3 +400,69 @@ describe("draft round trip", () => {
     expect(all[0].checkItems).toHaveLength(2);
   });
 });
+
+describe("crew roster snapshot", () => {
+  it("captures the crew on the first save and keeps it when the roster changes", async () => {
+    const { t, userId, dutyCrewId, asUser } = await setup();
+
+    const submissionId = await asUser.mutation(
+      api.stationChecks.saveDraftStationCheck,
+      { date: SUNDAY, dutyCrewId, checkItems: [item("Check hoses")] }
+    );
+
+    const captured = await t.run((ctx) => ctx.db.get(submissionId));
+    expect(captured?.crewSnapshot?.name).toBe("Duty Crew 1");
+    expect(captured?.crewSnapshot?.members.map((m) => m.userId)).toEqual([userId]);
+
+    // Member leaves the crew and it is renamed after the week was worked
+    const replacementId = await t.run(async (ctx) => {
+      const replacementId = await ctx.db.insert("users", { name: "New member" });
+      await ctx.db.patch(dutyCrewId, {
+        name: "Duty Crew 1 (renamed)",
+        members: [replacementId],
+      });
+      return replacementId;
+    });
+
+    await asUser.mutation(api.stationChecks.submitStationCheck, {
+      date: SUNDAY,
+      dutyCrewId,
+      checkItems: [item("Check hoses", { isCompleted: true })],
+      existingSubmissionId: submissionId,
+    });
+
+    const afterChange = await t.run((ctx) => ctx.db.get(submissionId));
+    expect(afterChange?.crewSnapshot?.name).toBe("Duty Crew 1");
+    expect(afterChange?.crewSnapshot?.members.map((m) => m.userId)).toEqual([
+      userId,
+    ]);
+    expect(afterChange?.crewSnapshot?.members.map((m) => m.userId)).not.toContain(
+      replacementId
+    );
+  });
+
+  it("backfills a snapshot onto a submission that predates the field", async () => {
+    const { t, userId, dutyCrewId, asUser } = await setup();
+
+    const submissionId = await t.run((ctx) =>
+      ctx.db.insert("stationCheckSubmissions", {
+        date: SUNDAY,
+        dutyCrewId,
+        completedBy: userId,
+        completedAt: Date.now(),
+        status: "draft",
+        checkItems: [],
+      })
+    );
+
+    await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: SUNDAY,
+      dutyCrewId,
+      checkItems: [item("Check hoses")],
+      existingSubmissionId: submissionId,
+    });
+
+    const saved = await t.run((ctx) => ctx.db.get(submissionId));
+    expect(saved?.crewSnapshot?.members.map((m) => m.userId)).toEqual([userId]);
+  });
+});

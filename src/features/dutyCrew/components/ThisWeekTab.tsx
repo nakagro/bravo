@@ -9,6 +9,8 @@ import {
   allocationTargetKey,
   getUserFullName,
   isItemResolved,
+  toUtcMidnight,
+  weekBoundaries,
   type AllocationTarget,
   type CheckItemData,
   type ItemUser,
@@ -21,21 +23,7 @@ interface ThisWeekTabProps {
 export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const [weekOffset, setWeekOffset] = useState(0);
 
-  // Calculate week boundaries
-  const calculateWeekBoundaries = () => {
-    const today = new Date();
-    const currentDay = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-    monday.setHours(0, 0, 0, 0);
-    monday.setDate(monday.getDate() + weekOffset * 7);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    return { monday, sunday };
-  };
-
-  const { sunday: currentSunday } = calculateWeekBoundaries();
+  const { sunday: currentSunday } = weekBoundaries(weekOffset);
 
   // Queries
   const stationChecks = useQuery(api.stationChecks.getAllStationChecks, {});
@@ -43,21 +31,35 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     api.stationChecks.getCurrentWeekCheckStatus,
     { date: currentSunday.getTime() }
   );
-  const upcomingAssignments = useQuery(
-    api.dutyCrew.getUpcomingDutyCrewAssignments,
-    { count: 8 }
-  );
+  // Resolved per-date rather than from the upcoming list, which starts at
+  // today and so leaves every past week looking unassigned.
+  //
+  // Convex runs in UTC, so the Sunday has to be sent as UTC midnight of its
+  // calendar date. A local midnight (AEST = UTC+10) reads as the Saturday on
+  // the server, which makes the rotation rule bail out and the schedule
+  // lookup miss - dutyCrewSchedule rows are keyed to UTC midnight because
+  // getUpcomingDutyCrewAssignments builds their timestamps server-side.
+  const sundayMidnight = toUtcMidnight(currentSunday);
+  const weekCrew = useQuery(api.dutyCrew.getDutyCrewForDate, {
+    date: sundayMidnight,
+  });
 
-  // Find the assignment for this specific week's Sunday
-  const currentAssignment = upcomingAssignments?.find((a) => {
-    const aDate = new Date(a.date);
-    const sDate = new Date(currentSunday);
-    return (
-      aDate.getFullYear() === sDate.getFullYear() &&
-      aDate.getMonth() === sDate.getMonth() &&
-      aDate.getDate() === sDate.getDate()
-    );
-  }) ?? null;
+  const currentAssignment = useMemo(
+    () =>
+      weekCrew
+        ? {
+            date: sundayMidnight,
+            dutyCrew: {
+              _id: weekCrew._id,
+              name: weekCrew.name,
+              number: weekCrew.number,
+            },
+            isSpecial: weekCrew.isSpecial,
+            notes: weekCrew.notes,
+          }
+        : null,
+    [weekCrew, sundayMidnight]
+  );
 
   const dutyCrewIdForWeek =
     currentAssignment?.dutyCrew._id ??
@@ -81,6 +83,20 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       ? { date: currentSunday.getTime(), dutyCrewId: dutyCrewIdForWeek }
       : "skip"
   );
+
+  // Who to name in the hero. The snapshot on the submission is the roster as
+  // the week was actually worked; the live crew is only right for weeks that
+  // predate snapshots, or that have no submission yet.
+  const crewSnapshot = currentWeekStatus?.submission.crewSnapshot;
+  const displayMembers = crewSnapshot
+    ? crewSnapshot.members.map((member) => ({
+        _id: member.userId,
+        name: member.name,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        isLeader: member.isLeader,
+      }))
+    : crewMembers;
 
   // Mutations
   const submitStationCheck = useMutation(api.stationChecks.submitStationCheck);
@@ -399,6 +415,8 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         onWeekChange={setWeekOffset}
         currentSunday={currentSunday}
         assignment={currentAssignment}
+        members={displayMembers}
+        isHistoricalRoster={crewSnapshot !== undefined}
         submissionStatus={submissionStatus}
         onReopen={handleReopen}
         canReopen={isAdmin || isLeader === true}

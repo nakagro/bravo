@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +33,16 @@ interface DutyCrewHeroProps {
     isSpecial: boolean;
     notes?: string;
   } | null;
+  /** Crew roster to name; undefined while it loads. */
+  members?: Array<{
+    _id: Id<"users">;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    isLeader: boolean;
+  }>;
+  /** True when `members` is a snapshot of the week rather than today's crew. */
+  isHistoricalRoster?: boolean;
   submissionStatus: SubmissionStatus | "not_started";
   onReopen?: () => void;
   canReopen: boolean;
@@ -45,6 +53,8 @@ export function DutyCrewHero({
   onWeekChange,
   currentSunday,
   assignment,
+  members,
+  isHistoricalRoster = false,
   submissionStatus,
   onReopen,
   canReopen,
@@ -59,11 +69,6 @@ export function DutyCrewHero({
       else next.add(id);
       return next;
     });
-  const dutyCrewMembers = useQuery(
-    api.dutyCrewMembers.getDutyCrewMembers,
-    assignment && !assignment.isSpecial ? { dutyCrewId: assignment.dutyCrew._id } : "skip"
-  );
-
   const status = statusConfig[submissionStatus];
   const isSpecial = assignment?.isSpecial ?? false;
 
@@ -180,9 +185,9 @@ export function DutyCrewHero({
                   <Users className="h-3.5 w-3.5" />
                   <span>All duty crew members attend</span>
                 </div>
-              ) : dutyCrewMembers && dutyCrewMembers.length > 0 ? (
+              ) : members && members.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {dutyCrewMembers.map((member) => (
+                  {members.map((member) => (
                     <button
                       key={member._id}
                       onClick={() => toggleMemberName(member._id)}
@@ -216,8 +221,13 @@ export function DutyCrewHero({
                       </span>
                     </button>
                   ))}
+                  {isHistoricalRoster && (
+                    <span className="w-full mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+                      Crew as at this week
+                    </span>
+                  )}
                 </div>
-              ) : !isSpecial && !dutyCrewMembers ? (
+              ) : !isSpecial && !members ? (
                 <div className="mt-3 flex gap-1.5">
                   {[1, 2, 3].map((i) => (
                     <div
