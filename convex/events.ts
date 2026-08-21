@@ -141,6 +141,8 @@ const enrichedEventValidator = v.object({
   cancellationReason: v.optional(v.string()),
   createdBy: v.id("users"),
   teamLeaderIds: v.optional(v.array(v.id("users"))),
+  attendanceConfirmedAt: v.optional(v.number()),
+  attendanceConfirmedBy: v.optional(v.id("users")),
   createdAt: v.number(),
   updatedAt: v.number(),
   counts: v.object({
@@ -169,6 +171,10 @@ const enrichedEventValidator = v.object({
   // Permanent deletion stays brigade-wide eventsAdmin: it's irreversible, and
   // running one event isn't a mandate to erase its record.
   canDelete: v.boolean(),
+  // How many people actually turned up, once someone has confirmed it. Null
+  // means unconfirmed - a different thing from "nobody came", and the state the
+  // past-events list nudges about.
+  attendedCount: v.union(v.number(), v.null()),
   // Resolved category (name + colour) from eventTypeId; null when unset/deleted
   eventTypeInfo: v.union(
     v.object({
@@ -292,6 +298,17 @@ async function enrichEvent(
       name: user.name,
     }));
 
+  // Only read the attendance rows once somebody has confirmed - an unconfirmed
+  // event has none, and this runs per row in the events lists.
+  const attendedCount = event.attendanceConfirmedAt
+    ? (
+        await ctx.db
+          .query("eventAttendance")
+          .withIndex("by_event", (q) => q.eq("eventId", event._id))
+          .collect()
+      ).length
+    : null;
+
   let eventTypeInfo: { _id: Id<"eventTypes">; name: string; color: string } | null = null;
   if (event.eventTypeId) {
     const type = await ctx.db.get(event.eventTypeId);
@@ -304,6 +321,7 @@ async function enrichEvent(
     ...event,
     counts,
     myRsvp,
+    attendedCount,
     eventTypeInfo,
     teamLeaders,
     canManage: viewerIsAdmin || event.createdBy === userId || isEventTeamLeader(event, userId),
@@ -678,6 +696,256 @@ export const getEventAttendance = query({
       rosteredNoShift,
       breakdown: { maybe, notAttending, noResponse, totalMembers: users.length },
     };
+  },
+});
+
+/**
+ * Confirmed attendance - who actually turned up.
+ *
+ * Separate from both the RSVPs and the roster on purpose: what members said
+ * beforehand and who an organiser rostered are predictions, and the brigade has
+ * to report the real thing (community-engagement events go into a public-facing
+ * system afterwards). So this is recorded after the fact and is allowed to
+ * disagree with everything above it.
+ *
+ * The list itself is visible to every signed-in member, like the attending list.
+ * The *deviation* - who said yes and didn't show - is only for whoever is
+ * running the event, same rule as the response breakdown.
+ */
+export const getConfirmedAttendance = query({
+  args: { eventId: v.id("events") },
+  returns: v.union(
+    v.object({
+      confirmedAt: v.union(v.number(), v.null()),
+      confirmedBy: v.union(userNameValidator, v.null()),
+      attendees: v.array(userNameValidator),
+      // Whether the caller may record/amend it (eventsAdmin, organiser, leader)
+      canConfirm: v.boolean(),
+      deviation: v.union(
+        v.object({
+          // Expected (rostered, or said yes) but not marked present
+          noShows: v.array(userNameValidator),
+          // Turned up without being expected
+          unexpected: v.array(userNameValidator),
+        }),
+        v.null()
+      ),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) return null;
+
+    const rows = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    const nameOf = (user: Doc<"users">) => ({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: user.name,
+    });
+
+    const attendeeDocs = (await Promise.all(rows.map((row) => ctx.db.get(row.userId)))).filter(
+      (user): user is Doc<"users"> => user !== null
+    );
+    const attendees = attendeeDocs.map(nameOf);
+
+    const confirmedByUser = event.attendanceConfirmedBy
+      ? await ctx.db.get(event.attendanceConfirmedBy)
+      : null;
+
+    const canConfirm = (await eventManagerId(ctx, event)) !== null;
+
+    let deviation: {
+      noShows: ReturnType<typeof nameOf>[];
+      unexpected: ReturnType<typeof nameOf>[];
+    } | null = null;
+
+    if (canConfirm && event.attendanceConfirmedAt) {
+      const { going } = await attendanceFor(ctx, event);
+      const attendedIds = new Set(attendeeDocs.map((user) => user._id));
+
+      const noShowDocs = (
+        await Promise.all([...going].filter((id) => !attendedIds.has(id)).map((id) => ctx.db.get(id)))
+      ).filter((user): user is Doc<"users"> => user !== null && isMemberAccount(user));
+
+      deviation = {
+        noShows: noShowDocs.map(nameOf),
+        unexpected: attendeeDocs.filter((user) => !going.has(user._id)).map(nameOf),
+      };
+    }
+
+    return {
+      confirmedAt: event.attendanceConfirmedAt ?? null,
+      confirmedBy: confirmedByUser ? nameOf(confirmedByUser) : null,
+      attendees,
+      canConfirm,
+      deviation,
+    };
+  },
+});
+
+/**
+ * Everything the confirm-attendance sheet needs: every member, who was
+ * *expected* (rostered or said yes - the prefill), and who is currently
+ * confirmed. Returns null for anyone who may not run this event.
+ */
+export const getAttendanceSheet = query({
+  args: { eventId: v.id("events") },
+  returns: v.union(
+    v.object({
+      members: v.array(userNameValidator),
+      expectedIds: v.array(v.id("users")),
+      confirmedIds: v.array(v.id("users")),
+      confirmedAt: v.union(v.number(), v.null()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || (await eventManagerId(ctx, event)) === null) {
+      return null;
+    }
+
+    const members = (await ctx.db.query("users").collect())
+      .filter(isMemberAccount)
+      .map((user) => ({
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: user.name,
+      }))
+      .sort((a, b) =>
+        `${a.firstName ?? a.name ?? ""}`.localeCompare(`${b.firstName ?? b.name ?? ""}`)
+      );
+    const memberIds = new Set(members.map((member) => member._id));
+
+    const { going } = await attendanceFor(ctx, event);
+    const rows = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    return {
+      members,
+      expectedIds: [...going].filter((id) => memberIds.has(id)),
+      confirmedIds: rows.map((row) => row.userId).filter((id) => memberIds.has(id)),
+      confirmedAt: event.attendanceConfirmedAt ?? null,
+    };
+  },
+});
+
+/**
+ * Record who actually turned up. The submitted list replaces the stored one
+ * wholesale, so amending is just confirming again with a corrected list - there
+ * is no separate edit path to get out of step.
+ *
+ * Nothing here touches an RSVP, a shift pick or a placement: the prediction
+ * stays on the record next to the outcome, which is exactly what makes the
+ * deviation auditable afterwards.
+ */
+export const setEventAttendance = mutation({
+  args: {
+    eventId: v.id("events"),
+    userIds: v.array(v.id("users")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
+
+    // Shared accounts (truck tablets, the DO phone) aren't people and must
+    // never land in an attendance record that gets reported on.
+    const requested = new Set<Id<"users">>();
+    for (const userId of args.userIds) {
+      const user = await ctx.db.get(userId);
+      if (user && isMemberAccount(user)) requested.add(userId);
+    }
+
+    const existing = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const existingIds = new Set(existing.map((row) => row.userId));
+
+    const now = Date.now();
+    for (const row of existing) {
+      if (!requested.has(row.userId)) await ctx.db.delete(row._id);
+    }
+    for (const userId of requested) {
+      if (existingIds.has(userId)) continue;
+      await ctx.db.insert("eventAttendance", {
+        eventId: args.eventId,
+        userId,
+        recordedBy: adminId,
+        recordedAt: now,
+      });
+    }
+
+    await ctx.db.patch(args.eventId, {
+      attendanceConfirmedAt: now,
+      attendanceConfirmedBy: adminId,
+      updatedAt: now,
+    });
+
+    const wasConfirmed = event.attendanceConfirmedAt !== undefined;
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId: adminId,
+      changeType: wasConfirmed ? "attendance_amended" : "attendance_confirmed",
+      field: "attendance",
+      oldValue: wasConfirmed ? existing.length : null,
+      newValue: requested.size,
+      notes: `${requested.size} ${requested.size === 1 ? "member" : "members"} attended`,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Undo a confirmation - drops the recorded list and puts the event back to
+ * "not confirmed yet". For a sheet submitted against the wrong event; correcting
+ * a list is done by confirming again, not by clearing first.
+ */
+export const clearEventAttendance = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
+
+    if (event.attendanceConfirmedAt === undefined) {
+      return null;
+    }
+
+    const existing = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    for (const row of existing) await ctx.db.delete(row._id);
+
+    await ctx.db.patch(args.eventId, {
+      attendanceConfirmedAt: undefined,
+      attendanceConfirmedBy: undefined,
+      updatedAt: Date.now(),
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId: adminId,
+      changeType: "attendance_cleared",
+      field: "attendance",
+      oldValue: existing.length,
+      newValue: null,
+    });
+
+    return null;
   },
 });
 
@@ -1111,8 +1379,19 @@ export const deleteEvent = mutation({
       .query("eventHistory")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
+    const attendance = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
 
-    for (const row of [...rsvps, ...slotResponses, ...allocations, ...slots, ...history]) {
+    for (const row of [
+      ...rsvps,
+      ...slotResponses,
+      ...allocations,
+      ...slots,
+      ...history,
+      ...attendance,
+    ]) {
       await ctx.db.delete(row._id);
     }
 

@@ -136,6 +136,39 @@ export function TeamLeaderBadge({
 }
 
 /**
+ * Attendance state for a past event: either the confirmed headcount, or a
+ * prompt that nobody has confirmed it yet. The prompt is only shown to whoever
+ * can act on it - to everyone else, an unconfirmed event just says nothing.
+ */
+export function AttendanceBadge({
+  attendedCount,
+  canManage = false,
+  className = "",
+}: {
+  attendedCount: number | null;
+  canManage?: boolean;
+  className?: string;
+}) {
+  if (attendedCount === null) {
+    if (!canManage) return null;
+    return (
+      <span
+        className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 ${className}`}
+      >
+        Attendance not confirmed
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 ${className}`}
+    >
+      {attendedCount} attended
+    </span>
+  );
+}
+
+/**
  * Chip showing an RSVP status.
  */
 export function RsvpBadge({ status, className = "" }: { status: RsvpStatus; className?: string }) {

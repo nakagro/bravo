@@ -1113,6 +1113,11 @@ const applicationTables = {
     // without the brigade-wide eventsAdmin access an officer or Social Admin
     // role carries. Absent/empty means nobody beyond the organiser.
     teamLeaderIds: v.optional(v.array(v.id("users"))),
+    // Set when someone confirms who actually turned up (see eventAttendance).
+    // Absent means "nobody has confirmed this yet" - which is a real state worth
+    // showing on a past event, not just a missing value.
+    attendanceConfirmedAt: v.optional(v.number()),
+    attendanceConfirmedBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1182,6 +1187,23 @@ const applicationTables = {
     .index("by_event", ["eventId"])
     .index("by_event_user", ["eventId", "userId"])
     .index("by_slot_user", ["slotId", "userId"]),
+
+  // Who actually turned up. Deliberately a separate layer from both the RSVPs
+  // (what members said beforehand) and eventSlotAllocations (who was rostered):
+  // the whole point is that real attendance deviates from both, and the
+  // deviation is what gets reported to the public-facing systems and audited
+  // later. One row per confirmed attendee; the set is rewritten wholesale by
+  // events.setEventAttendance.
+  eventAttendance: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    recordedBy: v.id("users"),
+    recordedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_event_user", ["eventId", "userId"])
+    // "Which events was this member at?" - the per-member attendance record
+    .index("by_user", ["userId"]),
 
   // Event history for audit trail of changes to events
   eventHistory: defineTable({

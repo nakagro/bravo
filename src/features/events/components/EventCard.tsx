@@ -3,6 +3,7 @@ import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
 import {
+  AttendanceBadge,
   DateBadge,
   EventStatusBadge,
   EventTypeChip,
@@ -31,6 +32,13 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
   const responsesClosed = event.memberResponses === "closed";
   const onRoster = event.myRsvp === "attending";
 
+  // The red accent is a call to action, not decoration: it marks the events
+  // still waiting on an answer from *you*. Once you've replied - yes, no or
+  // maybe - the card goes quiet, so a long list reduces to the ones that need
+  // something. An event with responses closed is never asking, so it stays
+  // quiet too; declining is available there but isn't a question being put.
+  const needsResponse = showRsvp && !responsesClosed && event.myRsvp === null;
+
   const countsSummary = formatCountsSummary(event.counts);
   const showRespondBy =
     showRsvp && !responsesClosed && !!event.respondBy && event.respondBy >= getTodayStr();
@@ -52,9 +60,9 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
       className={`p-3 border-l-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-inset transition-colors cursor-pointer ${
         isCancelled
           ? "border-gray-300 dark:border-gray-600 opacity-70"
-          : isPast
-            ? "border-gray-300 dark:border-gray-600"
-            : "border-red-600"
+          : needsResponse
+            ? "border-red-600"
+            : "border-gray-300 dark:border-gray-600"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -73,6 +81,12 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             {/* Only ever shown to the leader themselves - it marks the events
                 they're running, not a fact about the event for everyone. */}
             {event.iAmTeamLeader && <TeamLeaderBadge />}
+            {/* Past events carry an outcome, not a plan: the confirmed
+                headcount, or - for whoever can fix it - that nobody has
+                confirmed one yet. */}
+            {isPast && !isCancelled && (
+              <AttendanceBadge attendedCount={event.attendedCount} canManage={event.canManage} />
+            )}
             <EventStatusBadge status={event.status} />
           </div>
 

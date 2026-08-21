@@ -19,9 +19,11 @@ import { SlotPicker } from "../features/events/components/SlotPicker";
 import { ShiftBoard } from "../features/events/components/ShiftBoard";
 import { AllocateShiftsDialog } from "../features/events/components/AllocateShiftsDialog";
 import { ResponsesModeDialog } from "../features/events/components/ResponsesModeDialog";
+import { ConfirmAttendanceDialog } from "../features/events/components/ConfirmAttendanceDialog";
 import { DeclineButton } from "../features/events/components/RsvpButtons";
 import { EventForm } from "../features/events/components/EventForm";
 import {
+  AttendanceBadge,
   EventTypeChip,
   SetListBadge,
   TeamLeaderBadge,
@@ -48,6 +50,8 @@ import {
   LockClosedIcon,
   LockOpenIcon,
   EllipsisVerticalIcon,
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import {
   DropdownMenu,
@@ -99,6 +103,8 @@ export function EventDetailPage() {
   const [showAllocateDialog, setShowAllocateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showResponsesDialog, setShowResponsesDialog] = useState(false);
+  const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
   );
@@ -107,6 +113,10 @@ export function EventDetailPage() {
   const event = useQuery(api.events.getEvent, typedEventId ? { eventId: typedEventId } : "skip");
   const attendance = useQuery(
     api.events.getEventAttendance,
+    typedEventId ? { eventId: typedEventId } : "skip"
+  );
+  const confirmedAttendance = useQuery(
+    api.events.getConfirmedAttendance,
     typedEventId ? { eventId: typedEventId } : "skip"
   );
   // Used to mark "you" in the (non-shift) attending list. Shift events carry
@@ -224,6 +234,27 @@ export function EventDetailPage() {
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
   // Whether there's still anything to ask *you* - the zone-2 card
   const showRsvp = !isCancelled && !isPast;
+  // Attendance is a record of what happened, so it only makes sense once the
+  // event has begun - normally after it, but a same-day sign-off is fair too.
+  const hasStarted = !isCancelled && event.startDate <= getTodayStr();
+  const attendanceConfirmed = confirmedAttendance?.confirmedAt != null;
+  const attendees = confirmedAttendance?.attendees ?? [];
+
+  const handleCopyAttendees = async () => {
+    // What gets typed into the public-facing system afterwards: the event, the
+    // date, then one name per line.
+    const lines = [...attendees].sort(compareUserNames).map(formatUserName);
+    const text = [`${event.title} - ${formatShortDate(event.startDate)}`, ...lines].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success(`Copied ${lines.length} ${lines.length === 1 ? "name" : "names"}`);
+    } catch (error) {
+      console.error("Error copying attendance list:", error);
+      toast.error("Couldn't copy the list");
+    }
+  };
   // The organiser has set who's going; members can't opt in, only decline
   const responsesClosed = event.memberResponses === "closed";
   const onRoster = event.myRsvp === "attending";
@@ -308,6 +339,14 @@ export function EventDetailPage() {
         />
       )}
 
+      {typedEventId && (
+        <ConfirmAttendanceDialog
+          open={showAttendanceDialog}
+          onClose={() => setShowAttendanceDialog(false)}
+          eventId={typedEventId}
+        />
+      )}
+
       <div className="flex items-center justify-between gap-3">
         {backButton}
 
@@ -336,6 +375,17 @@ export function EventDetailPage() {
               <DropdownMenuContent align="end" className="w-52">
                 {event.status === "active" ? (
                   <>
+                    {/* Once the event has run, confirming who was actually there
+                        is the job that's left - so it leads the menu. */}
+                    {hasStarted && (
+                      <>
+                        <DropdownMenuItem onSelect={() => setShowAttendanceDialog(true)}>
+                          <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                          {attendanceConfirmed ? "Amend attendance" : "Confirm attendance"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem onSelect={() => setShowAllocateDialog(true)}>
                       <UsersIcon className="h-4 w-4" />
                       {event.hasShifts ? "Allocate shifts" : "Set who's going"}
@@ -430,9 +480,15 @@ export function EventDetailPage() {
                 </span>
               )}
               {isPast && !isCancelled && (
-                <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                  Past event
-                </span>
+                <>
+                  <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                    Past event
+                  </span>
+                  <AttendanceBadge
+                    attendedCount={attendanceConfirmed ? attendees.length : null}
+                    canManage={canManageEvents}
+                  />
+                </>
               )}
             </div>
             <h1
@@ -597,13 +653,128 @@ export function EventDetailPage() {
             )}
           </div>
 
+          {/* Attendance - what actually happened, kept apart from the RSVP
+              board above it. The two are allowed to disagree; that difference
+              is the whole reason this exists, and it's what gets reported to
+              the public-facing system and audited later. */}
+          {hasStarted && (attendanceConfirmed || canManageEvents) && (
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
+                    Who attended{attendanceConfirmed ? ` (${attendees.length})` : ""}
+                  </h3>
+                  {attendanceConfirmed && confirmedAttendance?.confirmedAt && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Confirmed
+                      {confirmedAttendance.confirmedBy
+                        ? ` by ${formatUserName(confirmedAttendance.confirmedBy)}`
+                        : ""}{" "}
+                      on{" "}
+                      {new Date(confirmedAttendance.confirmedAt).toLocaleDateString("en-AU", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                  )}
+                </div>
+                {attendanceConfirmed && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={handleCopyAttendees}
+                      title="Copy the list of names"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      {copied ? (
+                        <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <ClipboardDocumentIcon className="h-4 w-4" />
+                      )}
+                      {copied ? "Copied" : "Copy names"}
+                    </button>
+                    {canManageEvents && (
+                      <button
+                        onClick={() => setShowAttendanceDialog(true)}
+                        className="px-2.5 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Amend
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!attendanceConfirmed ? (
+                <button
+                  onClick={() => setShowAttendanceDialog(true)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                  Confirm attendance
+                </button>
+              ) : attendees.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Confirmed as nobody attending.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {[...attendees].sort(compareUserNames).map((member) => (
+                    <MemberChip
+                      key={member._id}
+                      member={member}
+                      isMe={member._id === myUserId}
+                      isLeader={leaderIds.includes(member._id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Where it deviated from the plan - managers only, same rule as
+                  the response breakdown. Not a reprimand, just the difference
+                  someone has to be able to see and explain. */}
+              {confirmedAttendance?.deviation &&
+                (confirmedAttendance.deviation.noShows.length > 0 ||
+                  confirmedAttendance.deviation.unexpected.length > 0) && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                    {confirmedAttendance.deviation.noShows.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-600 dark:text-gray-300">
+                          Expected, didn&apos;t attend:
+                        </span>{" "}
+                        {[...confirmedAttendance.deviation.noShows]
+                          .sort(compareUserNames)
+                          .map(formatUserName)
+                          .join(", ")}
+                      </div>
+                    )}
+                    {confirmedAttendance.deviation.unexpected.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-600 dark:text-gray-300">
+                          Attended without responding:
+                        </span>{" "}
+                        {[...confirmedAttendance.deviation.unexpected]
+                          .sort(compareUserNames)
+                          .map(formatUserName)
+                          .join(", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
+
           {/* Zone 3 - the board: read-only turnout for everyone. Shift events get
               the per-shift ShiftBoard (roster + interested + coverage); simple
               events get the flat "going" list. Purely display - all input lives
               in the Your-status card above, so nothing here is a control. */}
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
             <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 mb-3">
-              {responsesClosed && !event.hasShifts ? "On the roster" : "Who's coming"}
+              {responsesClosed && !event.hasShifts
+                ? "On the roster"
+                : hasStarted
+                  ? "Who said they'd come"
+                  : "Who's coming"}
               {!event.hasShifts && attendance ? ` (${attendance.attending.length})` : ""}
             </h3>
             {event.hasShifts ? (
