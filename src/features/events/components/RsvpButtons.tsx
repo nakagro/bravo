@@ -155,6 +155,8 @@ interface ShiftRsvpButtonsProps {
   eventId: Id<"events">;
   /** "attending" = has a slot pick/allocation, "notAttending" = declined */
   myRsvp: RsvpStatus | null;
+  /** Allocated to a shift by the organiser, not just interested */
+  rostered?: boolean;
   disabled?: boolean;
 }
 
@@ -162,13 +164,26 @@ interface ShiftRsvpButtonsProps {
  * List-card response controls for a shift event, where picking a slot is the
  * RSVP. "Pick a shift" navigates to the detail page (the slot list lives
  * there); "Can't make it" toggles the notAttending rsvp via declineSlotEvent.
+ *
+ * The button separates the two states members kept confusing: offering shifts
+ * is an answer ("RSVP sent", green, same as an interested shift card), being
+ * allocated one is a commitment ("You're rostered", indigo, matching the
+ * rostered styling and wording on the detail page).
  */
-export function ShiftRsvpButtons({ eventId, myRsvp, disabled = false }: ShiftRsvpButtonsProps) {
+export function ShiftRsvpButtons({
+  eventId,
+  myRsvp,
+  rostered = false,
+  disabled = false,
+}: ShiftRsvpButtonsProps) {
   const navigate = useNavigate();
   const declineEvent = useMutation(api.events.declineSlotEvent);
 
-  const onShift = myRsvp === "attending";
   const declined = myRsvp === "notAttending";
+  // A rostered member who has since declined is a conflict for the organiser to
+  // resolve, not a commitment to advertise back - "can't make it" wins here.
+  const onRoster = rostered && !declined;
+  const offered = myRsvp === "attending" && !onRoster;
 
   const handleDecline = async () => {
     try {
@@ -193,11 +208,19 @@ export function ShiftRsvpButtons({ eventId, myRsvp, disabled = false }: ShiftRsv
         disabled={disabled}
         onClick={() => navigate(`/events/${eventId}`)}
         className={`${baseClasses} ${
-          onShift ? "bg-green-600 text-white border-green-600 shadow-md scale-[1.02]" : idleClasses
+          onRoster
+            ? "bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.02]"
+            : offered
+              ? "bg-green-600 text-white border-green-600 shadow-md scale-[1.02]"
+              : idleClasses
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        {onShift ? <CheckIcon className="h-4 w-4" /> : <ClockIcon className="h-4 w-4" />}
-        {onShift ? "On a shift" : "Pick a shift"}
+        {onRoster || offered ? (
+          <CheckIcon className="h-4 w-4" />
+        ) : (
+          <ClockIcon className="h-4 w-4" />
+        )}
+        {onRoster ? "You're rostered" : offered ? "RSVP sent" : "Pick a shift"}
       </button>
       <button
         type="button"

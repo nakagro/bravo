@@ -21,7 +21,11 @@ import { AllocateShiftsDialog } from "../features/events/components/AllocateShif
 import { ResponsesModeDialog } from "../features/events/components/ResponsesModeDialog";
 import { DeclineButton } from "../features/events/components/RsvpButtons";
 import { EventForm } from "../features/events/components/EventForm";
-import { EventTypeChip, SetListBadge } from "../features/events/components/badges";
+import {
+  EventTypeChip,
+  SetListBadge,
+  TeamLeaderBadge,
+} from "../features/events/components/badges";
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
@@ -105,8 +109,6 @@ export function EventDetailPage() {
     api.events.getEventAttendance,
     typedEventId ? { eventId: typedEventId } : "skip"
   );
-  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
-  const canManageEvents = moduleAccess?.eventsAdmin === true;
   // Used to mark "you" in the (non-shift) attending list. Shift events carry
   // their own per-shift turnout (with its own "you" marking) in the ShiftBoard.
   const myUserId = useQuery(api.messages.getCurrentUserId);
@@ -214,6 +216,10 @@ export function EventDetailPage() {
     );
   }
 
+  // Who may act on *this* event: Events Admin, the organiser, or a named team
+  // leader. Permanent deletion stays with Events Admin (`canDelete`).
+  const canManageEvents = event.canManage;
+  const leaderIds = event.teamLeaderIds ?? [];
   const isCancelled = event.status === "cancelled";
   const isPast = (event.endDate ?? event.startDate) < getTodayStr();
   // Whether there's still anything to ask *you* - the zone-2 card
@@ -362,13 +368,17 @@ export function EventDetailPage() {
                       Restore
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() => setShowDeleteDialog(true)}
-                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
+                    {/* Irreversible, so it stays with Events Admin - running
+                        one event isn't a mandate to erase its record */}
+                    {event.canDelete && (
+                      <DropdownMenuItem
+                        onSelect={() => setShowDeleteDialog(true)}
+                        className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -412,6 +422,8 @@ export function EventDetailPage() {
                 className="text-[11px] font-bold"
               />
               {responsesClosed && <SetListBadge />}
+              {/* Says out loud why this member has the organiser controls */}
+              {event.iAmTeamLeader && <TeamLeaderBadge />}
               {isCancelled && (
                 <span className="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 whitespace-nowrap">
                   Cancelled
@@ -535,6 +547,20 @@ export function EventDetailPage() {
                   {formatUserName(event.createdByUser)}
                 </span>
               )}
+              {/* Team leaders are the people to find on the day - worth naming
+                  to everyone, not just to the admins who appointed them. */}
+              {event.teamLeaders.length > 0 &&
+                detailSection(
+                  event.teamLeaders.length === 1 ? "Team leader" : "Team leaders",
+                  <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {[...event.teamLeaders].sort(compareUserNames).map((leader) => (
+                      <span key={leader._id} className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        {formatUserName(leader)}
+                      </span>
+                    ))}
+                  </span>
+                )}
               {/* A deadline for responses means nothing while responses are
                   closed - but the stored date is kept, ready for reopening */}
               {event.respondBy &&
@@ -582,7 +608,7 @@ export function EventDetailPage() {
             </h3>
             {event.hasShifts ? (
               <>
-                <ShiftBoard eventId={event._id} />
+                <ShiftBoard eventId={event._id} leaderIds={leaderIds} />
                 {/* Rostered, but not against any shift - otherwise they'd
                     appear nowhere on this page */}
                 {attendance && attendance.rosteredNoShift.length > 0 && (
@@ -596,6 +622,7 @@ export function EventDetailPage() {
                           key={member._id}
                           member={member}
                           isMe={member._id === myUserId}
+                          isLeader={leaderIds.includes(member._id)}
                         />
                       ))}
                     </div>
@@ -615,7 +642,12 @@ export function EventDetailPage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {[...attendance.attending].sort(compareUserNames).map((member) => (
-                  <MemberChip key={member._id} member={member} isMe={member._id === myUserId} />
+                  <MemberChip
+                    key={member._id}
+                    member={member}
+                    isMe={member._id === myUserId}
+                    isLeader={leaderIds.includes(member._id)}
+                  />
                 ))}
               </div>
             )}
@@ -716,7 +748,15 @@ interface ChipMember {
  * make it" get their own accents so you can find yourself and spot conflicts at
  * a glance. Shift events render their own chips inside the ShiftBoard.
  */
-function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boolean }) {
+function MemberChip({
+  member,
+  isMe = false,
+  isLeader = false,
+}: {
+  member: ChipMember;
+  isMe?: boolean;
+  isLeader?: boolean;
+}) {
   if (member.declined) {
     return (
       <span
@@ -739,6 +779,7 @@ function MemberChip({ member, isMe = false }: { member: ChipMember; isMe?: boole
       }`}
     >
       {formatUserName(member)}
+      {isLeader && <TeamLeaderBadge compact />}
       {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
     </span>
   );

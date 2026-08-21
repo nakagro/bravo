@@ -1,9 +1,21 @@
 # Changelog
 
+## [2026.08.21]
+- Events: An event can now have team leaders. A team leader gets the organiser's tools for that one event only: editing it, allocating shifts, setting who's going, opening and closing responses, notifying members, and seeing the full response list including who hasn't answered. It grants nothing anywhere else in Events, and permanently deleting an event still needs Events Admin. Set them under "Team leaders" when creating or editing an event; the organiser or an Events Admin can appoint, and a team leader can't appoint others.
+- Events: Team leaders are named on the event page so everyone knows who to find on the day, tagged beside their name wherever they appear in a roster, and shown a "Team leader" badge on their own events in the Upcoming list.
+- Events: The organiser of an event can now manage it even if they aren't an officer or Social Admin. Handing an event over previously left the new organiser unable to edit it, despite being told they could.
+- Events: On the Upcoming list, a shift event you've put your hand up for now says "RSVP sent" instead of "On a shift", which read as though a shift had already been given to you. Once the organiser allocates you, it changes to "You're rostered" in the same colour the event page uses for a shift you're rostered on.
+
+## [2026.08.19]
+- Duty Crew: A submitted week now keeps a record of the crew who were on that week, so looking back at past weeks shows who was actually rostered rather than whoever is in that crew today.
+
+## [2026.08.17]
+- Admin: Create User moved into a collapsible section, so User Management is the first thing on the page.
+- Events: Member lists on an event, the shift board, the attending list and the response breakdown, are now sorted alphabetically by the name shown on screen.
+
 ## [2026.08.16]
 - Duty Crew: Template checks can now include required subitems for the individual steps that must be completed alongside a larger check. Each subitem is shown under its parent check and can be ticked off separately, while completed weeks keep the exact checklist they were submitted with.
 - Duty Crew: Crew leaders can optionally allocate a whole area, an individual check or a subitem to someone in that week's crew. Individual allocations override an area allocation, and everyone can see who each task is assigned to.
-- Member Records: Members are now listed by rank, with Captains first, then Lieutenants, followed by everyone else alphabetically by surname. Search results use the same ordering.
 - BA Skills / Kiosk: BA usage logged from the station tablet now records and displays the tablet service account as the submitter, instead of making it appear that the verifying member submitted it.
 - Events: An existing event can now be handed over to another member by changing its organiser. The new organiser gains edit access and responsibility for managing responses.
 - Dashboard: Upcoming Events now includes events created in BRAVO alongside the external calendar feed, including multi-day events that are already in progress. BRAVO events link directly to their event and RSVP details.

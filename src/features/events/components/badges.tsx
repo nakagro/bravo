@@ -102,6 +102,40 @@ export function SetListBadge({ className = "" }: { className?: string }) {
 }
 
 /**
+ * Marks a member as a team leader for this event - the person to find on the
+ * day. Also explains, to the leader themselves, why they can see the organiser
+ * controls on an event they'd otherwise have no admin rights over.
+ *
+ * `compact` is the inline form used inside a name chip, where it sits beside a
+ * name rather than standing on its own.
+ */
+export function TeamLeaderBadge({
+  className = "",
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <span
+        title="Team leader"
+        className={`text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 ${className}`}
+      >
+        Lead
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full whitespace-nowrap bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 ${className}`}
+    >
+      Team leader
+    </span>
+  );
+}
+
+/**
  * Chip showing an RSVP status.
  */
 export function RsvpBadge({ status, className = "" }: { status: RsvpStatus; className?: string }) {

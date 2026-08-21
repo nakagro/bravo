@@ -52,7 +52,8 @@ function formatTime(timeStr: string): string {
 
 /**
  * Organiser-triggered broadcast to all members about an event, with an
- * optional custom message. Gated to eventsAdmin.
+ * optional custom message. Gated to whoever runs the event - eventsAdmin, the
+ * organiser, or a named team leader (`canManage` carries that rule).
  */
 export const notifyEventMembers = action({
   args: {
@@ -66,16 +67,12 @@ export const notifyEventMembers = action({
       throw new Error("You must be signed in");
     }
 
-    const hasAccess = await ctx.runQuery(api.modules.checkModuleAccess, {
-      moduleId: "eventsAdmin",
-    });
-    if (!hasAccess) {
-      throw new Error("You do not have access to notify members about events");
-    }
-
     const event = await ctx.runQuery(api.events.getEvent, { eventId: args.eventId });
     if (!event) {
       throw new Error("Event not found");
+    }
+    if (!event.canManage) {
+      throw new Error("You do not have access to notify members about events");
     }
 
     let body = args.message?.trim();

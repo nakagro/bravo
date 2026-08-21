@@ -98,6 +98,20 @@ export const NAV_ITEMS: NavItem[] = [
       fg: "text-green-600 dark:text-green-400",
     },
   },
+  // Listed here so its dashboard tile sits beside Availability; the hamburger
+  // menu still files it under Brigade via `group`.
+  {
+    id: "events",
+    label: "Events",
+    path: "/events",
+    icon: CalendarCheck,
+    group: "brigade",
+    color: {
+      bg: "bg-emerald-100 dark:bg-emerald-900/20",
+      bgHover: "group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/40",
+      fg: "text-emerald-600 dark:text-emerald-400",
+    },
+  },
   {
     id: "dutyCrew",
     label: "Duty Crew",
@@ -189,24 +203,14 @@ export const NAV_ITEMS: NavItem[] = [
   // --- Brigade ---
   // Order here is the order tiles appear in the menu and dashboard grids.
   {
-    id: "events",
-    label: "Events",
-    path: "/events",
-    icon: CalendarCheck,
-    group: "brigade",
-    hideOnDashboard: true,
-    color: {
-      bg: "bg-emerald-100 dark:bg-emerald-900/20",
-      bgHover: "group-hover:bg-emerald-200 dark:group-hover:bg-emerald-900/40",
-      fg: "text-emerald-600 dark:text-emerald-400",
-    },
-  },
-  {
     id: "calendar",
     label: "Calendar",
     path: "/calendar",
     icon: CalendarRange,
     group: "brigade",
+    // Events replaced the calendar tile on the dashboard; the calendar page
+    // stays reachable from the menu.
+    hideOnDashboard: true,
     color: {
       bg: "bg-purple-100 dark:bg-purple-900/20",
       bgHover: "group-hover:bg-purple-200 dark:group-hover:bg-purple-900/40",

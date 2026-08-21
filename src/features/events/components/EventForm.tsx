@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, X } from "lucide-react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -40,6 +40,8 @@ const eventFormSchema = z
     eventTypeId: z.string(),
     // Edit mode only; the creator is the organiser of a brand new event
     organiserId: z.string(),
+    // Members who can run this one event without brigade-wide Events Admin
+    teamLeaderIds: z.array(z.string()),
     location: z.string(),
     address: z.string(),
     startDate: z.string().min(1, "Please select a date"),
@@ -83,6 +85,7 @@ const blankDefaults: EventFormValues = {
   title: "",
   eventTypeId: "",
   organiserId: "",
+  teamLeaderIds: [],
   location: "",
   address: "",
   startDate: "",
@@ -124,8 +127,9 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   const createEvent = useMutation(api.events.createEvent);
   const updateEvent = useMutation(api.events.updateEvent);
   const changeOrganiser = useMutation(api.events.changeOrganiser);
-  // Only needed to populate the hand-over picker when editing
-  const members = useQuery(api.users.getMemberUsers, eventId ? {} : "skip");
+  const setTeamLeaders = useMutation(api.events.setTeamLeaders);
+  // Populates the hand-over picker and the team-leader picker
+  const members = useQuery(api.users.getMemberUsers);
   const memberOptions: MemberOption[] = useMemo(
     () =>
       (members ?? [])
@@ -143,6 +147,9 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   );
 
   const isEditing = eventId !== null;
+  // Naming team leaders belongs to the organiser and Events Admin, not to team
+  // leaders themselves. A brand new event belongs to whoever is creating it.
+  const canAppointLeaders = !isEditing || existingEvent?.canAppointLeaders === true;
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -178,6 +185,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         title: existingEvent.title,
         eventTypeId: existingEvent.eventTypeId || "",
         organiserId: existingEvent.createdBy,
+        teamLeaderIds: existingEvent.teamLeaderIds ?? [],
         location: existingEvent.location || "",
         address: existingEvent.address || "",
         startDate: existingEvent.startDate,
@@ -251,6 +259,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             organiserId: values.organiserId as Id<"users">,
           });
         }
+        // Same reasoning as the hand-over: its own mutation, its own audit
+        // entry. Runs after the organiser change so the server sees the final
+        // organiser when it drops them from their own leader list.
+        if (canAppointLeaders) {
+          await setTeamLeaders({ eventId, userIds: values.teamLeaderIds as Id<"users">[] });
+        }
         await updateEvent({
           eventId,
           ...fields,
@@ -262,7 +276,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         guard.release();
         toast.success("Event updated");
       } else {
-        await createEvent({
+        const newEventId = await createEvent({
           ...fields,
           eventTypeId: (fields.eventTypeId || undefined) as Id<"eventTypes"> | undefined,
           location: fields.location || undefined,
@@ -278,6 +292,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
           slots: values.hasShifts ? slots : undefined,
         });
+        if (values.teamLeaderIds.length > 0) {
+          await setTeamLeaders({
+            eventId: newEventId,
+            userIds: values.teamLeaderIds as Id<"users">[],
+          });
+        }
         // Event saved - the draft has served its purpose.
         newEventDraft = null;
         guard.release();
@@ -389,6 +409,59 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                 <FormMessage />
               </FormItem>
             )}
+          />
+        )}
+
+        {/* Team leaders. The one place per-event authority is granted: named
+            members get the organiser's toolkit for this event only. */}
+        {canAppointLeaders && (
+          <FormField
+            control={form.control}
+            name="teamLeaderIds"
+            render={({ field }) => {
+              const selected = field.value as string[];
+              const organiserId = form.watch("organiserId");
+              return (
+                <FormItem>
+                  <MemberCombobox
+                    label="Team leaders"
+                    options={memberOptions.filter(
+                      (option) => !selected.includes(option._id) && option._id !== organiserId
+                    )}
+                    // Always empty: this picker adds to the list below rather
+                    // than holding a single selection.
+                    value={null}
+                    onChange={(value) => value && field.onChange([...selected, value])}
+                    placeholder="Add a member"
+                    helperText="Team leaders can edit this event, allocate shifts, open or close responses, notify members and see the full responses - for this event only. No Events Admin access anywhere else."
+                  />
+                  {selected.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selected.map((id) => (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm bg-amber-50 dark:bg-amber-900/25 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200"
+                        >
+                          {memberOptions.find((option) => option._id === id)?.name ??
+                            "Unknown member"}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              field.onChange(selected.filter((value) => value !== id))
+                            }
+                            aria-label="Remove team leader"
+                            className="p-0.5 rounded-full hover:bg-amber-200/60 dark:hover:bg-amber-800/60"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         )}
 

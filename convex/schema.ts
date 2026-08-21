@@ -1108,6 +1108,11 @@ const applicationTables = {
     cancelledAt: v.optional(v.number()),
     cancellationReason: v.optional(v.string()),
     createdBy: v.id("users"),
+    // Members trusted to run *this* event: they get the organiser's toolkit
+    // (edit, roster, responses, notify, cancel) scoped to this one event,
+    // without the brigade-wide eventsAdmin access an officer or Social Admin
+    // role carries. Absent/empty means nobody beyond the organiser.
+    teamLeaderIds: v.optional(v.array(v.id("users"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

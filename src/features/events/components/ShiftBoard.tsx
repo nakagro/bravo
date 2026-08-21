@@ -4,9 +4,12 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
+import { TeamLeaderBadge } from "./badges";
 
 interface ShiftBoardProps {
   eventId: Id<"events">;
+  /** Team leaders for the event - tagged wherever they appear on the board */
+  leaderIds?: Id<"users">[];
 }
 
 /** A member as it arrives on a slot (roster or interest list). */
@@ -34,7 +37,7 @@ interface SlotMember {
  *    (yet) rostered (muted). Before allocation this is the whole story; after,
  *    it's the bench, so nobody who offered ever disappears.
  */
-export function ShiftBoard({ eventId }: ShiftBoardProps) {
+export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
   const slots = useQuery(api.events.getEventSlots, { eventId });
   // Marks "you" in the lists - the one thing you can't work out by looking,
   // since offers get spread across shifts by the organiser
@@ -110,6 +113,7 @@ export function ShiftBoard({ eventId }: ShiftBoardProps) {
                     members={rostered}
                     tone="rostered"
                     myUserId={myUserId ?? null}
+                    leaderIds={leaderIds}
                   />
                 )}
                 {interested.length > 0 && (
@@ -120,6 +124,7 @@ export function ShiftBoard({ eventId }: ShiftBoardProps) {
                     members={interested}
                     tone="interested"
                     myUserId={myUserId ?? null}
+                    leaderIds={leaderIds}
                   />
                 )}
               </div>
@@ -143,11 +148,13 @@ function BoardTier({
   members,
   tone,
   myUserId,
+  leaderIds,
 }: {
   label: string;
   members: SlotMember[];
   tone: "rostered" | "interested";
   myUserId: Id<"users"> | null;
+  leaderIds: Id<"users">[];
 }) {
   return (
     <div>
@@ -161,6 +168,7 @@ function BoardTier({
             member={member}
             tone={tone}
             isMe={member._id === myUserId}
+            isLeader={leaderIds.includes(member._id)}
           />
         ))}
       </div>
@@ -172,10 +180,12 @@ function BoardChip({
   member,
   tone,
   isMe,
+  isLeader,
 }: {
   member: SlotMember;
   tone: "rostered" | "interested";
   isMe: boolean;
+  isLeader: boolean;
 }) {
   if (member.declined) {
     return (
@@ -202,6 +212,7 @@ function BoardChip({
       }`}
     >
       {formatUserName(member)}
+      {isLeader && <TeamLeaderBadge compact />}
       {isMe && <span className="text-[10px] text-red-700 dark:text-red-300">you</span>}
     </span>
   );

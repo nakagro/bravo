@@ -8,6 +8,7 @@ import {
   EventTypeChip,
   SetListBadge,
   ShiftsBadge,
+  TeamLeaderBadge,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
@@ -69,6 +70,9 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             {event.hasShifts && <ShiftsBadge />}
             {responsesClosed && <SetListBadge />}
+            {/* Only ever shown to the leader themselves - it marks the events
+                they're running, not a fact about the event for everyone. */}
+            {event.iAmTeamLeader && <TeamLeaderBadge />}
             <EventStatusBadge status={event.status} />
           </div>
 
@@ -123,7 +127,11 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
                   />
                 ) : null
               ) : event.hasShifts ? (
-                <ShiftRsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+                <ShiftRsvpButtons
+                  eventId={event._id}
+                  myRsvp={event.myRsvp}
+                  rostered={event.iAmRostered}
+                />
               ) : (
                 <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
               )}

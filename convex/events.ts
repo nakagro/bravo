@@ -50,6 +50,55 @@ export async function hasEventsAdmin(ctx: QueryCtx): Promise<Id<"users"> | null>
   }
 }
 
+/**
+ * Who is trusted with *this* event: the brigade-wide eventsAdmin holders plus
+ * the two per-event roles - the organiser (`createdBy`) and anyone named as a
+ * team leader.
+ *
+ * The per-event roles exist because running an event on the day and holding an
+ * officer rank or the Social Admin role are different things. A team leader gets
+ * the organiser's toolkit for one event only: edit, roster, open/close
+ * responses, notify, cancel, and the full response breakdown. It is never a
+ * route to brigade-wide access - the Admin tab, creating events, event types and
+ * permanent deletion all stay on `requireEventsAdmin`.
+ */
+export function isEventTeamLeader(event: Doc<"events">, userId: Id<"users">): boolean {
+  return event.teamLeaderIds?.includes(userId) ?? false;
+}
+
+/**
+ * Non-throwing per-event permission check. Returns the signed-in user id when
+ * they may manage this event, otherwise null.
+ */
+export async function eventManagerId(
+  ctx: QueryCtx,
+  event: Doc<"events">
+): Promise<Id<"users"> | null> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return null;
+  if (event.createdBy === userId || isEventTeamLeader(event, userId)) return userId;
+  return await hasEventsAdmin(ctx);
+}
+
+/**
+ * Throwing variant, used by the mutations a team leader is allowed to run.
+ * Loads the event too, since every caller needs it.
+ */
+export async function requireEventManager(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">
+): Promise<{ userId: Id<"users">; event: Doc<"events"> }> {
+  const signedInId = await requireSignedIn(ctx);
+  const event = await ctx.db.get(eventId);
+  if (!event) throw new Error("Event not found");
+
+  if (event.createdBy === signedInId || isEventTeamLeader(event, signedInId)) {
+    return { userId: signedInId, event };
+  }
+
+  return { userId: await requireEventsAdmin(ctx), event };
+}
+
 // Today as a YYYY-MM-DD string in AEST (same hardcoded UTC+10 assumption as
 // crons.ts - drifts 1h during AEDT, accepted)
 function aestTodayStr(): string {
@@ -91,6 +140,7 @@ const enrichedEventValidator = v.object({
   cancelledAt: v.optional(v.number()),
   cancellationReason: v.optional(v.string()),
   createdBy: v.id("users"),
+  teamLeaderIds: v.optional(v.array(v.id("users"))),
   createdAt: v.number(),
   updatedAt: v.number(),
   counts: v.object({
@@ -100,6 +150,25 @@ const enrichedEventValidator = v.object({
   }),
   myRsvp: v.union(rsvpStatusValidator, v.null()),
   createdByUser: v.optional(userNameValidator),
+  // Named team leaders, resolved to names for display. Deleted members drop out.
+  teamLeaders: v.array(userNameValidator),
+  // Whether *the caller* may manage this event - eventsAdmin, the organiser, or a
+  // team leader. The flag every event-scoped admin control hangs off, so the
+  // client never has to re-derive the rule.
+  canManage: v.boolean(),
+  // Whether the caller is one of the team leaders - drives the badge that tells
+  // them (and only them) that this is an event they're running.
+  iAmTeamLeader: v.boolean(),
+  // Whether the caller has been *allocated* (rostered), as opposed to having
+  // only offered. Both read as "attending" in myRsvp, but they're different
+  // things to say to the member: one is an answer, the other is a commitment.
+  iAmRostered: v.boolean(),
+  // Naming team leaders is the organiser's / eventsAdmin's call, never a team
+  // leader's - the role must not be able to widen itself.
+  canAppointLeaders: v.boolean(),
+  // Permanent deletion stays brigade-wide eventsAdmin: it's irreversible, and
+  // running one event isn't a mandate to erase its record.
+  canDelete: v.boolean(),
   // Resolved category (name + colour) from eventTypeId; null when unset/deleted
   eventTypeInfo: v.union(
     v.object({
@@ -137,6 +206,9 @@ async function attendanceFor(
   event: Doc<"events">
 ): Promise<{
   going: Set<Id<"users">>;
+  // The official roster alone - a subset of `going`, and the difference between
+  // "I've offered" and "I've been given a shift"
+  rostered: Set<Id<"users">>;
   declined: Set<Id<"users">>;
   rsvps: Doc<"eventRsvps">[];
 }> {
@@ -151,7 +223,8 @@ async function attendanceFor(
       .collect(),
   ]);
 
-  const going = new Set<Id<"users">>(allocations.map((a) => a.userId));
+  const rostered = new Set<Id<"users">>(allocations.map((a) => a.userId));
+  const going = new Set<Id<"users">>(rostered);
 
   if (responsesAreOpen(event)) {
     if (event.hasShifts) {
@@ -172,11 +245,21 @@ async function attendanceFor(
   );
   for (const id of declined) going.delete(id);
 
-  return { going, declined, rsvps };
+  return { going, rostered, declined, rsvps };
 }
 
-async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"users">) {
-  const { going, declined, rsvps } = await attendanceFor(ctx, event);
+/**
+ * `viewerIsAdmin` is passed in rather than derived per event: it's the same
+ * answer for every row in a list, and deriving it costs a user + moduleSettings
+ * read each time.
+ */
+async function enrichEvent(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+  userId: Id<"users">,
+  viewerIsAdmin: boolean
+) {
+  const { going, rostered, declined, rsvps } = await attendanceFor(ctx, event);
 
   const counts = { attending: going.size, notAttending: declined.size, maybe: 0 };
   let myRsvp: "attending" | "notAttending" | "maybe" | null = null;
@@ -200,6 +283,15 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
 
   const createdByUser = await ctx.db.get(event.createdBy);
 
+  const teamLeaders = (await Promise.all((event.teamLeaderIds ?? []).map((id) => ctx.db.get(id))))
+    .filter((user): user is Doc<"users"> => user !== null)
+    .map((user) => ({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: user.name,
+    }));
+
   let eventTypeInfo: { _id: Id<"eventTypes">; name: string; color: string } | null = null;
   if (event.eventTypeId) {
     const type = await ctx.db.get(event.eventTypeId);
@@ -213,6 +305,12 @@ async function enrichEvent(ctx: QueryCtx, event: Doc<"events">, userId: Id<"user
     counts,
     myRsvp,
     eventTypeInfo,
+    teamLeaders,
+    canManage: viewerIsAdmin || event.createdBy === userId || isEventTeamLeader(event, userId),
+    iAmTeamLeader: isEventTeamLeader(event, userId),
+    iAmRostered: rostered.has(userId),
+    canAppointLeaders: viewerIsAdmin || event.createdBy === userId,
+    canDelete: viewerIsAdmin,
     createdByUser: createdByUser
       ? {
           _id: createdByUser._id,
@@ -366,13 +464,15 @@ export const getUpcomingEvents = query({
       return [];
     }
 
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+
     const events = await ctx.db
       .query("events")
       .withIndex("by_startDate", (q) => q.gte("startDate", args.fromDate))
       .order("asc")
       .collect();
 
-    return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId)));
+    return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
   },
 });
 
@@ -389,13 +489,15 @@ export const getPastEvents = query({
       return [];
     }
 
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+
     const events = await ctx.db
       .query("events")
       .withIndex("by_startDate", (q) => q.lt("startDate", args.beforeDate))
       .order("desc")
       .take(50);
 
-    return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId)));
+    return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
   },
 });
 
@@ -422,6 +524,8 @@ export const getPastEventsPaged = query({
       return { page: [], isDone: true, continueCursor: "" };
     }
 
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+
     const term = args.search?.trim();
 
     if (term) {
@@ -432,7 +536,7 @@ export const getPastEventsPaged = query({
         .withSearchIndex("search_title", (q) => q.search("title", term))
         .paginate(args.paginationOpts);
       const past = result.page.filter((event) => event.startDate < args.beforeDate);
-      const page = await Promise.all(past.map((event) => enrichEvent(ctx, event, userId)));
+      const page = await Promise.all(past.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
       return { page, isDone: result.isDone, continueCursor: result.continueCursor };
     }
 
@@ -441,7 +545,7 @@ export const getPastEventsPaged = query({
       .withIndex("by_startDate", (q) => q.lt("startDate", args.beforeDate))
       .order("desc")
       .paginate(args.paginationOpts);
-    const page = await Promise.all(result.page.map((event) => enrichEvent(ctx, event, userId)));
+    const page = await Promise.all(result.page.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
     return { page, isDone: result.isDone, continueCursor: result.continueCursor };
   },
 });
@@ -463,7 +567,9 @@ export const getEvent = query({
       return null;
     }
 
-    return await enrichEvent(ctx, event, userId);
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+
+    return await enrichEvent(ctx, event, userId, viewerIsAdmin);
   },
 });
 
@@ -537,9 +643,9 @@ export const getEventAttendance = query({
       ? attending.filter((member) => eventLevelIds.has(member._id))
       : [];
 
-    // Full breakdown (incl. non-responders) is admin-only
-    const isAdmin = (await hasEventsAdmin(ctx)) !== null;
-    if (!isAdmin) {
+    // The full breakdown (incl. non-responders) is for whoever is running this
+    // event - eventsAdmin, the organiser, or a named team leader.
+    if ((await eventManagerId(ctx, event)) === null) {
       return { attending, rosteredNoShift, breakdown: null };
     }
 
@@ -596,8 +702,8 @@ export const getEventHistory = query({
     })
   ),
   handler: async (ctx, args) => {
-    const adminUserId = await hasEventsAdmin(ctx);
-    if (!adminUserId) {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || (await eventManagerId(ctx, event)) === null) {
       return [];
     }
 
@@ -714,12 +820,7 @@ export const updateEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireEventsAdmin(ctx);
-
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
+    const { userId, event } = await requireEventManager(ctx, args.eventId);
 
     const fields = [
       "title",
@@ -782,6 +883,64 @@ export const updateEvent = mutation({
     updateData.updatedAt = Date.now();
 
     await ctx.db.patch(args.eventId, updateData);
+    return null;
+  },
+});
+
+/**
+ * Name the team leaders for an event - the members trusted to run this one event
+ * without holding brigade-wide eventsAdmin.
+ *
+ * Appointment is deliberately *not* something a team leader can do: it's the
+ * organiser's or an eventsAdmin's call, so the role can't quietly widen itself.
+ * The whole list is replaced in one audited act, mirroring changeOrganiser.
+ */
+export const setTeamLeaders = mutation({
+  args: {
+    eventId: v.id("events"),
+    userIds: v.array(v.id("users")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const signedInId = await requireSignedIn(ctx);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+
+    const userId = event.createdBy === signedInId ? signedInId : await requireEventsAdmin(ctx);
+
+    // De-duplicate, and drop the organiser: they already manage the event, so
+    // listing them as their own team leader is noise on the page.
+    const leaderIds = [...new Set(args.userIds)].filter((id) => id !== event.createdBy);
+
+    for (const leaderId of leaderIds) {
+      const leader = await ctx.db.get(leaderId);
+      if (!leader) throw new Error("That member no longer exists");
+      // Shared accounts (truck tablets, the DO phone) are devices, not people -
+      // nobody would be accountable for what the "leader" did.
+      if (!isMemberAccount(leader)) {
+        throw new Error("Pick a member, not a shared account");
+      }
+    }
+
+    const current = event.teamLeaderIds ?? [];
+    const unchanged =
+      current.length === leaderIds.length && current.every((id) => leaderIds.includes(id));
+    if (unchanged) return null;
+
+    await ctx.db.patch(args.eventId, {
+      teamLeaderIds: leaderIds,
+      updatedAt: Date.now(),
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId,
+      changeType: "team_leaders_change",
+      field: "teamLeaders",
+      oldValue: current,
+      newValue: leaderIds,
+    });
+
     return null;
   },
 });
@@ -850,12 +1009,7 @@ export const cancelEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireEventsAdmin(ctx);
-
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
+    const { userId, event } = await requireEventManager(ctx, args.eventId);
     if (event.status === "cancelled") {
       throw new Error("This event is already cancelled");
     }
@@ -890,12 +1044,7 @@ export const restoreEvent = mutation({
   args: { eventId: v.id("events") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireEventsAdmin(ctx);
-
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
+    const { userId, event } = await requireEventManager(ctx, args.eventId);
     if (event.status !== "cancelled") {
       throw new Error("Only cancelled events can be restored");
     }
@@ -1146,8 +1295,9 @@ export const declineSlotEvent = mutation({
 });
 
 /**
- * Admin: place or remove a member on a slot (the official roster). Allocation
- * is independent of interest - anyone can be placed. Returns the new state.
+ * Place or remove a member on a slot (the official roster), for whoever is
+ * running the event. Allocation is independent of interest - anyone can be
+ * placed. Returns the new state.
  */
 export const toggleSlotAllocation = mutation({
   args: {
@@ -1156,12 +1306,11 @@ export const toggleSlotAllocation = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const adminId = await requireEventsAdmin(ctx);
-
     const slot = await ctx.db.get(args.slotId);
     if (!slot) {
       throw new Error("Shift not found");
     }
+    const { userId: adminId } = await requireEventManager(ctx, slot.eventId);
 
     const existing = await ctx.db
       .query("eventSlotAllocations")
@@ -1185,7 +1334,7 @@ export const toggleSlotAllocation = mutation({
 });
 
 /**
- * Admin: place or remove a member on the event itself, for events with no
+ * Place or remove a member on the event itself, for events with no
  * shifts to place them into. Same roster as toggleSlotAllocation, one level up.
  * Returns the new state.
  */
@@ -1196,12 +1345,7 @@ export const toggleEventAllocation = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const adminId = await requireEventsAdmin(ctx);
-
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
+    const { userId: adminId } = await requireEventManager(ctx, args.eventId);
 
     const existing = (
       await ctx.db
@@ -1229,7 +1373,7 @@ export const toggleEventAllocation = mutation({
 });
 
 /**
- * Admin: open or close member responses.
+ * Open or close member responses.
  *
  * Deliberately non-destructive in both directions - it patches one field and
  * never touches an rsvp, a shift pick or a placement. Closing an event that
@@ -1249,12 +1393,7 @@ export const setMemberResponses = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const adminId = await requireEventsAdmin(ctx);
-
-    const event = await ctx.db.get(args.eventId);
-    if (!event) {
-      throw new Error("Event not found");
-    }
+    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
 
     const current = event.memberResponses ?? "open";
 
@@ -1446,8 +1585,8 @@ export const getEventRoster = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    const adminId = await hasEventsAdmin(ctx);
-    if (!adminId) {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || (await eventManagerId(ctx, event)) === null) {
       return null;
     }
 

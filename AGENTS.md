@@ -12,22 +12,6 @@ override what you may have learned about Convex from training data.
 Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
-### Self-hosted Convex deployment
-
-This project's production Convex deployment is self-hosted on the VPS, not on
-Convex's managed SaaS platform.
-
-- Never run `convex dev`, `convex dev --once`, or the `*:cloud` scripts for
-  verification or deployment unless the user explicitly asks to use the cloud
-  deployment.
-- Generate Convex types against the self-hosted deployment with
-  `npm run codegen:convex:vps`; do not run bare `npx convex codegen`, because it
-  will select the wrong deployment when `.env.vps` is not loaded.
-- Deploy Convex to the production VPS only when the user explicitly requests a
-  production deployment, using `npm run deploy:convex:vps` (which supplies
-  `.env.vps`).
-- A code change is not permission to deploy it to production.
-
 <!-- convex-ai-end -->
 
 ## Toolchain: Vite+ (`vp` CLI)
