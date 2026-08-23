@@ -1,4 +1,5 @@
 import { ActionProvider } from "./types";
+import { formatDateAU } from "../lib/dates";
 
 function aestDateOffset(days: number): string {
   return new Date(Date.now() + 10 * 60 * 60 * 1000 + days * 24 * 60 * 60 * 1000)
@@ -75,8 +76,8 @@ export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
     const hasShifts = event.hasShifts === true;
 
     const desc = event.respondBy
-      ? `${hasShifts ? "Respond" : "RSVP"} by ${event.respondBy} · Event on ${event.startDate}`
-      : `Event on ${event.startDate}${event.startTime ? ` at ${event.startTime}` : ""}`;
+      ? `${hasShifts ? "Respond" : "RSVP"} by ${formatDateAU(event.respondBy)} · Event on ${formatDateAU(event.startDate)}`
+      : `Event on ${formatDateAU(event.startDate)}${event.startTime ? ` at ${event.startTime}` : ""}`;
 
     actions.push({
       id: `events:rsvp:${event._id}`,

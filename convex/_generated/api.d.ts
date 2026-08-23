@@ -59,6 +59,7 @@ import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
 import type * as lib_accountType from "../lib/accountType.js";
+import type * as lib_dates from "../lib/dates.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
 import type * as lib_notifyEvent from "../lib/notifyEvent.js";
@@ -150,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   keyItems: typeof keyItems;
   keys: typeof keys;
   "lib/accountType": typeof lib_accountType;
+  "lib/dates": typeof lib_dates;
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;
   "lib/notifyEvent": typeof lib_notifyEvent;

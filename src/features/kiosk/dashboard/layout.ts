@@ -5,7 +5,7 @@
 // Authoring the default layout in GridStack coordinates now means Phase 2 can
 // feed this exact array to GridStack, and Phase 3 can swap the source of this
 // array from a constant to a Convex query - without changing any widget.
-// See docs/KIOSK_DASHBOARD_PLAN.md.
+// See docs/plans/kiosk-dashboard-plan.md.
 
 import { MapPin, BookOpen } from 'lucide-react';
 import { FaMaskVentilator } from 'react-icons/fa6';

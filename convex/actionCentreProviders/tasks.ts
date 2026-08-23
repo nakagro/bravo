@@ -1,4 +1,5 @@
 import { ActionProvider } from "./types";
+import { formatDateAU } from "../lib/dates";
 
 const RANK_ORDER: Record<string, number> = {
   "Brigade Member": 0,
@@ -39,7 +40,7 @@ export const tasksProvider: ActionProvider = async (ctx, p) => {
 
     const desc = [
       task.description,
-      task.dueDate ? `Due: ${task.dueDate}` : undefined,
+      task.dueDate ? `Due: ${formatDateAU(task.dueDate)}` : undefined,
     ]
       .filter(Boolean)
       .join(" · ");

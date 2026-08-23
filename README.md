@@ -25,12 +25,12 @@ This README serves as a guide for developers, contributors, and AI assistants to
 
 ## Development and Deployment
 
-For detailed instructions on developing and deploying with both local Docker-based Convex and Convex Cloud, see [CONVEX-SETUP.md](./CONVEX-SETUP.md).
+For detailed instructions on developing and deploying with both local Docker-based Convex and Convex Cloud, see [docs/reference/convex-setup.md](./docs/reference/convex-setup.md).
 
 ## Project Structure
 
 ```
-/var/www/vite-convex-test
+/var/www/bravo
 ├── convex/                 # Backend Convex functions, schema, and configuration
 │   ├── _generated/         # Auto-generated Convex files
 │   ├── features/           # Backend logic organized by feature
@@ -183,10 +183,24 @@ BRAVO is built with a modular, feature-based architecture and comprehensive perm
 *   Hose status synchronization
 *   Admin-only access
 
+#### **Additional Modules**
+
+Added since the detailed sections above were written. Descriptions are deliberately brief — read
+the feature directory and `docs/README.md` rather than trusting a summary here.
+
+*   **Action Centre** (`actionCentre`) — personal work queue aggregating outstanding obligations across modules (availability, RSVPs, tasks, duty crew, notices)
+*   **Events** (`events`) — one-off brigade events with RSVPs, shifts/slots, team leaders and post-event attendance confirmation
+*   **Inventory** (`inventory`) — appliance inventory checks; the backend tables are named `appliance*` (see Database Schema)
+*   **Member Records** (`memberRecords`) — kit register tracking gear issued to members
+*   **Calendar** (`calendar`) — month view overlaying Events and Bookings, with CalDAV write support
+*   **Contacts** (`contacts`), **QR Codes** (`qrCodes`), **Equipment** (`equipment`), **BA Skills** (`baSkills`), **Brigade Tasks** (`brigadeTasks`), **Kiosk** (`kiosk`, wall-mounted station tablets), **Service Accounts** (`serviceAccounts`)
+
+`ls src/features` is the authoritative list.
+
 ### Permission System
 
 *   **Role-based access control**: Admin, Officer, Member roles
-*   **Rank-based requirements**: Minimum rank per module (Probationary, Firefighter, etc.)
+*   **Rank-based requirements**: Minimum rank per module. Ranks ascend: Brigade Member → Probationary → Firefighter → Lieutenant → Captain (`Brigade Member` is the non-operational floor rank and the signup default)
 *   **Module-level control**: Global enable/disable per feature
 *   **Route protection**: Both navigation hiding and direct URL blocking
 *   **Real-time permission checking**: Dynamic access control
@@ -203,12 +217,15 @@ Comprehensive data models including:
 *   **Availability**: `availabilityStatuses`, `dutyOfficer`, `applianceLocations`
 *   **Equipment**: `hoses`, `hoseHistory`, `hoseComments`, `keys`, `keyHistory`, `keyComments`
 *   **Bookings**: `bookingResources`, `bookings` with approval workflows
-*   **Duty Crew**: `dutyCrew`, `dutyCrewSchedule`, `stationCheckTemplates`, `stationCheckRuns`
-*   **Appliances**: `applianceCheckTemplates`, `applianceCheckRuns`, `applianceCheckItems`
+*   **Duty Crew**: `dutyCrew`, `dutyCrewSchedule`, `stationChecks`, `stationCheckSubitems`, `stationCheckAllocations`, `stationCheckSubmissions`
+*   **Appliances / Inventory**: `applianceTemplates`, `applianceSections`, `applianceItems`, `applianceCheckRuns`, `applianceCheckRunItems`, `applianceLocations`
 *   **Vehicle Faults**: `vehicleFaults`, `vehicleFaultComments`, `vehicleFaultAttachments`, `vehicleFaultVehicleTypes`
 *   **Fire Reports**: `fireReports` with comprehensive incident tracking
-*   **Permissions**: `modules` for access control
+*   **Permissions**: `moduleSettings` for access control
 *   **Notifications**: `pushSubscriptions` for web push
+
+> Table names drift. `convex/schema.ts` is the only authority — check there before relying on any
+> name listed here.
 
 ### Backend Functions
 
@@ -321,7 +338,7 @@ Frontend deploys are triggered automatically — Vercel is connected to the priv
 
 Vercel bakes `VITE_*` environment variables into the build at build time. After changing a Vercel env var you must trigger a redeploy for it to take effect.
 
-See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed VPS/Docker setup instructions.
+See [docs/reference/convex-setup.md](./docs/reference/convex-setup.md) for detailed VPS/Docker setup instructions.
 
 ## Getting Started
 
@@ -329,15 +346,18 @@ See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed VPS/Docker setup instructi
 
 *   [Node.js](https://nodejs.org/) (LTS version recommended)
 *   [npm](https://www.npmjs.com/) (comes with Node.js)
-*   [Docker](https://www.docker.com/get-started) and Docker Compose (recommended)
-*   [Convex CLI](https://docs.convex.dev/getting-started/installation#install-the-convex-cli): `npm install -g convex` (used for schema/function pushes and local development utilities)
+*   [Convex CLI](https://docs.convex.dev/getting-started/installation#install-the-convex-cli): `npm install -g convex` (used for schema/function pushes)
+
+Docker is **not** required for development. Running Convex locally in Docker was retired — see
+[docs/reference/convex-setup.md](./docs/reference/convex-setup.md). Docker is only relevant on the
+VPS itself, and for `npm run backup:drill`, which spins up a throwaway container to verify backups.
 
 ### Installation
 
 1.  Clone the repository:
     ```bash
     git clone <repository-url>
-    cd vite-convex-test
+    cd bravo
     ```
 
 2.  Install dependencies:
@@ -345,38 +365,29 @@ See [CONVEX-SETUP.md](./CONVEX-SETUP.md) for detailed VPS/Docker setup instructi
     npm install
     ```
 
-3.  Configure environment variables in `.env.local`:
-    ```bash
-    # Convex Backend
-    CONVEX_DEPLOYMENT="http://localhost:YOUR_CONVEX_DOCKER_PORT"
-    VITE_CONVEX_URL="http://localhost:YOUR_CONVEX_DOCKER_PORT"
-    CONVEX_SITE_URL="http://localhost:YOUR_CONVEX_DOCKER_PORT"
-    
-    # VAPID Keys (for push notifications)
-    VITE_VAPID_PUBLIC_KEY="your-public-key"
-    # Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in Convex dashboard
-    
-    # PostHog Analytics (Backend - set in Convex dashboard)
-    # POSTHOG_API_KEY="phc_your_api_key"
-    # POSTHOG_HOST="https://us.i.posthog.com"
-    
-    # PostHog Analytics (Frontend)
-    VITE_PUBLIC_POSTHOG_KEY="phc_your_api_key"
-    VITE_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
-    ```
+3.  Obtain the environment files. Backend targets are selected by **env file + Vite mode**, and the
+    files are gitignored — you need copies from the maintainer:
 
-4.  Generate VAPID keys for push notifications:
-    ```bash
-    npx web-push generate-vapid-keys
-    ```
+    | File | Selects | Used by |
+    |---|---|---|
+    | `.env.vps` | **live production** (self-hosted VPS) | `dev:vps:frontend`, `deploy:convex:vps`, `export:vps` |
+    | `.env.cloud` | UAT (`precious-magpie-647`) | `dev:cloud`, `build:cloud` |
+    | `.env.local` | local overrides (lowest priority) | all modes |
 
-5.  Set up Convex backend:
-    *   For Docker: Ensure container is running (`docker-compose up -d`)
-    *   For Cloud: Follow Convex Cloud setup in [CONVEX-SETUP.md](./CONVEX-SETUP.md)
+    Only `.env` is committed. **[docs/reference/environments.md](./docs/reference/environments.md)
+    explains what belongs in each file** — in particular that variables live in three distinct
+    places (frontend build-time `VITE_*`, Convex CLI target selection, and deployment runtime set
+    via `npx convex env set`), and that several entries in `.env.vps` are CLI-local leftovers the
+    backend never reads.
 
-6.  Initialize database (optional):
+    Running Convex locally in Docker is **retired, not impossible** — the `*:docker` scripts were
+    removed to cut maintenance, but nothing in the app requires a remote backend. That doc has what
+    you'd need to revive it.
+
+4.  Generate VAPID keys for push notifications (only when standing up a **new** deployment —
+    existing deployments already have them):
     ```bash
-    npm run setup
+    npm run keys:generate     # or: npx web-push generate-vapid-keys
     ```
 
 ### Running Locally
@@ -403,13 +414,19 @@ Deploys Convex functions and schema to the VPS. Note: there is currently no sepa
 
 ### Linting and Type Checking
 
-```bash
-# Type checking
-npm run lint
+The toolchain is **Vite+** (`vp` CLI wrapping Vite 8 / Vitest / Oxlint), not plain Vite. Lint rules
+live in the `lint` block of `vite.config.ts` — not `.oxlintrc.json` or ESLint (removed). Formatting
+is Prettier; there is no `npm run format` script.
 
-# Format code (if configured)
-npm run format
+```bash
+npm run lint        # full gate: oxlint + typecheck + tests + Convex codegen + production build
+npm run lint:code   # oxlint only (also runs in the husky pre-commit)
+npm run typecheck   # TypeScript only, across convex/ + app + node configs
+npm run test        # Vitest (frontend utils + convex-test backend tests)
 ```
+
+`vp lint` must stay at **zero warnings** — warnings don't fail CI, so the baseline is convention.
+See [docs/reference/linting.md](./docs/reference/linting.md).
 
 ### Version Management
 
@@ -423,24 +440,30 @@ git commit -m "Your change"
 
 ## Documentation
 
-Additional documentation available in the `docs/` directory:
+**[docs/README.md](./docs/README.md) is a generated index of all documentation**, grouped by status.
+Start there — it is the authority on what is implemented and what is only planned. Status lives in
+each doc's YAML frontmatter, not in its prose. After adding or editing a doc, run `npm run docs:index`
+to validate and regenerate; never hand-edit `docs/README.md`.
 
-### Setup & Configuration
-*   **[CONVEX-SETUP.md](./CONVEX-SETUP.md)**: Detailed Convex deployment guide
-*   **[PERFORMANCE_OPTIMIZATION.md](./PERFORMANCE_OPTIMIZATION.md)**: Performance best practices
+Docs are organised by kind: `docs/plans/` (proposed, in-flight, completed work) ·
+`docs/reference/` (how things work today) · `docs/runbooks/` (operational procedures) ·
+`docs/audits/` (point-in-time assessments) · `docs/archive-pre-2026/` (historical, unindexed).
 
-### Development Guides
-*   **[docs/creating-new-modules.md](./docs/creating-new-modules.md)**: Guide for adding new features
-*   **[docs/ADD_MODULE_TO_PERMISSIONS.md](./docs/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
+### Start here
+*   **[docs/reference/environments.md](./docs/reference/environments.md)**: which backend each command talks to — **read before running anything that touches a backend**
+*   **[docs/reference/convex-setup.md](./docs/reference/convex-setup.md)**: Detailed Convex deployment guide
+*   **[docs/reference/creating-new-modules.md](./docs/reference/creating-new-modules.md)**: Guide for adding new features
+*   **[docs/reference/performance-optimization.md](./docs/reference/performance-optimization.md)**: Performance best practices
+*   **[docs/archive-pre-2026/ADD_MODULE_TO_PERMISSIONS.md](./docs/archive-pre-2026/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
 
 ### Analytics & Monitoring
-*   **[docs/POSTHOG_NOTIFICATION_ANALYTICS.md](./docs/POSTHOG_NOTIFICATION_ANALYTICS.md)**: PostHog analytics setup and usage
-*   **[docs/sentrysetup.md](./docs/sentrysetup.md)**: Sentry error tracking configuration
+*   **[docs/archive-pre-2026/POSTHOG_NOTIFICATION_ANALYTICS.md](./docs/archive-pre-2026/POSTHOG_NOTIFICATION_ANALYTICS.md)**: PostHog analytics setup and usage
+*   **[docs/archive-pre-2026/sentrysetup.md](./docs/archive-pre-2026/sentrysetup.md)**: Sentry error tracking configuration
 
 ### Multi-Brigade Architecture (Future)
-*   **[docs/MULTI_BRIGADE_SUMMARY.md](./docs/MULTI_BRIGADE_SUMMARY.md)**: Executive summary of multi-brigade support
-*   **[docs/MULTI_BRIGADE_MIGRATION.md](./docs/MULTI_BRIGADE_MIGRATION.md)**: Complete migration guide
-*   **[docs/multi-brigade/](./docs/multi-brigade/)**: Detailed phase-by-phase implementation guides
+*   **[docs/archive-pre-2026/MULTI_BRIGADE_SUMMARY.md](./docs/archive-pre-2026/MULTI_BRIGADE_SUMMARY.md)**: Executive summary of multi-brigade support
+*   **[docs/archive-pre-2026/MULTI_BRIGADE_MIGRATION.md](./docs/archive-pre-2026/MULTI_BRIGADE_MIGRATION.md)**: Complete migration guide
+*   **[docs/archive-pre-2026/multi-brigade/](./docs/archive-pre-2026/multi-brigade/)**: Detailed phase-by-phase implementation guides
 
 > **Note**: BRAVO currently supports a single brigade (Wyndham Vale Fire Brigade). The multi-brigade documentation outlines the architecture and effort required to support multiple brigades in the future.
 

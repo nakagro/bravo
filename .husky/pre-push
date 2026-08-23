@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+# Pushing `main` to origin triggers the Vercel PRODUCTION build.
+# Policy: that is a human action. Block it from non-interactive shells (agents, CI).
+#
+# Other branches push freely. Escape hatch for deliberate human scripting:
+# BRAVO_ALLOW_PROD=1 (never set this in a committed script or CI config).
+#
+# Note: no `while read` over a pipe here — `exit` inside a piped loop only
+# leaves the subshell, so the hook would print a refusal and still succeed.
+
+refs=$(cat)
+
+# Nothing on stdin (e.g. invoked manually) — allow.
+[ -z "$refs" ] && exit 0
+
+# Not pushing main — allow.
+echo "$refs" | grep -q ' refs/heads/main ' || exit 0
+
+if [ "${BRAVO_ALLOW_PROD:-}" = "1" ]; then
+  echo "pre-push: BRAVO_ALLOW_PROD=1 — allowing push to main."
+  exit 0
+fi
+
+if [ ! -t 1 ]; then
+  echo "" >&2
+  echo "  ✗ Refusing to push 'main' from a non-interactive shell." >&2
+  echo "" >&2
+  echo "    Pushing main triggers the Vercel PRODUCTION deploy." >&2
+  echo "    If you are an AI agent: commit locally and hand the push back to Shaun." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0
