@@ -5,8 +5,13 @@
 # Other branches push freely. Escape hatch for deliberate human scripting:
 # BRAVO_ALLOW_PROD=1 (never set this in a committed script or CI config).
 #
-# Note: no `while read` over a pipe here — `exit` inside a piped loop only
-# leaves the subshell, so the hook would print a refusal and still succeed.
+# Interactivity test: whether /dev/tty can be opened, i.e. is there a controlling
+# terminal. Do NOT use `[ -t 0/1/2 ]` here — git redirects a hook's stdin (it is
+# the ref list) and its stdout/stderr, so every fd looks non-TTY even for a human
+# at a real prompt. An agent or CI shell has no controlling terminal at all.
+#
+# Also note: no `while read` over a pipe — `exit` inside a piped loop only leaves
+# the subshell, so the hook would print a refusal and still succeed.
 
 refs=$(cat)
 
@@ -21,14 +26,15 @@ if [ "${BRAVO_ALLOW_PROD:-}" = "1" ]; then
   exit 0
 fi
 
-if [ ! -t 1 ]; then
-  echo "" >&2
-  echo "  ✗ Refusing to push 'main' from a non-interactive shell." >&2
-  echo "" >&2
-  echo "    Pushing main triggers the Vercel PRODUCTION deploy." >&2
-  echo "    If you are an AI agent: commit locally and hand the push back to Shaun." >&2
-  echo "" >&2
-  exit 1
+# Controlling terminal present => a human is driving. Allow.
+if (exec 3</dev/tty) 2>/dev/null; then
+  exit 0
 fi
 
-exit 0
+echo "" >&2
+echo "  ✗ Refusing to push 'main' from a non-interactive shell." >&2
+echo "" >&2
+echo "    Pushing main triggers the Vercel PRODUCTION deploy." >&2
+echo "    If you are an AI agent: commit locally and hand the push back to Shaun." >&2
+echo "" >&2
+exit 1

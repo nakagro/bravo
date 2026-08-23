@@ -21,10 +21,13 @@ if [ "${BRAVO_ALLOW_PROD:-}" = "1" ]; then
   exit 0
 fi
 
-if [ ! -t 0 ]; then
+# Interactivity test: can we open the controlling terminal? Do NOT use `[ -t 0 ]`
+# — npm and git hooks redirect stdio, so a human at a real prompt can look
+# non-TTY. An agent or CI shell has no controlling terminal at all.
+if ! (exec 3</dev/tty) 2>/dev/null; then
   cat >&2 <<EOF
 
-  ✗ Refusing: ${ACTION} targets PRODUCTION and this is not an interactive terminal.
+  ✗ Refusing: ${ACTION} targets PRODUCTION and there is no controlling terminal.
 
     Production deploys are performed by a human, from a real terminal.
     If you are an AI agent: stop here and hand this step back to Shaun.
@@ -37,7 +40,9 @@ fi
 echo
 echo "  ⚠  ${ACTION} targets PRODUCTION (VPS Convex — live brigade data)."
 echo
-read -r -p "  Type '${PHRASE}' to continue: " answer
+# Read from /dev/tty, not stdin, so the prompt works even when stdin is redirected.
+printf "  Type '%s' to continue: " "${PHRASE}"
+read -r answer </dev/tty
 
 if [ "${answer:-}" != "${PHRASE}" ]; then
   echo "  Aborted." >&2
