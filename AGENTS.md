@@ -13,11 +13,25 @@ confirmed otherwise.
 | | live, real members | prod-data clone | unwired, empty — ignore |
 
 - `--env-file .env.vps` → **prod**. `CONVEX_DEPLOYMENT=precious-magpie-647` → **UAT**.
-- `npm run dev:cloud` runs a *watch loop* that continuously pushes your working copy to UAT.
-- `npm run import:vps` and `npm run import:cloud` are both `--replace-all`. One word separates
+- `npm run dev:uat` runs a *watch loop* that continuously pushes your working copy to UAT. Never
+  run it while someone is verifying against UAT — use the one-shot `npm run deploy:convex:uat`.
+- `npm run import:vps` and `npm run import:uat` are both `--replace-all`. One word separates
   "restore UAT" from "wipe production".
+- The `:cloud` script names are **retired**; they now print a pointer to their `:uat` replacement
+  and exit non-zero.
 - To check what is actually deployed (read-only):
   `npx convex function-spec --env-file .env.vps`
+
+**UAT holds a full unscrubbed clone of prod data** — real member PII, and password hashes that let
+you sign in with a real production password. Guards keep its side effects off real people:
+`EMAIL_ALLOWLIST` (mail to anyone unlisted is dropped and logged), a separate VAPID pair (cloned
+push subscriptions 403), `VITE_GATE_MOCK=true` (the kiosk cannot drive the real station doors), and
+a separate CalDAV collection. Check them with `npm run env:parity -- --compare`. **Never set
+`EMAIL_ALLOWLIST` on prod** — that would silently drop real member mail.
+
+Standing UAT up: `npm run clone:uat -- --yes` (refuses unless the guards are armed; reads prod
+read-only, verifies the snapshot, then `--replace-all` on UAT) → `npm run deploy:convex:uat`.
+Full ritual: `docs/runbooks/uat-environment.md`.
 
 ### Production is human-only
 
@@ -30,9 +44,13 @@ Both are blocked from non-interactive shells (`scripts/guard-prod.sh` and `.husk
 hit a refusal, **stop and hand the step back** — do not work around it, do not set
 `BRAVO_ALLOW_PROD`, do not call `convex deploy --env-file .env.vps` directly.
 
-What you *should* do: verify on cloud/UAT first — `npm run deploy:convex:uat` and `npm run lint`
-(whose codegen targets cloud, never prod) are unrestricted. Commit locally, then say the push and
-prod deploy are ready for a human.
+What you *should* do: verify on UAT first. Unrestricted for agents: `npm run deploy:convex:uat`,
+`npm run clone:uat`, `npm run env:parity`, `npm run snapshot:prod` (read-only), and `npm run lint`
+(whose codegen targets UAT, never prod). Commit locally, then say the push and prod deploy are
+ready for a human.
+
+Before a prod deploy, a human runs `npm run snapshot:prod` for a verified rollback point — the
+nightly backup can be up to 24h stale.
 
 Read-only prod inspection is fine and encouraged: `npx convex function-spec --env-file .env.vps`.
 

@@ -10,7 +10,7 @@ import { v } from "convex/values";
  * Internal, not public: this inserts an `isAdmin: true` user, so a public
  * mutation would let any unauthenticated caller who knows a deployment URL
  * inject an admin. `convex run` invokes internal functions from the CLI
- * regardless - internal only blocks *client* calls - so `npm run seed:cloud`
+ * regardless - internal only blocks *client* calls - so `npm run seed:uat`
  * needs no change.
  *
  * This mutation is idempotent - it checks for existing skills before inserting

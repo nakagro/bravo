@@ -371,7 +371,7 @@ VPS itself, and for `npm run backup:drill`, which spins up a throwaway container
     | File | Selects | Used by |
     |---|---|---|
     | `.env.vps` | **live production** (self-hosted VPS) | `dev:vps:frontend`, `deploy:convex:vps`, `export:vps` |
-    | `.env.cloud` | UAT (`precious-magpie-647`) | `dev:cloud`, `build:cloud` |
+    | `.env.cloud` | UAT (`precious-magpie-647`) | `dev:uat`, `build:cloud` |
     | `.env.local` | local overrides (lowest priority) | all modes |
 
     Only `.env` is committed. **[docs/reference/environments.md](./docs/reference/environments.md)

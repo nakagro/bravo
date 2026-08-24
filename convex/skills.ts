@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -310,7 +310,19 @@ export const deleteSkill = mutation({
  * Seed initial skills
  * This is a utility function to populate the database with initial skills
  */
-export const seedInitialSkills = mutation({
+/**
+ * Seed the reference skills table.
+ *
+ * Internal, not public: this was an unauthenticated public mutation that any
+ * caller who knew a deployment URL could invoke. It only inserts reference rows
+ * and early-returns when skills already exist, so the exposure was far smaller
+ * than the seedDevDatabase one - but it is the same shape, and "safe because
+ * the table is non-empty" is an accident rather than a control.
+ *
+ * Run it with:  npx convex run skills:seedInitialSkills
+ * (the CLI reaches internal functions; only *client* calls are blocked)
+ */
+export const seedInitialSkills = internalMutation({
   args: {},
   handler: async (ctx) => {
     const initialSkills = [
