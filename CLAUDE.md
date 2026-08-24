@@ -29,8 +29,12 @@ from non-interactive shells:
 back** — don't route around it, don't set `BRAVO_ALLOW_PROD`, don't call
 `convex deploy --env-file .env.vps` directly.
 
-Unrestricted for agents: `npm run deploy:convex:uat`, `npm run clone:uat`, `npm run snapshot:prod`
-(read-only), `npm run env:parity`, `npm run lint` (its codegen targets UAT, not prod), and read-only prod inspection via `npx convex function-spec --env-file .env.vps`.
+Unrestricted for agents: `npm run refresh:uat` (guards + clone + deploy in one),
+`npm run deploy:convex:uat`, `npm run clone:uat`, `npm run snapshot:prod` (read-only),
+`npm run env:parity`, `npm run lint` (its codegen targets UAT, not prod), and read-only prod
+inspection via `npx convex function-spec --env-file .env.vps`.
+
+`npm run release:prod` (snapshot + prod deploy) is **human-only** - it chains the TTY-gated deploy.
 
 ⚠️ A bare `convex` command with no explicit target reads `CONVEX_DEPLOYMENT` from `.env.local`,
 which points at **UAT** — safe, but not obvious. Always be explicit about the target.
@@ -53,9 +57,11 @@ The direction is **`feature -> uat -> main`**. Branch new work from `uat`, not `
 
 ```bash
 git push origin main
-git branch -f uat main                 # never skip this
-git push --force-with-lease origin uat
+npm run sync:uat                       # never skip this
 ```
+
+`sync:uat` refuses rather than force-pushing if `uat` holds commits `main` does
+not - that case needs a merge, not a force.
 
 Leaving `uat` behind fails silently — the next branch cut from `uat` is missing commits, and the
 later merge conflicts in ways that look unrelated. Do not force-update `uat` if it holds work that

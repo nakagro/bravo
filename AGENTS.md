@@ -73,9 +73,11 @@ The direction is **`feature -> uat -> main`**. Branch new work from `uat`, not `
 
 ```bash
 git push origin main
-git branch -f uat main                 # never skip this
-git push --force-with-lease origin uat
+npm run sync:uat                       # never skip this
 ```
+
+`sync:uat` refuses rather than force-pushing if `uat` holds commits `main` does
+not - that case needs a merge, not a force.
 
 Leaving `uat` behind fails silently — the next branch cut from `uat` is missing commits, and the
 later merge conflicts in ways that look unrelated. Do not force-update `uat` if it holds work that
