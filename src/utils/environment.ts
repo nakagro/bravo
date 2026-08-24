@@ -38,10 +38,10 @@ type BadgeStyle = {
 };
 
 const BADGE_STYLES: Record<Exclude<AppEnvironment, "production">, BadgeStyle> = {
-  // Red, and it says what it means: this is real member data.
+  // Red rather than the sandbox's amber: there is real member data behind this.
   uat: {
     short: "UAT",
-    long: "UAT - COPY OF LIVE DATA",
+    long: "UAT",
     className: "bg-red-600 text-white",
   },
   dev: {
