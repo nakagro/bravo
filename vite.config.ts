@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig, loadEnv } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -39,8 +39,71 @@ function scrubEmDashesFromBuild() {
   };
 }
 
+
+const UAT_DEPLOYMENT = "precious-magpie-647";
+
+/**
+ * Rewrite the shell HTML so a UAT build is unmistakable before a single byte of
+ * React runs - the tab title, the installed PWA's name and icon, and the iOS
+ * home-screen label.
+ *
+ * Keyed on VITE_CONVEX_URL rather than the Vite mode, deliberately. Vercel runs
+ * `npm run build` (mode `vps`) for BOTH projects; the UAT project differs only
+ * by its dashboard VITE_CONVEX_URL. A mode check would therefore pass locally
+ * and silently do nothing on the deployed UAT build.
+ *
+ * UAT and prod are separate origins, so their service workers, caches and
+ * installs never collide - nothing here is required for correctness. It exists
+ * because UAT holds a clone of real member data: two identical BRAVO icons on a
+ * home screen is how someone does real-looking work in the copy.
+ */
+function environmentAwareHtml(convexUrl: string) {
+  const isUat = convexUrl.includes(UAT_DEPLOYMENT);
+
+  return {
+    name: "environment-aware-html",
+    transformIndexHtml(html: string) {
+      // The backend to warm up is whichever one this build talks to; the
+      // literal in index.html is prod's.
+      const origin = convexUrl.replace(/\/+$/, "");
+      if (origin) {
+        html = html.replace(
+          /<link rel="preconnect" href="[^"]*" \/>/,
+          `<link rel="preconnect" href="${origin}" />`,
+        );
+      }
+
+      if (!isUat) return html;
+
+      return html
+        .replace(/<title>[^<]*<\/title>/, "<title>BRAVO - UAT</title>")
+        .replace(
+          /<meta name="apple-mobile-web-app-title" content="[^"]*" \/>/,
+          '<meta name="apple-mobile-web-app-title" content="BRAVO UAT" />',
+        )
+        .replace('href="/manifest.json"', 'href="/manifest.uat.json"')
+        .replace(/\/icons\/(favicon-96x96\.png|favicon\.svg|favicon\.ico|apple-touch-icon\.png)/g,
+                 "/icons/uat/$1")
+        // Red status bar / theme colour, so even the chrome around the app
+        // reads as "not production".
+        .replace(
+          /<meta name="theme-color" content="#ffffff" media="\(prefers-color-scheme: light\)" \/>/,
+          '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: light)" />',
+        )
+        .replace(
+          /<meta name="theme-color" content="#1f2937" media="\(prefers-color-scheme: dark\)" \/>/,
+          '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: dark)" />',
+        );
+    },
+  };
+}
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
+  const convexUrl = env.VITE_CONVEX_URL ?? "";
+
+  return {
   lint: {
     plugins: ["react", "typescript", "oxc"],
     categories: {
@@ -76,17 +139,17 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
+    environmentAwareHtml(convexUrl),
     VitePWA({
       registerType: "autoUpdate", // automatically update when new SW available
       injectRegister: "auto", // automatically inject SW registration script
       strategies: "generateSW",
-      manifest: {
-        name: "Brigade Availability and Operations",
-        short_name: "BRAVO",
-        theme_color: "#ffffff",
-        background_color: "#ffffff",
-        display: "standalone",
-      },
+      // index.html links its own manifest (public/manifest.json, or
+      // manifest.uat.json on UAT), which is the one browsers actually use -
+      // they honour the FIRST rel="manifest". VitePWA was injecting a second,
+      // iconless one that was silently ignored, so its config here was dead.
+      // Disabled to leave exactly one manifest link.
+      manifest: false,
       workbox: {
         importScripts: ["./sw-push.js"], // include push handler
         skipWaiting: true, // immediately activate new SW
@@ -170,4 +233,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });
