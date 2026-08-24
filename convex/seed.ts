@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -7,10 +7,16 @@ import { v } from "convex/values";
  * Usage:
  *   npx convex run seed:seedDevDatabase --env-file .env.cloud
  *
+ * Internal, not public: this inserts an `isAdmin: true` user, so a public
+ * mutation would let any unauthenticated caller who knows a deployment URL
+ * inject an admin. `convex run` invokes internal functions from the CLI
+ * regardless - internal only blocks *client* calls - so `npm run seed:cloud`
+ * needs no change.
+ *
  * This mutation is idempotent - it checks for existing skills before inserting
  * and will skip seeding if data already exists.
  */
-export const seedDevDatabase = mutation({
+export const seedDevDatabase = internalMutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {

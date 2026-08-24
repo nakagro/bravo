@@ -2,17 +2,104 @@ import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 
+const FROM_ADDRESS = "BRAVO <noreply@mail.bravo.grayhux.io>";
+
+/**
+ * Every outbound email in this codebase goes through sendGuardedEmail() below.
+ * Send via Resend directly and you bypass the allowlist - don't.
+ *
+ * EMAIL_ALLOWLIST is a comma-separated list of addresses. When it is SET, mail
+ * to anyone not on it is dropped and logged; when UNSET the guard is a no-op.
+ * It is unset on the VPS, so production is unaffected.
+ *
+ * This is what makes an unscrubbed clone of prod data safe on UAT: the
+ * recipients come from the cloned database, so a separate Resend key would not
+ * on its own stop mail reaching real members.
+ */
+function partitionRecipients(to: string | string[]): {
+  allowed: string[];
+  dropped: string[];
+} {
+  const recipients = Array.isArray(to) ? to : [to];
+  const raw = process.env.EMAIL_ALLOWLIST;
+
+  if (!raw || raw.trim() === "") {
+    return { allowed: recipients, dropped: [] };
+  }
+
+  const allowlist = new Set(
+    raw
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter((entry) => entry !== "")
+  );
+
+  const allowed: string[] = [];
+  const dropped: string[] = [];
+  for (const address of recipients) {
+    if (allowlist.has(address.trim().toLowerCase())) {
+      allowed.push(address);
+    } else {
+      dropped.push(address);
+    }
+  }
+  return { allowed, dropped };
+}
+
+type GuardedSendResult = {
+  data: { id?: string } | null;
+  error: { message: string } | null;
+  /** True when the allowlist removed every recipient and nothing was sent. */
+  skipped: boolean;
+};
+
+async function sendGuardedEmail(args: {
+  to: string | string[];
+  subject: string;
+  html: string;
+}): Promise<GuardedSendResult> {
+  const { allowed, dropped } = partitionRecipients(args.to);
+
+  // Loud on purpose: a swallowed email during a UAT test must not look like a
+  // bug in the feature under test.
+  if (dropped.length > 0) {
+    console.warn(
+      `[EMAIL_ALLOWLIST] Dropped ${dropped.length} recipient(s) not on the ` +
+        `allowlist: ${dropped.join(", ")} - subject: "${args.subject}"`
+    );
+  }
+
+  if (allowed.length === 0) {
+    console.warn(
+      `[EMAIL_ALLOWLIST] No allowed recipients remain - not sending ` +
+        `"${args.subject}"`
+    );
+    return { data: null, error: null, skipped: true };
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const result = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: allowed,
+    subject: args.subject,
+    html: args.html,
+  });
+
+  return {
+    data: result.data ?? null,
+    error: result.error ?? null,
+    skipped: false,
+  };
+}
+
 export const sendTestEmail = action({
   args: {
     to: v.string(),
     userName: v.string(),
   },
   handler: async (ctx, args) => {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     try {
-      const result = await resend.emails.send({
-        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+      const result = await sendGuardedEmail({
         to: args.to,
         subject: "Test Email from BRAVO",
         html: `
@@ -31,6 +118,14 @@ export const sendTestEmail = action({
       if (result.error) {
         console.error("Email send error:", result.error);
         throw new Error(`Failed to send email: ${result.error.message}`);
+      }
+
+      if (result.skipped) {
+        return {
+          success: false,
+          emailId: undefined,
+          message: `Not sent: ${args.to} is not on EMAIL_ALLOWLIST for this deployment.`,
+        };
       }
 
       return {
@@ -65,8 +160,6 @@ export const sendFeedbackNotification = internalAction({
     appVersion: v.string(),
   },
   handler: async (ctx, args) => {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     // If no admins have emails, skip sending
     if (args.adminEmails.length === 0) {
       console.log("No admin emails found, skipping notification");
@@ -85,8 +178,7 @@ export const sendFeedbackNotification = internalAction({
     const submitter = args.isAnonymous ? "Anonymous" : (args.submitterName || "Unknown User");
 
     try {
-      const result = await resend.emails.send({
-        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+      const result = await sendGuardedEmail({
         to: args.adminEmails,
         subject: `New Feedback: ${args.subject}`,
         html: `
@@ -155,8 +247,6 @@ export const sendNewUserSignupNotification = internalAction({
     newUserMemberNumber: v.string(),
   },
   handler: async (ctx, args) => {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
     // If no admins have emails, skip sending
     if (args.adminEmails.length === 0) {
       console.log("No admin emails found, skipping notification");
@@ -164,8 +254,7 @@ export const sendNewUserSignupNotification = internalAction({
     }
 
     try {
-      const result = await resend.emails.send({
-        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+      const result = await sendGuardedEmail({
         to: args.adminEmails,
         subject: "New User Signup - BRAVO",
         html: `
@@ -236,16 +325,14 @@ export const sendPasswordResetEmail = internalAction({
     userName: v.string(),
   },
   handler: async (ctx, args) => {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    // Construct the reset URL using the frontend URL
-    // Use FRONTEND_URL env var, fallback to production URL
+    // Construct the reset URL using the frontend URL.
+    // FRONTEND_URL must be set on any non-production deployment, or the reset
+    // link in a UAT email points at PRODUCTION.
     const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
     const resetUrl = `${frontendUrl}/reset-password?token=${args.token}`;
 
     try {
-      const result = await resend.emails.send({
-        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+      const result = await sendGuardedEmail({
         to: args.email,
         subject: "Reset Your Password - BRAVO",
         html: `
@@ -348,7 +435,6 @@ export const sendEventNoticeEmail = internalAction({
       return { success: true, message: "No recipients to notify" };
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
     const link = args.url.startsWith("http")
       ? args.url
@@ -372,8 +458,7 @@ export const sendEventNoticeEmail = internalAction({
       .join("");
 
     try {
-      const result = await resend.emails.send({
-        from: "BRAVO <noreply@mail.bravo.grayhux.io>",
+      const result = await sendGuardedEmail({
         to: args.to,
         subject: args.subject,
         html: `
