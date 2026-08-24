@@ -3,7 +3,7 @@ import { useServiceAccount } from "@/features/serviceAccounts/ServiceAccountCont
 import { useLocation, Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Toaster } from "../ui/sonner";
-import { isDevEnvironment } from "@/utils/environment";
+import { getEnvironmentBadge } from "@/utils/environment";
 
 interface ServiceLayoutProps {
   children: ReactNode;
@@ -29,6 +29,7 @@ const MODULE_NAV: Record<string, { path: string; label: string }> = {
 };
 
 export function ServiceLayout({ children }: ServiceLayoutProps) {
+  const envBadge = getEnvironmentBadge();
   const { accountName, allowedModules, logout } = useServiceAccount();
   const location = useLocation();
 
@@ -53,9 +54,12 @@ export function ServiceLayout({ children }: ServiceLayoutProps) {
                 {accountName}
               </span>
             )}
-            {isDevEnvironment() && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-500 text-amber-950">
-                DEV
+            {envBadge && (
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${envBadge.className}`}
+                title={envBadge.long}
+              >
+                {envBadge.short}
               </span>
             )}
           </div>

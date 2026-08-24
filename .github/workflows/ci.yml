@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, uat]
   pull_request:
 
 jobs:
@@ -27,3 +27,19 @@ jobs:
 
       - name: Tests
         run: npx vp test run
+
+      # Catches breakage that lint/typecheck/test miss: a bad import, a PWA or
+      # bundler failure, anything that only shows up in a production build.
+      #
+      # Needs no secrets and no env file. `--mode vps` wants .env.vps, which is
+      # gitignored and therefore absent here - Vite finds no mode file and every
+      # VITE_* is simply undefined. That is the exact condition Vercel builds
+      # under (it takes VITE_* from its dashboard instead), so this validates
+      # the build the way production actually performs it.
+      #
+      # Deliberately NOT running Convex codegen: it downloads deployment state
+      # over the network and so would need a CONVEX_DEPLOY_KEY secret. Schema
+      # drift is caught by `npm run deploy:convex:uat` in the promotion
+      # workflow, against real data - a better check than codegen gives.
+      - name: Production build
+        run: npx vp build --mode vps

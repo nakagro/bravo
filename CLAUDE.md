@@ -13,7 +13,7 @@ reads and writes the same database members use. Three deployments exist:
 | | live, real members | prod-data clone, testing | unwired, empty — ignore |
 
 `--env-file .env.vps` targets **prod**; `CONVEX_DEPLOYMENT=precious-magpie-647` targets **UAT**.
-Note `npm run dev:cloud` runs a *watch loop* that continuously pushes to UAT.
+Note `npm run dev:uat` runs a *watch loop* that continuously pushes to UAT.
 
 ### Production is human-only
 
@@ -29,8 +29,8 @@ from non-interactive shells:
 back** — don't route around it, don't set `BRAVO_ALLOW_PROD`, don't call
 `convex deploy --env-file .env.vps` directly.
 
-Unrestricted for agents: `npm run deploy:convex:uat`, `npm run lint` (its codegen targets cloud, not
-prod), and read-only prod inspection via `npx convex function-spec --env-file .env.vps`.
+Unrestricted for agents: `npm run deploy:convex:uat`, `npm run clone:uat`, `npm run snapshot:prod`
+(read-only), `npm run env:parity`, `npm run lint` (its codegen targets UAT, not prod), and read-only prod inspection via `npx convex function-spec --env-file .env.vps`.
 
 ⚠️ A bare `convex` command with no explicit target reads `CONVEX_DEPLOYMENT` from `.env.local`,
 which points at **UAT** — safe, but not obvious. Always be explicit about the target.
@@ -56,7 +56,7 @@ regenerates). Never hand-edit `docs/README.md`.
 ### Development
 - `npm run dev:vps:frontend` - **Primary local dev command** — Vite dev server pointed at the VPS backend
 - `npm run dev` / `npm run dev:frontend` / `npm run dev:vps` - Aliases for `dev:vps:frontend`
-- `npm run dev:cloud` - Frontend + **UAT** backend (`precious-magpie-647`). ⚠️ Runs `convex dev`, a
+- `npm run dev:uat` - Frontend + **UAT** backend (`precious-magpie-647`). ⚠️ Runs `convex dev`, a
   watch loop that continuously pushes your working copy to UAT — see `docs/reference/environments.md`
 
 ### Build and Deployment
@@ -87,7 +87,7 @@ The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/au
 ### Deployment Architecture
 - **Frontend**: Hosted on Vercel, built on every merge to `main`. **No env file in this repo configures it.** Vercel runs `npm run build` → `vp build --mode vps`, but `.env.vps` is gitignored and absent there, so every `VITE_*` comes from the **Vercel dashboard**. A new `VITE_*` therefore needs adding in *two* places — the env file (for local dev) and the dashboard (for production) — or it works locally and is `undefined` in prod with no build error. Vercel bakes `VITE_*` at build time, so a dashboard change needs a redeploy. Build command, Ignored Build Step and Node version are dashboard state too, invisible to `git`. If prod differs from local on identical code, check Vercel first.
 - **Backend**: Self-hosted Convex running in Docker on a VPS (`https://boss-convex.grayhux.io`). Deployed via `npm run deploy:convex:vps`.
-- **No staging backend (today)**: Backend changes deploy directly to the live VPS instance. Test frontend changes locally via `npm run dev:frontend` which connects to the live backend. A UAT tier on `precious-magpie-647` is planned but **not yet built** — check `status:` in `docs/plans/uat-environment-plan.md` before repeating either claim.
+- **UAT tier (built 2026-08-24)**: `precious-magpie-647` holds a full unscrubbed clone of prod data, guarded by `EMAIL_ALLOWLIST`, a separate VAPID pair and a mocked kiosk gate. Verify there before promoting: `npm run clone:uat -- --yes` → `npm run deploy:convex:uat` → merge `uat` → `main`. **Read `docs/runbooks/uat-environment.md`** for the full ritual and the guard list. `npm run dev` still points a local frontend at **live prod**.
 
 ### Feature-Driven Architecture
 

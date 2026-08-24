@@ -1,14 +1,18 @@
 import { SignInForm } from "../features/auth/components/SignInForm";
 import { getVersionString } from "@/utils/version";
-import { isDevEnvironment } from "@/utils/environment";
+import { getEnvironmentBadge } from "@/utils/environment";
 
 export function AuthPage() {
+  const envBadge = getEnvironmentBadge();
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-gray-700">
-      {/* Dev Environment Banner */}
-      {isDevEnvironment() && (
-        <div className="mb-4 -mx-8 -mt-8 px-4 py-2 bg-amber-500 text-amber-950 text-center text-sm font-bold rounded-t-2xl">
-          DEV ENVIRONMENT
+      {/* Non-production environment banner */}
+      {envBadge && (
+        <div
+          className={`mb-4 -mx-8 -mt-8 px-4 py-2 text-center text-sm font-bold rounded-t-2xl ${envBadge.className}`}
+        >
+          {envBadge.long}
         </div>
       )}
 

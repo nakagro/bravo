@@ -330,7 +330,7 @@ This project uses a split deployment model:
 npm run deploy:convex:vps
 ```
 
-This pushes all Convex functions and schema changes to the self-hosted Convex instance on the VPS. **This targets the live production instance** — there is currently no separate staging backend.
+This pushes all Convex functions and schema changes to the self-hosted Convex instance on the VPS. **This targets the live production instance.** Verify on the UAT tier first — see `docs/runbooks/uat-environment.md`.
 
 ### Deploy Frontend to Vercel
 
@@ -402,7 +402,7 @@ Starts the Vite dev server pointing at the production VPS backend (`https://boss
 ```bash
 npm run deploy:convex:vps
 ```
-Deploys Convex functions and schema to the VPS. Note: there is currently no separate staging backend — this deploys directly to the live instance.
+Deploys Convex functions and schema to the VPS (live production). Promote via the UAT tier rather than deploying straight from a feature branch — see `docs/runbooks/uat-environment.md`.
 
 ### Development Workflow
 

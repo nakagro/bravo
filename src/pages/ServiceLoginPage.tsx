@@ -4,13 +4,14 @@ import { api } from "../../convex/_generated/api";
 import { storeServiceToken } from "@/features/serviceAccounts/ServiceAccountContext";
 import { Link, useSearchParams } from "react-router-dom";
 import { getVersionString } from "@/utils/version";
-import { isDevEnvironment } from "@/utils/environment";
+import { getEnvironmentBadge } from "@/utils/environment";
 import { Delete, LogIn } from "lucide-react";
 
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 10;
 
 export default function ServiceLoginPage() {
+  const envBadge = getEnvironmentBadge();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -78,9 +79,11 @@ export default function ServiceLoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 select-none">
-      {isDevEnvironment() && (
-        <div className="fixed top-0 inset-x-0 px-4 py-2 bg-amber-500 text-amber-950 text-center text-sm font-bold z-10">
-          DEV ENVIRONMENT
+      {envBadge && (
+        <div
+          className={`fixed top-0 inset-x-0 px-4 py-2 text-center text-sm font-bold z-10 ${envBadge.className}`}
+        >
+          {envBadge.long}
         </div>
       )}
 

@@ -61,7 +61,9 @@ export function SignInForm() {
 
   const isProduction = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
   const captchaEnabled = isProduction && import.meta.env.VITE_DISABLE_CAPTCHA !== 'true';
-  const hCaptchaSiteKey = "3130983c-4200-4120-98ae-46fe42be99f0";
+  // Overridable per environment (e.g. a UAT site key); falls back to the
+  // production key so builds without the var keep working.
+  const hCaptchaSiteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || "3130983c-4200-4120-98ae-46fe42be99f0";
 
   const resetCaptcha = () => {
     if (captchaEnabled) {

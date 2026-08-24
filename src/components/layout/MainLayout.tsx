@@ -2,7 +2,7 @@ import { ReactNode, useLayoutEffect, useRef } from "react";
 import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
-import { isDevEnvironment } from "@/utils/environment";
+import { getEnvironmentBadge } from "@/utils/environment";
 import { ActionBell } from "../../features/actionCentre/components/ActionBell";
 
 interface MainLayoutProps {
@@ -10,6 +10,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const envBadge = getEnvironmentBadge();
   const headerRef = useRef<HTMLDivElement>(null);
 
   // Publish the app header's height so page-level sticky chrome can park
@@ -40,9 +41,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           >
             <h2 className="text-xl font-semibold text-red-700 dark:text-red-600">
               Wyndham Vale Fire Brigade
-              {isDevEnvironment() && (
-                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-500 text-amber-950 align-middle">
-                  DEV
+              {envBadge && (
+                <span
+                  className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold align-middle ${envBadge.className}`}
+                  title={envBadge.long}
+                >
+                  {envBadge.short}
                 </span>
               )}
             </h2>
