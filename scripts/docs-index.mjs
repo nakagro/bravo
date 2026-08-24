@@ -72,12 +72,28 @@ function walk(dir) {
   return out;
 }
 
+// Bulk docs-maintenance commits to ignore when deciding whether frontmatter is
+// stale. `updated:` means "when this document's substance last changed", so a
+// commit that only reorganised, renamed or re-stamped every file must not make
+// all 43 docs look out of date. Add a SHA here when doing another bulk pass.
+const MAINTENANCE_COMMITS = new Set([
+  "4963190", // 2026-08-23 docs/ restructure: renames + frontmatter added to every doc
+]);
+
 function lastCommitDate(file) {
   try {
-    return execSync(`git log -1 --format=%ad --date=short -- "${file}"`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    // --follow so a renamed file keeps its history; walk back past any
+    // maintenance commit to the last one that actually changed the content.
+    const log = execSync(
+      `git log --follow --format=%h:%ad --date=short -- "${file}"`,
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    ).trim();
+    if (!log) return "";
+    for (const line of log.split("\n")) {
+      const [sha, date] = line.split(":");
+      if (!MAINTENANCE_COMMITS.has(sha)) return date;
+    }
+    return ""; // only ever touched by maintenance commits
   } catch {
     return "";
   }
