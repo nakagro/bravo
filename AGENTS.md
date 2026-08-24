@@ -59,6 +59,31 @@ backend.** `docs/README.md` is a generated index of all documentation — read i
 plan is or isn't implemented; status lives in each doc's frontmatter, not its prose. Regenerate with
 `npm run docs:index`; never hand-edit `docs/README.md`.
 
+### Branching: `uat` is upstream of `main`
+
+The direction is **`feature -> uat -> main`**. Branch new work from `uat`, not `main`.
+
+**Decision rule — does the change touch `convex/`?**
+
+- **Yes** (schema, new/renamed function, migration): it **must** go through UAT. No exceptions.
+  Schema validation against real cloned data is the check nothing else provides.
+- **No** (docs, CI, README, trivial frontend): may go direct to `main`.
+
+**If anything lands directly on `main`, `uat` must be re-synced in the same breath:**
+
+```bash
+git push origin main
+git branch -f uat main                 # never skip this
+git push --force-with-lease origin uat
+```
+
+Leaving `uat` behind fails silently — the next branch cut from `uat` is missing commits, and the
+later merge conflicts in ways that look unrelated. Do not force-update `uat` if it holds work that
+is *not* in `main`; merge and find out why it diverged.
+
+Agents cannot push `main` (`.husky/pre-push` blocks non-TTY shells), so in practice: commit, then
+hand the push **and** the `uat` re-sync back to Shaun as a pair — not just the push.
+
 Deploy ordering: **adding** a function or field → backend first; **removing or renaming** one →
 frontend first (the deployed frontend would otherwise call something that no longer exists).
 
