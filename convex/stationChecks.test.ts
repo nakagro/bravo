@@ -735,6 +735,28 @@ describe("linked inventory items", () => {
     expect(status).toBe("completed");
   });
 
+  it("returns a submitted linked item through the history page", async () => {
+    // The history query has its own inline returns validator, separate from
+    // checkItemValidator - it has to carry the link fields or reading back any
+    // week containing a linked row fails.
+    const { asUser, dutyCrewId, linkedItem, completeRun } = await linkedSetup();
+    const runId = await completeRun(WEDNESDAY);
+
+    await asUser.mutation(api.stationChecks.submitStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(false)],
+    });
+
+    const page = await asUser.query(api.stationChecks.getStationCheckHistoryPage, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    const item = page.page[0].checkItems[0];
+    expect(item.linkedRunId).toBe(runId);
+    expect(item.isCompleted).toBe(true);
+  });
+
   it("reports a non-active template so the row can be hidden", async () => {
     const { t, asUser, templateId } = await linkedSetup();
     await t.run(async (ctx) => {

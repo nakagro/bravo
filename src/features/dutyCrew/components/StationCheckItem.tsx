@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode } from "react";
-import { Check, CircleSlash, Trash2 } from "lucide-react";
+import { Check, CircleSlash, ClipboardList, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ChecklistRow } from "@/components/shared/checklist";
 import {
@@ -7,10 +8,15 @@ import {
   getUserInitials,
   formatTime,
   type CheckItemData,
+  type LinkedInventoryInfo,
 } from "../types";
 
 interface StationCheckItemProps {
   item: CheckItemData;
+  /** Present when this row is ticked off by the Inventory module instead. */
+  linked?: LinkedInventoryInfo;
+  /** Whether the viewer can reach /inventory. The row still renders without it. */
+  canOpenInventory?: boolean;
   onToggle: () => void;
   onOpenNotes: () => void;
   onDelete?: () => void;
@@ -24,9 +30,19 @@ interface StationCheckItemProps {
 
 export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps>(
   function StationCheckItem(
-    { item, onToggle, onOpenNotes, onDelete, assignment, completedByUser },
+    {
+      item,
+      linked,
+      canOpenInventory = false,
+      onToggle,
+      onOpenNotes,
+      onDelete,
+      assignment,
+      completedByUser,
+    },
     ref,
   ) {
+    const navigate = useNavigate();
     const status = checkItemStatus(item);
     const isNA = status === "attention";
 
@@ -81,10 +97,31 @@ export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps
                 Ad-hoc
               </span>
             )}
+            {linked && (
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded flex-shrink-0">
+                Inventory
+              </span>
+            )}
           </>
         }
         meta={
-          status !== "unanswered" && completedByUser && item.completedAt ? (
+          // A linked row's attribution belongs to the inventory run, and reads
+          // differently: the point is that the tick came from another module.
+          linked ? (
+            linked.completedAt ? (
+              <span className="text-[10px] text-blue-700 dark:text-blue-400">
+                via Inventory
+                {linked.completedByName ? ` - ${linked.completedByName}` : ""}
+                {` - ${formatTime(linked.completedAt)}`}
+              </span>
+            ) : (
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                {linked.inProgressRunId
+                  ? "Inventory check in progress"
+                  : "Done in the Inventory module"}
+              </span>
+            )
+          ) : status !== "unanswered" && completedByUser && item.completedAt ? (
             <div className="flex items-center gap-1">
               <span
                 className={cn(
@@ -112,6 +149,15 @@ export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps
         trailing={
           <>
             {assignment}
+            {linked && canOpenInventory ? (
+              <button
+                aria-label={`Open ${linked.templateName} in Inventory`}
+                className="flex items-center justify-center h-11 w-11 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors active:scale-95"
+                onClick={() => navigate(`/inventory?template=${linked.templateId}`)}
+              >
+                <ClipboardList className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
             {item.isAdHoc && onDelete ? (
               <button
                 aria-label={`Remove ${item.name}`}

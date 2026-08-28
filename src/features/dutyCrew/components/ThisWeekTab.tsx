@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { DutyCrewHero } from "./DutyCrewHero";
 import { StationChecksList } from "./StationChecksList";
 import {
@@ -14,6 +15,7 @@ import {
   type AllocationTarget,
   type CheckItemData,
   type ItemUser,
+  type LinkedInventoryInfo,
 } from "../types";
 
 interface ThisWeekTabProps {
@@ -21,6 +23,7 @@ interface ThisWeekTabProps {
 }
 
 export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
+  const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
 
   const { sunday: currentSunday } = weekBoundaries(weekOffset);
@@ -39,6 +42,18 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   // the server, which makes the rotation rule bail out and the schedule
   // lookup miss - dutyCrewSchedule rows are keyed to UTC midnight because
   // getUpcomingDutyCrewAssignments builds their timestamps server-side.
+  // Checks satisfied by the Inventory module rather than by ticking. Derived
+  // server-side from this week's completed runs.
+  const linkedInventory = useQuery(api.stationChecks.getLinkedInventoryStatus, {
+    date: currentSunday.getTime(),
+  });
+  // Whether to offer the "go to Inventory" button: Duty Crew and Inventory are
+  // independent grants, and a shared account on a truck tablet may not have an
+  // /inventory route at all. Sending someone to Access Denied is worse than
+  // showing no button.
+  const moduleAccess = useQuery(api.modules.getAllModuleAccess);
+  const canOpenInventory = moduleAccess?.inventory ?? false;
+
   const sundayMidnight = toUtcMidnight(currentSunday);
   const weekCrew = useQuery(api.dutyCrew.getDutyCrewForDate, {
     date: sundayMidnight,
@@ -158,6 +173,53 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     }
   }, [stationChecks, currentWeekStatus]);
 
+  // check id -> derived inventory state, for every active check that carries a
+  // link. Built from the checks themselves so a link added mid-week appears
+  // without a reload.
+  const linkedByCheckId = useMemo(() => {
+    const byTemplate = new Map<string, LinkedInventoryInfo>();
+    for (const entry of linkedInventory ?? []) {
+      byTemplate.set(entry.templateId, entry as LinkedInventoryInfo);
+    }
+
+    const result: Record<string, LinkedInventoryInfo> = {};
+    for (const check of stationChecks ?? []) {
+      if (!check.linkedApplianceTemplateId) continue;
+      const info = byTemplate.get(check.linkedApplianceTemplateId);
+      if (info) result[check._id] = info;
+    }
+    return result;
+  }, [stationChecks, linkedInventory]);
+
+  // What the checklist actually renders. The stored items stay untouched -
+  // the server is what writes derived values - but a linked row must show the
+  // live truth immediately when a run is completed in the other module, and
+  // must disappear while its appliance is off the run.
+  //
+  // A submitted week is left exactly as recorded: derivation resumes only if
+  // it is reopened.
+  const displayItems: CheckItemData[] = useMemo(() => {
+    const isFrozen = currentWeekStatus?.submission?.status === "completed";
+    if (isFrozen) return checkItems;
+
+    return checkItems.flatMap((item) => {
+      const link = item.checkId ? linkedByCheckId[item.checkId] : undefined;
+      if (!link) return [item];
+      if (link.templateStatus !== "active") return [];
+
+      const isCompleted = link.completedRunId !== undefined;
+      return [
+        {
+          ...item,
+          isCompleted,
+          isNotApplicable: undefined,
+          completedBy: isCompleted ? link.completedBy : undefined,
+          completedAt: isCompleted ? link.completedAt : undefined,
+        },
+      ];
+    });
+  }, [checkItems, linkedByCheckId, currentWeekStatus]);
+
   const getDutyCrewId = useCallback((): Id<"dutyCrew"> | null => {
     if (currentAssignment) return currentAssignment.dutyCrew._id;
     if (currentWeekStatus) return currentWeekStatus.submission.dutyCrewId;
@@ -203,6 +265,24 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     adHocName: string | undefined,
     isCompleted: boolean
   ) => {
+    // Linked rows are ticked off by the Inventory module. Explain that rather
+    // than silently swallowing the tap.
+    const link = checkId ? linkedByCheckId[checkId] : undefined;
+    if (link) {
+      toast.info(`${link.templateName} is ticked off by the Inventory module`, {
+        description: link.completedRunId
+          ? "This week's inventory check is already done."
+          : "Complete this week's inventory check and it will tick itself.",
+        action: canOpenInventory
+          ? {
+              label: "Go to Inventory",
+              onClick: () => navigate(`/inventory?template=${link.templateId}`),
+            }
+          : undefined,
+      });
+      return;
+    }
+
     const prevItems = checkItems;
     const target = checkItems.find((item) =>
       subItemId
@@ -423,7 +503,9 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       />
 
       <StationChecksList
-        checkItems={checkItems}
+        checkItems={displayItems}
+        linkedByCheckId={linkedByCheckId}
+        canOpenInventory={canOpenInventory}
         generalNotes={generalNotes}
         onCheckToggle={handleCheckToggle}
         onNotesChange={handleNotesChange}

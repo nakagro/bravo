@@ -4,7 +4,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Play, ClipboardList, CircleCheckBig, Clock, Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../../components/ui/alert-dialog";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ApplianceTemplateDoc {
@@ -53,6 +53,17 @@ export function InventoryTemplateSelector() {
   const templates = useQuery(api.inventoryTemplates.listTemplates, {}) as ApplianceTemplateDoc[] | undefined;
   const startRun = useMutation(api.inventoryCheckRuns.startRun);
   const navigate = useNavigate();
+  // Duty Crew links here with ?template=<id> when a member taps a locked row.
+  // Highlight that card rather than starting anything: creating a run by
+  // accident is worse than an extra tap.
+  const [searchParams] = useSearchParams();
+  const highlightedTemplateId = searchParams.get("template");
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!highlightedTemplateId) return;
+    highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightedTemplateId, templates]);
   const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns) as InProgressRunDoc[] | undefined;
   const lastCompletedRuns = useQuery(api.inventoryCheckRuns.getLastCompletedRunsByTemplate) as LastCompletedRunDoc[] | undefined;
   const [confirmTemplate, setConfirmTemplate] = useState<ApplianceTemplateDoc | null>(null);
@@ -180,7 +191,12 @@ export function InventoryTemplateSelector() {
         return (
           <div
             key={tpl._id}
-            className={`bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 ${borderAccent} transition-all`}
+            ref={tpl._id === highlightedTemplateId ? highlightRef : undefined}
+            className={`bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 ${borderAccent} transition-all ${
+              tpl._id === highlightedTemplateId
+                ? "ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 ring-offset-gray-50 dark:ring-offset-gray-900"
+                : ""
+            }`}
           >
             {/* Stacks on phones: a long template name plus a wide action button
                 can't share one line on a 390px screen without the name losing

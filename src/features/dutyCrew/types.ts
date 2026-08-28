@@ -17,6 +17,23 @@ export type CheckItemData = {
   addedBy?: Id<"users">;
 };
 
+/**
+ * Derived state for a check that is satisfied by an inventory run rather than
+ * by ticking. Deliberately *not* a field on CheckItemData: that type is the
+ * mutation payload, and an extra field would be rejected by the server's
+ * validator. Passed alongside, keyed by check id.
+ */
+export type LinkedInventoryInfo = {
+  templateId: Id<"applianceTemplates">;
+  templateName: string;
+  templateStatus: "active" | "inactive" | "archived";
+  completedRunId?: Id<"applianceCheckRuns">;
+  completedAt?: number;
+  completedBy?: Id<"users">;
+  completedByName?: string;
+  inProgressRunId?: Id<"applianceCheckRuns">;
+};
+
 // An item counts toward submission when it is either completed or marked N/A
 export const isItemResolved = (item: {
   isCompleted: boolean;

@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -21,7 +28,11 @@ export interface TemplateFormValue {
   subItems: string[];
   isPriority: boolean;
   isActive: boolean;
+  linkedApplianceTemplateId?: Id<"applianceTemplates">;
 }
+
+/** Sentinel for the "no link" option - Radix Select can't hold an empty value. */
+const NO_LINK = "none";
 
 interface CheckTemplateFormPanelProps {
   /** null = closed; id undefined = create, id set = edit */
@@ -38,6 +49,14 @@ export function CheckTemplateFormPanel({
 }: CheckTemplateFormPanelProps) {
   const createStationCheck = useMutation(api.stationChecks.createStationCheck);
   const updateStationCheck = useMutation(api.stationChecks.updateStationCheck);
+  // Active *and* inactive: the active-only default would blank the select when
+  // editing a check whose appliance is currently off the run, hiding the
+  // existing link exactly when the admin needs to see it. This query is gated
+  // on being signed in, so a duty crew admin who isn't an inventory admin can
+  // still read it.
+  const inventoryTemplates = useQuery(api.inventoryTemplates.listTemplates, {
+    statuses: ["active", "inactive"],
+  });
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -45,6 +64,7 @@ export function CheckTemplateFormPanel({
   const [subItems, setSubItems] = useState<string[]>([]);
   const [isPriority, setIsPriority] = useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [linkedTemplateId, setLinkedTemplateId] = useState<string>(NO_LINK);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -55,6 +75,7 @@ export function CheckTemplateFormPanel({
       setSubItems(value.subItems);
       setIsPriority(value.isPriority);
       setIsActive(value.isActive);
+      setLinkedTemplateId(value.linkedApplianceTemplateId ?? NO_LINK);
     }
   }, [value]);
 
@@ -67,7 +88,8 @@ export function CheckTemplateFormPanel({
       area !== value.area ||
       JSON.stringify(subItems) !== JSON.stringify(value.subItems) ||
       isPriority !== value.isPriority ||
-      isActive !== value.isActive);
+      isActive !== value.isActive ||
+      linkedTemplateId !== (value.linkedApplianceTemplateId ?? NO_LINK));
   const guard = useDirtyDraftGuard(isDirty, onClose);
 
   if (!value) return null;
@@ -87,6 +109,12 @@ export function CheckTemplateFormPanel({
           subItems: subItems.map((item) => item.trim()).filter(Boolean),
           isPriority,
           isActive,
+          // null clears an existing link; the server distinguishes that from
+          // "not mentioned".
+          linkedApplianceTemplateId:
+            linkedTemplateId === NO_LINK
+              ? null
+              : (linkedTemplateId as Id<"applianceTemplates">),
         });
         toast.success("Check template updated");
       } else {
@@ -97,6 +125,10 @@ export function CheckTemplateFormPanel({
           subItems: subItems.map((item) => item.trim()).filter(Boolean),
           isPriority,
           isActive,
+          linkedApplianceTemplateId:
+            linkedTemplateId === NO_LINK
+              ? undefined
+              : (linkedTemplateId as Id<"applianceTemplates">),
         });
         toast.success("Check template created");
       }
@@ -272,6 +304,30 @@ export function CheckTemplateFormPanel({
               checked={isActive}
               onCheckedChange={setIsActive}
             />
+          </div>
+
+          <div className="py-1">
+            <Label htmlFor="linked-inventory-select">Linked inventory check</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
+              Tie this item to an appliance's inventory check. It then becomes
+              read-only and ticks itself when that check is completed for the
+              week, and hides from the list while the appliance is out of
+              service.
+            </p>
+            <Select value={linkedTemplateId} onValueChange={setLinkedTemplateId}>
+              <SelectTrigger id="linked-inventory-select">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_LINK}>None</SelectItem>
+                {(inventoryTemplates ?? []).map((template) => (
+                  <SelectItem key={template._id} value={template._id}>
+                    {template.name}
+                    {template.status === "inactive" ? " (out of service)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </ResponsiveModal>

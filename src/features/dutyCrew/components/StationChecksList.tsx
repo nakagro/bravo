@@ -48,10 +48,15 @@ import {
   type CheckItemData,
   type CrewAssignmentMember,
   type ItemUser,
+  type LinkedInventoryInfo,
 } from "../types";
 
 interface StationChecksListProps {
   checkItems: CheckItemData[];
+  /** Derived inventory state, keyed by check id, for rows the Inventory module ticks. */
+  linkedByCheckId?: Record<string, LinkedInventoryInfo>;
+  /** Whether the viewer can reach /inventory - gates the nav button, not the row. */
+  canOpenInventory?: boolean;
   generalNotes: string;
   onCheckToggle: (
     checkId: Id<"stationChecks"> | undefined,
@@ -94,6 +99,8 @@ const AD_HOC_SECTION = "section-adhoc";
 
 export function StationChecksList({
   checkItems,
+  linkedByCheckId,
+  canOpenInventory = false,
   generalNotes,
   onCheckToggle,
   onNotesChange,
@@ -555,6 +562,8 @@ export function StationChecksList({
                 >
                   <StationCheckItem
                     item={item}
+                    linked={item.checkId ? linkedByCheckId?.[item.checkId] : undefined}
+                    canOpenInventory={canOpenInventory}
                     completedByUser={getCompletedByUser(item)}
                     onToggle={() =>
                       onCheckToggle(

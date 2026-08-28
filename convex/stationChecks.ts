@@ -1328,6 +1328,8 @@ export const getStationCheckHistoryPage = query({
             notes: v.optional(v.string()),
             isAdHoc: v.optional(v.boolean()),
             addedBy: v.optional(v.id("users")),
+            linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
+            linkedRunId: v.optional(v.id("applianceCheckRuns")),
           })
         ),
         notes: v.optional(v.string()),
@@ -1409,6 +1411,8 @@ export const getStationCheckHistoryPage = query({
           notes: item.notes,
           isAdHoc: item.isAdHoc,
           addedBy: item.addedBy,
+          linkedApplianceTemplateId: item.linkedApplianceTemplateId,
+          linkedRunId: item.linkedRunId,
         })),
         notes: submission.notes,
       });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -72,6 +73,8 @@ interface HistorySubmission {
     isNotApplicable?: boolean;
     notes?: string;
     isAdHoc?: boolean;
+    linkedApplianceTemplateId?: Id<"applianceTemplates">;
+    linkedRunId?: Id<"applianceCheckRuns">;
   }>;
   notes?: string;
 }
@@ -99,6 +102,7 @@ function ItemStatusIcon({
 }
 
 function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
+  const navigate = useNavigate();
   const templateItems = submission.checkItems.filter((i) => !i.isAdHoc);
   const adHocItems = submission.checkItems.filter((i) => i.isAdHoc);
 
@@ -174,6 +178,24 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
                             Ad-hoc
                           </span>
                         )}
+                        {item.linkedApplianceTemplateId &&
+                          // Runs can still be deleted, so link only when the id
+                          // is there - a dead link is worse than a plain badge.
+                          (item.linkedRunId ? (
+                            <button
+                              className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/inventory/run/${item.linkedRunId}`);
+                              }}
+                            >
+                              Inventory
+                            </button>
+                          ) : (
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                              Inventory
+                            </span>
+                          ))}
                       </>
                     }
                   />

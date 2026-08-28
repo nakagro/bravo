@@ -34,6 +34,14 @@ export function CheckTemplatesSection() {
   const deleteStationCheck = useMutation(api.stationChecks.deleteStationCheck);
 
   const [formValue, setFormValue] = useState<TemplateFormValue | null>(null);
+  // Every template, whatever its status, so a link pointing at an archived or
+  // deleted appliance can be named rather than silently rendering nothing.
+  const inventoryTemplates = useQuery(api.inventoryTemplates.listTemplates, {
+    statuses: ["active", "inactive", "archived"],
+  });
+  const templatesById = new Map(
+    (inventoryTemplates ?? []).map((template) => [template._id, template])
+  );
   const [deletingId, setDeletingId] = useState<Id<"stationChecks"> | null>(null);
 
   if (!stationChecks) {
@@ -158,6 +166,29 @@ export function CheckTemplatesSection() {
                         </Badge>
                       )}
                     </div>
+                    {check.linkedApplianceTemplateId && (() => {
+                      const linked = templatesById.get(check.linkedApplianceTemplateId);
+                      const status = linked?.status ?? "active";
+                      // A linked row hides from the weekly checklist unless its
+                      // appliance is in service, so say so here - otherwise the
+                      // admin sees a check that simply never appears.
+                      const isLive = linked !== undefined && status === "active";
+                      return (
+                        <p
+                          className={`text-xs line-clamp-1 ${
+                            isLive
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {linked
+                            ? isLive
+                              ? `Ticked by Inventory: ${linked.name}`
+                              : `Hidden - ${linked.name} is ${status === "archived" ? "archived" : "out of service"}`
+                            : "Hidden - linked inventory check no longer exists"}
+                        </p>
+                      );
+                    })()}
                     {check.description && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
                         {check.description}
@@ -208,6 +239,8 @@ export function CheckTemplatesSection() {
                             subItems: check.subItems.map((item) => item.name),
                             isPriority: check.isPriority ?? false,
                             isActive: check.isActive,
+                            linkedApplianceTemplateId:
+                              check.linkedApplianceTemplateId,
                           })
                         }
                       >
