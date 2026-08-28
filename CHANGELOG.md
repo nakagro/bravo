@@ -1,6 +1,16 @@
 # Changelog
 
+## [2026.08.28]
+- Inventory: Appliance templates now have a lifecycle. A template can be active, taken out of service, or archived, instead of only existing or being destroyed. Out of service suits a spare appliance that isn't in use, archived retires a template while keeping every check ever done against it.
+- Inventory: A template that has been checked at least once can no longer be permanently deleted. Archiving is the end state, so the history behind a check can't be wiped by accident.
+- Duty Crew: An "Inventory Checks" item can now be tied to the real inventory template it stands for. Those rows can't be ticked by hand any more. They tick themselves once the matching inventory check is actually completed that week, and tapping one takes you to that check in the Inventory module. A one tap claim that an appliance was inventoried is no longer possible.
+- Duty Crew: A linked row whose appliance is out of service or archived drops off the weekly checklist, so a spare that isn't in use stops being an outstanding job.
+- Duty Crew: Fixed the week boundary. The checking week was being worked out in UTC, which meant a check done on a Monday morning, the usual time, counted toward the week that had just finished. Weeks now run Monday to Sunday in Melbourne time, so Inventory and Duty Crew agree on what "this week" means. Daylight saving is handled properly rather than assumed.
+- Events: Fixed the same timezone issue when deciding whether an event has already happened.
+- Testing: A separate UAT copy of BRAVO now exists for trying changes against real data before they reach you, with its own guards so nothing it does can email members, unlock the station or touch the brigade calendar.
+
 ## [2026.08.21]
+- Events: After an event has been and gone, the organiser or a team leader can confirm who actually turned up. It starts from who said they were coming, so it's a matter of adjusting the list rather than building it, and the confirmed attendance is then shown on the event.
 - Events: An event can now have team leaders. A team leader gets the organiser's tools for that one event only: editing it, allocating shifts, setting who's going, opening and closing responses, notifying members, and seeing the full response list including who hasn't answered. It grants nothing anywhere else in Events, and permanently deleting an event still needs Events Admin. Set them under "Team leaders" when creating or editing an event; the organiser or an Events Admin can appoint, and a team leader can't appoint others.
 - Events: Team leaders are named on the event page so everyone knows who to find on the day, tagged beside their name wherever they appear in a roster, and shown a "Team leader" badge on their own events in the Upcoming list.
 - Events: The organiser of an event can now manage it even if they aren't an officer or Social Admin. Handing an event over previously left the new organiser unable to edit it, despite being told they could.

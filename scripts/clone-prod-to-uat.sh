@@ -40,7 +40,7 @@ echo "  ------------------------------------------------------"
 # goes to real members.
 # ---------------------------------------------------------------------------
 echo ""
-echo "  [1/5] Checking the email guard is armed on UAT..."
+echo "  [1/6] Checking the email guard is armed on UAT..."
 
 allowlist="$(CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex env get EMAIL_ALLOWLIST 2>/dev/null | tr -d '\r\n' || true)"
 
@@ -74,7 +74,7 @@ echo "        frontend: ${frontend}"
 # 2. Export production (read-only).
 # ---------------------------------------------------------------------------
 echo ""
-echo "  [2/5] Exporting production (read-only)..."
+echo "  [2/6] Exporting production (read-only)..."
 
 mkdir -p ./exports/convex
 snapshot="./exports/convex/uat-clone-$(date +%Y%m%d-%H%M%S).zip"
@@ -89,11 +89,45 @@ echo "        wrote ${snapshot}"
 # than it claims, which is a confusing state to debug a feature in.
 # ---------------------------------------------------------------------------
 echo ""
-echo "  [3/5] Verifying the snapshot..."
+echo "  [3/6] Verifying the snapshot..."
 ./scripts/verify-convex-backup.py "$snapshot"
 
 # ---------------------------------------------------------------------------
-# 4. Replace UAT's data.
+# 4. Save UAT's own push subscriptions.
+#
+# A push subscription is bound to the VAPID key pair of the deployment that
+# created it, and UAT has its own pair. So production's rows are undeliverable
+# here, and --replace-all would wipe the tester devices that do work - forcing
+# the two or three UAT testers to unregister and re-register after every clone.
+# Snapshot them now, restore them after the import.
+# ---------------------------------------------------------------------------
+echo ""
+echo "  [4/6] Saving UAT's own push subscriptions..."
+
+uat_snapshot="./exports/convex/uat-push-$(date +%Y%m%d-%H%M%S).zip"
+preserved_push=""
+
+if CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex export --path "$uat_snapshot" >/dev/null 2>&1; then
+  push_jsonl="${uat_snapshot%.zip}.jsonl"
+  set +e
+  ./scripts/extract-push-subscriptions.py "$uat_snapshot" "$push_jsonl" --users-from "$snapshot"
+  extract_status=$?
+  set -e
+  if [ "$extract_status" -eq 0 ]; then
+    preserved_push="$push_jsonl"
+  elif [ "$extract_status" -ne 3 ]; then
+    echo "  X Refusing to clone: could not read UAT's push subscriptions." >&2
+    echo "    Importing now would destroy them silently." >&2
+    exit 1
+  fi
+  rm -f "$uat_snapshot"
+else
+  echo "        could not export UAT (empty or unreachable) - nothing to preserve"
+  rm -f "$uat_snapshot"
+fi
+
+# ---------------------------------------------------------------------------
+# 5. Replace UAT's data.
 # ---------------------------------------------------------------------------
 if [ "$confirmed" != "yes" ]; then
   cat <<EOF
@@ -112,14 +146,25 @@ EOF
 fi
 
 echo ""
-echo "  [4/5] Importing into ${UAT_DEPLOYMENT} (--replace-all)..."
+echo "  [5/6] Importing into ${UAT_DEPLOYMENT} (--replace-all)..."
 CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex import --replace-all --yes "$snapshot"
 
+# Put UAT's own subscriptions back, replacing the cloned production rows. The
+# table ends up holding only devices registered against UAT's VAPID pair.
+if [ -n "$preserved_push" ]; then
+  echo "        restoring UAT push subscriptions..."
+  CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex import \
+    --table pushSubscriptions --replace --yes "$preserved_push"
+  rm -f "$preserved_push"
+else
+  echo "        no UAT push subscriptions to restore (cloned production rows remain, and are undeliverable)"
+fi
+
 # ---------------------------------------------------------------------------
-# 5. Report.
+# 6. Report.
 # ---------------------------------------------------------------------------
 echo ""
-echo "  [5/5] Done."
+echo "  [6/6] Done."
 echo ""
 echo "  UAT now holds a copy of production data."
 echo "    backend:   https://${UAT_DEPLOYMENT}.convex.cloud"
