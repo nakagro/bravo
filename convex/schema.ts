@@ -428,6 +428,13 @@ const applicationTables = {
         completedAt: v.optional(v.number()), // Timestamp when this specific check was completed
         isAdHoc: v.optional(v.boolean()), // Whether this is an ad-hoc item added by a crew leader
         addedBy: v.optional(v.id("users")), // User who added this ad-hoc item
+        // Set on items satisfied by an inventory run rather than a tick. The
+        // audit trail for a derived row: which appliance template it was, and
+        // which run resolved it. Stored so a submitted week renders from the
+        // record instead of re-deriving - a past week must not change because
+        // someone completed an inventory later.
+        linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
+        linkedRunId: v.optional(v.id("applianceCheckRuns")),
       })
     ),
     notes: v.optional(v.string()), // Optional general notes for the entire submission

@@ -20,6 +20,10 @@ type SubmissionCheckItem = {
   completedAt?: number;
   isAdHoc?: boolean;
   addedBy?: Id<"users">;
+  // Which inventory template satisfied this item, and which run did it. Stored
+  // so a submitted week renders from the record instead of re-deriving.
+  linkedApplianceTemplateId?: Id<"applianceTemplates">;
+  linkedRunId?: Id<"applianceCheckRuns">;
 };
 
 // An item counts toward submission when it is either completed or marked N/A
@@ -41,6 +45,8 @@ const checkItemValidator = v.object({
   completedAt: v.optional(v.number()),
   isAdHoc: v.optional(v.boolean()),
   addedBy: v.optional(v.id("users")),
+  linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
+  linkedRunId: v.optional(v.id("applianceCheckRuns")),
 });
 
 // The crew roster as it stood when the week was worked - see the schema note
@@ -363,6 +369,7 @@ export const getAllStationChecks = query({
       isPriority: v.optional(v.boolean()),
       isActive: v.boolean(),
       order: v.number(),
+      linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
       createdBy: v.id("users"),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -454,6 +461,7 @@ export const createStationCheck = mutation({
     isPriority: v.optional(v.boolean()),
     isActive: v.boolean(),
     order: v.optional(v.number()),
+    linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
     subItems: v.optional(v.array(v.string())),
   },
   returns: v.id("stationChecks"),
@@ -490,6 +498,7 @@ export const createStationCheck = mutation({
       isPriority: args.isPriority,
       isActive: args.isActive,
       order,
+      linkedApplianceTemplateId: args.linkedApplianceTemplateId,
       // Use the current user ID
       createdBy: currentUser._id,
       createdAt: now,
@@ -510,6 +519,11 @@ export const updateStationCheck = mutation({
     isPriority: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
     order: v.optional(v.number()),
+    // null clears the link; omitted leaves it untouched. The two need to be
+    // distinguishable, and an optional id alone can't say "remove this".
+    linkedApplianceTemplateId: v.optional(
+      v.union(v.id("applianceTemplates"), v.null())
+    ),
     subItems: v.optional(v.array(v.string())),
   },
   returns: v.id("stationChecks"),
@@ -531,6 +545,7 @@ export const updateStationCheck = mutation({
       isPriority?: boolean;
       isActive?: boolean;
       order?: number;
+      linkedApplianceTemplateId?: Id<"applianceTemplates"> | undefined;
       updatedAt: number;
     } = {
       updatedAt: Date.now(),
@@ -558,6 +573,11 @@ export const updateStationCheck = mutation({
 
     if (args.order !== undefined) {
       updates.order = args.order;
+    }
+
+    if (args.linkedApplianceTemplateId !== undefined) {
+      updates.linkedApplianceTemplateId =
+        args.linkedApplianceTemplateId ?? undefined;
     }
 
     await ctx.db.patch(args.id, updates);
@@ -593,6 +613,214 @@ export const deleteStationCheck = mutation({
     }
     await ctx.db.delete(args.id);
     return true;
+  },
+});
+
+// ─── Linked inventory checks ────────────────────────────────────────────────
+//
+// A station check can be satisfied by completing an inventory run instead of
+// being ticked. The derived state lives here so the query, the save path and
+// the submit path all agree on what "resolved" means for a linked item.
+
+type LinkedInventoryState = {
+  templateId: Id<"applianceTemplates">;
+  templateName: string;
+  templateStatus: "active" | "inactive" | "archived";
+  completedRunId?: Id<"applianceCheckRuns">;
+  completedAt?: number;
+  completedBy?: Id<"users">;
+  inProgressRunId?: Id<"applianceCheckRuns">;
+};
+
+// Bounded: roughly one run per template per week, so 100 is about two years of
+// history and far more than the one week this actually looks at.
+const LINKED_RUN_SCAN = 100;
+
+// Resolve every linked template to the state of its run for the week `date`
+// falls in, keyed by template id. Shared by the query and both mutations.
+async function deriveLinkedInventory(
+  ctx: QueryCtx | MutationCtx,
+  date: number
+): Promise<Map<Id<"applianceTemplates">, LinkedInventoryState>> {
+  const checks = await ctx.db
+    .query("stationChecks")
+    .withIndex("by_isActive", (q) => q.eq("isActive", true))
+    .take(500);
+
+  const templateIds = [
+    ...new Set(
+      checks
+        .map((c) => c.linkedApplianceTemplateId)
+        .filter((id): id is Id<"applianceTemplates"> => id !== undefined)
+    ),
+  ];
+
+  const { start, end } = weekWindow(date);
+  const states = new Map<Id<"applianceTemplates">, LinkedInventoryState>();
+
+  for (const templateId of templateIds) {
+    const template = await ctx.db.get(templateId);
+    // A dangling id shouldn't happen - permanent delete clears links - but
+    // treat a missing template as "hide the row" rather than throwing, so one
+    // bad link can't take out the whole weekly checklist.
+    if (!template) continue;
+
+    const runs = await ctx.db
+      .query("applianceCheckRuns")
+      .withIndex("by_template", (q) => q.eq("templateId", templateId))
+      .order("desc")
+      .take(LINKED_RUN_SCAN);
+
+    // Newest completed run whose completedAt lands inside this week. Runs come
+    // back newest-first, so the first match is the one to report.
+    const completed = runs.find(
+      (r) =>
+        r.status === "completed" &&
+        r.completedAt !== undefined &&
+        r.completedAt >= start &&
+        r.completedAt <= end
+    );
+    const inProgress = runs.find((r) => r.status === "in_progress");
+
+    states.set(templateId, {
+      templateId,
+      templateName: template.name,
+      templateStatus: template.status ?? "active",
+      completedRunId: completed?._id,
+      completedAt: completed?.completedAt,
+      completedBy: completed?.completedBy,
+      inProgressRunId: inProgress?._id,
+    });
+  }
+
+  return states;
+}
+
+// Map every active station check that carries a link to the derived state of
+// its template, keyed by check id.
+async function linkedChecksFor(
+  ctx: QueryCtx | MutationCtx,
+  date: number
+): Promise<Map<Id<"stationChecks">, LinkedInventoryState>> {
+  const checks = await ctx.db
+    .query("stationChecks")
+    .withIndex("by_isActive", (q) => q.eq("isActive", true))
+    .take(500);
+
+  const linked = checks.filter((c) => c.linkedApplianceTemplateId !== undefined);
+  if (linked.length === 0) return new Map();
+
+  const states = await deriveLinkedInventory(ctx, date);
+  const byCheck = new Map<Id<"stationChecks">, LinkedInventoryState>();
+  for (const check of linked) {
+    const state = states.get(check.linkedApplianceTemplateId!);
+    if (state) byCheck.set(check._id, state);
+  }
+  return byCheck;
+}
+
+// The write path for a submission's items.
+//
+// The client posts the whole checkItems array on every autosave, so a "locked"
+// row is only locked if the server says so: without this, a crafted request
+// could tick off a 200-item inventory that nobody did.
+//
+// Linked items are deliberately kept *out* of applyItemAttribution rather than
+// overridden after it. That function's job is to preserve prior attribution,
+// which is meaningless for derived state - and worse, a newly-resolved linked
+// item has no matching `prev`, so it would be stamped with the id of whoever
+// happened to trigger the autosave. The credit belongs to whoever completed
+// the inventory run.
+async function resolveSubmissionItems(
+  ctx: MutationCtx,
+  incoming: SubmissionCheckItem[],
+  existing: SubmissionCheckItem[] | undefined,
+  userId: Id<"users">,
+  now: number,
+  date: number
+): Promise<SubmissionCheckItem[]> {
+  const links = await linkedChecksFor(ctx, date);
+  if (links.size === 0) {
+    return applyItemAttribution(incoming, existing, userId, now);
+  }
+
+  const linkOf = (item: SubmissionCheckItem) =>
+    item.checkId ? links.get(item.checkId) : undefined;
+
+  // Attribution still runs, just on the items it means something for. Order
+  // and length are preserved, so the results zip back in a single pass.
+  const attributed = applyItemAttribution(
+    incoming.filter((item) => !linkOf(item)),
+    existing,
+    userId,
+    now
+  );
+
+  let next = 0;
+  return incoming.map((item) => {
+    const link = linkOf(item);
+    if (!link) return attributed[next++];
+
+    const isCompleted = link.completedRunId !== undefined;
+    return {
+      ...item,
+      isCompleted,
+      // A derived row is never N/A: it is either done or it isn't.
+      isNotApplicable: undefined,
+      linkedApplianceTemplateId: link.templateId,
+      linkedRunId: link.completedRunId,
+      // From the run, not the saving user.
+      completedBy: isCompleted ? link.completedBy : undefined,
+      completedAt: isCompleted ? link.completedAt : undefined,
+    };
+  });
+}
+
+export const getLinkedInventoryStatus = query({
+  args: {
+    date: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      templateId: v.id("applianceTemplates"),
+      templateName: v.string(),
+      templateStatus: v.union(
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("archived")
+      ),
+      completedRunId: v.optional(v.id("applianceCheckRuns")),
+      completedAt: v.optional(v.number()),
+      completedBy: v.optional(v.id("users")),
+      completedByName: v.optional(v.string()),
+      // templateStatus is what the checklist hides on: an appliance that is
+      // off the run has no check to do, so the row disappears rather than
+      // sitting there permanently unresolved.
+      inProgressRunId: v.optional(v.id("applianceCheckRuns")),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const states = await deriveLinkedInventory(ctx, args.date ?? Date.now());
+
+    return await Promise.all(
+      [...states.values()].map(async (state) => {
+        // Denormalised for display: the row says who did the inventory, and
+        // that name has to survive them leaving the brigade.
+        let completedByName: string | undefined;
+        if (state.completedBy) {
+          const user = await ctx.db.get(state.completedBy);
+          completedByName = user
+            ? [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+              user.name ||
+              undefined
+            : undefined;
+        }
+        return { ...state, completedByName };
+      })
+    );
   },
 });
 
@@ -801,11 +1029,13 @@ export const saveDraftStationCheck = mutation({
       // Update the existing draft submission
       const existing = await ctx.db.get(args.existingSubmissionId);
       await ctx.db.patch(args.existingSubmissionId, {
-        checkItems: applyItemAttribution(
+        checkItems: await resolveSubmissionItems(
+          ctx,
           args.checkItems,
           existing?.checkItems,
           currentUser._id,
-          now
+          now,
+          args.date,
         ),
         notes: args.notes,
         lastUpdatedBy: currentUser._id,
@@ -825,11 +1055,13 @@ export const saveDraftStationCheck = mutation({
       if (existingSubmission) {
         // Update the existing submission
         await ctx.db.patch(existingSubmission._id, {
-          checkItems: applyItemAttribution(
+          checkItems: await resolveSubmissionItems(
+            ctx,
             args.checkItems,
             existingSubmission.checkItems,
             currentUser._id,
-            now
+            now,
+            args.date,
           ),
           notes: args.notes,
           lastUpdatedBy: currentUser._id,
@@ -843,11 +1075,13 @@ export const saveDraftStationCheck = mutation({
         return await ctx.db.insert("stationCheckSubmissions", {
           date: args.date,
           dutyCrewId: args.dutyCrewId,
-          checkItems: applyItemAttribution(
+          checkItems: await resolveSubmissionItems(
+            ctx,
             args.checkItems,
             undefined,
             currentUser._id,
-            now
+            now,
+            args.date,
           ),
           notes: args.notes,
           completedBy: currentUser._id,
@@ -938,11 +1172,13 @@ export const submitStationCheck = mutation({
       // Update the existing submission and mark as completed
       const existing = await ctx.db.get(args.existingSubmissionId);
       await ctx.db.patch(args.existingSubmissionId, {
-        checkItems: applyItemAttribution(
+        checkItems: await resolveSubmissionItems(
+          ctx,
           args.checkItems,
           existing?.checkItems,
           currentUser._id,
-          now
+          now,
+          args.date,
         ),
         notes: args.notes,
         completedBy: currentUser._id,
@@ -966,11 +1202,13 @@ export const submitStationCheck = mutation({
       if (existingSubmission) {
         // Update the existing submission and mark as completed
         await ctx.db.patch(existingSubmission._id, {
-          checkItems: applyItemAttribution(
+          checkItems: await resolveSubmissionItems(
+            ctx,
             args.checkItems,
             existingSubmission.checkItems,
             currentUser._id,
-            now
+            now,
+            args.date,
           ),
           notes: args.notes,
           completedBy: currentUser._id,
@@ -988,11 +1226,13 @@ export const submitStationCheck = mutation({
         const submissionId = await ctx.db.insert("stationCheckSubmissions", {
           date: args.date,
           dutyCrewId: args.dutyCrewId,
-          checkItems: applyItemAttribution(
+          checkItems: await resolveSubmissionItems(
+            ctx,
             args.checkItems,
             undefined,
             currentUser._id,
-            now
+            now,
+            args.date,
           ),
           notes: args.notes,
           completedBy: currentUser._id,

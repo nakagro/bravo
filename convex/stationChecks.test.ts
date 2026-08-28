@@ -527,3 +527,224 @@ describe("weekWindow resolves a Melbourne week", () => {
     expect(sunday.getTime()).toBe(Date.UTC(2026, 7, 30));
   });
 });
+
+// A linked row is ticked by the Inventory module, not by the member. The
+// client posts the whole item array on every autosave, so these assert the
+// *server* is what makes that true.
+describe("linked inventory items", () => {
+  // Mid-week, so a run completed "now" sits inside the same Melbourne week.
+  const WEDNESDAY = new Date("2026-07-29T12:00:00+10:00").getTime();
+
+  async function linkedSetup() {
+    const base = await setup();
+    const { t, userId } = base;
+
+    const { templateId, checkId, inventoryUserId } = await t.run(async (ctx) => {
+      const inventoryUserId = await ctx.db.insert("users", {
+        name: "Equipment officer",
+        firstName: "Equipment",
+        lastName: "Officer",
+      });
+      const now = Date.now();
+      const templateId = await ctx.db.insert("applianceTemplates", {
+        name: "Pumper - MDA848",
+        version: 1,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: userId,
+      });
+      const checkId = await ctx.db.insert("stationChecks", {
+        name: "Pumper",
+        area: "Inventory Checks",
+        isActive: true,
+        order: 10,
+        linkedApplianceTemplateId: templateId,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return { templateId, checkId, inventoryUserId };
+    });
+
+    const completeRun = async (completedAt: number) =>
+      await t.run(async (ctx) =>
+        await ctx.db.insert("applianceCheckRuns", {
+          templateId,
+          templateVersion: 1,
+          templateName: "Pumper - MDA848",
+          status: "completed" as const,
+          startedBy: inventoryUserId,
+          startedAt: completedAt - 60_000,
+          completedBy: inventoryUserId,
+          completedAt,
+        })
+      );
+
+    const linkedItem = (isCompleted: boolean) => ({
+      checkId,
+      name: "Pumper",
+      area: "Inventory Checks",
+      isCompleted,
+    });
+
+    const savedItems = async (submissionId: string) =>
+      await t.run(async (ctx) => {
+        const sub = await ctx.db.get(submissionId as never);
+        return (sub as { checkItems: Array<Record<string, unknown>> }).checkItems;
+      });
+
+    return { ...base, templateId, checkId, inventoryUserId, completeRun, linkedItem, savedItems };
+  }
+
+  it("overrides a client claiming completion when no run exists", async () => {
+    // The security case: one crafted request must not be able to report a
+    // 200-item inventory as done.
+    const { asUser, dutyCrewId, linkedItem, savedItems } = await linkedSetup();
+
+    const submissionId = await asUser.mutation(api.stationChecks.submitStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(true)],
+    });
+
+    const [saved] = await savedItems(submissionId);
+    expect(saved.isCompleted).toBe(false);
+    expect(saved.linkedRunId).toBeUndefined();
+  });
+
+  it("resolves from a completed run inside the same week", async () => {
+    const { asUser, dutyCrewId, completeRun, linkedItem, savedItems } = await linkedSetup();
+    const runId = await completeRun(WEDNESDAY);
+
+    const submissionId = await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(false)],
+    });
+
+    const [saved] = await savedItems(submissionId);
+    expect(saved.isCompleted).toBe(true);
+    expect(saved.linkedRunId).toBe(runId);
+  });
+
+  it("ignores a run completed in a different week", async () => {
+    const { asUser, dutyCrewId, completeRun, linkedItem, savedItems } = await linkedSetup();
+    // Same appliance, but done last week - the obligation is weekly.
+    await completeRun(WEDNESDAY - 7 * 24 * 60 * 60 * 1000);
+
+    const submissionId = await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(true)],
+    });
+
+    const [saved] = await savedItems(submissionId);
+    expect(saved.isCompleted).toBe(false);
+  });
+
+  it("credits the run's completer, not whoever autosaved", async () => {
+    // The applyItemAttribution ordering trap: attribution restamps a newly
+    // resolved item with the saving user, which would credit the wrong person.
+    const { asUser, dutyCrewId, inventoryUserId, completeRun, linkedItem, savedItems } =
+      await linkedSetup();
+    await completeRun(WEDNESDAY);
+
+    const submissionId = await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(false)],
+    });
+
+    const [saved] = await savedItems(submissionId);
+    expect(saved.completedBy).toBe(inventoryUserId);
+    expect(saved.completedAt).toBe(WEDNESDAY);
+  });
+
+  it("clears N/A on a linked item", async () => {
+    // A derived row is either done or not; a member can't excuse it.
+    const { asUser, dutyCrewId, checkId, savedItems } = await linkedSetup();
+
+    const submissionId = await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [
+        { checkId, name: "Pumper", isCompleted: false, isNotApplicable: true },
+      ],
+    });
+
+    const [saved] = await savedItems(submissionId);
+    expect(saved.isNotApplicable).toBeUndefined();
+    expect(saved.isCompleted).toBe(false);
+  });
+
+  it("leaves unlinked items alone", async () => {
+    const { asUser, dutyCrewId, userId, linkedItem, savedItems } = await linkedSetup();
+
+    const submissionId = await asUser.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(false), item("Mow lawn", { isCompleted: true })],
+    });
+
+    const saved = await savedItems(submissionId);
+    expect(saved).toHaveLength(2);
+    // Ordinary items keep normal attribution - the two paths mustn't cross.
+    expect(saved[1].name).toBe("Mow lawn");
+    expect(saved[1].isCompleted).toBe(true);
+    expect(saved[1].completedBy).toBe(userId);
+  });
+
+  it("reports derived state through getLinkedInventoryStatus", async () => {
+    const { asUser, completeRun } = await linkedSetup();
+    const runId = await completeRun(WEDNESDAY);
+
+    const [status] = await asUser.query(api.stationChecks.getLinkedInventoryStatus, {
+      date: WEDNESDAY,
+    });
+
+    expect(status.templateName).toBe("Pumper - MDA848");
+    expect(status.templateStatus).toBe("active");
+    expect(status.completedRunId).toBe(runId);
+    expect(status.completedByName).toBe("Equipment Officer");
+  });
+
+  it("does not change a submitted week when a run is completed afterwards", async () => {
+    // A past week is a record of what was done by the deadline. If it
+    // re-derived, completing an inventory in September would silently mark
+    // August's checklist as having been done.
+    const { t, asUser, dutyCrewId, linkedItem, completeRun, savedItems } =
+      await linkedSetup();
+
+    const submissionId = await asUser.mutation(api.stationChecks.submitStationCheck, {
+      date: WEDNESDAY,
+      dutyCrewId,
+      checkItems: [linkedItem(false)],
+    });
+    expect((await savedItems(submissionId))[0].isCompleted).toBe(false);
+
+    await completeRun(WEDNESDAY);
+
+    const stored = await savedItems(submissionId);
+    expect(stored[0].isCompleted).toBe(false);
+    expect(stored[0].linkedRunId).toBeUndefined();
+    const status = await t.run(async (ctx) => {
+      const sub = await ctx.db.get(submissionId as never);
+      return (sub as { status: string }).status;
+    });
+    expect(status).toBe("completed");
+  });
+
+  it("reports a non-active template so the row can be hidden", async () => {
+    const { t, asUser, templateId } = await linkedSetup();
+    await t.run(async (ctx) => {
+      await ctx.db.patch(templateId, { status: "inactive" });
+    });
+
+    const [status] = await asUser.query(api.stationChecks.getLinkedInventoryStatus, {
+      date: WEDNESDAY,
+    });
+
+    expect(status.templateStatus).toBe("inactive");
+  });
+});
