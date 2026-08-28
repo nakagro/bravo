@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc } from "./_generated/dataModel";
 import { notifyEvent } from "./lib/notifyEvent";
+import { templateStatus } from "./inventoryTemplates";
 
 // Condition key for "an inventory check was completed". Officers map it to
 // themselves in Inventory → Admin → Notifications.
@@ -83,6 +84,14 @@ export const startRun = mutation({
 
     const template = await ctx.db.get(templateId);
     if (!template) throw new Error("Template not found");
+    const status = templateStatus(template);
+    if (status !== "active") {
+      throw new Error(
+        status === "archived"
+          ? "This appliance has been archived and can no longer be checked."
+          : "This appliance is out of service, so its check can't be started."
+      );
+    }
     if (template.hasUnpublishedChanges) {
       throw new Error("Template has unpublished changes. Please publish before starting an inventory check.");
     }

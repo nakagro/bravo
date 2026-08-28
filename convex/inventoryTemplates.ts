@@ -28,20 +28,47 @@ import { moduleSettingAllows } from "./modules";
    return userId;
  }
 
+// Rows written before the status field exists have no status, and mean
+// "active". Every read goes through this rather than comparing status
+// directly, so the no-migration guarantee holds in one place.
+const templateStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("inactive"),
+  v.literal("archived")
+);
+
+type TemplateStatus = "active" | "inactive" | "archived";
+
+export function templateStatus(template: { status?: TemplateStatus }): TemplateStatus {
+  return template.status ?? "active";
+}
+
 // Queries
-export const getApplianceTemplates = query({
-  args: {},
-  handler: async (ctx) => {
+
+// Templates, newest-touched first. Defaults to **active only**, which is what
+// the member-facing selector wants - so it became correct without being
+// touched. Admin screens must pass an explicit `statuses` to see the rest.
+export const listTemplates = query({
+  args: {
+    statuses: v.optional(v.array(templateStatusValidator)),
+  },
+  handler: async (ctx, { statuses }) => {
     await requireSignedIn(ctx);
-    return await ctx.db
+    const wanted = statuses ?? ["active"];
+    const templates = await ctx.db
       .query("applianceTemplates")
       .withIndex("by_updatedAt")
       .order("desc")
       .collect();
+    return templates.filter((t) => wanted.includes(templateStatus(t)));
   },
 });
 
-export const listTemplates = query({
+// Deprecated alias, byte-identical to listTemplates before the status filter
+// landed. Kept so a deployed frontend that still calls it keeps working while
+// the backend leads; remove once the new frontend has shipped (plan Wave 3).
+// Deliberately unfiltered, so its behaviour is unchanged.
+export const getApplianceTemplates = query({
   args: {},
   handler: async (ctx) => {
     await requireSignedIn(ctx);
@@ -130,6 +157,33 @@ export const updateApplianceTemplate = mutation({
       updatedBy: userId,
     });
     return true;
+  },
+});
+
+// The single entry point for activate / deactivate / archive / restore, so the
+// legal transitions live in one place instead of four call sites.
+//
+// Restore lands on `inactive`, never `active`: un-archiving an appliance
+// shouldn't silently put it back in front of members mid-week. The admin
+// re-activates as a separate, deliberate act.
+export const setTemplateStatus = mutation({
+  args: {
+    templateId: v.id("applianceTemplates"),
+    status: templateStatusValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, { templateId, status }) => {
+    const userId = await requireInventoryAdmin(ctx);
+
+    const template = await ctx.db.get(templateId);
+    if (!template) throw new Error("Template not found");
+
+    await ctx.db.patch(templateId, {
+      status,
+      updatedAt: Date.now(),
+      updatedBy: userId,
+    });
+    return null;
   },
 });
 

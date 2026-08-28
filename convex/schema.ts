@@ -350,10 +350,20 @@ const applicationTables = {
     isPriority: v.optional(v.boolean()), // Priority check, emphasised and sorted first in the weekly list
     isActive: v.boolean(), // Whether this check is currently active
     order: v.number(), // Order in which the check should appear in the list
+    // When set, this check is satisfied by completing the linked inventory
+    // template's run for the week rather than by ticking it. A document id, not
+    // a name: the check is called "Pumper" while the template is called
+    // "Pumper - MDA848", and either can be renamed without breaking the link.
+    // The row is then locked (state derived server-side) and hides entirely
+    // while the template is not active. Set from Duty Crew - Admin - Check
+    // templates, where the check itself is edited.
+    linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    // No index on the link: there are a few dozen checks, and every read that
+    // needs it is already scanning the active ones.
     .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
 
@@ -822,6 +832,20 @@ const applicationTables = {
     description: v.optional(v.string()),
     version: v.number(), // Increment on significant structural changes
     hasUnpublishedChanges: v.optional(v.boolean()),
+    // Lifecycle. One field rather than isActive + isArchived booleans, which
+    // can contradict each other (active && archived means nothing) and force
+    // every read to check both. Mirrors the status union on fire calls.
+    //
+    // Missing means "active": existing rows predate this field, and Convex
+    // rejects a required field that isn't there, so optional is what makes
+    // this ship without a migration. Treat undefined as active everywhere.
+    status: v.optional(
+      v.union(
+        v.literal("active"), // in service, members can run it
+        v.literal("inactive"), // off the run (spare swapped in); admin-only, still editable
+        v.literal("archived") // soft-deleted; hidden except in the Archived view
+      )
+    ),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -830,6 +854,7 @@ const applicationTables = {
     metadata: v.optional(v.any()),
   })
     .index("by_name", ["name"])
+    .index("by_status", ["status"])
     .index("by_updatedAt", ["updatedAt"]),
 
   // Sections are logical areas within an appliance (e.g., Cabin, Locker 1)
