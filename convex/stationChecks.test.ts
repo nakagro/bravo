@@ -3,7 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
-import { buildSubmissionNotice } from "./stationChecks";
+import { buildSubmissionNotice, weekWindow } from "./stationChecks";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -464,5 +464,66 @@ describe("crew roster snapshot", () => {
 
     const saved = await t.run((ctx) => ctx.db.get(submissionId));
     expect(saved?.crewSnapshot?.members.map((m) => m.userId)).toEqual([userId]);
+  });
+});
+
+describe("weekWindow resolves a Melbourne week", () => {
+  // Formats an instant as Melbourne wall clock, so the assertions below read
+  // as the boundary a member in Victoria actually experiences.
+  const inMelbourne = (ts: number) =>
+    new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Melbourne",
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date(ts));
+
+  it("starts on Melbourne Monday midnight during AEST", () => {
+    // Wed 26 Aug 2026, midday Melbourne (UTC+10)
+    const w = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
+    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
+    expect(inMelbourne(w.end)).toBe("Sun, 30/08/2026, 23:59:59");
+  });
+
+  it("starts on Melbourne Monday midnight during AEDT", () => {
+    // Wed 9 Dec 2026, midday Melbourne (UTC+11)
+    const w = weekWindow(Date.UTC(2026, 11, 9, 1, 0, 0));
+    expect(inMelbourne(w.start)).toBe("Mon, 07/12/2026, 00:00:00");
+    expect(inMelbourne(w.end)).toBe("Sun, 13/12/2026, 23:59:59");
+  });
+
+  it("puts a Monday-morning check in the week that is starting, not the one that ended", () => {
+    // Mon 24 Aug 2026, 08:00 Melbourne - the usual time these get done, and
+    // the case the UTC-based window got wrong by putting it in the prior week.
+    const mondayMorning = Date.UTC(2026, 7, 23, 22, 0, 0);
+    const w = weekWindow(mondayMorning);
+    expect(mondayMorning).toBeGreaterThanOrEqual(w.start);
+    expect(mondayMorning).toBeLessThanOrEqual(w.end);
+    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
+  });
+
+  it("treats Sunday as the end of its own week, not the start of the next", () => {
+    // Sun 30 Aug 2026, 20:00 Melbourne
+    const w = weekWindow(Date.UTC(2026, 7, 30, 10, 0, 0));
+    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
+    expect(inMelbourne(w.sunday.getTime())).toContain("30/08/2026");
+  });
+
+  it("returns consecutive, non-overlapping windows", () => {
+    const a = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
+    const b = weekWindow(a.end + 1);
+    expect(b.start).toBe(a.end + 1);
+  });
+
+  it("keeps `sunday` as UTC midnight of the Sunday's calendar date", () => {
+    // dutyCrewSchedule.date is keyed this way (see dutyCrew.ts:178), so the
+    // schedule lookup in getCurrentWeekCheckStatus depends on it.
+    const { sunday } = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
+    expect(sunday.getTime()).toBe(Date.UTC(2026, 7, 30));
   });
 });

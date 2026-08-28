@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { notifyEvent } from "./lib/notifyEvent";
+import { brigadeDayOfWeek, brigadeParts, brigadeTimestamp } from "./lib/dates";
 
 type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
@@ -221,20 +222,44 @@ function applyItemAttribution(
 // and every tick appeared to vanish on reload. Match on the whole Mon–Sun
 // window instead, which is also tolerant of the timestamps already in the
 // database from before this was fixed.
+//
+// The week is a *Melbourne* Mon–Sun, resolved through `convex/lib/dates.ts`
+// rather than the runtime's own clock, which is UTC. Built with local-time
+// `setHours`/`getDay` this window used to run Mon 10:00 AEST to the following
+// Mon 09:59, so a station check or inventory run done on Monday morning - the
+// usual time - counted toward the week that had just ended.
 export function weekWindow(date: number) {
-  const base = new Date(date);
-  base.setHours(0, 0, 0, 0);
-  const day = base.getDay(); // 0 = Sunday
+  const p = brigadeParts(date);
+  const day = brigadeDayOfWeek(date); // 0 = Sunday
 
-  const monday = new Date(base);
-  monday.setDate(base.getDate() - (day === 0 ? 6 : day - 1));
-  monday.setHours(0, 0, 0, 0);
+  // Melbourne's civil Monday and Sunday of this week. Date.UTC normalises the
+  // month/year rollover, and the fields are read back as UTC because that is
+  // the calendar arithmetic - not an instant - being done here.
+  const mondayCivil = new Date(
+    Date.UTC(p.year, p.month - 1, p.day - (day === 0 ? 6 : day - 1))
+  );
+  const sundayCivil = new Date(mondayCivil.getTime() + 6 * 24 * 60 * 60 * 1000);
 
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
+  const start = brigadeTimestamp(
+    mondayCivil.getUTCFullYear(),
+    mondayCivil.getUTCMonth() + 1,
+    mondayCivil.getUTCDate()
+  );
+  const end = brigadeTimestamp(
+    sundayCivil.getUTCFullYear(),
+    sundayCivil.getUTCMonth() + 1,
+    sundayCivil.getUTCDate(),
+    23,
+    59,
+    59,
+    999
+  );
 
-  return { start: monday.getTime(), end: sunday.getTime(), sunday };
+  // `sunday` stays a UTC-midnight Date of the Sunday's *calendar date*, which
+  // is the key convention `dutyCrewSchedule.date` is written under (see
+  // dutyCrew.ts:178) and what the callers reading .getMonth()/.getDate() off
+  // it expect on a UTC runtime.
+  return { start, end, sunday: sundayCivil };
 }
 
 // Find the submission covering the week that `date` falls in. A week has one
