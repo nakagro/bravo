@@ -48,7 +48,9 @@ interface LastCompletedRunDoc {
 }
 
 export function InventoryTemplateSelector() {
-  const templates = useQuery(api.inventoryTemplates.getApplianceTemplates) as ApplianceTemplateDoc[] | undefined;
+  // No status arg: listTemplates defaults to active-only, so an appliance
+  // that is out of service or archived simply isn't offered to members.
+  const templates = useQuery(api.inventoryTemplates.listTemplates, {}) as ApplianceTemplateDoc[] | undefined;
   const startRun = useMutation(api.inventoryCheckRuns.startRun);
   const navigate = useNavigate();
   const inProgressRuns = useQuery(api.inventoryCheckRuns.getInProgressRuns) as InProgressRunDoc[] | undefined;

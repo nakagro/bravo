@@ -149,6 +149,66 @@ describe("setTemplateStatus", () => {
   });
 });
 
+describe("permanent delete is gated on archive + history", () => {
+  it("refuses a template that isn't archived", async () => {
+    const { addTemplate, asAdmin } = await setup();
+    const templateId = await addTemplate("Pumper - MDA848");
+
+    await expect(
+      asAdmin.mutation(api.inventoryTemplates.deleteApplianceTemplate, { templateId })
+    ).rejects.toThrow(/Archive this template first/);
+  });
+
+  it("refuses an archived template that has run history", async () => {
+    const { t, addTemplate, adminId, asAdmin } = await setup();
+    const templateId = await addTemplate("Old pumper", "archived");
+    await t.run(async (ctx) => {
+      await ctx.db.insert("applianceCheckRuns", {
+        templateId,
+        templateVersion: 1,
+        templateName: "Old pumper",
+        status: "completed" as const,
+        startedBy: adminId,
+        startedAt: Date.now(),
+        completedAt: Date.now(),
+      });
+    });
+
+    await expect(
+      asAdmin.mutation(api.inventoryTemplates.deleteApplianceTemplate, { templateId })
+    ).rejects.toThrow(/1 inventory check references this template/);
+  });
+
+  it("deletes an archived template with no history, clearing any station check link", async () => {
+    const { t, addTemplate, adminId, asAdmin } = await setup();
+    const templateId = await addTemplate("Tanker spare", "archived");
+    const checkId = await t.run(async (ctx) =>
+      await ctx.db.insert("stationChecks", {
+        name: "Tanker",
+        area: "Inventory Checks",
+        isActive: true,
+        order: 0,
+        linkedApplianceTemplateId: templateId,
+        createdBy: adminId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+
+    await asAdmin.mutation(api.inventoryTemplates.deleteApplianceTemplate, { templateId });
+
+    const { template, check } = await t.run(async (ctx) => ({
+      template: await ctx.db.get(templateId),
+      check: await ctx.db.get(checkId),
+    }));
+    expect(template).toBeNull();
+    // The station check survives - it just stops being linked, rather than
+    // pointing at an id that no longer resolves.
+    expect(check).not.toBeNull();
+    expect(check?.linkedApplianceTemplateId).toBeUndefined();
+  });
+});
+
 describe("startRun respects template status", () => {
   const startRun = (
     asUser: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>,

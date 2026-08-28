@@ -187,10 +187,51 @@ export const setTemplateStatus = mutation({
   },
 });
 
+// Permanent delete. Archive is the end state for anything that has ever been
+// run - a completed run is a record of what was on the appliance that week,
+// and erasing the template erases what its items meant.
 export const deleteApplianceTemplate = mutation({
   args: { templateId: v.id("applianceTemplates") },
   handler: async (ctx, { templateId }) => {
     await requireInventoryAdmin(ctx);
+
+    const template = await ctx.db.get(templateId);
+    if (!template) throw new Error("Template not found");
+
+    if (templateStatus(template) !== "archived") {
+      throw new Error(
+        "Archive this template first. Permanent deletion is only possible from the Archived view."
+      );
+    }
+
+    // One run is enough to refuse; no need to count the rest.
+    const runs = await ctx.db
+      .query("applianceCheckRuns")
+      .withIndex("by_template", (q) => q.eq("templateId", templateId))
+      .take(101);
+    if (runs.length > 0) {
+      const subject =
+        runs.length > 100
+          ? "More than 100 inventory checks reference"
+          : runs.length === 1
+            ? "1 inventory check references"
+            : `${runs.length} inventory checks reference`;
+      throw new Error(
+        `${subject} this template - it can stay archived, but it can't be deleted.`
+      );
+    }
+
+    // Drop the link from any duty crew check pointing here, so deleting can't
+    // leave a station check aimed at a template that no longer exists.
+    const linkedChecks = await ctx.db.query("stationChecks").collect();
+    for (const check of linkedChecks) {
+      if (check.linkedApplianceTemplateId === templateId) {
+        await ctx.db.patch(check._id, {
+          linkedApplianceTemplateId: undefined,
+          updatedAt: Date.now(),
+        });
+      }
+    }
 
     // Delete children sections and items
     const sections = await ctx.db
