@@ -3,17 +3,30 @@ import { api, internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Delete all messages at 4am AEST (before status reset)
+// Every hourUTC below is a fixed UTC time, because that is all the Convex cron
+// API accepts - there is no timezone parameter. So the local times named here
+// hold during AEST and land an hour later through AEDT (Oct-Apr): the 04:00 job
+// runs at 05:00, the 10:00 reminder at 11:00.
+//
+// That drift is accepted, deliberately (decided 2026-08-28). Removing it means
+// firing on a shorter interval and gating on Melbourne local time inside the
+// handler, which needs a per-job last-run guard to survive the DST boundaries -
+// local 02:00-03:00 does not exist in October and happens twice in April, so a
+// naive gate silently skips a day one way and double-fires the other. That is a
+// reliability change, and these jobs run while nobody is awake to notice the
+// hour. Code that *computes* in brigade time should use convex/lib/dates.ts.
+
+// Delete all messages at 4am local (before status reset)
 crons.daily(
   "delete daily messages", // identifier
-  { hourUTC: 18, minuteUTC: 0 }, // 18:00 UTC == 04:00 AEST (UTC+10)
+  { hourUTC: 18, minuteUTC: 0 }, // 04:00 AEST / 05:00 AEDT
   internal.messages.deleteAllMessages,
   {}
 );
 
 crons.daily(
   "nightly reset statuses", // identifier
-  { hourUTC: 18, minuteUTC: 30 }, // 18:30 UTC == 04:30 AEST (UTC+10)
+  { hourUTC: 18, minuteUTC: 30 }, // 04:30 AEST / 05:30 AEDT
   api.availabilityActions.nightlyReset,
   {}
 );
@@ -21,7 +34,7 @@ crons.daily(
 
 crons.daily(
   "morning availability reminder", // identifier
-  { hourUTC: 0, minuteUTC: 0 }, // 00:00 UTC == 10:00 AM AEST (UTC+10)
+  { hourUTC: 0, minuteUTC: 0 }, // 10:00 AEST / 11:00 AEDT - the one members notice
   api.availabilityActions.morningReminder,
   {}
 );
@@ -47,7 +60,7 @@ crons.interval(
 // Daily auth cleanup: purge expired sessions, expired tokens, and orphaned tokens
 crons.daily(
   "auth cleanup", // identifier
-  { hourUTC: 17, minuteUTC: 0 }, // 17:00 UTC == 03:00 AEST (UTC+10), before other daily jobs
+  { hourUTC: 17, minuteUTC: 0 }, // 03:00 AEST / 04:00 AEDT, before the other daily jobs
   internal.authManagement.scheduledAuthCleanup,
   {}
 );
@@ -63,7 +76,7 @@ crons.hourly(
 // Clean up expired service account sessions daily
 crons.daily(
   "cleanup expired service account sessions",
-  { hourUTC: 17, minuteUTC: 30 }, // 17:30 UTC == 03:30 AEST
+  { hourUTC: 17, minuteUTC: 30 }, // 03:30 AEST / 04:30 AEDT
   internal.serviceAccounts.cleanupExpiredSessions,
   {}
 );
