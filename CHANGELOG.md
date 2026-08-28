@@ -7,7 +7,7 @@
 - Duty Crew: A linked row whose appliance is out of service or archived drops off the weekly checklist, so a spare that isn't in use stops being an outstanding job.
 - Duty Crew: Fixed the week boundary. The checking week was being worked out in UTC, which meant a check done on a Monday morning, the usual time, counted toward the week that had just finished. Weeks now run Monday to Sunday in Melbourne time, so Inventory and Duty Crew agree on what "this week" means. Daylight saving is handled properly rather than assumed.
 - Events: Fixed the same timezone issue when deciding whether an event has already happened.
-- Testing: A separate UAT copy of BRAVO now exists for trying changes against real data before they reach you, with its own guards so nothing it does can email members, unlock the station or touch the brigade calendar.
+- Testing: A separate UAT environment has been made to test potentially breaking backend and frontend changes before reaching production users first.
 
 ## [2026.08.21]
 - Events: After an event has been and gone, the organiser or a team leader can confirm who actually turned up. It starts from who said they were coming, so it's a matter of adjusting the list rather than building it, and the confirmed attendance is then shown on the event.
