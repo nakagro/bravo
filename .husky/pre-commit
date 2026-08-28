@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Sync version to today's date before each commit
 node scripts/set-build-version.js || exit 1
 
