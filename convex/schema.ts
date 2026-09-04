@@ -1564,6 +1564,26 @@ const applicationTables = {
     .index("by_user", ["userId"])
     .index("by_user_and_action", ["userId", "actionId"])
     .index("by_action", ["actionId"]),
+
+  // One row per (member, browser profile): how BRAVO is being opened there.
+  // Answers "is this member on the installed app, or still in a phone browser
+  // tab and missing notifications?" for the Member Activity admin view. A
+  // rolling summary, not an event log: the row is upserted, never appended.
+  userLaunches: defineTable({
+    userId: v.id("users"),
+    // Client-generated id in localStorage; separate per browser profile, and
+    // on iOS separate again for the installed app, which is the point.
+    deviceId: v.string(),
+    // The install-platform detected client-side, e.g. "ios-safari".
+    platform: v.string(),
+    displayMode: v.union(v.literal("installed"), v.literal("browser")),
+    deviceClass: v.union(v.literal("phone"), v.literal("desktop")),
+    launchCount: v.number(),
+    firstLaunchAt: v.number(),
+    lastLaunchAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_device", ["userId", "deviceId"]),
 };
 
 export default defineSchema({

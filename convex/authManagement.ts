@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { logAction } from "./lib/logging";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { summarizeLaunches } from "./lib/launches";
 
 /**
  * Search for users by name or email (lightweight query for user list)
@@ -645,6 +646,18 @@ export const getMemberActivity = query({
      * answer to "when did this member last tell us anything".
      */
     lastStatusChangeAt: v.optional(v.number()),
+    /**
+     * How they open BRAVO on a phone, from `userLaunches` over the last 30 days.
+     * "browser-only" is the member who keeps ignoring the install prompt and is
+     * not getting notifications; "none" is no phone launch recorded.
+     */
+    phoneInstall: v.union(
+      v.literal("installed"),
+      v.literal("browser-only"),
+      v.literal("none"),
+    ),
+    lastInstalledLaunchAt: v.optional(v.number()),
+    lastBrowserLaunchAt: v.optional(v.number()),
   })),
   handler: async (ctx) => {
     const actorId = await getAuthUserId(ctx);
@@ -654,6 +667,7 @@ export const getMemberActivity = query({
       throw new Error("Only administrators can view member activity");
     }
 
+    const now = Date.now();
     const users = await ctx.db.query("users").collect();
     const sessions = await ctx.db.query("authSessions").collect();
 
@@ -705,6 +719,11 @@ export const getMemberActivity = query({
           .withIndex("by_user_and_timestamp", (q) => q.eq("userId", user._id))
           .order("desc")
           .first();
+        const launches = await ctx.db
+          .query("userLaunches")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect();
+        const launchSummary = summarizeLaunches(launches, now);
         const name = user.firstName && user.lastName
           ? `${user.firstName} ${user.lastName}`
           : user.name || user.email || "Unknown user";
@@ -721,6 +740,7 @@ export const getMemberActivity = query({
           deviceCount: activity?.deviceCount ?? 0,
           statusUpdatedAt: user.statusUpdatedAt,
           lastStatusChangeAt: lastStatusChange?.timestamp,
+          ...launchSummary,
         };
       }),
     );

@@ -18,6 +18,7 @@ import { ThemeProvider } from "./lib/context/ThemeContext";
 import { PushNotifier } from "./components/PushNotifier";
 import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { LaunchTelemetry } from "./components/LaunchTelemetry";
 import { usePostHogIdentify } from "./hooks/usePostHogIdentify";
 import {
   ServiceAccountProvider,
@@ -242,6 +243,7 @@ function AuthenticatedApp() {
       <PushNotifier />
       <PWAUpdateNotification />
       <InstallPrompt signedIn />
+      <LaunchTelemetry />
       <RouteSuspense>
         <Routes>
           <Route path="/" element={

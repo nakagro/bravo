@@ -221,6 +221,28 @@ export function clearInstallPromptSnooze(): void {
 }
 
 /**
+ * Stable per-browser-profile id for launch telemetry. On iOS the installed app
+ * has its own localStorage, so it gets its own id, which is exactly the split
+ * we want to see.
+ */
+export const DEVICE_ID_KEY = "bravo:device-id";
+
+export function getDeviceId(): string {
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const fresh =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DEVICE_ID_KEY, fresh);
+    return fresh;
+  } catch {
+    return "no-storage";
+  }
+}
+
+/**
  * Settings pages can ask the mounted <InstallPrompt> to open on demand, so the
  * instructions stay reachable after the one-off prompt has been snoozed.
  */

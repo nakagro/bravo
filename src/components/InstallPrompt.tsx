@@ -1,5 +1,6 @@
 import { Compass, Download, Menu, PlusSquare, Share } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { usePostHog } from "posthog-js/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +114,14 @@ export function InstallPrompt({ autoShow = true, signedIn = false }: InstallProm
   const { platform, canPromptNatively, shouldShow, promptInstall, dismiss } = useInstallPrompt({
     autoShow,
   });
+  const posthog = usePostHog();
+  const shownRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldShow || shownRef.current) return;
+    shownRef.current = true;
+    posthog?.capture("install_prompt_shown", { install_platform: platform, signed_in: signedIn });
+  }, [shouldShow, platform, signedIn, posthog]);
 
   if (platform === "installed" || platform === "unsupported") return null;
 
@@ -120,8 +129,14 @@ export function InstallPrompt({ autoShow = true, signedIn = false }: InstallProm
   const appName = envBadge ? `BRAVO ${envBadge.short}` : "BRAVO";
   const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
+  const handleDismiss = () => {
+    posthog?.capture("install_prompt_dismissed", { install_platform: platform, signed_in: signedIn });
+    dismiss();
+  };
+
   const handleInstall = async () => {
     const outcome = await promptInstall();
+    posthog?.capture("install_prompt_native_result", { install_platform: platform, outcome });
     if (outcome === "accepted") {
       toast.success("BRAVO is installing. Open it from your home screen.");
     } else if (outcome === "unavailable") {
@@ -130,7 +145,7 @@ export function InstallPrompt({ autoShow = true, signedIn = false }: InstallProm
   };
 
   return (
-    <Drawer open={shouldShow} onOpenChange={(open) => !open && dismiss()}>
+    <Drawer open={shouldShow} onOpenChange={(open) => !open && handleDismiss()}>
       <DrawerContent aria-describedby="install-prompt-description">
         <DrawerHeader className="text-left">
           <div className="flex items-center gap-3">
@@ -165,7 +180,7 @@ export function InstallPrompt({ autoShow = true, signedIn = false }: InstallProm
               Install
             </Button>
           )}
-          <Button variant="outline" onClick={dismiss}>
+          <Button variant="outline" onClick={handleDismiss}>
             Not now
           </Button>
         </DrawerFooter>
