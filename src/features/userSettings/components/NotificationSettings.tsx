@@ -4,6 +4,7 @@ import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
 import { Button } from '../../../components/ui/button';
 import { toast } from 'sonner';
+import { detectInstallPlatform, openInstallPrompt, readInstallEnv } from '@/lib/installState';
 import {
   Bell,
   BellOff,
@@ -15,6 +16,7 @@ import {
   LoaderCircle,
   Trash2,
   Send,
+  Download,
 } from 'lucide-react';
 
 const DEVICE_ICONS = {
@@ -177,6 +179,11 @@ export function NotificationSettings() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isRequesting, setIsRequesting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // On iPhone/iPad, web push only exists inside the installed app. Asking for
+  // permission from a Safari tab fails silently, so explain the install step
+  // instead of showing a button that cannot work.
+  const [installPlatform] = useState(() => detectInstallPlatform(readInstallEnv()));
+  const needsInstallForPush = installPlatform === 'ios-safari' || installPlatform === 'ios-other';
 
   useEffect(() => {
     // Check current notification permission status
@@ -280,8 +287,27 @@ export function NotificationSettings() {
         </span>
       </div>
 
+      {/* iOS in a browser tab: push is impossible until installed */}
+      {permission !== 'granted' && needsInstallForPush && (
+        <div className="space-y-3">
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>Install BRAVO first.</strong> On iPhone and iPad, notifications only
+              work when BRAVO is added to your home screen and opened from there.
+            </p>
+          </div>
+          <button
+            onClick={openInstallPrompt}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+          >
+            <Download className="h-4 w-4" />
+            Show me how to install
+          </button>
+        </div>
+      )}
+
       {/* Permission Request Button */}
-      {permission !== 'granted' && (
+      {permission !== 'granted' && !needsInstallForPush && (
         <div className="space-y-3">
           <button
             onClick={requestNotificationPermission}
