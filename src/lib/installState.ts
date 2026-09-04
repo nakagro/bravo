@@ -1,3 +1,5 @@
+import { getAppEnvironment } from "@/utils/environment";
+
 /**
  * Detects whether BRAVO is running as an installed PWA and, if not, which
  * install path this device supports. Pure functions take an `InstallEnv`
@@ -110,12 +112,86 @@ export function readInstallEnv(): InstallEnv {
 }
 
 // ---------------------------------------------------------------------------
+// Testing aid: outside production, `?installPlatform=android-native` (or any
+// other platform) forces the detected platform for the rest of the browser
+// session, so every variant can be eyeballed from a desktop browser. Ignored on
+// production builds.
+
+export const INSTALL_PLATFORM_OVERRIDE_KEY = "bravo:install-platform-override";
+const PLATFORMS: readonly InstallPlatform[] = [
+  "installed",
+  "android-native",
+  "android-manual",
+  "ios-safari",
+  "ios-other",
+  "unsupported",
+];
+
+export function readInstallPlatformOverride(
+  search: string,
+  allowed: boolean,
+): InstallPlatform | null {
+  if (!allowed) return null;
+  try {
+    const fromQuery = new URLSearchParams(search).get("installPlatform");
+    if (fromQuery !== null) {
+      if (fromQuery === "" || fromQuery === "off") {
+        sessionStorage.removeItem(INSTALL_PLATFORM_OVERRIDE_KEY);
+        return null;
+      }
+      if ((PLATFORMS as readonly string[]).includes(fromQuery)) {
+        sessionStorage.setItem(INSTALL_PLATFORM_OVERRIDE_KEY, fromQuery);
+        return fromQuery as InstallPlatform;
+      }
+    }
+    const stored = sessionStorage.getItem(INSTALL_PLATFORM_OVERRIDE_KEY);
+    return stored && (PLATFORMS as readonly string[]).includes(stored)
+      ? (stored as InstallPlatform)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Detected platform, honouring the non-production override. Use this, not detectInstallPlatform, from UI code. */
+export function resolveInstallPlatform(): InstallPlatform {
+  if (typeof window === "undefined") return "unsupported";
+  const allowed = getAppEnvironment() !== "production";
+  const override = readInstallPlatformOverride(window.location.search, allowed);
+  return override ?? detectInstallPlatform(readInstallEnv());
+}
+
+// ---------------------------------------------------------------------------
 // Snooze: "Not now" hides the prompt for a week rather than forever. Members
 // who forget get reminded; members who genuinely want a browser tab are not
 // nagged on every page load.
 
 export const INSTALL_SNOOZE_KEY = "bravo:install-prompt-snoozed-until";
 export const INSTALL_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Auth page card is dismissed for the session only; it is passive, so no week-long snooze. */
+export const INSTALL_NUDGE_DISMISSED_KEY = "bravo:install-nudge-dismissed";
+
+export function isInstallNudgeDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(INSTALL_NUDGE_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function dismissInstallNudge(): void {
+  try {
+    sessionStorage.setItem(INSTALL_NUDGE_DISMISSED_KEY, "1");
+  } catch {
+    // ignore
+  }
+}
+
+/** Phone browser tabs only: the platforms where an install changes anything. */
+export function isPhoneBrowserTab(platform: InstallPlatform): boolean {
+  return platform !== "installed" && platform !== "unsupported";
+}
 
 export function isInstallPromptSnoozed(now: number = Date.now()): boolean {
   try {

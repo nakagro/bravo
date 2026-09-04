@@ -4,7 +4,7 @@ import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
 import { Button } from '../../../components/ui/button';
 import { toast } from 'sonner';
-import { detectInstallPlatform, openInstallPrompt, readInstallEnv } from '@/lib/installState';
+import { openInstallPrompt, resolveInstallPlatform } from '@/lib/installState';
 import {
   Bell,
   BellOff,
@@ -182,7 +182,7 @@ export function NotificationSettings() {
   // On iPhone/iPad, web push only exists inside the installed app. Asking for
   // permission from a Safari tab fails silently, so explain the install step
   // instead of showing a button that cannot work.
-  const [installPlatform] = useState(() => detectInstallPlatform(readInstallEnv()));
+  const [installPlatform] = useState(() => resolveInstallPlatform());
   const needsInstallForPush = installPlatform === 'ios-safari' || installPlatform === 'ios-other';
 
   useEffect(() => {

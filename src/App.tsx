@@ -241,7 +241,7 @@ function AuthenticatedApp() {
     <MainLayout>
       <PushNotifier />
       <PWAUpdateNotification />
-      <InstallPrompt />
+      <InstallPrompt signedIn />
       <RouteSuspense>
         <Routes>
           <Route path="/" element={

@@ -3,7 +3,9 @@ import {
   detectInstallPlatform,
   INSTALL_SNOOZE_KEY,
   INSTALL_SNOOZE_MS,
+  INSTALL_PLATFORM_OVERRIDE_KEY,
   isInstallPromptSnoozed,
+  readInstallPlatformOverride,
   snoozeInstallPrompt,
   usesSafari26Toolbar,
   type InstallEnv,
@@ -168,5 +170,41 @@ describe("install prompt snooze", () => {
     });
     expect(() => snoozeInstallPrompt()).not.toThrow();
     expect(isInstallPromptSnoozed()).toBe(false);
+  });
+});
+
+describe("readInstallPlatformOverride", () => {
+  const store = new Map<string, string>();
+  const fakeStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+
+  afterEach(() => {
+    store.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it("is inert when not allowed, even with a query and a stored value", () => {
+    vi.stubGlobal("sessionStorage", fakeStorage);
+    store.set(INSTALL_PLATFORM_OVERRIDE_KEY, "ios-safari");
+    expect(readInstallPlatformOverride("?installPlatform=android-native", false)).toBeNull();
+  });
+
+  it("takes the query value and remembers it for the session", () => {
+    vi.stubGlobal("sessionStorage", fakeStorage);
+    expect(readInstallPlatformOverride("?installPlatform=android-native", true)).toBe(
+      "android-native",
+    );
+    expect(readInstallPlatformOverride("", true)).toBe("android-native");
+  });
+
+  it("ignores unknown values and clears on off", () => {
+    vi.stubGlobal("sessionStorage", fakeStorage);
+    expect(readInstallPlatformOverride("?installPlatform=blackberry", true)).toBeNull();
+    store.set(INSTALL_PLATFORM_OVERRIDE_KEY, "ios-other");
+    expect(readInstallPlatformOverride("?installPlatform=off", true)).toBeNull();
+    expect(store.has(INSTALL_PLATFORM_OVERRIDE_KEY)).toBe(false);
   });
 });

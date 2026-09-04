@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  detectInstallPlatform,
   isInstallPromptSnoozed,
   OPEN_INSTALL_PROMPT_EVENT,
-  readInstallEnv,
+  resolveInstallPlatform,
   snoozeInstallPrompt,
   type InstallPlatform,
 } from "@/lib/installState";
@@ -45,10 +44,17 @@ if (typeof window !== "undefined") {
   });
 }
 
-export function useInstallPrompt(): InstallPromptState {
-  const [platform, setPlatform] = useState<InstallPlatform>(() =>
-    detectInstallPlatform(readInstallEnv()),
-  );
+export interface UseInstallPromptOptions {
+  /**
+   * Show the one-off sheet on its own after a short delay. Off on the auth
+   * page, where nobody has committed to anything yet and a passive card does
+   * the nudging; the sheet there opens only on request.
+   */
+  autoShow?: boolean;
+}
+
+export function useInstallPrompt({ autoShow = true }: UseInstallPromptOptions = {}): InstallPromptState {
+  const [platform, setPlatform] = useState<InstallPlatform>(() => resolveInstallPlatform());
   const [canPromptNatively, setCanPromptNatively] = useState(deferredPrompt !== null);
   const [visible, setVisible] = useState(false);
 
@@ -56,7 +62,7 @@ export function useInstallPrompt(): InstallPromptState {
   // exists, and appinstalled flips us to "installed" without a reload.
   useEffect(() => {
     const sync = () => {
-      setPlatform(detectInstallPlatform(readInstallEnv()));
+      setPlatform(resolveInstallPlatform());
       setCanPromptNatively(deferredPrompt !== null);
     };
     sync();
@@ -68,12 +74,13 @@ export function useInstallPrompt(): InstallPromptState {
   // first paint; on Android it also waits for the browser to offer a prompt,
   // which Chromium only does after the user has interacted with the page.
   useEffect(() => {
+    if (!autoShow) return;
     if (platform === "installed" || platform === "unsupported") return;
     if (isInstallPromptSnoozed()) return;
     if (platform === "android-native" && !canPromptNatively) return;
     const id = window.setTimeout(() => setVisible(true), 1500);
     return () => window.clearTimeout(id);
-  }, [platform, canPromptNatively]);
+  }, [autoShow, platform, canPromptNatively]);
 
   // Settings can reopen the sheet regardless of snooze.
   useEffect(() => {

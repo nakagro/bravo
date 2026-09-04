@@ -98,9 +98,21 @@ function Instructions({ platform }: { platform: InstallPlatform }) {
   }
 }
 
-export function InstallPrompt() {
-  const { platform, canPromptNatively, shouldShow, promptInstall, dismiss } =
-    useInstallPrompt();
+interface InstallPromptProps {
+  /** Open the sheet automatically after sign-in. Default true. */
+  autoShow?: boolean;
+  /**
+   * The viewer already has a session. On iOS the installed app has its own
+   * storage, so that session will not carry across and they must sign in
+   * again; say so up front instead of letting it look broken.
+   */
+  signedIn?: boolean;
+}
+
+export function InstallPrompt({ autoShow = true, signedIn = false }: InstallPromptProps) {
+  const { platform, canPromptNatively, shouldShow, promptInstall, dismiss } = useInstallPrompt({
+    autoShow,
+  });
 
   if (platform === "installed" || platform === "unsupported") return null;
 
@@ -138,6 +150,12 @@ export function InstallPrompt() {
 
         <div className="px-4">
           <Instructions platform={platform} />
+          {signedIn && platform.startsWith("ios") && (
+            <p className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+              The installed app keeps its own sign-in. When you first open it from the home
+              screen, sign in again with the same email and member number.
+            </p>
+          )}
         </div>
 
         <DrawerFooter>
