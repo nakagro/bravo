@@ -9,10 +9,13 @@ import {
   type InstallEnv,
 } from "./installState";
 
+// Real iOS 27 Safari: the OS part is frozen at 18_6, only Version/ moves.
 const IPHONE_SAFARI =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1";
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1";
 const IPAD_SAFARI =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+const IPAD_18_SAFARI =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15";
 const IPHONE_18_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
 const IPHONE_CHROME =
@@ -34,7 +37,6 @@ function env(overrides: Partial<InstallEnv>): InstallEnv {
     navigatorStandalone: false,
     hasBeforeInstallPromptEvent: false,
     hasServiceWorker: true,
-    supportsTextWrapPretty: false,
     ...overrides,
   };
 }
@@ -97,38 +99,27 @@ describe("detectInstallPlatform", () => {
 });
 
 describe("usesSafari26Toolbar", () => {
-  it("reads the version from an iPhone UA", () => {
+  it("reads the Safari Version token, not the frozen OS part, on iPhone", () => {
     expect(usesSafari26Toolbar(env({ userAgent: IPHONE_SAFARI, maxTouchPoints: 5 }))).toBe(true);
     expect(usesSafari26Toolbar(env({ userAgent: IPHONE_18_SAFARI, maxTouchPoints: 5 }))).toBe(
       false,
     );
   });
 
-  it("falls back to the CSS feature check on iPad, whose UA hides the version", () => {
-    expect(
-      usesSafari26Toolbar(
-        env({ userAgent: IPAD_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: true }),
-      ),
-    ).toBe(true);
-    expect(
-      usesSafari26Toolbar(
-        env({ userAgent: IPAD_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: false }),
-      ),
-    ).toBe(false);
+  it("works on iPad, whose UA never carried the OS version", () => {
+    expect(usesSafari26Toolbar(env({ userAgent: IPAD_SAFARI, maxTouchPoints: 5 }))).toBe(true);
+    expect(usesSafari26Toolbar(env({ userAgent: IPAD_18_SAFARI, maxTouchPoints: 5 }))).toBe(
+      false,
+    );
   });
 
-  it("ignores the CSS feature on an iPhone whose UA says it is older", () => {
-    expect(
-      usesSafari26Toolbar(
-        env({ userAgent: IPHONE_18_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: true }),
-      ),
-    ).toBe(false);
+  it("is false for Chrome on iPhone, which has no Version token", () => {
+    expect(usesSafari26Toolbar(env({ userAgent: IPHONE_CHROME, maxTouchPoints: 5 }))).toBe(false);
   });
 
-  it("is false off Apple mobile even when the CSS feature exists", () => {
-    expect(
-      usesSafari26Toolbar(env({ userAgent: ANDROID_CHROME, supportsTextWrapPretty: true })),
-    ).toBe(false);
+  it("is false off Apple mobile", () => {
+    expect(usesSafari26Toolbar(env({ userAgent: MAC_DESKTOP }))).toBe(false);
+    expect(usesSafari26Toolbar(env({ userAgent: ANDROID_CHROME }))).toBe(false);
   });
 });
 
