@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/drawer";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { getEnvironmentBadge } from "@/utils/environment";
-import type { InstallPlatform } from "@/lib/installState";
+import { readInstallEnv, usesSafari26Toolbar, type InstallPlatform } from "@/lib/installState";
 
 const APP_ICON = "/icons/web-app-manifest-192x192.png";
 
@@ -35,6 +35,28 @@ const iconClass = "h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400";
 function Instructions({ platform }: { platform: InstallPlatform }) {
   switch (platform) {
     case "ios-safari":
+      // iOS 26 folded Safari's toolbar into one menu button; Share is inside it.
+      if (usesSafari26Toolbar(readInstallEnv())) {
+        return (
+          <div className="space-y-3">
+            <ol className="space-y-3">
+              <Step n={1} icon={<Menu className={iconClass} />}>
+                Tap the <strong>menu button</strong> (three lines) at the end of Safari's
+                address bar.
+              </Step>
+              <Step n={2} icon={<Share className={iconClass} />}>
+                Tap <strong>Share</strong>.
+              </Step>
+              <Step n={3} icon={<PlusSquare className={iconClass} />}>
+                Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+              </Step>
+            </ol>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              If you see a Share icon in the toolbar instead, tap that and skip step 1.
+            </p>
+          </div>
+        );
+      }
       return (
         <ol className="space-y-3">
           <Step n={1} icon={<Share className={iconClass} />}>

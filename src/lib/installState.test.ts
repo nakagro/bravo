@@ -5,6 +5,7 @@ import {
   INSTALL_SNOOZE_MS,
   isInstallPromptSnoozed,
   snoozeInstallPrompt,
+  usesSafari26Toolbar,
   type InstallEnv,
 } from "./installState";
 
@@ -12,6 +13,8 @@ const IPHONE_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1";
 const IPAD_SAFARI =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+const IPHONE_18_SAFARI =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1";
 const IPHONE_CHROME =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0.0.0 Mobile/15E148 Safari/604.1";
 const ANDROID_CHROME =
@@ -31,6 +34,7 @@ function env(overrides: Partial<InstallEnv>): InstallEnv {
     navigatorStandalone: false,
     hasBeforeInstallPromptEvent: false,
     hasServiceWorker: true,
+    supportsTextWrapPretty: false,
     ...overrides,
   };
 }
@@ -89,6 +93,42 @@ describe("detectInstallPlatform", () => {
     expect(
       detectInstallPlatform(env({ userAgent: WINDOWS_DESKTOP, hasBeforeInstallPromptEvent: true })),
     ).toBe("unsupported");
+  });
+});
+
+describe("usesSafari26Toolbar", () => {
+  it("reads the version from an iPhone UA", () => {
+    expect(usesSafari26Toolbar(env({ userAgent: IPHONE_SAFARI, maxTouchPoints: 5 }))).toBe(true);
+    expect(usesSafari26Toolbar(env({ userAgent: IPHONE_18_SAFARI, maxTouchPoints: 5 }))).toBe(
+      false,
+    );
+  });
+
+  it("falls back to the CSS feature check on iPad, whose UA hides the version", () => {
+    expect(
+      usesSafari26Toolbar(
+        env({ userAgent: IPAD_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: true }),
+      ),
+    ).toBe(true);
+    expect(
+      usesSafari26Toolbar(
+        env({ userAgent: IPAD_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: false }),
+      ),
+    ).toBe(false);
+  });
+
+  it("ignores the CSS feature on an iPhone whose UA says it is older", () => {
+    expect(
+      usesSafari26Toolbar(
+        env({ userAgent: IPHONE_18_SAFARI, maxTouchPoints: 5, supportsTextWrapPretty: true }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false off Apple mobile even when the CSS feature exists", () => {
+    expect(
+      usesSafari26Toolbar(env({ userAgent: ANDROID_CHROME, supportsTextWrapPretty: true })),
+    ).toBe(false);
   });
 });
 

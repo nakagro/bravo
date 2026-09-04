@@ -33,6 +33,8 @@ export interface InstallEnv {
   /** `"BeforeInstallPromptEvent" in window` */
   hasBeforeInstallPromptEvent: boolean;
   hasServiceWorker: boolean;
+  /** `CSS.supports("text-wrap", "pretty")`: shipped with iOS/iPadOS 26 Safari. */
+  supportsTextWrapPretty: boolean;
 }
 
 export function isStandalone(env: InstallEnv): boolean {
@@ -46,6 +48,25 @@ export function isAppleMobile(env: InstallEnv): boolean {
 /** Third-party browsers on iOS are all WebKit shells and cannot install PWAs. */
 export function isAppleMobileNonSafari(env: InstallEnv): boolean {
   return isAppleMobile(env) && /CriOS|EdgiOS|FxiOS|OPiOS|OPT\//.test(env.userAgent);
+}
+
+/** iPhone UAs carry "CPU iPhone OS 26_0"; iPad UAs are Mac-shaped and carry nothing. */
+export function appleOsMajorVersion(env: InstallEnv): number | null {
+  const m = /(?:iPhone|CPU) OS (\d+)_/.exec(env.userAgent);
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * iOS 26 redesigned Safari: the toolbar collapses into a single menu button
+ * and Share lives inside it, so the "tap Share in the toolbar" instruction is
+ * wrong there. The UA gives the version on iPhone; iPad hides it, so fall back
+ * to a CSS feature that shipped with the same release.
+ */
+export function usesSafari26Toolbar(env: InstallEnv): boolean {
+  if (!isAppleMobile(env)) return false;
+  const major = appleOsMajorVersion(env);
+  if (major !== null) return major >= 26;
+  return env.supportsTextWrapPretty;
 }
 
 export function isAndroid(env: InstallEnv): boolean {
@@ -72,6 +93,7 @@ export function readInstallEnv(): InstallEnv {
       navigatorStandalone: false,
       hasBeforeInstallPromptEvent: false,
       hasServiceWorker: false,
+      supportsTextWrapPretty: false,
     };
   }
   const nav = navigator as Navigator & { standalone?: boolean };
@@ -84,6 +106,10 @@ export function readInstallEnv(): InstallEnv {
     navigatorStandalone: nav.standalone === true,
     hasBeforeInstallPromptEvent: "BeforeInstallPromptEvent" in window,
     hasServiceWorker: "serviceWorker" in nav,
+    supportsTextWrapPretty:
+      typeof CSS !== "undefined" &&
+      typeof CSS.supports === "function" &&
+      CSS.supports("text-wrap", "pretty"),
   };
 }
 
