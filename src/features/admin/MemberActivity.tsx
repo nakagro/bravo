@@ -82,16 +82,18 @@ interface MemberActivityProps {
 export function MemberActivity({ showTitle = true }: MemberActivityProps) {
   const activity = useQuery(api.authManagement.getMemberActivity);
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [browserOnly, setBrowserOnly] = useState(false);
   const [openUser, setOpenUser] = useState<{ id: Id<"users">; name: string } | null>(null);
 
   const rows = useMemo(() => {
     if (!activity) return [];
-    const visible = includeInactive
+    let visible = includeInactive
       ? activity
       : activity.filter((row) => !row.isShared && !row.isDisabled);
+    if (browserOnly) visible = visible.filter((row) => row.phoneInstall === "browser-only");
 
     return [...visible].sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0));
-  }, [activity, includeInactive]);
+  }, [activity, includeInactive, browserOnly]);
 
   const summary = useMemo(() => {
     const people = (activity ?? []).filter((row) => !row.isShared && !row.isDisabled);
@@ -101,6 +103,7 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
       day: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < DAY).length,
       week: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < 7 * DAY).length,
       month: people.filter((r) => r.lastSeenAt && now - r.lastSeenAt < 30 * DAY).length,
+      browserOnly: people.filter((r) => r.phoneInstall === "browser-only").length,
     };
   }, [activity]);
 
@@ -139,7 +142,19 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         ))}
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="browser-only"
+            checked={browserOnly}
+            onCheckedChange={setBrowserOnly}
+            className="dark:data-[state=unchecked]:bg-gray-600"
+          />
+          <Label htmlFor="browser-only" className="text-sm dark:text-gray-200">
+            Phone browser only ({summary.browserOnly})
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
         <Switch
           id="include-inactive"
           checked={includeInactive}
@@ -149,6 +164,7 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
         <Label htmlFor="include-inactive" className="text-sm dark:text-gray-200">
           Include shared &amp; disabled
         </Label>
+        </div>
       </div>
 
       <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -174,6 +190,23 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
                   )}
                   {row.isShared && <Badge variant="outline">Shared</Badge>}
                   {row.isDisabled && <Badge variant="destructive">Disabled</Badge>}
+                  {row.phoneInstall === "browser-only" && (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-400 text-amber-700 dark:border-amber-600 dark:text-amber-300"
+                      title="Opens BRAVO in a phone browser tab, not the installed app. Not receiving notifications on iPhone."
+                    >
+                      Phone browser only
+                    </Badge>
+                  )}
+                  {row.phoneInstall === "installed" && (
+                    <Badge
+                      variant="outline"
+                      className="border-green-400 text-green-700 dark:border-green-600 dark:text-green-300"
+                    >
+                      App installed
+                    </Badge>
+                  )}
                 </div>
                 <div className="mt-1 flex flex-col gap-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">
                   <span>
@@ -224,6 +257,13 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
           means "the app was running", not "they tapped something". Signing out
           or being disabled clears the session, which shows here as no live
           session.
+        </p>
+        <p className="pt-2 leading-relaxed">
+          "Phone browser only" means every phone launch in the last 30 days was
+          from a browser tab rather than the installed app, so on iPhone they are
+          not receiving push notifications. "App installed" means at least one
+          phone launch came from the installed app. Laptop use is ignored either
+          way. Nothing is recorded until members are on a build that reports it.
         </p>
       </details>
     </div>

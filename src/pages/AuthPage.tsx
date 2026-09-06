@@ -1,6 +1,8 @@
 import { SignInForm } from "../features/auth/components/SignInForm";
 import { getVersionString } from "@/utils/version";
 import { getEnvironmentBadge } from "@/utils/environment";
+import { InstallNudgeCard } from "@/components/InstallNudgeCard";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export function AuthPage() {
   const envBadge = getEnvironmentBadge();
@@ -34,6 +36,11 @@ export function AuthPage() {
           <div className="h-px bg-gradient-to-r from-transparent via-red-500 to-transparent w-24"></div>
         </div>
       </div>
+
+      {/* Phone browser tabs: nudge to install before signing in */}
+      <InstallNudgeCard />
+      {/* Sheet with per-platform steps, opened only from the card here */}
+      <InstallPrompt autoShow={false} />
 
       {/* Sign In Form */}
       <SignInForm />
