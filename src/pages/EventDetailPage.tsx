@@ -11,6 +11,7 @@ import {
   formatWeekday,
   formatHeadcount,
   formatGuestSuffix,
+  formatResponseTiming,
   formatMonth,
   compareUserNames,
   getDayNum,
@@ -24,6 +25,7 @@ import { ResponsesModeDialog } from "../features/events/components/ResponsesMode
 import { ConfirmAttendanceDialog } from "../features/events/components/ConfirmAttendanceDialog";
 import { DeclineButton } from "../features/events/components/RsvpButtons";
 import { GuestControls } from "../features/events/components/GuestControls";
+import { ResponseActivity } from "../features/events/components/ResponseActivity";
 import { EventForm } from "../features/events/components/EventForm";
 import {
   AttendanceBadge,
@@ -284,6 +286,10 @@ export function EventDetailPage() {
     (attendance?.guestCounts ?? []).map((entry) => [entry.userId, entry.count])
   );
   const guestTotal = attendance?.guestTotal ?? 0;
+  // When each member answered and when they last touched it (manager-only).
+  const responseTimes = new Map(
+    (attendance?.responseTimes ?? []).map((entry) => [entry.userId, entry])
+  );
   const dietary = attendance?.dietary ?? null;
   const totalMembers = breakdown ? breakdown.totalMembers : 0;
   const repliedCount = breakdown
@@ -941,14 +947,30 @@ export function EventDetailPage() {
                           </p>
                         ) : (
                           <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
-                            {[...members].sort(compareUserNames).map((member) => (
-                              <li key={member._id}>{formatUserName(member)}</li>
-                            ))}
+                            {[...members].sort(compareUserNames).map((member) => {
+                              const times = responseTimes.get(member._id);
+                              return (
+                                <li key={member._id}>
+                                  {formatUserName(member)}
+                                  {times && (
+                                    // "Changed" only appears when it differs
+                                    // from the first answer - saying both on an
+                                    // untouched response is noise that reads
+                                    // like something happened.
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                                      {formatResponseTiming(times.respondedAt, times.changedAt)}
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ul>
                         ))}
                     </div>
                   );
                 })}
+
+              <ResponseActivity eventId={event._id} />
             </div>
           </div>
         )}
