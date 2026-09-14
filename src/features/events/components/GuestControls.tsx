@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
@@ -42,11 +42,18 @@ export function GuestControls({
   const setRsvp = useMutation(api.events.setRsvp);
   const cap = Math.min(maxGuests ?? HARD_CAP, HARD_CAP);
 
-  // Local echo so the stepper responds instantly; the server value wins again
-  // whenever it changes underneath (another device, a reset).
+  // The stepper is local and instant; the write is debounced behind it. Tapping
+  // + four times is one answer being composed, not four answers - without the
+  // wait, each tap round-trips and the reactive query echoes the intermediate
+  // values back, so the number visibly jumps around (1 2 3 2 4) under a fast
+  // thumb. While a change is settling, local state owns the display.
+  const SETTLE_MS = 800;
   const [count, setCount] = useState(guestCount);
   const [notes, setNotes] = useState(dietaryNotes ?? "");
+  // The value waiting to be written; null means nothing is in flight and the
+  // server is once again the source of truth.
   const pending = useRef<number | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (pending.current === null) setCount(guestCount);
@@ -56,20 +63,42 @@ export function GuestControls({
     setNotes(dietaryNotes ?? "");
   }, [dietaryNotes]);
 
-  const save = async (next: number) => {
-    pending.current = next;
-    setCount(next);
+  const flush = useCallback(async () => {
+    const next = pending.current;
+    if (next === null) return;
     try {
       await setRsvp({ eventId, status: "attending", guestCount: next });
+      // Only release the display back to the server once the write that made it
+      // true has landed - releasing earlier lets the pre-write value flash back.
+      if (pending.current === next) pending.current = null;
     } catch (error) {
       console.error("Error saving guest count:", error);
+      pending.current = null;
       setCount(guestCount);
       toast.error("Couldn't save how many you're bringing", {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
-    } finally {
-      pending.current = null;
     }
+  }, [eventId, guestCount, setRsvp]);
+
+  // Leaving the page mid-tap must not lose the answer.
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        void flush();
+      }
+    };
+  }, [flush]);
+
+  const step = (next: number) => {
+    pending.current = next;
+    setCount(next);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void flush();
+    }, SETTLE_MS);
   };
 
   const saveNotes = async () => {
@@ -107,7 +136,7 @@ export function GuestControls({
           <button
             type="button"
             className={stepClasses}
-            onClick={() => void save(count - 1)}
+            onClick={() => step(count - 1)}
             disabled={disabled || count <= 0}
             aria-label="One fewer guest"
           >
@@ -122,7 +151,7 @@ export function GuestControls({
           <button
             type="button"
             className={stepClasses}
-            onClick={() => void save(count + 1)}
+            onClick={() => step(count + 1)}
             disabled={disabled || count >= cap}
             aria-label="One more guest"
           >

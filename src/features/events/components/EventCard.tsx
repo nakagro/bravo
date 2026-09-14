@@ -12,7 +12,6 @@ import {
   TeamLeaderBadge,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
-import { GuestControls } from "./GuestControls";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
@@ -148,18 +147,24 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
                   rostered={event.iAmRostered}
                 />
               ) : (
-                <>
-                  <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
-                  {event.allowsGuests && event.myRsvp === "attending" && (
-                    <GuestControls
-                      eventId={event._id}
-                      guestCount={event.myGuestCount}
-                      maxGuests={event.maxGuestsPerMember}
-                      collectsDietary={event.collectsDietary ?? false}
-                      dietaryNotes={event.myDietaryNotes}
-                    />
-                  )}
-                </>
+                <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+              )}
+
+              {/* The guest stepper itself lives on the event page. On a phone
+                  the list is a column of cards to scan, and a second control
+                  per card turns it into noise - this is one quiet line that
+                  says where you stand and opens the page to change it. */}
+              {event.allowsGuests && event.myRsvp === "attending" && !responsesClosed && (
+                <button
+                  type="button"
+                  onClick={goToEvent}
+                  className="mt-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline min-h-[32px] flex items-center gap-1"
+                >
+                  <UsersIcon className="h-3.5 w-3.5" />
+                  {event.myGuestCount > 0
+                    ? `Bringing ${event.myGuestCount} ${event.myGuestCount === 1 ? "guest" : "guests"}`
+                    : "Bringing anyone?"}
+                </button>
               )}
             </div>
           )}
