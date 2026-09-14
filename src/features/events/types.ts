@@ -96,15 +96,32 @@ export function formatCountsSummary(counts: {
   attending: number;
   maybe: number;
   notAttending: number;
+  guests?: number;
 }): string {
   if (counts.attending === 0 && counts.maybe === 0 && counts.notAttending === 0) {
     return "No responses yet";
   }
+  const guests = counts.guests ?? 0;
   return [
     `${counts.attending} going`,
+    ...(guests > 0 ? [`+${guests} ${guests === 1 ? "guest" : "guests"}`] : []),
     ...(counts.maybe > 0 ? [`${counts.maybe} maybe`] : []),
     ...(counts.notAttending > 0 ? [`${counts.notAttending} not going`] : []),
   ].join(" · ");
+}
+
+// Total heads for catering: members going plus the guests they're bringing.
+// Only worth spelling out when somebody is actually bringing someone.
+export function formatHeadcount(attending: number, guests: number): string {
+  if (guests <= 0) return `${attending}`;
+  return `${attending + guests} · ${attending} ${attending === 1 ? "member" : "members"} + ${guests} ${
+    guests === 1 ? "guest" : "guests"
+  }`;
+}
+
+// "+2" suffix for a name chip in the attending list.
+export function formatGuestSuffix(count: number | undefined): string {
+  return count && count > 0 ? ` +${count}` : "";
 }
 
 // Initials for avatar chips: "Shaun Gordon" → "SG"
