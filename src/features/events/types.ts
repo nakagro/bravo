@@ -270,7 +270,7 @@ export function responseWasEdited(respondedAt: number, changedAt: number): boole
   return changedAt - respondedAt >= 60_000;
 }
 
-// "2m", "5h", "3d", "3w", "5mo", "2y" - always an age, never a calendar date.
+// "2m", "5h", "3d", "22d", "5mo", "2y" - always an age, never a calendar date.
 // The column answers one question ("how long ago?") and a date in the middle of
 // it makes the reader switch units mid-scan and do the subtraction themselves.
 //
@@ -283,10 +283,10 @@ export function formatCompactAgo(timestamp: number): string {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h`;
+  // Days run all the way to a month. Weeks in between made the reader convert
+  // ("3w, so is that before or after the 25th?") for no gain in brevity.
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d`;
-  const weeks = Math.round(days / 7);
-  if (weeks < 9) return `${weeks}w`;
+  if (days < 30) return `${days}d`;
   const months = Math.round(days / 30);
   if (months < 12) return `${months}mo`;
   return `${Math.round(days / 365)}y`;

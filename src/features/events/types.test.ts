@@ -56,7 +56,8 @@ describe("formatCompactAgo", () => {
     expect(formatCompactAgo(now - 3 * 86_400_000)).toBe("3d");
   });
   it("stays an age all the way down, never a calendar date", () => {
-    expect(formatCompactAgo(now - 20 * 86_400_000)).toBe("3w");
+    expect(formatCompactAgo(now - 20 * 86_400_000)).toBe("20d");
+    expect(formatCompactAgo(now - 29 * 86_400_000)).toBe("29d");
     expect(formatCompactAgo(now - 120 * 86_400_000)).toBe("4mo");
     expect(formatCompactAgo(now - 800 * 86_400_000)).toBe("2y");
   });
