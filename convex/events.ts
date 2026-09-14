@@ -655,6 +655,19 @@ export const getEventAttendance = query({
       // +2" without a second query. Only members bringing someone appear.
       guestCounts: v.array(v.object({ userId: v.id("users"), count: v.number() })),
       guestTotal: v.number(),
+      // When each member answered and when they last touched it, manager-only.
+      // Reads straight off the rsvp row's createdAt/updatedAt, so it is
+      // complete for every event that already existed before this shipped.
+      responseTimes: v.union(
+        v.array(
+          v.object({
+            userId: v.id("users"),
+            respondedAt: v.number(),
+            changedAt: v.number(),
+          })
+        ),
+        v.null()
+      ),
       // Dietary requirements, manager-only (null for everyone else). Health
       // information: the attending list is brigade-wide, this isn't.
       dietary: v.union(
@@ -734,6 +747,7 @@ export const getEventAttendance = query({
         rosteredNoShift,
         guestCounts,
         guestTotal,
+        responseTimes: null,
         dietary: null,
         breakdown: null,
       };
@@ -778,11 +792,18 @@ export const getEventAttendance = query({
           }))
       : [];
 
+    const responseTimes = rsvps.map((rsvp) => ({
+      userId: rsvp.userId,
+      respondedAt: rsvp.createdAt,
+      changedAt: rsvp.updatedAt,
+    }));
+
     return {
       attending,
       rosteredNoShift,
       guestCounts,
       guestTotal,
+      responseTimes,
       dietary,
       breakdown: { maybe, notAttending, noResponse, totalMembers: users.length },
     };
@@ -887,6 +908,73 @@ export const getConfirmedAttendance = query({
  * *expected* (rostered or said yes - the prefill), and who is currently
  * confirmed. Returns null for anyone who may not run this event.
  */
+/**
+ * The story of how an event's responses got to where they are: every change a
+ * member made to their own answer, newest first.
+ *
+ * Manager-only. The timestamps on the rsvp row say *when* somebody last touched
+ * their answer; this says *what they did* - the yes that became a no the night
+ * before, the shift picked up and quietly dropped. Shift picks have no other
+ * record at all, since dropping one deletes the row.
+ *
+ * Only covers changes made from the day this shipped: the rows it reads are
+ * written by the response mutations, not reconstructed from anything older.
+ */
+export const getResponseActivity = query({
+  args: { eventId: v.id("events"), limit: v.optional(v.number()) },
+  returns: v.union(
+    v.array(
+      v.object({
+        _id: v.id("eventHistory"),
+        timestamp: v.number(),
+        member: v.union(userNameValidator, v.null()),
+        field: v.string(),
+        oldValue: v.any(),
+        newValue: v.any(),
+      })
+    ),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || (await eventManagerId(ctx, event)) === null) {
+      return null;
+    }
+
+    const rows = await ctx.db
+      .query("eventHistory")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .order("desc")
+      .collect();
+
+    const responseRows = rows
+      .filter((row) => row.changeType === "response_change")
+      .slice(0, Math.min(args.limit ?? 50, 200));
+
+    const members = await Promise.all(responseRows.map((row) => ctx.db.get(row.userId)));
+
+    return responseRows.map((row, index) => {
+      const member = members[index];
+      return {
+        _id: row._id,
+        timestamp: row.timestamp,
+        // A member deleted since they answered still has a change worth showing
+        member: member
+          ? {
+              _id: member._id,
+              firstName: member.firstName,
+              lastName: member.lastName,
+              name: member.name,
+            }
+          : null,
+        field: row.field,
+        oldValue: row.oldValue ?? null,
+        newValue: row.newValue ?? null,
+      };
+    });
+  },
+});
+
 export const getAttendanceSheet = query({
   args: { eventId: v.id("events") },
   returns: v.union(
@@ -1608,6 +1696,30 @@ export const setRsvp = mutation({
     const trimmedNotes = dietaryNotes?.trim() ? dietaryNotes.trim() : undefined;
 
     const now = Date.now();
+    // Log before writing, while the previous answer is still readable. A member
+    // pressing the same button again isn't a change and isn't logged - otherwise
+    // the organiser's view fills with noise that says nothing happened.
+    if (existing?.status !== args.status) {
+      await logResponseChange(ctx, {
+        eventId: args.eventId,
+        userId,
+        field: "rsvp",
+        oldValue: existing?.status ?? null,
+        newValue: args.status,
+      });
+    }
+    const previousGuests = existing?.guestCount ?? 0;
+    const nextGuests = guestCount ?? 0;
+    if (event.allowsGuests && nextGuests !== previousGuests) {
+      await logResponseChange(ctx, {
+        eventId: args.eventId,
+        userId,
+        field: "guests",
+        oldValue: previousGuests,
+        newValue: nextGuests,
+      });
+    }
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         status: args.status,
@@ -1630,6 +1742,33 @@ export const setRsvp = mutation({
     return null;
   },
 });
+
+/**
+ * Log a member changing their own response, into the same eventHistory table the
+ * organiser's edits go to.
+ *
+ * The rsvp row already carries createdAt/updatedAt, which answers "when did they
+ * last touch this" for every event that already exists. What it can't answer is
+ * *what they changed from* - and for a shift pick it can't answer anything at
+ * all, because dropping a shift deletes the row. This log fills both gaps from
+ * here on.
+ *
+ * `userId` is the member themselves, not an organiser: these rows are the
+ * member's own acts.
+ */
+async function logResponseChange(
+  ctx: MutationCtx,
+  entry: {
+    eventId: Id<"events">;
+    userId: Id<"users">;
+    // rsvp = yes/maybe/no, shift = a slot picked or dropped, guests = the +1 count
+    field: "rsvp" | "shift" | "guests";
+    oldValue: unknown;
+    newValue: unknown;
+  }
+) {
+  await recordHistory(ctx, { ...entry, changeType: "response_change" });
+}
 
 // Guard shared by the slot-response mutations: event must be active and not past.
 async function requireOpenEvent(ctx: MutationCtx, eventId: Id<"events">): Promise<Doc<"events">> {
@@ -1672,9 +1811,24 @@ export const toggleSlotResponse = mutation({
       .first();
 
     if (existing) {
+      await logResponseChange(ctx, {
+        eventId: slot.eventId,
+        userId,
+        field: "shift",
+        oldValue: slot.label,
+        newValue: null,
+      });
       await ctx.db.delete(existing._id);
       return false;
     }
+
+    await logResponseChange(ctx, {
+      eventId: slot.eventId,
+      userId,
+      field: "shift",
+      oldValue: null,
+      newValue: slot.label,
+    });
 
     await ctx.db.insert("eventSlotResponses", {
       eventId: slot.eventId,
@@ -1689,6 +1843,13 @@ export const toggleSlotResponse = mutation({
       .withIndex("by_event_user", (q) => q.eq("eventId", slot.eventId).eq("userId", userId))
       .first();
     if (rsvp && rsvp.status === "notAttending") {
+      await logResponseChange(ctx, {
+        eventId: slot.eventId,
+        userId,
+        field: "rsvp",
+        oldValue: "notAttending",
+        newValue: null,
+      });
       await ctx.db.delete(rsvp._id);
     }
 
@@ -1715,8 +1876,25 @@ export const declineSlotEvent = mutation({
 
     // Already declined → un-decline (back to no response)
     if (existing && existing.status === "notAttending") {
+      await logResponseChange(ctx, {
+        eventId: args.eventId,
+        userId,
+        field: "rsvp",
+        oldValue: "notAttending",
+        newValue: null,
+      });
       await ctx.db.delete(existing._id);
       return false;
+    }
+
+    if (existing?.status !== "notAttending") {
+      await logResponseChange(ctx, {
+        eventId: args.eventId,
+        userId,
+        field: "rsvp",
+        oldValue: existing?.status ?? null,
+        newValue: "notAttending",
+      });
     }
 
     // Declining clears any slot picks
@@ -1725,6 +1903,16 @@ export const declineSlotEvent = mutation({
       .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", userId))
       .collect();
     for (const response of myResponses) {
+      // Each dropped pick is logged: the rows are about to be deleted, so this
+      // is the only record that the member ever held those shifts.
+      const slot = await ctx.db.get(response.slotId);
+      await logResponseChange(ctx, {
+        eventId: args.eventId,
+        userId,
+        field: "shift",
+        oldValue: slot?.label ?? "a shift",
+        newValue: null,
+      });
       await ctx.db.delete(response._id);
     }
 

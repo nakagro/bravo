@@ -1,4 +1,4 @@
-import { parse, format } from "date-fns";
+import { parse, format, formatDistanceToNow } from "date-fns";
 import { enAU } from "date-fns/locale";
 
 // RSVP status values
@@ -259,4 +259,19 @@ export function formatEventDate(event: {
   }
 
   return dateStr;
+}
+
+// ─── Response timing ─────────────────────────────────────────────────────────
+
+// "Answered 3 days ago", or "Answered 3 days ago · changed 2 hours ago" once a
+// member has been back to it. The second clause only appears when the answer
+// actually moved: showing both on an untouched response reads like something
+// happened when nothing did.
+//
+// The one-minute tolerance absorbs the createdAt/updatedAt gap on a row that was
+// only ever written once.
+export function formatResponseTiming(respondedAt: number, changedAt: number): string {
+  const answered = `Answered ${formatDistanceToNow(new Date(respondedAt), { addSuffix: true })}`;
+  if (changedAt - respondedAt < 60_000) return answered;
+  return `${answered} · changed ${formatDistanceToNow(new Date(changedAt), { addSuffix: true })}`;
 }
