@@ -1135,6 +1135,19 @@ const applicationTables = {
     // existing responses, so flipping back to "open" restores them untouched.
     // Declining ("can't make it") is always allowed, in either mode.
     memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
+    // Social events (the annual dinner) let members bring partners, and the
+    // organiser needs the headcount for catering. Absent = off, so every event
+    // that predates the field keeps behaving exactly as before. Never offered
+    // on a shift event - a roster is operational, and a shift pick has no party
+    // attached to it.
+    allowsGuests: v.optional(v.boolean()),
+    // A cap on how many guests one member may bring, where the venue forces
+    // one. Absent = no limit, which is the default. It bounds *new* answers
+    // only: lowering it never truncates an answer a member already gave.
+    maxGuestsPerMember: v.optional(v.number()),
+    // Whether the RSVP also asks for dietary requirements. Separate toggle from
+    // allowsGuests: a sit-down dinner for members only still needs the notes.
+    collectsDietary: v.optional(v.boolean()),
     isAllDay: v.boolean(),
     cancelledBy: v.optional(v.id("users")),
     cancelledAt: v.optional(v.number()),
@@ -1170,6 +1183,13 @@ const applicationTables = {
       v.literal("notAttending"),
       v.literal("maybe")
     ),
+    // How many extra people this member is bringing (events.allowsGuests).
+    // Absent or 0 = just them. Cleared whenever the answer stops being
+    // "attending" - a "no" carries no party.
+    guestCount: v.optional(v.number()),
+    // Dietary requirements for this member's whole party, free text
+    // (events.collectsDietary). Health information: only event managers read it.
+    dietaryNotes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

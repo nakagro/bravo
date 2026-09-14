@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareUserNames } from "./types";
+import { compareUserNames, formatCountsSummary, formatHeadcount } from "./types";
 
 describe("compareUserNames", () => {
   it("sorts members by their displayed full name without case sensitivity", () => {
@@ -23,5 +23,26 @@ describe("compareUserNames", () => {
       "Member 2",
       "Member 10",
     ]);
+  });
+});
+
+describe("formatCountsSummary with guests", () => {
+  it("adds a guests clause only when someone is bringing someone", () => {
+    expect(
+      formatCountsSummary({ attending: 12, maybe: 0, notAttending: 1, guests: 4 })
+    ).toBe("12 going · +4 guests · 1 not going");
+    expect(formatCountsSummary({ attending: 12, maybe: 0, notAttending: 1, guests: 0 })).toBe(
+      "12 going · 1 not going"
+    );
+    // Events that never asked pass no guests field at all
+    expect(formatCountsSummary({ attending: 3, maybe: 0, notAttending: 0 })).toBe("3 going");
+  });
+});
+
+describe("formatHeadcount", () => {
+  it("spells out the split only when guests are coming", () => {
+    expect(formatHeadcount(12, 0)).toBe("12");
+    expect(formatHeadcount(12, 4)).toBe("16 · 12 members + 4 guests");
+    expect(formatHeadcount(1, 1)).toBe("2 · 1 member + 1 guest");
   });
 });
