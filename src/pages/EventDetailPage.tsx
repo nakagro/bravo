@@ -12,6 +12,8 @@ import {
   formatHeadcount,
   formatGuestSuffix,
   formatResponseTiming,
+  formatCompactAgo,
+  responseWasEdited,
   formatMonth,
   compareUserNames,
   getDayNum,
@@ -949,16 +951,32 @@ export function EventDetailPage() {
                           <ul className="text-sm text-gray-800 dark:text-gray-200 pl-4 mt-1.5 space-y-1.5">
                             {[...members].sort(compareUserNames).map((member) => {
                               const times = responseTimes.get(member._id);
+                              const edited =
+                                times && responseWasEdited(times.respondedAt, times.changedAt);
                               return (
-                                <li key={member._id}>
-                                  {formatUserName(member)}
+                                <li
+                                  key={member._id}
+                                  className="flex items-baseline gap-2"
+                                  title={
+                                    times
+                                      ? formatResponseTiming(times.respondedAt, times.changedAt)
+                                      : undefined
+                                  }
+                                >
+                                  <span className="truncate">{formatUserName(member)}</span>
                                   {times && (
-                                    // "Changed" only appears when it differs
-                                    // from the first answer - saying both on an
-                                    // untouched response is noise that reads
-                                    // like something happened.
-                                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                                      {formatResponseTiming(times.respondedAt, times.changedAt)}
+                                    // One token, right-aligned: the time that
+                                    // matters is when they last touched it, and
+                                    // the pencil says it moved. The full
+                                    // sentence is in the row's title.
+                                    <span className="ml-auto flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                      {edited && (
+                                        <PencilSquareIcon
+                                          className="h-3 w-3 text-amber-600 dark:text-amber-400"
+                                          aria-label="Changed since first answering"
+                                        />
+                                      )}
+                                      {formatCompactAgo(times.changedAt)}
                                     </span>
                                   )}
                                 </li>

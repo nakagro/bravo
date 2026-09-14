@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { formatUserName, rsvpStatusLabels, RsvpStatus } from "../types";
+import { formatCompactAgo, formatUserName, rsvpStatusLabels, RsvpStatus } from "../types";
 
 interface ResponseActivityProps {
   eventId: Id<"events">;
@@ -79,13 +79,21 @@ export function ResponseActivity({ eventId }: ResponseActivityProps) {
           ) : (
             <ul className="space-y-2">
               {activity.map((entry) => (
-                <li key={entry._id} className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {entry.member ? formatUserName(entry.member) : "A former member"}
-                  </span>{" "}
-                  {describe(entry)}
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
+                <li
+                  key={entry._id}
+                  className="flex items-baseline gap-2 text-sm text-gray-700 dark:text-gray-300"
+                  title={formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
+                >
+                  <span className="min-w-0">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {entry.member ? formatUserName(entry.member) : "A former member"}
+                    </span>{" "}
+                    {describe(entry)}
+                  </span>
+                  {/* Same shape as the response rows above: the time is a short
+                      token on the right, not a line of its own. */}
+                  <span className="ml-auto text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {formatCompactAgo(entry.timestamp)}
                   </span>
                 </li>
               ))}

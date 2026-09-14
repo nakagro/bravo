@@ -263,15 +263,33 @@ export function formatEventDate(event: {
 
 // ─── Response timing ─────────────────────────────────────────────────────────
 
-// "Answered 3 days ago", or "Answered 3 days ago · changed 2 hours ago" once a
-// member has been back to it. The second clause only appears when the answer
-// actually moved: showing both on an untouched response reads like something
-// happened when nothing did.
-//
-// The one-minute tolerance absorbs the createdAt/updatedAt gap on a row that was
-// only ever written once.
+// A response counts as edited once the two timestamps diverge. The one-minute
+// tolerance absorbs the createdAt/updatedAt gap on a row that was only ever
+// written once.
+export function responseWasEdited(respondedAt: number, changedAt: number): boolean {
+  return changedAt - respondedAt >= 60_000;
+}
+
+// "2m", "5h", "3d", then a date. The response list is one row per member and is
+// read on a phone: twenty rows of "Answered 35 minutes ago · changed 7 minutes
+// ago" is a wall of text, so the row shows one token and the full sentence
+// lives in its title.
+export function formatCompactAgo(timestamp: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d`;
+  return formatShortDate(format(new Date(timestamp), "yyyy-MM-dd"));
+}
+
+// The long form, for a title attribute: the whole story in one sentence, read
+// only by whoever hovers or long-presses the row.
 export function formatResponseTiming(respondedAt: number, changedAt: number): string {
   const answered = `Answered ${formatDistanceToNow(new Date(respondedAt), { addSuffix: true })}`;
-  if (changedAt - respondedAt < 60_000) return answered;
-  return `${answered} · changed ${formatDistanceToNow(new Date(changedAt), { addSuffix: true })}`;
+  if (!responseWasEdited(respondedAt, changedAt)) return answered;
+  return `${answered}, changed ${formatDistanceToNow(new Date(changedAt), { addSuffix: true })}`;
 }
