@@ -140,6 +140,9 @@ const enrichedEventValidator = v.object({
   respondBy: v.optional(v.string()),
   hasShifts: v.optional(v.boolean()),
   memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
+  allowsGuests: v.optional(v.boolean()),
+  maxGuestsPerMember: v.optional(v.number()),
+  collectsDietary: v.optional(v.boolean()),
   isAllDay: v.boolean(),
   cancelledBy: v.optional(v.id("users")),
   cancelledAt: v.optional(v.number()),
@@ -154,8 +157,18 @@ const enrichedEventValidator = v.object({
     attending: v.number(),
     notAttending: v.number(),
     maybe: v.number(),
+    // Extra heads the attending members are bringing (events.allowsGuests).
+    // Deliberately *not* folded into `attending`: that number is a count of
+    // members, and the breakdown bar, the roster and the attendance sheet all
+    // key off member identity. Total headcount is attending + guests, composed
+    // where it is displayed.
+    guests: v.number(),
   }),
   myRsvp: v.union(rsvpStatusValidator, v.null()),
+  // The caller's own answers to the guest / dietary questions, so the RSVP
+  // control can show what they last said without a second query.
+  myGuestCount: v.number(),
+  myDietaryNotes: v.union(v.string(), v.null()),
   createdByUser: v.optional(userNameValidator),
   // Named team leaders, resolved to names for display. Deleted members drop out.
   teamLeaders: v.array(userNameValidator),
@@ -222,6 +235,11 @@ async function attendanceFor(
   rostered: Set<Id<"users">>;
   declined: Set<Id<"users">>;
   rsvps: Doc<"eventRsvps">[];
+  // Extra heads the people in `going` are bringing. Follows the same rules the
+  // head count follows, so a decline or a closed event drops a member's guests
+  // along with the member.
+  guestTotal: number;
+  guestsByUser: Map<Id<"users">, number>;
 }> {
   const [rsvps, allocations] = await Promise.all([
     ctx.db
@@ -256,7 +274,18 @@ async function attendanceFor(
   );
   for (const id of declined) going.delete(id);
 
-  return { going, rostered, declined, rsvps };
+  const guestsByUser = new Map<Id<"users">, number>();
+  let guestTotal = 0;
+  if (event.allowsGuests) {
+    for (const rsvp of rsvps) {
+      const guests = rsvp.guestCount ?? 0;
+      if (guests <= 0 || !going.has(rsvp.userId)) continue;
+      guestsByUser.set(rsvp.userId, guests);
+      guestTotal += guests;
+    }
+  }
+
+  return { going, rostered, declined, rsvps, guestTotal, guestsByUser };
 }
 
 /**
@@ -270,10 +299,16 @@ async function enrichEvent(
   userId: Id<"users">,
   viewerIsAdmin: boolean
 ) {
-  const { going, rostered, declined, rsvps } = await attendanceFor(ctx, event);
+  const { going, rostered, declined, rsvps, guestTotal } = await attendanceFor(ctx, event);
 
-  const counts = { attending: going.size, notAttending: declined.size, maybe: 0 };
+  const counts = {
+    attending: going.size,
+    notAttending: declined.size,
+    maybe: 0,
+    guests: guestTotal,
+  };
   let myRsvp: "attending" | "notAttending" | "maybe" | null = null;
+  const myRsvpRow = rsvps.find((rsvp) => rsvp.userId === userId) ?? null;
 
   if (declined.has(userId)) {
     myRsvp = "notAttending";
@@ -326,6 +361,11 @@ async function enrichEvent(
     ...event,
     counts,
     myRsvp,
+    // Only meaningful while the event is asking; a stale count on a shift or
+    // closed event would show the member a number nobody is counting.
+    myGuestCount:
+      event.allowsGuests && myRsvp === "attending" ? (myRsvpRow?.guestCount ?? 0) : 0,
+    myDietaryNotes: event.collectsDietary ? (myRsvpRow?.dietaryNotes ?? null) : null,
     attendedCount,
     eventTypeInfo,
     teamLeaders,
@@ -611,6 +651,16 @@ export const getEventAttendance = query({
       // non-empty on a shift event (where they'd otherwise be invisible,
       // appearing in no shift's roster); the shiftless list is just `attending`.
       rosteredNoShift: v.array(userNameValidator),
+      // Per-member guest counts, so the attending list can render "Jane Smith
+      // +2" without a second query. Only members bringing someone appear.
+      guestCounts: v.array(v.object({ userId: v.id("users"), count: v.number() })),
+      guestTotal: v.number(),
+      // Dietary requirements, manager-only (null for everyone else). Health
+      // information: the attending list is brigade-wide, this isn't.
+      dietary: v.union(
+        v.array(v.object({ member: userNameValidator, notes: v.string() })),
+        v.null()
+      ),
       breakdown: v.union(
         v.object({
           maybe: v.array(userNameValidator),
@@ -634,7 +684,10 @@ export const getEventAttendance = query({
       return null;
     }
 
-    const { going: attendingIds, rsvps } = await attendanceFor(ctx, event);
+    const { going: attendingIds, rsvps, guestsByUser, guestTotal } = await attendanceFor(
+      ctx,
+      event
+    );
 
     const nameOf = (user: Doc<"users">) => ({
       _id: user._id,
@@ -668,8 +721,22 @@ export const getEventAttendance = query({
 
     // The full breakdown (incl. non-responders) is for whoever is running this
     // event - eventsAdmin, the organiser, or a named team leader.
+    const attendingIdSet = new Set(attending.map((member) => member._id));
+    const guestCounts = [...guestsByUser.entries()]
+      // A guest count for someone who isn't in the visible attending list (a
+      // shared account, a deleted user) has nobody to hang off.
+      .filter(([userId]) => attendingIdSet.has(userId))
+      .map(([userId, count]) => ({ userId, count }));
+
     if ((await eventManagerId(ctx, event)) === null) {
-      return { attending, rosteredNoShift, breakdown: null };
+      return {
+        attending,
+        rosteredNoShift,
+        guestCounts,
+        guestTotal,
+        dietary: null,
+        breakdown: null,
+      };
     }
 
     const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
@@ -696,9 +763,27 @@ export const getEventAttendance = query({
       else if (status !== "attending") noResponse.push(nameOf(user));
     }
 
+    const usersById = new Map(users.map((user) => [user._id, user]));
+    const dietary = event.collectsDietary
+      ? rsvps
+          .filter(
+            (rsvp) =>
+              attendingIds.has(rsvp.userId) &&
+              !!rsvp.dietaryNotes?.trim() &&
+              usersById.has(rsvp.userId)
+          )
+          .map((rsvp) => ({
+            member: nameOf(usersById.get(rsvp.userId)!),
+            notes: rsvp.dietaryNotes!.trim(),
+          }))
+      : [];
+
     return {
       attending,
       rosteredNoShift,
+      guestCounts,
+      guestTotal,
+      dietary,
       breakdown: { maybe, notAttending, noResponse, totalMembers: users.length },
     };
   },
@@ -1024,6 +1109,9 @@ export const createEvent = mutation({
     respondBy: v.optional(v.string()),
     hasShifts: v.optional(v.boolean()),
     memberResponses: v.optional(v.union(v.literal("open"), v.literal("closed"))),
+    allowsGuests: v.optional(v.boolean()),
+    maxGuestsPerMember: v.optional(v.number()),
+    collectsDietary: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
     isAllDay: v.boolean(),
   },
@@ -1046,6 +1134,11 @@ export const createEvent = mutation({
       respondBy: args.respondBy,
       hasShifts: args.hasShifts,
       memberResponses: args.memberResponses,
+      // Guests belong to social, shiftless events - a shift roster is
+      // operational and a slot pick has no party attached to it.
+      allowsGuests: args.hasShifts ? undefined : args.allowsGuests,
+      maxGuestsPerMember: args.hasShifts ? undefined : args.maxGuestsPerMember,
+      collectsDietary: args.hasShifts ? undefined : args.collectsDietary,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
@@ -1088,6 +1181,11 @@ export const updateEvent = mutation({
     endTime: v.optional(v.string()),
     respondBy: v.optional(v.string()),
     hasShifts: v.optional(v.boolean()),
+    allowsGuests: v.optional(v.boolean()),
+    // "" clears the cap back to unlimited (the bookings convention the loop
+    // below already follows for optional fields).
+    maxGuestsPerMember: v.optional(v.union(v.number(), v.literal(""))),
+    collectsDietary: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
     isAllDay: v.optional(v.boolean()),
   },
@@ -1107,6 +1205,9 @@ export const updateEvent = mutation({
       "endTime",
       "respondBy",
       "hasShifts",
+      "allowsGuests",
+      "maxGuestsPerMember",
+      "collectsDietary",
       "isAllDay",
     ] as const;
 
@@ -1133,6 +1234,24 @@ export const updateEvent = mutation({
         oldValue: oldValue ?? null,
         newValue: newValue ?? null,
       });
+    }
+
+    if (args.maxGuestsPerMember !== undefined && typeof args.maxGuestsPerMember === "number") {
+      if (
+        !Number.isInteger(args.maxGuestsPerMember) ||
+        args.maxGuestsPerMember < 1 ||
+        args.maxGuestsPerMember > MAX_GUESTS_PER_MEMBER
+      ) {
+        throw new Error(`Guest limit must be a whole number from 1 to ${MAX_GUESTS_PER_MEMBER}`);
+      }
+    }
+
+    // Turning shifts on retires the guest questions - the event stopped being
+    // the kind that asks them. The stored answers are left alone, so turning
+    // shifts back off restores the event exactly as it was.
+    if ((args.hasShifts ?? event.hasShifts) && event.allowsGuests) {
+      updateData.allowsGuests = undefined;
+      updateData.collectsDietary = undefined;
     }
 
     // Reconcile slots whenever the form sends them (independent of column
@@ -1409,10 +1528,20 @@ export const deleteEvent = mutation({
  * Set or change the caller's RSVP for an event. Any signed-in member.
  * Upserts via by_event_user so each user has at most one RSVP per event.
  */
+// A ceiling that applies even when the organiser set no cap. Nobody brings 200
+// people to a brigade dinner; a number that large is a stuck stepper or a typo,
+// and it would quietly wreck the catering headcount.
+const MAX_GUESTS_PER_MEMBER = 50;
+const MAX_DIETARY_NOTES = 500;
+
 export const setRsvp = mutation({
   args: {
     eventId: v.id("events"),
     status: rsvpStatusValidator,
+    // Both absent = "leave what I said before alone", which is what the plain
+    // Yes/Maybe/No buttons send.
+    guestCount: v.optional(v.number()),
+    dietaryNotes: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -1439,15 +1568,51 @@ export const setRsvp = mutation({
       throw new Error("The organiser has set who's going to this event");
     }
 
+    if (args.guestCount !== undefined) {
+      if (!event.allowsGuests) {
+        throw new Error("This event isn't taking guests");
+      }
+      if (!Number.isInteger(args.guestCount) || args.guestCount < 0) {
+        throw new Error("Guest count must be a whole number");
+      }
+      const cap = Math.min(event.maxGuestsPerMember ?? MAX_GUESTS_PER_MEMBER, MAX_GUESTS_PER_MEMBER);
+      if (args.guestCount > cap) {
+        throw new Error(`You can bring at most ${cap} guest${cap === 1 ? "" : "s"} to this event`);
+      }
+    }
+    if (args.dietaryNotes !== undefined) {
+      if (!event.collectsDietary) {
+        throw new Error("This event isn't collecting dietary requirements");
+      }
+      if (args.dietaryNotes.length > MAX_DIETARY_NOTES) {
+        throw new Error(`Keep dietary requirements under ${MAX_DIETARY_NOTES} characters`);
+      }
+    }
+
     const existing = await ctx.db
       .query("eventRsvps")
       .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", userId))
       .first();
 
+    // A "no" or a "maybe" carries no party: clearing here means the organiser
+    // never counts guests for someone who isn't coming, and a member who
+    // changes their mind back re-enters the number rather than inheriting a
+    // stale one.
+    const attending = args.status === "attending";
+    const guestCount = attending
+      ? (args.guestCount ?? existing?.guestCount ?? undefined)
+      : undefined;
+    const dietaryNotes = attending
+      ? (args.dietaryNotes ?? existing?.dietaryNotes ?? undefined)
+      : undefined;
+    const trimmedNotes = dietaryNotes?.trim() ? dietaryNotes.trim() : undefined;
+
     const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
         status: args.status,
+        guestCount: guestCount && guestCount > 0 ? guestCount : undefined,
+        dietaryNotes: trimmedNotes,
         updatedAt: now,
       });
     } else {
@@ -1455,6 +1620,8 @@ export const setRsvp = mutation({
         eventId: args.eventId,
         userId,
         status: args.status,
+        guestCount: guestCount && guestCount > 0 ? guestCount : undefined,
+        dietaryNotes: trimmedNotes,
         createdAt: now,
         updatedAt: now,
       });

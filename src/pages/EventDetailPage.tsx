@@ -9,6 +9,8 @@ import {
   formatTime,
   formatUserName,
   formatWeekday,
+  formatHeadcount,
+  formatGuestSuffix,
   formatMonth,
   compareUserNames,
   getDayNum,
@@ -21,6 +23,7 @@ import { AllocateShiftsDialog } from "../features/events/components/AllocateShif
 import { ResponsesModeDialog } from "../features/events/components/ResponsesModeDialog";
 import { ConfirmAttendanceDialog } from "../features/events/components/ConfirmAttendanceDialog";
 import { DeclineButton } from "../features/events/components/RsvpButtons";
+import { GuestControls } from "../features/events/components/GuestControls";
 import { EventForm } from "../features/events/components/EventForm";
 import {
   AttendanceBadge,
@@ -275,6 +278,13 @@ export function EventDetailPage() {
   // The full breakdown (and its stacked bar) is admin-only; members just see
   // the attending list in the "Who's coming" card.
   const breakdown = attendance?.breakdown ?? null;
+  // Guests hang off the member who's bringing them, so the chips can carry a
+  // "+2" without a second query.
+  const guestsByMember = new Map(
+    (attendance?.guestCounts ?? []).map((entry) => [entry.userId, entry.count])
+  );
+  const guestTotal = attendance?.guestTotal ?? 0;
+  const dietary = attendance?.dietary ?? null;
   const totalMembers = breakdown ? breakdown.totalMembers : 0;
   const repliedCount = breakdown
     ? (attendance?.attending.length ?? 0) + breakdown.maybe.length + breakdown.notAttending.length
@@ -560,6 +570,20 @@ export function EventDetailPage() {
               </div>
             </div>
           )}
+          {/* The +1 count only makes sense once you've said yes - it's an
+              attribute of that answer, not a separate question. */}
+          {!responsesClosed &&
+            !event.hasShifts &&
+            event.allowsGuests &&
+            event.myRsvp === "attending" && (
+              <GuestControls
+                eventId={event._id}
+                guestCount={event.myGuestCount}
+                maxGuests={event.maxGuestsPerMember}
+                collectsDietary={event.collectsDietary ?? false}
+                dietaryNotes={event.myDietaryNotes}
+              />
+            )}
         </div>
       )}
 
@@ -775,7 +799,9 @@ export function EventDetailPage() {
                 : hasStarted
                   ? "Who said they'd come"
                   : "Who's coming"}
-              {!event.hasShifts && attendance ? ` (${attendance.attending.length})` : ""}
+              {!event.hasShifts && attendance
+                ? ` (${formatHeadcount(attendance.attending.length, guestTotal)})`
+                : ""}
             </h3>
             {event.hasShifts ? (
               <>
@@ -818,8 +844,34 @@ export function EventDetailPage() {
                     member={member}
                     isMe={member._id === myUserId}
                     isLeader={leaderIds.includes(member._id)}
+                    guestCount={guestsByMember.get(member._id)}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* Dietary requirements - managers only (the query returns null for
+                everyone else), and only once somebody has actually filled one
+                in. It sits with the list it describes, so the organiser reads
+                the names and the notes in one place. */}
+            {dietary && dietary.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-2">
+                  Dietary requirements ({dietary.length})
+                </div>
+                <ul className="space-y-1.5">
+                  {dietary.map((entry) => (
+                    <li key={entry.member._id} className="text-sm">
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatUserName(entry.member)}
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {" "}
+                        - {entry.notes}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
@@ -923,10 +975,13 @@ function MemberChip({
   member,
   isMe = false,
   isLeader = false,
+  guestCount,
 }: {
   member: ChipMember;
   isMe?: boolean;
   isLeader?: boolean;
+  /** Extra heads this member is bringing, rendered as a "+2" on the chip */
+  guestCount?: number;
 }) {
   if (member.declined) {
     return (
@@ -950,6 +1005,14 @@ function MemberChip({
       }`}
     >
       {formatUserName(member)}
+      {guestCount ? (
+        <span
+          title={`Bringing ${guestCount} ${guestCount === 1 ? "guest" : "guests"}`}
+          className="text-[11px] font-semibold text-blue-700 dark:text-blue-300"
+        >
+          {formatGuestSuffix(guestCount).trim()}
+        </span>
+      ) : null}
       {isLeader && <TeamLeaderBadge compact />}
       {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
     </span>

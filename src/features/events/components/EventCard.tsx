@@ -12,6 +12,7 @@ import {
   TeamLeaderBadge,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
+import { GuestControls } from "./GuestControls";
 import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
@@ -147,7 +148,18 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
                   rostered={event.iAmRostered}
                 />
               ) : (
-                <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+                <>
+                  <RsvpButtons eventId={event._id} myRsvp={event.myRsvp} />
+                  {event.allowsGuests && event.myRsvp === "attending" && (
+                    <GuestControls
+                      eventId={event._id}
+                      guestCount={event.myGuestCount}
+                      maxGuests={event.maxGuestsPerMember}
+                      collectsDietary={event.collectsDietary ?? false}
+                      dietaryNotes={event.myDietaryNotes}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}

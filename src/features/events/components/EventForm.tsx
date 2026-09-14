@@ -52,12 +52,26 @@ const eventFormSchema = z
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
     hasShifts: z.boolean(),
+    // Social events (the annual dinner): members say how many they're bringing
+    allowsGuests: z.boolean(),
+    // Blank = no limit, which is the default
+    maxGuestsPerMember: z.string(),
+    collectsDietary: z.boolean(),
     // Create-time only. Afterwards the mode is flipped from the event page,
     // which can offer to carry existing responses onto the roster.
     responsesClosed: z.boolean(),
     slots: z.array(slotSchema),
     description: z.string(),
   })
+  .refine(
+    (data) =>
+      !data.allowsGuests ||
+      data.maxGuestsPerMember === "" ||
+      (/^\d+$/.test(data.maxGuestsPerMember) &&
+        Number(data.maxGuestsPerMember) >= 1 &&
+        Number(data.maxGuestsPerMember) <= 50),
+    { message: "Guest limit must be a whole number from 1 to 50", path: ["maxGuestsPerMember"] }
+  )
   .refine((data) => !data.hasShifts || data.slots.length > 0, {
     message: "Add at least one shift, or turn off shifts",
     path: ["slots"],
@@ -97,6 +111,9 @@ const blankDefaults: EventFormValues = {
   isAllDay: false,
   isMultiDay: false,
   hasShifts: false,
+  allowsGuests: false,
+  maxGuestsPerMember: "",
+  collectsDietary: false,
   responsesClosed: false,
   slots: [],
   description: "",
@@ -176,6 +193,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
   const watchHasShifts = form.watch("hasShifts");
+  const watchAllowsGuests = form.watch("allowsGuests");
 
   // Load existing event data when editing (wait for slots too, so the field
   // array is populated in the same reset)
@@ -197,6 +215,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         isMultiDay:
           !!existingEvent.endDate && existingEvent.endDate !== existingEvent.startDate,
         hasShifts: existingEvent.hasShifts ?? false,
+        allowsGuests: existingEvent.allowsGuests ?? false,
+        maxGuestsPerMember:
+          existingEvent.maxGuestsPerMember != null
+            ? String(existingEvent.maxGuestsPerMember)
+            : "",
+        collectsDietary: existingEvent.collectsDietary ?? false,
         responsesClosed: existingEvent.memberResponses === "closed",
         slots: existingSlots.map((slot) => ({
           _id: slot._id,
@@ -237,6 +261,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
       description: values.description.trim(),
     };
 
+    // Guests belong to shiftless events only; shifts win if both are somehow set
+    const guestFields = {
+      allowsGuests: !values.hasShifts && values.allowsGuests,
+      collectsDietary: !values.hasShifts && values.allowsGuests && values.collectsDietary,
+    };
+
     // Slots only matter when shifts are on; an empty list on update clears them
     const slots = values.hasShifts
       ? values.slots.map((slot) => ({
@@ -271,6 +301,13 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           // "" clears the category; otherwise it's an eventTypes Id
           eventTypeId: fields.eventTypeId as "" | Id<"eventTypes">,
           hasShifts: values.hasShifts,
+          ...guestFields,
+          // "" clears the cap back to unlimited
+          maxGuestsPerMember: guestFields.allowsGuests
+            ? values.maxGuestsPerMember
+              ? Number(values.maxGuestsPerMember)
+              : ("" as const)
+            : ("" as const),
           slots,
         });
         guard.release();
@@ -287,6 +324,11 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           respondBy: fields.respondBy || undefined,
           description: fields.description || undefined,
           hasShifts: values.hasShifts,
+          ...guestFields,
+          maxGuestsPerMember:
+            guestFields.allowsGuests && values.maxGuestsPerMember
+              ? Number(values.maxGuestsPerMember)
+              : undefined,
           // Only ever set at creation here - changing it later goes through
           // setMemberResponses so the carry-over can be offered.
           memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
@@ -704,6 +746,99 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Guests (+1s) - shiftless events only. A shift roster is operational;
+            a slot pick has no partner attached to it. */}
+        {!watchHasShifts && (
+          <>
+            <FormField
+              control={form.control}
+              name="allowsGuests"
+              render={({ field }) => (
+                <FormItem>
+                  <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                    <span>
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Members can bring guests
+                      </span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        Adds a &quot;+1&quot; count to the RSVP, so you get a real headcount
+                      </span>
+                    </span>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="Members can bring guests"
+                        className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                      />
+                    </FormControl>
+                  </label>
+                </FormItem>
+              )}
+            />
+
+            {watchAllowsGuests && (
+              <div className="space-y-3 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                <FormField
+                  control={form.control}
+                  name="maxGuestsPerMember"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Max guests per member
+                      </FormLabel>
+                      <FormControl>
+                        <input
+                          {...field}
+                          type="number"
+                          min={1}
+                          max={50}
+                          inputMode="numeric"
+                          placeholder="No limit"
+                          className={inputClasses}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Leave blank for no limit. Lowering it later won&apos;t change answers
+                        members have already given.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="collectsDietary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                        <span>
+                          <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Ask for dietary requirements
+                          </span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">
+                            One note per member, covering them and their guests. Only you and
+                            the event&apos;s team leaders can read them.
+                          </span>
+                        </span>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            aria-label="Ask for dietary requirements"
+                            className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                          />
+                        </FormControl>
+                      </label>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+          </>
+        )}
 
         {/* Responses mode - create only. On an existing event this is flipped
             from the event page, where closing can offer to carry the people who
