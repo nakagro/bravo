@@ -270,10 +270,12 @@ export function responseWasEdited(respondedAt: number, changedAt: number): boole
   return changedAt - respondedAt >= 60_000;
 }
 
-// "2m", "5h", "3d", then a date. The response list is one row per member and is
-// read on a phone: twenty rows of "Answered 35 minutes ago · changed 7 minutes
-// ago" is a wall of text, so the row shows one token and the full sentence
-// lives in its title.
+// "2m", "5h", "3d", "3w", "5mo", "2y" - always an age, never a calendar date.
+// The column answers one question ("how long ago?") and a date in the middle of
+// it makes the reader switch units mid-scan and do the subtraction themselves.
+//
+// The response list is one row per member and is read on a phone, so the row
+// shows this token alone and the full sentence lives in its title.
 export function formatCompactAgo(timestamp: number): string {
   const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
   if (seconds < 60) return "now";
@@ -283,7 +285,11 @@ export function formatCompactAgo(timestamp: number): string {
   if (hours < 24) return `${hours}h`;
   const days = Math.round(hours / 24);
   if (days < 7) return `${days}d`;
-  return formatShortDate(format(new Date(timestamp), "yyyy-MM-dd"));
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks}w`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.round(days / 365)}y`;
 }
 
 // The long form, for a title attribute: the whole story in one sentence, read

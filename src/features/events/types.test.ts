@@ -55,8 +55,10 @@ describe("formatCompactAgo", () => {
     expect(formatCompactAgo(now - 5 * 3_600_000)).toBe("5h");
     expect(formatCompactAgo(now - 3 * 86_400_000)).toBe("3d");
   });
-  it("falls back to a date beyond a week", () => {
-    expect(formatCompactAgo(now - 30 * 86_400_000)).toMatch(/^[A-Z][a-z]{2} \d+ [A-Z][a-z]{2}$/);
+  it("stays an age all the way down, never a calendar date", () => {
+    expect(formatCompactAgo(now - 20 * 86_400_000)).toBe("3w");
+    expect(formatCompactAgo(now - 120 * 86_400_000)).toBe("4mo");
+    expect(formatCompactAgo(now - 800 * 86_400_000)).toBe("2y");
   });
 });
 
