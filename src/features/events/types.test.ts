@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareUserNames, formatCountsSummary, formatHeadcount } from "./types";
+import { compareUserNames, formatCountsSummary, formatHeadcount, formatCompactAgo, responseWasEdited } from "./types";
 
 describe("compareUserNames", () => {
   it("sorts members by their displayed full name without case sensitivity", () => {
@@ -44,5 +44,29 @@ describe("formatHeadcount", () => {
     expect(formatHeadcount(12, 0)).toBe("12");
     expect(formatHeadcount(12, 4)).toBe("16 · 12 members + 4 guests");
     expect(formatHeadcount(1, 1)).toBe("2 · 1 member + 1 guest");
+  });
+});
+
+describe("formatCompactAgo", () => {
+  const now = Date.now();
+  it("keeps recent times to a single short token", () => {
+    expect(formatCompactAgo(now - 30_000)).toBe("now");
+    expect(formatCompactAgo(now - 35 * 60_000)).toBe("35m");
+    expect(formatCompactAgo(now - 5 * 3_600_000)).toBe("5h");
+    expect(formatCompactAgo(now - 3 * 86_400_000)).toBe("3d");
+  });
+  it("stays an age all the way down, never a calendar date", () => {
+    expect(formatCompactAgo(now - 20 * 86_400_000)).toBe("20d");
+    expect(formatCompactAgo(now - 29 * 86_400_000)).toBe("29d");
+    expect(formatCompactAgo(now - 120 * 86_400_000)).toBe("4mo");
+    expect(formatCompactAgo(now - 800 * 86_400_000)).toBe("2y");
+  });
+});
+
+describe("responseWasEdited", () => {
+  it("ignores the write gap on a response that was never touched again", () => {
+    const t = Date.now();
+    expect(responseWasEdited(t, t + 200)).toBe(false);
+    expect(responseWasEdited(t, t + 120_000)).toBe(true);
   });
 });

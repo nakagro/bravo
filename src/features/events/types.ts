@@ -1,4 +1,4 @@
-import { parse, format } from "date-fns";
+import { parse, format, formatDistanceToNow } from "date-fns";
 import { enAU } from "date-fns/locale";
 
 // RSVP status values
@@ -259,4 +259,43 @@ export function formatEventDate(event: {
   }
 
   return dateStr;
+}
+
+// ─── Response timing ─────────────────────────────────────────────────────────
+
+// A response counts as edited once the two timestamps diverge. The one-minute
+// tolerance absorbs the createdAt/updatedAt gap on a row that was only ever
+// written once.
+export function responseWasEdited(respondedAt: number, changedAt: number): boolean {
+  return changedAt - respondedAt >= 60_000;
+}
+
+// "2m", "5h", "3d", "22d", "5mo", "2y" - always an age, never a calendar date.
+// The column answers one question ("how long ago?") and a date in the middle of
+// it makes the reader switch units mid-scan and do the subtraction themselves.
+//
+// The response list is one row per member and is read on a phone, so the row
+// shows this token alone and the full sentence lives in its title.
+export function formatCompactAgo(timestamp: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  // Days run all the way to a month. Weeks in between made the reader convert
+  // ("3w, so is that before or after the 25th?") for no gain in brevity.
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.round(days / 365)}y`;
+}
+
+// The long form, for a title attribute: the whole story in one sentence, read
+// only by whoever hovers or long-presses the row.
+export function formatResponseTiming(respondedAt: number, changedAt: number): string {
+  const answered = `Answered ${formatDistanceToNow(new Date(respondedAt), { addSuffix: true })}`;
+  if (!responseWasEdited(respondedAt, changedAt)) return answered;
+  return `${answered}, changed ${formatDistanceToNow(new Date(changedAt), { addSuffix: true })}`;
 }

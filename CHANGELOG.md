@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.09.15]
+- Events: An event can now let members bring guests. Turn on "Members can bring guests" when creating or editing one, and anyone who says they're going gets a simple counter to say how many they're bringing. The event shows the real headcount, members plus guests, so catering isn't a guessing game. Off by default and set per event, so nothing changes on an event that doesn't need it.
+- Events: Guest numbers are unlimited unless you set a limit. If the venue caps the numbers, set "Max guests per member" and the counter stops there. Lowering a limit later never quietly changes an answer someone has already given.
+- Events: Optionally ask for dietary requirements alongside guests. Each member gets one box covering themselves and anyone they're bringing, and only the organiser and the event's team leaders can read what's written there.
+- Events: Organisers can now see when each member answered and when they last changed their mind, shown beside their name in the Responses list with a pencil marking anyone who has been back to change it. This works for every event that already exists.
+- Events: New "Response activity" list on the Responses panel showing exactly what changed, newest first. A yes that became a no the night before is now on the record, as is a shift picked up and quietly dropped, which previously left no trace at all. Only covers changes made from this release onwards.
+
 ## [2026.08.28]
 - Inventory: Appliance templates now have a lifecycle. A template can be active, taken out of service, or archived, instead of only existing or being destroyed. Out of service suits a spare appliance that isn't in use, archived retires a template while keeping every check ever done against it.
 - Inventory: A template that has been checked at least once can no longer be permanently deleted. Archiving is the end state, so the history behind a check can't be wiped by accident.
