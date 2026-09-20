@@ -1,9 +1,13 @@
 import { convexAuth, getAuthUserId, modifyAccountCredentials, retrieveAccount } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
-import { query, mutation, action } from "./_generated/server";
+import { Email } from "@convex-dev/auth/providers/Email";
+import type { GenericActionCtx } from "convex/server";
+import type { DataModel } from "./_generated/dataModel";
+import { query, mutation, action, internalQuery } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { isMemberAccount } from "./lib/accountType";
+import { isMemberAccount, isDisabledAccount } from "./lib/accountType";
+import { sendGuardedEmail } from "./emails";
 
 /**
  * DEFAULT SIGNUP RANK CONFIGURATION
@@ -38,6 +42,37 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           throw new Error("Password must be at least 4 characters long");
         }
         // No other requirements - allows purely numeric passwords
+      },
+    }),
+    Email({
+      id: "email-otp",
+      maxAge: 10 * 60,
+      async generateVerificationToken() {
+        return String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
+      },
+      async sendVerificationRequest({ identifier: email, token }) {
+        // ctx is passed at runtime by @convex-dev/auth but absent from the
+        // auth.js-inherited type signature (see signIn.js:92).
+        const ctx = arguments[1] as GenericActionCtx<DataModel>;
+        const user = await ctx.runQuery(internal.auth.getUserByEmail, { email });
+        if (user && isDisabledAccount(user)) {
+          throw new Error("This account has been disabled.");
+        }
+        await sendGuardedEmail({
+          to: email,
+          subject: `${token} is your BRAVO sign-in code`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+              <h1 style="color: #dc2626; margin-bottom: 4px;">BRAVO</h1>
+              <p style="color: #6b7280; margin-top: 0;">BRigade AVailability and Operations</p>
+              <p>Your sign-in code is:</p>
+              <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; text-align: center; padding: 16px; background: #f3f4f6; border-radius: 8px; margin: 16px 0;">
+                ${token}
+              </div>
+              <p style="color: #6b7280; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
+            </div>
+          `,
+        });
       },
     }),
   ],
@@ -365,5 +400,23 @@ export const adminResetPassword = action({
     } catch  {
       throw new Error("Failed to reset password");
     }
+  },
+});
+
+export const getUserByEmail = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(
+    v.object({
+      isDisabled: v.optional(v.boolean()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase().trim()))
+      .first();
+    if (!user) return null;
+    return { isDisabled: user.isDisabled ?? undefined };
   },
 });
