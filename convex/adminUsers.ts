@@ -32,7 +32,7 @@ export const assertCanCreateUser = internalQuery({
 
     const existingEmail = await ctx.db
       .query("users")
-      .withIndex("by_email", (query) => query.eq("email", args.email))
+      .withIndex("email", (query) => query.eq("email", args.email))
       .unique();
     if (existingEmail) {
       throw new Error("An account with this email already exists");

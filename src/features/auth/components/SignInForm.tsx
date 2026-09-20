@@ -24,19 +24,30 @@ const signInSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const otpEmailSchema = z.object({
+  email: z.email("Please enter a valid email address"),
+});
+
+const otpCodeSchema = z.object({
+  code: z.string().length(6, "Enter the 6-digit code"),
+});
+
 type SignUpValues = z.infer<typeof signUpSchema>;
 type SignInValues = z.infer<typeof signInSchema>;
+type OtpEmailValues = z.infer<typeof otpEmailSchema>;
+type OtpCodeValues = z.infer<typeof otpCodeSchema>;
 
 export function SignInForm() {
   const { signIn } = useAuthActions();
   const [searchParams, setSearchParams] = useSearchParams();
   const posthog = usePostHog();
-  const [flow, setFlow] = useState<"signIn" | "signUp" | "forgotPassword">("signIn");
+  const [flow, setFlow] = useState<"signIn" | "signUp" | "forgotPassword" | "emailCode">("emailCode");
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const hCaptchaRef = useRef<HCaptcha>(null);
   const convex = useConvex();
   const storeSignupData = useMutation(api.auth.storeSignupData);
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
 
   const signUpForm = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
@@ -46,6 +57,16 @@ export function SignInForm() {
   const signInForm = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: { email: "", password: "" },
+  });
+
+  const otpEmailForm = useForm<OtpEmailValues>({
+    resolver: zodResolver(otpEmailSchema),
+    defaultValues: { email: "" },
+  });
+
+  const otpCodeForm = useForm<OtpCodeValues>({
+    resolver: zodResolver(otpCodeSchema),
+    defaultValues: { code: "" },
   });
 
   // Show success message if redirected from password reset
@@ -73,7 +94,7 @@ export function SignInForm() {
   };
 
   if (flow === "forgotPassword") {
-    return <ForgotPasswordForm onBack={() => setFlow("signIn")} />;
+    return <ForgotPasswordForm onBack={() => setFlow("emailCode")} />;
   }
 
   const handleSignUp = async (values: SignUpValues) => {
@@ -222,13 +243,55 @@ export function SignInForm() {
     }
   };
 
+  const handleOtpSend = async (values: OtpEmailValues) => {
+    setSubmitting(true);
+    try {
+      const email = values.email.toLowerCase().trim();
+      await signIn("email-otp", { email });
+      setOtpEmail(email);
+      toast.success("Code sent! Check your email.");
+      setSubmitting(false);
+    } catch (error: any) {
+      const msg = error?.message || "";
+      if (msg.includes("disabled")) {
+        toast.error("This account has been disabled. Please contact an administrator.");
+      } else {
+        toast.error("Could not send code. Check your email address and try again.");
+      }
+      setSubmitting(false);
+    }
+  };
+
+  const handleOtpVerify = async (values: OtpCodeValues) => {
+    if (!otpEmail) return;
+    setSubmitting(true);
+    try {
+      await signIn("email-otp", { email: otpEmail, code: values.code });
+      posthog?.capture("user_login_success", {
+        email: otpEmail,
+        method: "email_otp",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      const msg = error?.message || "";
+      let toastTitle: string;
+      if (msg.includes("InvalidToken") || msg.includes("invalid") || msg.includes("expired") || msg.includes("Could not verify")) {
+        toastTitle = "Invalid or expired code. Please try again.";
+      } else {
+        toastTitle = "Could not verify code. Please try again.";
+      }
+      toast.error(toastTitle);
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="w-full">
       {flow === "signUp" && (
         <div className="mb-4">
           <button
             type="button"
-            onClick={() => setFlow("signIn")}
+            onClick={() => setFlow("emailCode")}
             className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 group"
           >
             <svg
@@ -360,17 +423,164 @@ export function SignInForm() {
             <button
               type="button"
               className="text-sm font-medium text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors duration-200"
-              onClick={() => setFlow("signIn")}
+              onClick={() => setFlow("emailCode")}
             >
               Sign in instead
             </button>
           </div>
         </form>
+      ) : flow === "emailCode" ? (
+        otpEmail ? (
+          <form
+            className="flex flex-col gap-6"
+            onSubmit={otpCodeForm.handleSubmit(handleOtpVerify)}
+          >
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={() => { setOtpEmail(null); otpCodeForm.reset(); }}
+                className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 group"
+              >
+                <svg
+                  className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="text-sm font-medium">Change email</span>
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Enter the 6-digit code sent to <strong>{otpEmail}</strong>
+            </p>
+
+            <div>
+              <input
+                className="input-field text-center text-2xl tracking-widest"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="000000"
+                autoFocus
+                {...otpCodeForm.register("code")}
+              />
+              {otpCodeForm.formState.errors.code && (
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{otpCodeForm.formState.errors.code.message}</p>
+              )}
+            </div>
+
+            <button
+              className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Verifying...
+                </div>
+              ) : (
+                "Verify Code"
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              onClick={() => {
+                otpCodeForm.reset();
+                handleOtpSend({ email: otpEmail });
+              }}
+              disabled={submitting}
+            >
+              Resend code
+            </button>
+          </form>
+        ) : (
+          <form
+            className="flex flex-col gap-6"
+            onSubmit={otpEmailForm.handleSubmit(handleOtpSend)}
+          >
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address
+              </label>
+              <input
+                className="input-field"
+                type="email"
+                placeholder="Enter your email address"
+                autoComplete="email"
+                {...otpEmailForm.register("email")}
+              />
+              {otpEmailForm.formState.errors.email && (
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{otpEmailForm.formState.errors.email.message}</p>
+              )}
+            </div>
+
+            <button
+              className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Sending code...
+                </div>
+              ) : (
+                "Send Sign-In Code"
+              )}
+            </button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
+                onClick={() => setFlow("signIn")}
+              >
+                Use password instead
+              </button>
+            </div>
+
+            <div className="text-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Don't have an account? </span>
+              <button
+                type="button"
+                className="text-sm font-medium text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors duration-200"
+                onClick={() => setFlow("signUp")}
+              >
+                Sign up instead
+              </button>
+            </div>
+          </form>
+        )
       ) : (
         <form
           className="flex flex-col gap-6"
           onSubmit={signInForm.handleSubmit(handleSignIn)}
         >
+          <div className="mb-2">
+            <button
+              type="button"
+              onClick={() => setFlow("emailCode")}
+              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200 group"
+            >
+              <svg
+                className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-sm font-medium">Back to email code</span>
+            </button>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Email Address
@@ -438,16 +648,6 @@ export function SignInForm() {
             )}
           </button>
 
-          <div className="text-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Don't have an account? </span>
-            <button
-              type="button"
-              className="text-sm font-medium text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors duration-200"
-              onClick={() => setFlow("signUp")}
-            >
-              Sign up instead
-            </button>
-          </div>
         </form>
       )}
     </div>

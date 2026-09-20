@@ -53,7 +53,7 @@ type GuardedSendResult = {
   skipped: boolean;
 };
 
-async function sendGuardedEmail(args: {
+export async function sendGuardedEmail(args: {
   to: string | string[];
   subject: string;
   html: string;

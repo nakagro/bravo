@@ -82,7 +82,7 @@ const extendedAuthTables = {
     disabledAt: v.optional(v.number()),
     disabledBy: v.optional(v.id("users")),
   })
-    .index("by_email", ["email"])
+    .index("email", ["email"])
     .index("by_memberNumber", ["memberNumber"])
     .index("by_isAdmin", ["isAdmin"])
     .index("by_isDutyOfficer", ["isDutyOfficer"])
