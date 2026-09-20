@@ -8,6 +8,7 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { isMemberAccount, isDisabledAccount } from "./lib/accountType";
 import { sendGuardedEmail } from "./emails";
+import { createOrUpdateAuthUser } from "./lib/authUser";
 
 /**
  * DEFAULT SIGNUP RANK CONFIGURATION
@@ -77,6 +78,9 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
     }),
   ],
+  callbacks: {
+    createOrUpdateUser: createOrUpdateAuthUser,
+  },
   jwt: {
     customClaims: async (ctx, { userId }) => {
       const user = await ctx.db.get(userId);
