@@ -34,6 +34,16 @@ const CANONICAL = [
   { name: "JWT_PRIVATE_KEY", scope: "both", secret: true },
   { name: "JWKS", scope: "both", secret: true },
 
+  // @convex-dev/auth's Email provider constructs an absolute verification
+  // URL even when the UI asks users to enter a code instead of following a
+  // link. Without SITE_URL, requesting a code fails before email is sent.
+  {
+    name: "SITE_URL",
+    scope: "both",
+    mustDiffer: true,
+    note: "frontend origin required by @convex-dev/auth email sign-in",
+  },
+
   // Declared in convex/convex.config.ts as required typed env - a deploy FAILS
   // until all three are set.
   { name: "CALDAV_URL", scope: "both", mustDiffer: true },
