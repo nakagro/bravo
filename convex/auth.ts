@@ -3,6 +3,7 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import { query, mutation, action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import { isMemberAccount } from "./lib/accountType";
 
 /**
  * DEFAULT SIGNUP RANK CONFIGURATION
@@ -40,6 +41,16 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
     }),
   ],
+  jwt: {
+    customClaims: async (ctx, { userId }) => {
+      const user = await ctx.db.get(userId);
+      return {
+        name: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.name,
+        email: user?.email,
+        labsMember: isMemberAccount(user ?? {}),
+      };
+    },
+  },
   session: {
     // 1 year absolute limit (prevents "time bomb" forced logout)
     totalDurationMs: 1000 * 60 * 60 * 24 * 365,

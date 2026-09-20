@@ -20,6 +20,7 @@ import { PWAUpdateNotification } from "./components/PWAUpdateNotification";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { LaunchTelemetry } from "./components/LaunchTelemetry";
 import { usePostHogIdentify } from "./hooks/usePostHogIdentify";
+import { useSsoCookie } from "./hooks/useSsoCookie";
 import {
   ServiceAccountProvider,
   useServiceAccount,
@@ -68,6 +69,8 @@ const FeedbackManagementPage = lazy(() => import("./pages/FeedbackManagementPage
 const AuthManagementPage = lazy(() => import("./pages/AuthManagementPage"));
 const ServiceLoginPage = lazy(() => import("./pages/ServiceLoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })));
+const SsoRedirect = lazy(() => import("./pages/SsoPage").then((m) => ({ default: m.SsoRedirect })));
+const SsoSignIn = lazy(() => import("./pages/SsoPage").then((m) => ({ default: m.SsoSignIn })));
 
 // --- Startup timing helper (reads from global set in main.tsx) ---
 const _t = (label: string) => (window as any).__BRAVO_T?.(label);
@@ -227,8 +230,8 @@ function ServiceAccountApp() {
 }
 
 function AuthenticatedApp() {
-  // Identify user with PostHog for analytics
   usePostHogIdentify();
+  useSsoCookie();
 
   // A disabled account is a member who has left: every module gate on the server
   // already denies them, so render the explanation instead of an app full of
@@ -444,6 +447,7 @@ function AuthenticatedApp() {
               <ActionsPage />
             </ProtectedRoute>
           } />
+          <Route path="/sso" element={<SsoRedirect />} />
           {/* Catch all other routes and redirect to dashboard */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -460,6 +464,7 @@ function UnauthenticatedApp() {
         <Route path="/service-login" element={<ServiceLoginPage />} />
         {/* Kiosk devices should use service PIN login, not user sign-in */}
         <Route path="/kiosk/*" element={<KioskToServiceLoginRedirect />} />
+        <Route path="/sso" element={<SsoSignIn />} />
         <Route path="*" element={
           <AuthLayout>
             <Routes>
