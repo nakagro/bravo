@@ -19,7 +19,11 @@ const extendedAuthTables = {
     // Fields from the original auth tables
     tokenIdentifier: v.optional(v.string()),
     name: v.optional(v.string()),
+    image: v.optional(v.string()),
     email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()), // Required by auth system
     // New fields (all optional for backward compatibility)
     firstName: v.optional(v.string()),
