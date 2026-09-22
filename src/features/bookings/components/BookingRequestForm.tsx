@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -23,8 +23,8 @@ import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, formatSummaryDate, formatTime, getBookingConflictMessage } from "../types";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Clock, User, Search, CircleX, Lock, Check, ChevronsUpDown } from "lucide-react";
-import { Combobox, Transition } from "@headlessui/react";
+import { Clock, User, CircleX, Lock, Check } from "lucide-react";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 
 const bookingRequestSchema = z
   .object({
@@ -69,7 +69,16 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
 
   // State outside the form (not part of the booking data model)
   const [onBehalfOf, setOnBehalfOf] = useState<Id<"users"> | "__blocked__" | null>(null);
-  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const onBehalfOptions = useMemo<ComboboxOption[]>(
+    () => [
+      { value: "__blocked__", label: "Block/Unavailable (no user)" },
+      ...(allUsers ?? [])
+        .filter((u) => u._id !== currentUser?._id)
+        .map((u) => ({ value: u._id, label: formatUserName(u) }))
+        .sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase())),
+    ],
+    [allUsers, currentUser?._id],
+  );
   const [conflictError, setConflictError] = useState<string | null>(null);
 
   const form = useForm<BookingRequestValues>({
@@ -476,150 +485,15 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               </span>
             </div>
 
-            <Combobox<Id<"users"> | "__blocked__" | null>
+            <Combobox
+              options={onBehalfOptions}
               value={onBehalfOf}
-              onChange={setOnBehalfOf}
-              nullable
-            >
-              <div className="relative">
-                <div className="relative w-full">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                  </div>
-                  <Combobox.Input
-                    className="w-full pl-10 pr-10 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    displayValue={(userId: Id<"users"> | string | null) => {
-                      if (!userId) return "";
-                      if (userId === "__blocked__") return "Block/Unavailable (no user)";
-                      const user = allUsers?.find((u) => u._id === userId);
-                      if (!user) return "";
-                      return formatUserName(user);
-                    }}
-                    onChange={(event) => setUserSearchQuery(event.target.value)}
-                    placeholder="Search for a member..."
-                  />
-                  {onBehalfOf ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOnBehalfOf(null);
-                        setUserSearchQuery("");
-                      }}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3"
-                    >
-                      <CircleX
-                        className="h-5 w-5 text-gray-400 hover:text-gray-600"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  ) : (
-                    <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <ChevronsUpDown
-                        className="h-5 w-5 text-gray-400"
-                        aria-hidden="true"
-                      />
-                    </Combobox.Button>
-                  )}
-                </div>
-                <Transition
-                  as={Fragment}
-                  leave="transition ease-in duration-100"
-                  leaveFrom="opacity-100"
-                  leaveTo="opacity-0"
-                  afterLeave={() => setUserSearchQuery("")}
-                >
-                  <Combobox.Options className="absolute z-50 bottom-full mb-1 max-h-60 w-full overflow-auto rounded-lg bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    {/* Block option */}
-                    <Combobox.Option
-                      key="__blocked__"
-                      className={({ active }) =>
-                        `relative cursor-default select-none py-3 pl-10 pr-4 border-b border-gray-200 dark:border-gray-700 ${
-                          active
-                            ? "bg-red-600 text-white"
-                            : "text-gray-900 dark:text-gray-200"
-                        }`
-                      }
-                      value="__blocked__"
-                    >
-                      {({ selected, active }) => (
-                        <>
-                          <span
-                            className={`block truncate ${selected ? "font-medium" : "font-normal"}`}
-                          >
-                            Block/Unavailable (no user)
-                          </span>
-                          {selected && (
-                            <span
-                              className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-red-600"}`}
-                            >
-                              <Check className="h-5 w-5" aria-hidden="true" />
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </Combobox.Option>
-
-                    {(() => {
-                      const otherUsers =
-                        allUsers?.filter((u) => u._id !== currentUser?._id) || [];
-                      const filteredUsers =
-                        userSearchQuery === ""
-                          ? otherUsers
-                          : otherUsers.filter((user) => {
-                              const displayName = formatUserName(user).toLowerCase();
-                              return displayName.includes(userSearchQuery.toLowerCase());
-                            });
-
-                      if (filteredUsers.length === 0 && userSearchQuery !== "") {
-                        return (
-                          <div className="relative cursor-default select-none py-3 px-4 text-gray-500 dark:text-gray-400">
-                            No members found.
-                          </div>
-                        );
-                      }
-
-                      return filteredUsers
-                        .slice()
-                        .sort((a, b) =>
-                          formatUserName(a)
-                            .toLowerCase()
-                            .localeCompare(formatUserName(b).toLowerCase())
-                        )
-                        .map((user) => (
-                          <Combobox.Option
-                            key={user._id}
-                            className={({ active }) =>
-                              `relative cursor-default select-none py-3 pl-10 pr-4 ${
-                                active
-                                  ? "bg-red-600 text-white"
-                                  : "text-gray-900 dark:text-gray-200"
-                              }`
-                            }
-                            value={user._id}
-                          >
-                            {({ selected, active }) => (
-                              <>
-                                <span
-                                  className={`block truncate ${selected ? "font-medium" : "font-normal"}`}
-                                >
-                                  {formatUserName(user)}
-                                </span>
-                                {selected && (
-                                  <span
-                                    className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-red-600"}`}
-                                  >
-                                    <Check className="h-5 w-5" aria-hidden="true" />
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </Combobox.Option>
-                        ));
-                    })()}
-                  </Combobox.Options>
-                </Transition>
-              </div>
-            </Combobox>
+              onValueChange={(v) => setOnBehalfOf(v as Id<"users"> | "__blocked__" | null)}
+              placeholder="Search for a member..."
+              searchPlaceholder="Search by name..."
+              emptyText="No members found."
+              clearable
+            />
 
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               As an approver, you can create bookings for other members. These will be auto-approved.

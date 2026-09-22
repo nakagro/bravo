@@ -442,8 +442,8 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
                   label="Organiser"
                   options={memberOptions}
                   value={(field.value || null) as Id<"users"> | null}
-                  // An event always has an organiser, so a cleared selection
-                  // (the combobox allows null) keeps the current one.
+                  // An event always has an organiser, so there is no clear option.
+                  clearable={false}
                   onChange={(value) => value && field.onChange(value)}
                   placeholder="Search for a member"
                   helperText="Hands the event over. The new organiser can edit it and gets the responses to manage."

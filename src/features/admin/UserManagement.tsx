@@ -1,9 +1,9 @@
-import React, { useState, useEffect, Fragment } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { Combobox, Transition } from "@headlessui/react";
-import { Check, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Eye, EyeOff } from "lucide-react";
 import { isSharedAccount, isDisabledAccount, type AccountType } from "@/lib/accountType";
 
 // --- shadcn ui imports ---
@@ -94,7 +94,6 @@ function UserManagement() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isDutyOfficer, setIsDutyOfficer] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [query, setQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
     message: string;
@@ -158,13 +157,27 @@ function UserManagement() {
     setShowConfirmPassword(false);
   }, [selectedUser]);
 
-  // Filter users based on search query
-  const filteredUsers = query === ""
-    ? users
-    : users?.filter((user) => {
-      const displayName = formatUserName(user).toLowerCase();
-      return displayName.includes(query.toLowerCase());
-    });
+  const userOptions: ComboboxOption[] = (users ?? [])
+    .slice()
+    .sort((a, b) => formatUserName(a).toLowerCase().localeCompare(formatUserName(b).toLowerCase()))
+    .map((user) => ({
+      value: user._id,
+      label: formatUserName(user),
+      badges: (
+        <>
+          {isSharedAccount(user) && (
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+              Shared
+            </span>
+          )}
+          {isDisabledAccount(user) && (
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+              Disabled
+            </span>
+          )}
+        </>
+      ),
+    }));
 
   // Handle user selection
   const handleUserChange = (userId: Id<"users"> | null) => {
@@ -384,110 +397,18 @@ function UserManagement() {
 
       {/* User selection with search */}
       <div className="mb-6">
-        <Combobox value={selectedUserId} onChange={handleUserChange} nullable>
-          <div className="relative mt-1">
-            <div className="relative w-full">
-              <Combobox.Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Select User
-              </Combobox.Label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <Combobox.Input
-                  className="w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                  displayValue={(userId: Id<"users"> | null) => {
-                    if (!userId) return "";
-                    const user = users?.find((u) => u._id === userId);
-                    return user ? formatUserName(user) : "";
-                  }}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search for a user"
-                />
-                <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronsUpDown
-                    className="h-5 w-5 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </Combobox.Button>
-              </div>
-            </div>
-            <Transition
-              as={Fragment}
-              leave="transition ease-in duration-100"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-              afterLeave={() => setQuery("")}
-            >
-              <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                {filteredUsers?.length === 0 && query !== "" ? (
-                  <div className="relative cursor-default select-none py-2 px-4 text-gray-700 dark:text-gray-300">
-                    No users found.
-                  </div>
-                ) : (
-                  filteredUsers
-                    ?.slice()
-                    .sort((a, b) => {
-                      const nameA = formatUserName(a).toLowerCase();
-                      const nameB = formatUserName(b).toLowerCase();
-                      return nameA.localeCompare(nameB);
-                    })
-                    .map((user) => (
-                      <Combobox.Option
-                        key={user._id}
-                        className={({ active }) =>
-                          `relative cursor-default select-none py-2 pl-10 pr-4 ${active
-                            ? "bg-indigo-600 text-white"
-                            : "text-gray-900 dark:text-gray-200"
-                          }`
-                        }
-                        value={user._id}
-                      >
-                        {({ selected, active }) => (
-                          <>
-                            <span
-                              className={`flex items-center gap-2 truncate ${selected ? "font-medium" : "font-normal"
-                                }`}
-                            >
-                              <span className="truncate">{formatUserName(user)}</span>
-                              {isSharedAccount(user) && (
-                                <span
-                                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${active
-                                    ? "bg-white/20 text-white"
-                                    : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200"
-                                    }`}
-                                >
-                                  Shared
-                                </span>
-                              )}
-                              {isDisabledAccount(user) && (
-                                <span
-                                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${active
-                                    ? "bg-white/20 text-white"
-                                    : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                                    }`}
-                                >
-                                  Disabled
-                                </span>
-                              )}
-                            </span>
-                            {selected ? (
-                              <span
-                                className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-indigo-600"
-                                  }`}
-                              >
-                                <Check className="h-5 w-5" aria-hidden="true" />
-                              </span>
-                            ) : null}
-                          </>
-                        )}
-                      </Combobox.Option>
-                    ))
-                )}
-              </Combobox.Options>
-            </Transition>
-          </div>
-        </Combobox>
+        <label htmlFor="user-management-picker" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Select User
+        </label>
+        <Combobox
+          id="user-management-picker"
+          options={userOptions}
+          value={selectedUserId}
+          onValueChange={(v) => handleUserChange(v as Id<"users"> | null)}
+          placeholder="Search for a user"
+          searchPlaceholder="Search by name..."
+          emptyText="No users found."
+        />
       </div>
 
       {/* Settings modal - drawer on mobile, side sheet on desktop, like the
