@@ -1,22 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import { SignInForm } from "../features/auth/components/SignInForm";
 import { AuthLayout } from "../components/layout/AuthLayout";
-
-function parseSsoRedirect(raw: string | null): string | null {
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    if (
-      u.protocol === "https:" &&
-      (u.hostname === "grayhux.io" || u.hostname.endsWith(".grayhux.io"))
-    ) {
-      return u.href;
-    }
-  } catch {
-    // malformed URL
-  }
-  return null;
-}
+import { parseSsoRedirect } from "../lib/ssoRefresh";
 
 export function SsoRedirect() {
   const [searchParams] = useSearchParams();

@@ -155,6 +155,9 @@ export default defineConfig(({ mode }) => {
         skipWaiting: true, // immediately activate new SW
         clientsClaim: true, // take control of all clients immediately
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit (default is 2 MB)
+        // Labs' hidden refresh iframe is a navigation request too. It must get
+        // its own tiny page, never the SPA shell as a fallback.
+        navigateFallbackDenylist: [/^\/sso-refresh/],
       },
       devOptions: {
         enabled: true, // enable PWA in dev for easier testing
@@ -185,6 +188,12 @@ export default defineConfig(({ mode }) => {
   },
   build: {
     rolldownOptions: {
+      // Two HTML entries: the app, and the chrome-less page Labs frames to
+      // renew its SSO cookie (src/sso-refresh/main.tsx).
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        ssoRefresh: path.resolve(__dirname, "sso-refresh.html"),
+      },
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;

@@ -1,5 +1,16 @@
 {
   "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
+  "headers": [
+    {
+      "source": "/sso-refresh.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://labs.grayhux.io"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
