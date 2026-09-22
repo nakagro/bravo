@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "convex/react";
-import { CalendarIcon } from "@heroicons/react/24/outline";
+import { Calendar } from "lucide-react";
 import { format, startOfDay, addDays } from "date-fns";
 import { api } from "../../../convex/_generated/api";
 import { useCalendarEvents } from "@/features/calendar/hooks/useCalendarEvents";
@@ -64,7 +64,7 @@ export function CalDAVCalendar({ maxEvents = 5 }: CalDAVCalendarProps) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 transition-colors duration-200">
         <div className="flex items-center mb-3">
-          <CalendarIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+          <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             Events
           </h2>
@@ -83,7 +83,7 @@ export function CalDAVCalendar({ maxEvents = 5 }: CalDAVCalendarProps) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 transition-colors duration-200">
         <div className="flex items-center mb-3">
-          <CalendarIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+          <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             Events
           </h2>
@@ -110,7 +110,7 @@ export function CalDAVCalendar({ maxEvents = 5 }: CalDAVCalendarProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 transition-colors duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
-          <CalendarIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+          <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             Events
           </h2>
@@ -125,7 +125,7 @@ export function CalDAVCalendar({ maxEvents = 5 }: CalDAVCalendarProps) {
 
       {events.length === 0 ? (
         <div className="text-center py-6">
-          <CalendarIcon className="h-8 w-8 text-gray-400 dark:text-gray-600 mx-auto mb-2" />
+          <Calendar className="h-8 w-8 text-gray-400 dark:text-gray-600 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             No upcoming events
           </p>

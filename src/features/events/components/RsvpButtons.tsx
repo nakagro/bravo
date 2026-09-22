@@ -4,12 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { RsvpStatus } from "../types";
-import {
-  CheckIcon,
-  ClockIcon,
-  QuestionMarkCircleIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { Check, Clock, CircleHelp, X } from "lucide-react";
 
 interface RsvpButtonsProps {
   eventId: Id<"events">;
@@ -22,25 +17,25 @@ interface RsvpButtonsProps {
 const options: Array<{
   status: RsvpStatus;
   label: string;
-  icon: typeof CheckIcon;
+  icon: typeof Check;
   activeClasses: string;
 }> = [
   {
     status: "attending",
     label: "Yes",
-    icon: CheckIcon,
+    icon: Check,
     activeClasses: "bg-green-600 text-white border-green-600",
   },
   {
     status: "maybe",
     label: "Maybe",
-    icon: QuestionMarkCircleIcon,
+    icon: CircleHelp,
     activeClasses: "bg-yellow-500 text-white border-yellow-500",
   },
   {
     status: "notAttending",
     label: "No",
-    icon: XMarkIcon,
+    icon: X,
     activeClasses: "bg-red-600 text-white border-red-600",
   },
 ];
@@ -145,7 +140,7 @@ export function DeclineButton({
           : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
-      <XMarkIcon className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
+      <X className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} />
       {declined ? "Can't make it" : "I can't make it"}
     </button>
   );
@@ -216,9 +211,9 @@ export function ShiftRsvpButtons({
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         {onRoster || offered ? (
-          <CheckIcon className="h-4 w-4" />
+          <Check className="h-4 w-4" />
         ) : (
-          <ClockIcon className="h-4 w-4" />
+          <Clock className="h-4 w-4" />
         )}
         {onRoster ? "You're rostered" : offered ? "RSVP sent" : "Pick a shift"}
       </button>
@@ -231,7 +226,7 @@ export function ShiftRsvpButtons({
           declined ? "bg-red-600 text-white border-red-600 shadow-md scale-[1.02]" : idleClasses
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        <XMarkIcon className="h-4 w-4" />
+        <X className="h-4 w-4" />
         Can&apos;t make it
       </button>
     </div>

@@ -23,14 +23,7 @@ import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, formatSummaryDate, formatTime, getBookingConflictMessage } from "../types";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  ClockIcon,
-  UserIcon,
-  MagnifyingGlassIcon,
-  XCircleIcon,
-  LockClosedIcon,
-} from "@heroicons/react/24/outline";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
+import { Clock, User, Search, CircleX, Lock, Check, ChevronsUpDown } from "lucide-react";
 import { Combobox, Transition } from "@headlessui/react";
 
 const bookingRequestSchema = z
@@ -229,7 +222,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               {selectedResourceInfo?.approverOnly && (
                 <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-                    <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
+                    <Lock className="h-4 w-4 flex-shrink-0" />
                     <span>
                       This is an approver-only resource. Your booking will be auto-approved.
                     </span>
@@ -328,7 +321,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               >
                 {existingBookingsForDate.length === 0 ? (
                   <div className="flex items-center gap-2">
-                    <CheckIcon className="h-4 w-4 flex-shrink-0" />
+                    <Check className="h-4 w-4 flex-shrink-0" />
                     <span>No existing bookings, this resource is free on the selected date{watchIsMultiDay ? "s" : ""}.</span>
                   </div>
                 ) : (
@@ -339,7 +332,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                     <ul className="space-y-1 text-amber-700 dark:text-amber-300">
                       {existingBookingsForDate.map((b) => (
                         <li key={b._id} className="flex items-center gap-1.5">
-                          <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                          <Clock className="h-4 w-4 flex-shrink-0" />
                           <span>
                             {formatSummaryDate(b.startDate)}
                             {b.endDate && b.endDate !== b.startDate && ` - ${formatSummaryDate(b.endDate)}`}
@@ -477,7 +470,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
         {watchResourceId && watchStartDate && canBookOnBehalf && (
           <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2 mb-2">
-              <UserIcon className="h-4 w-4 text-gray-500" />
+              <User className="h-4 w-4 text-gray-500" />
               <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Book on behalf of (optional)
               </span>
@@ -491,7 +484,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               <div className="relative">
                 <div className="relative w-full">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                    <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
                   </div>
                   <Combobox.Input
                     className="w-full pl-10 pr-10 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -514,14 +507,14 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                       }}
                       className="absolute inset-y-0 right-0 flex items-center pr-3"
                     >
-                      <XCircleIcon
+                      <CircleX
                         className="h-5 w-5 text-gray-400 hover:text-gray-600"
                         aria-hidden="true"
                       />
                     </button>
                   ) : (
                     <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <ChevronUpDownIcon
+                      <ChevronsUpDown
                         className="h-5 w-5 text-gray-400"
                         aria-hidden="true"
                       />
@@ -559,7 +552,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                             <span
                               className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-red-600"}`}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           )}
                         </>
@@ -615,7 +608,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                                   <span
                                     className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-red-600"}`}
                                   >
-                                    <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                    <Check className="h-5 w-5" aria-hidden="true" />
                                   </span>
                                 )}
                               </>
@@ -701,7 +694,7 @@ function ConflictErrorBanner({
       className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
     >
       <div className="flex items-start gap-2">
-        <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <CircleX className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1">
           <p className="text-sm font-medium text-red-800 dark:text-red-200">Booking Conflict</p>
           <p className="text-sm text-red-700 dark:text-red-300 mt-1">{conflictError}</p>

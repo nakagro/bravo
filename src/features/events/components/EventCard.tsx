@@ -12,7 +12,7 @@ import {
   TeamLeaderBadge,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
-import { ChevronRightIcon, ClockIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/outline";
+import { ChevronRight, Clock, MapPin, Users } from "lucide-react";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
 
@@ -109,7 +109,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
 
           {(event.location || event.address) && (
             <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
-              <MapPinIcon className="h-4 w-4 flex-shrink-0" />
+              <MapPin className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">
                 {[event.location, event.address].filter(Boolean).join(" · ")}
               </span>
@@ -117,13 +117,13 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
           )}
 
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-            <UsersIcon className="h-4 w-4" />
+            <Users className="h-4 w-4" />
             {countsSummary}
           </div>
 
           {showRespondBy && (
             <div className="mt-1 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-              <ClockIcon className="h-4 w-4" />
+              <Clock className="h-4 w-4" />
               {event.hasShifts ? "Respond" : "RSVP"} by {formatShortDate(event.respondBy!)}
             </div>
           )}
@@ -160,7 +160,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
                   onClick={goToEvent}
                   className="mt-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline min-h-[32px] flex items-center gap-1"
                 >
-                  <UsersIcon className="h-3.5 w-3.5" />
+                  <Users className="h-3.5 w-3.5" />
                   {event.myGuestCount > 0
                     ? `Bringing ${event.myGuestCount} ${event.myGuestCount === 1 ? "guest" : "guests"}`
                     : "Bringing anyone?"}
@@ -170,7 +170,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
           )}
         </div>
 
-        <ChevronRightIcon className="h-5 w-5 text-gray-400 flex-shrink-0 self-center" />
+        <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 self-center" />
       </div>
     </div>
   );

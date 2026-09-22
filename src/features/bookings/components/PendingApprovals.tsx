@@ -6,12 +6,7 @@ import { toast } from "sonner";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { formatUserName, formatBookingDate } from "../types";
 import { RejectBookingDialog } from "./RejectBookingDialog";
-import {
-  ClockIcon,
-  CheckIcon,
-  XMarkIcon,
-  CalendarDaysIcon,
-} from "@heroicons/react/24/outline";
+import { Clock, Check, X, CalendarDays } from "lucide-react";
 
 interface PendingApprovalsProps {
   title?: string;
@@ -87,7 +82,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
       <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 shadow-sm rounded-lg overflow-hidden border-l-4 border-amber-500">
         <div className="p-3 border-b border-amber-200 dark:border-amber-800">
           <h2 className="text-lg font-medium flex items-center text-amber-900 dark:text-amber-100">
-            <ClockIcon className="h-5 w-5 mr-2" />
+            <Clock className="h-5 w-5 mr-2" />
             {title}
             <span className="ml-2 px-2 py-0.5 text-sm rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100">
               {pendingApprovals.length}
@@ -104,7 +99,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
                 <div className="flex-1">
                   <h3 className="font-semibold">{booking.resource?.name}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1 mt-1">
-                    <CalendarDaysIcon className="h-4 w-4" />
+                    <CalendarDays className="h-4 w-4" />
                     {formatBookingDate(booking)}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -125,14 +120,14 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
                     onClick={() => handleApprove(booking._id)}
                     className="flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors flex items-center justify-center"
                   >
-                    <CheckIcon className="h-4 w-4 mr-1" />
+                    <Check className="h-4 w-4 mr-1" />
                     Approve
                   </button>
                   <button
                     onClick={() => setRejectingBookingId(booking._id)}
                     className="flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center justify-center"
                   >
-                    <XMarkIcon className="h-4 w-4 mr-1" />
+                    <X className="h-4 w-4 mr-1" />
                     Reject
                   </button>
                 </div>

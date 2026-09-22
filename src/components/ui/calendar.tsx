@@ -1,6 +1,6 @@
 import * as React from "react";
 import { DayPicker } from "@daypicker/react";
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -60,9 +60,9 @@ function Calendar({
       }}
       components={{
         Chevron: ({ orientation }) => {
-          if (orientation === "left") return <ChevronLeftIcon className="h-4 w-4" />;
-          if (orientation === "right") return <ChevronRightIcon className="h-4 w-4" />;
-          return <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400" />;
+          if (orientation === "left") return <ChevronLeft className="h-4 w-4" />;
+          if (orientation === "right") return <ChevronRight className="h-4 w-4" />;
+          return <ChevronDown className="h-3.5 w-3.5 text-gray-400" />;
         },
       }}
       {...props}

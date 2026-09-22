@@ -2,19 +2,13 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  ClockIcon,
-  UserIcon,
-  PencilSquareIcon,
-  PlusIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { Clock, User, SquarePen, Plus, Trash2 } from "lucide-react";
 import { statusConfig, priorityConfig, fieldNameMap } from "../types";
 
 const actionIcons = {
-  fault_created: PlusIcon,
-  field_change: PencilSquareIcon,
-  fault_deleted: TrashIcon,
+  fault_created: Plus,
+  field_change: SquarePen,
+  fault_deleted: Trash2,
 };
 
 const actionColors = {
@@ -30,7 +24,7 @@ export function VehicleFaultAuditTrail() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-6">
-          <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+          <Clock className="h-6 w-6 text-gray-600 dark:text-gray-400" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
         </div>
         <div className="space-y-3">
@@ -53,12 +47,12 @@ export function VehicleFaultAuditTrail() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-6">
-          <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+          <Clock className="h-6 w-6 text-gray-600 dark:text-gray-400" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
         </div>
         <Card>
           <CardContent className="p-8 text-center">
-            <ClockIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <Clock className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-gray-400">No recent changes found</p>
           </CardContent>
         </Card>
@@ -92,7 +86,7 @@ export function VehicleFaultAuditTrail() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-6">
-        <ClockIcon className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+        <Clock className="h-6 w-6 text-gray-600 dark:text-gray-400" />
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
         <Badge variant="secondary" className="ml-2">
           Last {recentChanges.length} changes
@@ -101,7 +95,7 @@ export function VehicleFaultAuditTrail() {
 
       <div className="space-y-2">
         {recentChanges.map((entry) => {
-          const ActionIcon = actionIcons[entry.changeType as keyof typeof actionIcons] || PencilSquareIcon;
+          const ActionIcon = actionIcons[entry.changeType as keyof typeof actionIcons] || SquarePen;
           const actionColorClass = actionColors[entry.changeType as keyof typeof actionColors] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
 
           const isLongTextField = ["longDescription", "shortDescription", "notes"].includes(entry.field);
@@ -166,7 +160,7 @@ export function VehicleFaultAuditTrail() {
               {/* User Row */}
               <div className={`flex ${entry.notes ? "flex-col sm:flex-row sm:items-center" : "flex-row items-center"} ${entry.notes ? "gap-1 sm:justify-between" : "justify-between"} mt-2 text-xs text-gray-500 dark:text-gray-400`}>
                 <div className="flex items-center gap-1 min-w-0">
-                  <UserIcon className="h-3 w-3 flex-shrink-0" />
+                  <User className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">{entry.userName || entry.userEmail || "Unknown User"}</span>
                 </div>
                 {entry.notes && (

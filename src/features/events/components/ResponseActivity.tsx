@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDown } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { formatCompactAgo, formatUserName, rsvpStatusLabels, RsvpStatus } from "../types";
@@ -61,7 +61,7 @@ export function ResponseActivity({ eventId }: ResponseActivityProps) {
         <span className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
           Response activity
         </span>
-        <ChevronDownIcon
+        <ChevronDown
           className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${
             isOpen ? "rotate-180" : ""
           }`}

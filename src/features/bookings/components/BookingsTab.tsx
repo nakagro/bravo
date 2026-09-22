@@ -12,11 +12,7 @@ import { ClampedText } from "./ClampedText";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  PlusIcon,
-  InboxIcon,
-  ChevronDownIcon,
-} from "@heroicons/react/24/outline";
+import { Plus, Inbox, ChevronDown } from "lucide-react";
 
 type MyBooking = FunctionReturnType<typeof api.bookings.getMyBookings>[number];
 
@@ -131,7 +127,7 @@ export function BookingsTab() {
         onClick={() => setShowRequestForm(true)}
         className="hidden sm:flex w-full p-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors items-center justify-center gap-2 shadow-sm"
       >
-        <PlusIcon className="h-5 w-5" />
+        <Plus className="h-5 w-5" />
         Request a Booking
       </button>
 
@@ -140,7 +136,7 @@ export function BookingsTab() {
         onClick={() => setShowRequestForm(true)}
         className="sm:hidden fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-40 h-14 pl-4 pr-5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium rounded-full shadow-lg flex items-center gap-2"
       >
-        <PlusIcon className="h-6 w-6" />
+        <Plus className="h-6 w-6" />
         Book
       </button>
 
@@ -152,7 +148,7 @@ export function BookingsTab() {
         ) : upcomingBookings.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="You have no upcoming bookings"
               description="Need a vehicle, room or equipment? Request a booking and an approver will confirm it."
               actionLabel="Request a Booking"
@@ -175,7 +171,7 @@ export function BookingsTab() {
             <span className="text-sm font-semibold text-foreground">Past & inactive</span>
             <span className="text-xs text-muted-foreground">{historyBookings.length}</span>
             <span className="h-px flex-1 bg-border" aria-hidden="true" />
-            <ChevronDownIcon
+            <ChevronDown
               className={`h-4 w-4 text-muted-foreground transition-transform ${showHistory ? "rotate-180" : ""}`}
             />
           </button>

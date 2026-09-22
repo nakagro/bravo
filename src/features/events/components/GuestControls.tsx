@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
-import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { Minus, Plus } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -140,7 +140,7 @@ export function GuestControls({
             disabled={disabled || count <= 0}
             aria-label="One fewer guest"
           >
-            <MinusIcon className="h-4 w-4" />
+            <Minus className="h-4 w-4" />
           </button>
           <span
             className="w-8 text-center text-lg font-semibold text-gray-900 dark:text-white tabular-nums"
@@ -155,7 +155,7 @@ export function GuestControls({
             disabled={disabled || count >= cap}
             aria-label="One more guest"
           >
-            <PlusIcon className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>

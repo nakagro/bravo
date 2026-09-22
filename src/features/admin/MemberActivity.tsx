@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ArrowPathIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { RefreshCw, ChevronRight } from "lucide-react";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -233,7 +233,7 @@ export function MemberActivity({ showTitle = true }: MemberActivityProps) {
                   {row.lastSeenAt ? getRelativeTimeString(row.lastSeenAt) : "Never"}
                 </p>
               </div>
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
             </button>
           </li>
         ))}
@@ -419,7 +419,7 @@ function ResetMarker({
     // A banded row rather than centred text between rules: the text stays
     // left-aligned and wraps cleanly instead of ragging about on a phone.
     <div className="my-1 flex items-start gap-2 rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-2.5 py-1.5 text-[11px] leading-snug text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/5 dark:text-amber-400">
-      <ArrowPathIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span className="min-w-0">
         <span className="font-medium">
           {count === 1 ? "Nightly reset" : `${count} nightly resets`}

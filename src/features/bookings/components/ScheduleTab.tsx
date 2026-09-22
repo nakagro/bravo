@@ -18,14 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  InboxIcon,
-  PencilSquareIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
+import { ChevronLeft, ChevronRight, Clock, Inbox, SquarePen, Plus } from "lucide-react";
 
 interface ScheduleTabProps {
   isAdmin?: boolean;
@@ -191,7 +184,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               aria-label="Previous week"
               className="px-3 py-2.5 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
-              <ChevronLeftIcon className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" />
               {!isMobile && <span className="ml-1">Previous</span>}
             </button>
 
@@ -211,7 +204,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               className="px-3 py-2.5 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
               {!isMobile && <span className="mr-1">Next</span>}
-              <ChevronRightIcon className="h-5 w-5" />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
@@ -292,7 +285,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                               <div className="text-[11px] opacity-75">All day</div>
                             ) : booking.startTime && booking.endTime ? (
                               <div className="text-[11px] opacity-75 flex items-center gap-0.5">
-                                <ClockIcon className="h-3 w-3" />
+                                <Clock className="h-3 w-3" />
                                 {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                               </div>
                             ) : null}
@@ -312,7 +305,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                             aria-label={`Book ${day.dayName} ${day.dayNum} ${day.monthName}`}
                             className="w-full py-1 rounded text-xs text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center"
                           >
-                            <PlusIcon className="h-3.5 w-3.5" />
+                            <Plus className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
@@ -379,7 +372,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                             aria-label={`Book ${day.dayName} ${day.dayNum} ${day.monthName}`}
                             className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 active:bg-red-50 dark:active:bg-red-900/20 transition-colors"
                           >
-                            <PlusIcon className="h-5 w-5" />
+                            <Plus className="h-5 w-5" />
                           </button>
                         )}
                       </div>
@@ -401,7 +394,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                                     {booking.resource?.name}
                                   </div>
                                   <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                                    <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                                    <Clock className="h-4 w-4 flex-shrink-0" />
                                     {booking.isAllDay ? (
                                       'All day'
                                     ) : booking.startTime && booking.endTime ? (
@@ -422,7 +415,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                   <StatusBadge status={booking.status} isBlocked={booking.isBlocked} />
                                   {isAdmin && (
-                                    <PencilSquareIcon className="h-4 w-4 text-gray-400" />
+                                    <SquarePen className="h-4 w-4 text-gray-400" />
                                   )}
                                 </div>
                               </div>
@@ -463,7 +456,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               </div>
             ) : bookings.length === 0 ? (
               <EmptyState
-                icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
                 title="No bookings scheduled for this week"
               />
             ) : (

@@ -3,7 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Check, TriangleAlert, X } from "lucide-react";
 import { formatSlotWhen, slotCoverageLabel, RsvpStatus } from "../types";
 
 interface SlotPickerProps {
@@ -75,7 +75,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
       {myRostered.length > 0 &&
         (declined ? (
           <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 px-3 py-2 text-sm text-amber-800 dark:text-amber-200 flex gap-2">
-            <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <TriangleAlert className="h-5 w-5 flex-shrink-0 mt-0.5" />
             <span>
               <span className="font-semibold">
                 You&apos;re rostered on {myRostered.map((slot) => slot.label).join(", ")} but
@@ -135,7 +135,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
                 <span
                   className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${checkClasses}`}
                 >
-                  <CheckIcon className="h-4 w-4" />
+                  <Check className="h-4 w-4" />
                 </span>
 
                 <div className="flex-1 min-w-0">
@@ -197,7 +197,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
             : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         }`}
       >
-        <XMarkIcon className="h-5 w-5" />
+        <X className="h-5 w-5" />
         {declined ? "You can't make it (tap to undo)" : "Can't make it"}
       </button>
     </div>

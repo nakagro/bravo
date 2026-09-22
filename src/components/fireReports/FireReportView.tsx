@@ -4,17 +4,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
-import { 
-  ArrowLeftIcon, 
-  PencilIcon, 
-  DocumentTextIcon,
-  MapPinIcon,
-  ClockIcon,
-  UserIcon,
-  PhoneIcon,
-  FireIcon,
-  ShieldExclamationIcon
-} from "@heroicons/react/24/outline";
+import { ArrowLeft, Pencil, FileText, MapPin, Clock, User, Phone, Flame, ShieldAlert } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface FireReportViewProps {
@@ -111,7 +101,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={onBack} className="gap-2">
-            <ArrowLeftIcon className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           <div>
@@ -129,7 +119,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
         </div>
         {(report.status === "draft" || report.status === "submitted") && (
           <Button onClick={onEdit} className="gap-2">
-            <PencilIcon className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
             Edit Report
           </Button>
         )}
@@ -140,7 +130,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FireIcon className="h-5 w-5" />
+              <Flame className="h-5 w-5" />
               Fire Call Details
             </CardTitle>
           </CardHeader>
@@ -184,7 +174,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
 
             <div>
               <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
-                <MapPinIcon className="h-4 w-4" />
+                <MapPin className="h-4 w-4" />
                 Property Address/Location
               </h4>
               <p className="mt-1">{report.propertyAddress}</p>
@@ -220,7 +210,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ShieldExclamationIcon className="h-5 w-5" />
+                <ShieldAlert className="h-5 w-5" />
                 Actions Taken
               </CardTitle>
             </CardHeader>
@@ -242,7 +232,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5" />
+                <User className="h-5 w-5" />
                 Property Information
               </CardTitle>
             </CardHeader>
@@ -260,7 +250,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
                     {report.propertyInfo.occupier.phone && (
                       <div>
                         <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-1">
-                          <PhoneIcon className="h-3 w-3" />
+                          <Phone className="h-3 w-3" />
                           Phone
                         </h4>
                         <p className="mt-1">{report.propertyInfo.occupier.phone}</p>
@@ -291,7 +281,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
                       {report.propertyInfo.owner.phone && (
                         <div>
                           <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-1">
-                            <PhoneIcon className="h-3 w-3" />
+                            <Phone className="h-3 w-3" />
                             Phone
                           </h4>
                           <p className="mt-1">{report.propertyInfo.owner.phone}</p>
@@ -322,7 +312,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DocumentTextIcon className="h-5 w-5" />
+                <FileText className="h-5 w-5" />
                 Additional Notes
               </CardTitle>
             </CardHeader>
@@ -336,7 +326,7 @@ export function FireReportView({ reportId, onBack, onEdit }: FireReportViewProps
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ClockIcon className="h-5 w-5" />
+              <Clock className="h-5 w-5" />
               Report Information
             </CardTitle>
           </CardHeader>

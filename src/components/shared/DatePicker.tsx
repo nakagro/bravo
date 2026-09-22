@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parse } from "date-fns";
 import { enAU } from "date-fns/locale";
-import { CalendarDaysIcon, ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { CalendarDays, ChevronUp, ChevronDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
@@ -71,15 +71,15 @@ export function DatePicker({
         )}
       >
         <span className="flex items-center gap-2">
-          <CalendarDaysIcon className="h-4 w-4 text-gray-400" />
+          <CalendarDays className="h-4 w-4 text-gray-400" />
           {selectedDate
             ? format(selectedDate, "EEE d MMM yyyy", { locale: enAU })
             : placeholder}
         </span>
         {expanded ? (
-          <ChevronUpIcon className="h-4 w-4 text-gray-400" />
+          <ChevronUp className="h-4 w-4 text-gray-400" />
         ) : (
-          <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+          <ChevronDown className="h-4 w-4 text-gray-400" />
         )}
       </button>
 

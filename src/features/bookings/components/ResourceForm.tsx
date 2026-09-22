@@ -12,7 +12,7 @@ import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { formatUserName } from "../types";
-import { UsersIcon, CheckIcon, LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
+import { Users, Check, Lock, LockOpen } from "lucide-react";
 
 const resourceSchema = z.object({
   name: z.string().min(1, "Resource name is required"),
@@ -161,7 +161,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
           render={() => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <UsersIcon className="h-4 w-4" />
+                <Users className="h-4 w-4" />
                 Approvers *{" "}
                 <span className="font-normal text-gray-500">
                   ({selectedApprovers.length} selected)
@@ -193,7 +193,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
                         )}
                       </div>
                       {isSelected && (
-                        <CheckIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        <Check className="h-5 w-5 text-red-600 dark:text-red-400" />
                       )}
                     </button>
                   );
@@ -212,9 +212,9 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
             <FormItem className="pt-2 border-t border-gray-100 dark:border-gray-700">
               <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 {field.value ? (
-                  <LockClosedIcon className="h-4 w-4 text-amber-500" />
+                  <Lock className="h-4 w-4 text-amber-500" />
                 ) : (
-                  <LockOpenIcon className="h-4 w-4 text-green-500" />
+                  <LockOpen className="h-4 w-4 text-green-500" />
                 )}
                 Booking Permissions
               </FormLabel>
@@ -235,7 +235,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
                   />
                   <div className="flex-1">
                     <div className="font-medium text-sm flex items-center gap-2">
-                      <LockOpenIcon className="h-4 w-4" />
+                      <LockOpen className="h-4 w-4" />
                       Open Booking
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -244,7 +244,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
                     </p>
                   </div>
                   {!field.value && (
-                    <CheckIcon className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                   )}
                 </label>
 
@@ -264,7 +264,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
                   />
                   <div className="flex-1">
                     <div className="font-medium text-sm flex items-center gap-2">
-                      <LockClosedIcon className="h-4 w-4" />
+                      <Lock className="h-4 w-4" />
                       Approver Only
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -272,7 +272,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
                     </p>
                   </div>
                   {field.value && (
-                    <CheckIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <Check className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   )}
                 </label>
               </div>

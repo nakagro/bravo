@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { BellIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { Bell, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export function RecentNotifications() {
@@ -14,7 +14,7 @@ export function RecentNotifications() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
       <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-        <BellIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
           Recent Notifications
         </h2>
@@ -32,7 +32,7 @@ export function RecentNotifications() {
                   {notification.title}
                 </h3>
                 <div className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                  <ClockIcon className="h-3.5 w-3.5" />
+                  <Clock className="h-3.5 w-3.5" />
                   <span className="whitespace-nowrap">
                     {formatDistanceToNow(notification.sentAt, { addSuffix: true })}
                   </span>

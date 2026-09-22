@@ -22,7 +22,7 @@ import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDia
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, getBookingConflictMessage } from "../types";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { TrashIcon, UserIcon } from "@heroicons/react/24/outline";
+import { Trash2, User } from "lucide-react";
 
 const bookingEditSchema = z
   .object({
@@ -151,7 +151,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
       <form id="booking-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         {/* Requester Info */}
         <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-          <UserIcon className="h-5 w-5 text-gray-500" />
+          <User className="h-5 w-5 text-gray-500" />
           <div>
             <div className="text-sm font-medium">
               Requested by {formatUserName(existingBooking.requestedByUser)}
@@ -392,7 +392,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
                 type="button"
                 className="w-full py-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
               >
-                <TrashIcon className="h-5 w-5" />
+                <Trash2 className="h-5 w-5" />
                 Cancel Booking
               </button>
             }

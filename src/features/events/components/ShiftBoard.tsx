@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { X } from "lucide-react";
 import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
 import { TeamLeaderBadge } from "./badges";
 
@@ -194,7 +194,7 @@ function BoardChip({
         className="inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 line-through"
       >
         <span className="h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center">
-          <XMarkIcon className="h-3 w-3" />
+          <X className="h-3 w-3" />
         </span>
         {formatUserName(member)}
       </span>

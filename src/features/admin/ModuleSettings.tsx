@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Switch, Dialog } from "@headlessui/react";
 import { Listbox, Transition } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon, PlusIcon, TrashIcon, XMarkIcon, PencilIcon } from "@heroicons/react/20/solid";
+import { Check, ChevronsUpDown, Plus, Trash2, X, Pencil } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface ModuleSettingsProps {
@@ -259,7 +259,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                 onClick={() => setIsRoleDialogOpen(false)}
                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             
@@ -289,7 +289,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                     onClick={handleAddRole}
                     className="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
                   >
-                    <PlusIcon className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                     Add Role
                   </button>
                 </div>
@@ -383,14 +383,14 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                                 className="p-1 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                                 title="Edit role"
                               >
-                                <PencilIcon className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteRole(role._id)}
                                 className="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                 title="Delete role"
                               >
-                                <TrashIcon className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
@@ -608,7 +608,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                                         {rankOptions.find(r => r.value === selectedRank)?.label || "No Rank Required"}
                                       </span>
                                       <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                        <ChevronUpDownIcon
+                                        <ChevronsUpDown
                                           className="h-5 w-5 text-gray-400"
                                           aria-hidden="true"
                                         />
@@ -642,7 +642,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                                                 </span>
                                                 {selected ? (
                                                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 dark:text-indigo-400">
-                                                    <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                                    <Check className="h-5 w-5" aria-hidden="true" />
                                                   </span>
                                                 ) : null}
                                               </>

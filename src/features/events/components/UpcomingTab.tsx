@@ -7,7 +7,7 @@ import { getTodayStr, parseEventDate } from "../types";
 import { EventCard } from "./EventCard";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { CalendarDays } from "lucide-react";
 
 export function UpcomingTab() {
   const events = useQuery(api.events.getUpcomingEvents, { fromDate: getTodayStr() });
@@ -41,7 +41,7 @@ export function UpcomingTab() {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <EmptyState
-          icon={<CalendarDaysIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+          icon={<CalendarDays className="h-10 w-10 text-red-400 dark:text-red-500" />}
           title="No upcoming events"
           description="When the brigade plans an event, it will show up here so you can RSVP."
         />

@@ -1,14 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { 
-  PlusIcon, 
-  DocumentTextIcon, 
-  ClockIcon, 
-  CheckCircleIcon,
-  ArchiveBoxIcon,
-  EyeIcon,
-  MagnifyingGlassIcon
-} from "@heroicons/react/24/outline";
+import { Plus, FileText, Clock, CircleCheckBig, Archive, Eye, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -238,7 +230,7 @@ export function FireReportsDashboard() {
             className="w-full sm:w-auto gap-2 h-11 text-base font-medium"
             size="lg"
           >
-            <PlusIcon className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
             New Fire Report
           </Button>
         </div>
@@ -273,7 +265,7 @@ export function FireReportsDashboard() {
         <Card className="touch-manipulation">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium leading-tight">Draft Reports</CardTitle>
-            <DocumentTextIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-xl sm:text-2xl font-bold">{draftReports.length}</div>
@@ -285,7 +277,7 @@ export function FireReportsDashboard() {
         <Card className="touch-manipulation">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium leading-tight">Submitted</CardTitle>
-            <ClockIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-xl sm:text-2xl font-bold">{submittedReports.length}</div>
@@ -297,7 +289,7 @@ export function FireReportsDashboard() {
         <Card className="touch-manipulation">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium leading-tight">Approved</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <CircleCheckBig className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-xl sm:text-2xl font-bold">{approvedReports.length}</div>
@@ -309,7 +301,7 @@ export function FireReportsDashboard() {
         <Card className="touch-manipulation">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium leading-tight">Total</CardTitle>
-            <ArchiveBoxIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <Archive className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent className="pt-2">
             <div className="text-xl sm:text-2xl font-bold">{allReports.length}</div>
@@ -328,7 +320,7 @@ export function FireReportsDashboard() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <DocumentTextIcon className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                   My Draft Reports
                 </CardTitle>
                 <CardDescription className="text-sm">Tap to continue editing your drafts</CardDescription>
@@ -362,7 +354,7 @@ export function FireReportsDashboard() {
                           onClick={() => handleViewReport(report._id)}
                           className="flex-1 sm:flex-none h-11 gap-2"
                         >
-                          <EyeIcon className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                           View
                         </Button>
                       </div>
@@ -377,7 +369,7 @@ export function FireReportsDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <ClockIcon className="h-5 w-5" />
+                <Clock className="h-5 w-5" />
                 My Submitted Reports
               </CardTitle>
               <CardDescription className="text-sm">Recently submitted by you</CardDescription>
@@ -385,7 +377,7 @@ export function FireReportsDashboard() {
             <CardContent className="pt-0">
               {mySubmittedReports.length === 0 ? (
                 <div className="text-center py-10 space-y-2">
-                  <DocumentTextIcon className="h-10 w-10 text-muted-foreground mx-auto" />
+                  <FileText className="h-10 w-10 text-muted-foreground mx-auto" />
                   <p className="text-sm text-muted-foreground">No submitted reports yet.</p>
                 </div>
               ) : (
@@ -403,7 +395,7 @@ export function FireReportsDashboard() {
                       </div>
                       <div className="pt-1">
                         <Button variant="outline" onClick={() => handleViewReport(report._id)} className="w-full h-10 gap-2">
-                          <EyeIcon className="h-4 w-4" /> View Report
+                          <Eye className="h-4 w-4" /> View Report
                         </Button>
                       </div>
                     </div>
@@ -418,7 +410,7 @@ export function FireReportsDashboard() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -466,7 +458,7 @@ export function FireReportsDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <ClockIcon className="h-5 w-5" />
+                <Clock className="h-5 w-5" />
                 Brigade Reports
               </CardTitle>
               <CardDescription className="text-sm">Recent submitted and approved reports from your brigade</CardDescription>
@@ -475,7 +467,7 @@ export function FireReportsDashboard() {
               <div className="space-y-3">
                 {othersReports.length === 0 ? (
                   <div className="text-center py-12 space-y-3">
-                    <DocumentTextIcon className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
                     <p className="text-muted-foreground">No matching reports.</p>
                     <p className="text-sm text-muted-foreground">Try adjusting filters or search.</p>
                   </div>
@@ -500,7 +492,7 @@ export function FireReportsDashboard() {
                           onClick={() => handleViewReport(report._id)}
                           className="w-full h-11 gap-2 text-base"
                         >
-                          <EyeIcon className="h-4 w-4" /> View Report
+                          <Eye className="h-4 w-4" /> View Report
                         </Button>
                       </div>
                     </div>

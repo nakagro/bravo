@@ -26,20 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  PlusIcon,
-  CalendarDaysIcon,
-  PencilSquareIcon,
-  XCircleIcon,
-  ArrowUturnLeftIcon,
-  BellAlertIcon,
-  UsersIcon,
-  TagIcon,
-  TrashIcon,
-  EllipsisVerticalIcon,
-  MagnifyingGlassIcon,
-  ArchiveBoxIcon,
-} from "@heroicons/react/24/outline";
+import { Plus, CalendarDays, SquarePen, CircleX, Undo2, BellRing, Users, Tag, Trash2, EllipsisVertical, Search, Archive } from "lucide-react";
 
 import { FunctionReturnType } from "convex/server";
 
@@ -216,7 +203,7 @@ export function AdminTab() {
             onClick={() => navigate(`/events/${event._id}`)}
             className="mt-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1.5"
           >
-            <UsersIcon className="h-4 w-4" />
+            <Users className="h-4 w-4" />
             {event.counts.attending} going · {event.counts.maybe} maybe ·{" "}
             {event.counts.notAttending} not going
           </button>
@@ -227,7 +214,7 @@ export function AdminTab() {
             className="flex-shrink-0 -mr-1 p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             aria-label={`Actions for ${event.title}`}
           >
-            <EllipsisVerticalIcon className="h-5 w-5" />
+            <EllipsisVertical className="h-5 w-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             {mode === "past" ? (
@@ -238,19 +225,19 @@ export function AdminTab() {
                 onSelect={() => setDeletingEvent(event)}
                 className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
               >
-                <TrashIcon className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             ) : (
               <>
                 <DropdownMenuItem onSelect={() => handleEditEvent(event._id)}>
-                  <PencilSquareIcon className="h-4 w-4" />
+                  <SquarePen className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 {event.status === "active" ? (
                   <>
                     <DropdownMenuItem onSelect={() => setNotifyingEvent(event)}>
-                      <BellAlertIcon className="h-4 w-4" />
+                      <BellRing className="h-4 w-4" />
                       Notify
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -258,14 +245,14 @@ export function AdminTab() {
                       onSelect={() => setCancellingEvent(event)}
                       className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     >
-                      <XCircleIcon className="h-4 w-4" />
+                      <CircleX className="h-4 w-4" />
                       Cancel
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <>
                     <DropdownMenuItem onSelect={() => handleRestore(event._id)}>
-                      <ArrowUturnLeftIcon className="h-4 w-4" />
+                      <Undo2 className="h-4 w-4" />
                       Restore
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -273,7 +260,7 @@ export function AdminTab() {
                       onSelect={() => setDeletingEvent(event)}
                       className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </>
@@ -323,7 +310,7 @@ export function AdminTab() {
       <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
           <h2 className="text-lg font-medium flex items-center min-w-0">
-            <CalendarDaysIcon className="h-5 w-5 mr-2 flex-shrink-0 text-red-600 dark:text-red-400" />
+            <CalendarDays className="h-5 w-5 mr-2 flex-shrink-0 text-red-600 dark:text-red-400" />
             <span className="truncate">Manage Events</span>
             {archiveView === "upcoming" && upcomingEvents && upcomingEvents.length > 0 && (
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 font-normal flex-shrink-0">
@@ -338,13 +325,13 @@ export function AdminTab() {
               title="Manage event types"
               aria-label="Manage event types"
             >
-              <TagIcon className="h-4 w-4" />
+              <Tag className="h-4 w-4" />
             </button>
             <button
               onClick={handleAddEvent}
               className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
             >
-              <PlusIcon className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" />
               New Event
             </button>
           </div>
@@ -377,7 +364,7 @@ export function AdminTab() {
             </div>
           ) : upcomingEvents.length === 0 ? (
             <EmptyState
-              icon={<CalendarDaysIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<CalendarDays className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="No upcoming events"
               actionLabel="Create Your First Event"
               onAction={handleAddEvent}
@@ -401,7 +388,7 @@ export function AdminTab() {
             {/* Archive search */}
             <div className="p-3 border-b border-gray-200 dark:border-gray-700">
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 <input
                   type="search"
                   value={pastSearch}
@@ -418,7 +405,7 @@ export function AdminTab() {
               </div>
             ) : pastArchive.results.length === 0 ? (
               <EmptyState
-                icon={<ArchiveBoxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
                 title={debouncedSearch ? "No matching past events" : "No past events"}
                 description={
                   debouncedSearch

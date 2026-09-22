@@ -17,7 +17,7 @@ import {
   DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { ArrowPathIcon, TrashIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { RefreshCw, Trash2, CircleCheckBig, TriangleAlert, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -382,9 +382,9 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
             }`}>
               <div className="flex items-start gap-2">
                 {statusWarning.isImprovement ? (
-                  <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                  <CircleCheckBig className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                 ) : (
-                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <TriangleAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 )}
                 <p className={`text-sm ${statusWarning.isImprovement ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
                   Status will change to <span className="font-medium">"{statusWarning.suggestedStatus}"</span>
@@ -403,7 +403,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" variant="outline" className="w-full h-12 text-base justify-start">
-                <ArrowPathIcon className="h-5 w-5 mr-3" />
+                <RefreshCw className="h-5 w-5 mr-3" />
                 Mark as Replaced
               </Button>
             </AlertDialogTrigger>
@@ -437,7 +437,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 variant="outline"
                 className="w-full h-12 text-base justify-start border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <TrashIcon className="h-5 w-5 mr-3" />
+                <Trash2 className="h-5 w-5 mr-3" />
                 Delete Hose
               </Button>
             </AlertDialogTrigger>
@@ -477,7 +477,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
         Cancel
       </Button>
       <Button type="submit" form="hose-form" disabled={isSubmitting} className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
-        {isSubmitting && <ArrowPathIcon aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
+        {isSubmitting && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
         {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
       </Button>
     </div>
@@ -494,7 +494,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 {hoseId ? `Edit ${hose?.hoseId || 'Hose'}` : 'Add New Hose'}
               </DrawerTitle>
               <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close hose form" className="h-10 w-10">
-                <XMarkIcon className="h-6 w-6" />
+                <X className="h-6 w-6" />
               </Button>
             </div>
           </DrawerHeader>

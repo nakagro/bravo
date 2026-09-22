@@ -5,7 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { Check, Search } from "lucide-react";
 import { formatUserName, getInitials } from "../types";
 
 interface ConfirmAttendanceDialogProps {
@@ -132,7 +132,7 @@ export function ConfirmAttendanceDialog({ open, onClose, eventId }: ConfirmAtten
               : "border-gray-300 dark:border-gray-500 text-transparent"
           }`}
         >
-          <CheckIcon className="h-4 w-4" />
+          <Check className="h-4 w-4" />
         </span>
         <span className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
           {getInitials(member)}
@@ -245,7 +245,7 @@ export function ConfirmAttendanceDialog({ open, onClose, eventId }: ConfirmAtten
           </p>
 
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
               value={search}

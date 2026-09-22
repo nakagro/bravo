@@ -1,7 +1,6 @@
 import { Fragment, useState } from "react";
 import { Combobox, Transition } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 
 export interface MemberOption {
@@ -50,7 +49,7 @@ export function MemberCombobox({
           </Combobox.Label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>
             <Combobox.Input
               className={`w-full pl-10 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white ${
@@ -67,7 +66,7 @@ export function MemberCombobox({
               placeholder={placeholder}
             />
             <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-              <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              <ChevronsUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </Combobox.Button>
           </div>
           <Transition
@@ -115,7 +114,7 @@ export function MemberCombobox({
                               active ? "text-white" : "text-red-600"
                             }`}
                           >
-                            <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                            <Check className="h-5 w-5" aria-hidden="true" />
                           </span>
                         ) : null}
                       </>

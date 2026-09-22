@@ -3,9 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Combobox, Transition } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { Check, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
 import { isSharedAccount, isDisabledAccount, type AccountType } from "@/lib/accountType";
 
 // --- shadcn ui imports ---
@@ -394,7 +392,7 @@ function UserManagement() {
               </Combobox.Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                  <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
                 <Combobox.Input
                   className="w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
@@ -407,7 +405,7 @@ function UserManagement() {
                   placeholder="Search for a user"
                 />
                 <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronUpDownIcon
+                  <ChevronsUpDown
                     className="h-5 w-5 text-gray-400"
                     aria-hidden="true"
                   />
@@ -478,7 +476,7 @@ function UserManagement() {
                                 className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? "text-white" : "text-indigo-600"
                                   }`}
                               >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                <Check className="h-5 w-5" aria-hidden="true" />
                               </span>
                             ) : null}
                           </>
@@ -675,9 +673,9 @@ function UserManagement() {
                             disabled={isResettingPassword}
                           >
                             {showNewPassword ? (
-                              <EyeSlashIcon className="h-4 w-4" />
+                              <EyeOff className="h-4 w-4" />
                             ) : (
-                              <EyeIcon className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             )}
                           </button>
                         </div>
@@ -724,9 +722,9 @@ function UserManagement() {
                             disabled={isResettingPassword}
                           >
                             {showConfirmPassword ? (
-                              <EyeSlashIcon className="h-4 w-4" />
+                              <EyeOff className="h-4 w-4" />
                             ) : (
-                              <EyeIcon className="h-4 w-4" />
+                              <Eye className="h-4 w-4" />
                             )}
                           </button>
                         </div>

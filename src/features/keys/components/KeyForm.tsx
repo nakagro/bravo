@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { X, Trash2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function KeyForm({
@@ -262,7 +262,7 @@ export function KeyForm({
                   variant="outline"
                   className="w-full h-12 text-base justify-start border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
-                  <TrashIcon className="h-5 w-5 mr-3" />
+                  <Trash2 className="h-5 w-5 mr-3" />
                   Delete Key
                 </Button>
               </AlertDialogTrigger>
@@ -326,7 +326,7 @@ export function KeyForm({
                 {keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
               </DrawerTitle>
               <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
-                <XMarkIcon className="h-6 w-6" />
+                <X className="h-6 w-6" />
               </Button>
             </div>
           </DrawerHeader>

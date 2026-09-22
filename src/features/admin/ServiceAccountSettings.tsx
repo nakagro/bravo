@@ -2,17 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import {
-  PlusIcon,
-  TrashIcon,
-  PencilIcon,
-  KeyIcon,
-  ArrowPathIcon,
-  ClipboardDocumentIcon,
-  XMarkIcon,
-  NoSymbolIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/20/solid";
+import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, X, Ban, CircleCheckBig } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 
 interface ServiceAccountSettingsProps {
@@ -244,7 +234,7 @@ function ServiceAccountSettings({
           }}
           className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors whitespace-nowrap"
         >
-          <PlusIcon className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
           New Service Account
         </button>
       </div>
@@ -252,7 +242,7 @@ function ServiceAccountSettings({
       {/* Service accounts list */}
       {serviceAccounts.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <KeyIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <Key className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No service accounts yet.</p>
           <p className="text-xs mt-1">
             Create one to set up a kiosk, display, or integration.
@@ -298,12 +288,12 @@ function ServiceAccountSettings({
                   <td className="px-4 py-3">
                     {account.isActive ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <CheckCircleIcon className="h-3 w-3" />
+                        <CircleCheckBig className="h-3 w-3" />
                         Active
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                        <NoSymbolIcon className="h-3 w-3" />
+                        <Ban className="h-3 w-3" />
                         Inactive
                       </span>
                     )}
@@ -341,14 +331,14 @@ function ServiceAccountSettings({
                         className="p-1.5 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
                         title="Edit"
                       >
-                        <PencilIcon className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleRegenerate(account._id)}
                         className="p-1.5 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 rounded hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
                         title="Regenerate PIN"
                       >
-                        <ArrowPathIcon className="h-4 w-4" />
+                        <RefreshCw className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleToggleActive(account._id, account.isActive)}
@@ -360,9 +350,9 @@ function ServiceAccountSettings({
                         title={account.isActive ? "Deactivate" : "Activate"}
                       >
                         {account.isActive ? (
-                          <NoSymbolIcon className="h-4 w-4" />
+                          <Ban className="h-4 w-4" />
                         ) : (
-                          <CheckCircleIcon className="h-4 w-4" />
+                          <CircleCheckBig className="h-4 w-4" />
                         )}
                       </button>
                       <button
@@ -370,14 +360,14 @@ function ServiceAccountSettings({
                         className="p-1.5 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 rounded hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors"
                         title="Revoke All Sessions"
                       >
-                        <KeyIcon className="h-4 w-4" />
+                        <Key className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(account._id)}
                         className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                         title="Delete"
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -412,7 +402,7 @@ function ServiceAccountSettings({
                 onClick={() => setIsCreateOpen(false)}
                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-4 space-y-4">
@@ -509,7 +499,7 @@ function ServiceAccountSettings({
                 onClick={() => setIsEditOpen(false)}
                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-4 space-y-4">
@@ -591,7 +581,7 @@ function ServiceAccountSettings({
                 onClick={() => { setIsRegenerateOpen(false); setFormPin(""); setRegeneratingId(null); }}
                 className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-4 space-y-3">
@@ -647,7 +637,7 @@ function ServiceAccountSettings({
           <Dialog.Panel className="mx-auto max-w-sm w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
             <div className="p-6 text-center">
               <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
-                <KeyIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <Key className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Service Account PIN
@@ -665,7 +655,7 @@ function ServiceAccountSettings({
                   className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title="Copy PIN"
                 >
-                  <ClipboardDocumentIcon className="h-5 w-5" />
+                  <Clipboard className="h-5 w-5" />
                 </button>
               </div>
 

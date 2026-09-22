@@ -12,17 +12,7 @@ import { ResourceForm } from "./ResourceForm";
 import { PendingApprovals } from "./PendingApprovals";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
-import {
-  PlusIcon,
-  InboxIcon,
-  ArchiveBoxIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  UsersIcon,
-  LockClosedIcon,
-  LockOpenIcon,
-  ArrowTopRightOnSquareIcon,
-} from "@heroicons/react/24/outline";
+import { Plus, Inbox, Archive, SquarePen, Trash2, Users, Lock, LockOpen, ExternalLink } from "lucide-react";
 
 export function AdminTab() {
   const navigate = useNavigate();
@@ -86,7 +76,7 @@ export function AdminTab() {
             onClick={handleAddResource}
             className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors flex items-center"
           >
-            <PlusIcon className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4 mr-1" />
             Add Resource
           </button>
         </div>
@@ -94,7 +84,7 @@ export function AdminTab() {
         {!resources || resources.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<ArchiveBoxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="No resources created yet"
               actionLabel="Add Your First Resource"
               onAction={handleAddResource}
@@ -113,12 +103,12 @@ export function AdminTab() {
                     <h4 className="font-semibold text-foreground">{resource.name}</h4>
                     {resource.approverOnly ? (
                       <span className="px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                        <LockClosedIcon className="h-3 w-3" />
+                        <Lock className="h-3 w-3" />
                         Approver Only
                       </span>
                     ) : (
                       <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
-                        <LockOpenIcon className="h-3 w-3" />
+                        <LockOpen className="h-3 w-3" />
                         Open
                       </span>
                     )}
@@ -134,7 +124,7 @@ export function AdminTab() {
                   )}
 
                   <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                    <UsersIcon className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <Users className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
                     <span className="break-words">
                       <span className="font-medium">Approvers:</span>{" "}
                       {resource.approverUsers.map((u) => formatUserName(u)).join(", ")}
@@ -148,7 +138,7 @@ export function AdminTab() {
                     onClick={() => handleEditResource(resource._id)}
                     className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
                   >
-                    <PencilSquareIcon className="h-4 w-4 mr-1" />
+                    <SquarePen className="h-4 w-4 mr-1" />
                     Edit
                   </button>
                   <DeleteConfirmDialog
@@ -159,7 +149,7 @@ export function AdminTab() {
                     onConfirm={() => handleDeleteResource(resource._id)}
                     trigger={
                       <button className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
-                        <TrashIcon className="h-4 w-4 mr-1" />
+                        <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </button>
                     }
@@ -173,7 +163,7 @@ export function AdminTab() {
                   onClick={() => handleEditResource(resource._id)}
                   className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                 >
-                  <PencilSquareIcon className="h-4 w-4 mr-1" />
+                  <SquarePen className="h-4 w-4 mr-1" />
                   Edit
                 </button>
                 <DeleteConfirmDialog
@@ -184,7 +174,7 @@ export function AdminTab() {
                   onConfirm={() => handleDeleteResource(resource._id)}
                   trigger={
                     <button className="flex-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center">
-                      <TrashIcon className="h-4 w-4 mr-1" />
+                      <Trash2 className="h-4 w-4 mr-1" />
                       Delete
                     </button>
                   }
@@ -202,7 +192,7 @@ export function AdminTab() {
         {!allBookings || allBookings.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<InboxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
               title="No bookings have been made yet"
             />
           </div>
@@ -230,7 +220,7 @@ export function AdminTab() {
                       }
                       className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1 flex-shrink-0"
                     >
-                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                      <ExternalLink className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">View in Schedule</span>
                       <span className="sm:hidden">View</span>
                     </button>

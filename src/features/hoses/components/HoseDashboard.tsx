@@ -2,22 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import {
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  WrenchScrewdriverIcon,
-  XCircleIcon,
-  ChartBarIcon,
-  ClockIcon,
-} from "@heroicons/react/24/outline";
-import {
-  MapPin,
-  Ruler,
-  Layers,
-  TriangleAlert,
-  ArrowRight,
-  Flame,
-} from "lucide-react";
+import { MapPin, Ruler, Layers, TriangleAlert, ArrowRight, Flame, CircleCheckBig, Wrench, CircleX, ChartColumn, Clock } from "lucide-react";
 import { Status, UpcomingTestFilter, OverdueFilter } from "../types";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -188,7 +173,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                <ChartBarIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <ChartColumn className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Hoses</p>
@@ -206,7 +191,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-950 flex-shrink-0">
-                <CheckCircleIcon className="h-5 w-5 text-green-700 dark:text-green-400" />
+                <CircleCheckBig className="h-5 w-5 text-green-700 dark:text-green-400" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">In Date</p>
@@ -224,7 +209,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950 flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+                <TriangleAlert className="h-5 w-5 text-amber-700 dark:text-amber-400" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Due for Testing</p>
@@ -242,7 +227,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-red-100 dark:bg-red-950 flex-shrink-0">
-                <WrenchScrewdriverIcon className="h-5 w-5 text-red-700 dark:text-red-400" />
+                <Wrench className="h-5 w-5 text-red-700 dark:text-red-400" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">With District</p>
@@ -260,7 +245,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                <XCircleIcon className="h-5 w-5 text-gray-700 dark:text-gray-400" />
+                <CircleX className="h-5 w-5 text-gray-700 dark:text-gray-400" />
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Condemned</p>
@@ -279,7 +264,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <AccordionTrigger className="hover:no-underline py-4">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <ClockIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Tests Due Within</span>
               </div>
               <span className="ml-auto mr-4 text-sm font-medium px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
@@ -302,7 +287,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-blue-800 dark:text-blue-300">4-6 Months</p>
                       <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{upcomingTestDates.sixMonths || 0}</p>
                     </div>
-                    <ClockIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                    <Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -318,7 +303,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">1-3 Months</p>
                       <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{upcomingTestDates.threeMonths || 0}</p>
                     </div>
-                    <ClockIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                    <Clock className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -334,7 +319,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-purple-800 dark:text-purple-300">Within 1 Month</p>
                       <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{upcomingTestDates.oneMonth || 0}</p>
                     </div>
-                    <ClockIcon className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                    <Clock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -347,7 +332,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
           <AccordionTrigger className="hover:no-underline py-4">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <TriangleAlert className="h-5 w-5 text-red-600 dark:text-red-400" />
                 <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Hoses Overdue for Testing</span>
               </div>
               <span className="ml-auto mr-4 text-sm font-medium px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
@@ -371,7 +356,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">0-3 Months</p>
                       <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{overdueBreakdown.threeMonths || 0}</p>
                     </div>
-                    <ExclamationTriangleIcon className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+                    <TriangleAlert className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -387,7 +372,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-orange-800 dark:text-orange-300">3-6 Months</p>
                       <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{overdueBreakdown.sixMonths || 0}</p>
                     </div>
-                    <ExclamationTriangleIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                    <TriangleAlert className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -403,7 +388,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-red-800 dark:text-red-300">6-12 Months</p>
                       <p className="text-3xl font-bold text-red-600 dark:text-red-400">{overdueBreakdown.twelveMonths || 0}</p>
                     </div>
-                    <ExclamationTriangleIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    <TriangleAlert className="h-8 w-8 text-red-600 dark:text-red-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>
@@ -419,7 +404,7 @@ export function HoseDashboard({ onStatusCardClick, onUpcomingTestClick, onOverdu
                       <p className="text-sm font-medium text-red-900 dark:text-red-300">12+ Months</p>
                       <p className="text-3xl font-bold text-red-700 dark:text-red-400">{overdueBreakdown.twelvePlusMonths || 0}</p>
                     </div>
-                    <ExclamationTriangleIcon className="h-8 w-8 text-red-700 dark:text-red-400" />
+                    <TriangleAlert className="h-8 w-8 text-red-700 dark:text-red-400" />
                   </div>
                 </CardContent>
               </DashboardActionCard>

@@ -40,26 +40,7 @@ import { NotifyMembersDialog } from "../features/events/components/NotifyMembers
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ArrowLeftIcon,
-  CalendarDaysIcon,
-  MapPinIcon,
-  PencilSquareIcon,
-  XCircleIcon,
-  ArrowUturnLeftIcon,
-  BellAlertIcon,
-  ClockIcon,
-  UserIcon,
-  UsersIcon,
-  TrashIcon,
-  ChevronDownIcon,
-  XMarkIcon,
-  LockClosedIcon,
-  LockOpenIcon,
-  EllipsisVerticalIcon,
-  ClipboardDocumentIcon,
-  ClipboardDocumentCheckIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, X, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -200,7 +181,7 @@ export function EventDetailPage() {
       onClick={() => navigate("/events")}
       className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
     >
-      <ArrowLeftIcon className="h-4 w-4" />
+      <ArrowLeft className="h-4 w-4" />
       All events
     </button>
   );
@@ -379,7 +360,7 @@ export function EventDetailPage() {
               onClick={() => setShowEditForm(true)}
               className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
             >
-              <PencilSquareIcon className="h-4 w-4 mr-1.5" />
+              <SquarePen className="h-4 w-4 mr-1.5" />
               Edit
             </button>
 
@@ -388,7 +369,7 @@ export function EventDetailPage() {
                 className="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                 aria-label={`More options for ${event.title}`}
               >
-                <EllipsisVerticalIcon className="h-5 w-5" />
+                <EllipsisVertical className="h-5 w-5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 {event.status === "active" ? (
@@ -398,26 +379,26 @@ export function EventDetailPage() {
                     {hasStarted && (
                       <>
                         <DropdownMenuItem onSelect={() => setShowAttendanceDialog(true)}>
-                          <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                          <ClipboardCheck className="h-4 w-4" />
                           {attendanceConfirmed ? "Amend attendance" : "Confirm attendance"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                       </>
                     )}
                     <DropdownMenuItem onSelect={() => setShowAllocateDialog(true)}>
-                      <UsersIcon className="h-4 w-4" />
+                      <Users className="h-4 w-4" />
                       {event.hasShifts ? "Allocate shifts" : "Set who's going"}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowResponsesDialog(true)}>
                       {responsesClosed ? (
-                        <LockOpenIcon className="h-4 w-4" />
+                        <LockOpen className="h-4 w-4" />
                       ) : (
-                        <LockClosedIcon className="h-4 w-4" />
+                        <Lock className="h-4 w-4" />
                       )}
                       {responsesClosed ? "Open responses" : "Close responses"}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowNotifyDialog(true)}>
-                      <BellAlertIcon className="h-4 w-4" />
+                      <BellRing className="h-4 w-4" />
                       Notify
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -425,14 +406,14 @@ export function EventDetailPage() {
                       onSelect={() => setShowCancelDialog(true)}
                       className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     >
-                      <XCircleIcon className="h-4 w-4" />
+                      <CircleX className="h-4 w-4" />
                       Cancel event
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <>
                     <DropdownMenuItem onSelect={handleRestore}>
-                      <ArrowUturnLeftIcon className="h-4 w-4" />
+                      <Undo2 className="h-4 w-4" />
                       Restore
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -443,7 +424,7 @@ export function EventDetailPage() {
                         onSelect={() => setShowDeleteDialog(true)}
                         className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
                     )}
@@ -603,7 +584,7 @@ export function EventDetailPage() {
               {detailSection(
                 "When",
                 <span className="flex items-center gap-2">
-                  <CalendarDaysIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <CalendarDays className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   {dateLine}
                   <span className="text-gray-400 dark:text-gray-500">·</span>
                   {timeLine}
@@ -613,7 +594,7 @@ export function EventDetailPage() {
                 detailSection(
                   "Where",
                   <span className="flex items-start gap-2">
-                    <MapPinIcon className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
                     <span className="flex flex-col">
                       {event.location && <span>{event.location}</span>}
                       {event.address && (
@@ -631,7 +612,7 @@ export function EventDetailPage() {
               {detailSection(
                 "Organiser",
                 <span className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   {formatUserName(event.createdByUser)}
                 </span>
               )}
@@ -643,7 +624,7 @@ export function EventDetailPage() {
                   <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     {[...event.teamLeaders].sort(compareUserNames).map((leader) => (
                       <span key={leader._id} className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
                         {formatUserName(leader)}
                       </span>
                     ))}
@@ -657,7 +638,7 @@ export function EventDetailPage() {
                 detailSection(
                   "Respond by",
                   <span className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                    <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                    <Clock className="h-4 w-4 flex-shrink-0" />
                     {formatShortDate(event.respondBy)}
                   </span>
                 )}
@@ -678,7 +659,7 @@ export function EventDetailPage() {
                   onClick={() => downloadEventIcs(event)}
                   className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <CalendarDaysIcon className="h-4 w-4" />
+                  <CalendarDays className="h-4 w-4" />
                   Add to my calendar
                 </button>
               </div>
@@ -719,9 +700,9 @@ export function EventDetailPage() {
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
                       {copied ? (
-                        <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <ClipboardCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
                       ) : (
-                        <ClipboardDocumentIcon className="h-4 w-4" />
+                        <Clipboard className="h-4 w-4" />
                       )}
                       {copied ? "Copied" : "Copy names"}
                     </button>
@@ -742,7 +723,7 @@ export function EventDetailPage() {
                   onClick={() => setShowAttendanceDialog(true)}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                  <ClipboardCheck className="h-4 w-4" />
                   Confirm attendance
                 </button>
               ) : attendees.length === 0 ? (
@@ -938,7 +919,7 @@ export function EventDetailPage() {
                         >
                           {members.length}
                         </span>
-                        <ChevronDownIcon
+                        <ChevronDown
                           className={`h-4 w-4 text-gray-400 ml-auto transition-transform group-hover:text-gray-600 dark:group-hover:text-gray-300 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </button>
@@ -971,7 +952,7 @@ export function EventDetailPage() {
                                     // sentence is in the row's title.
                                     <span className="ml-auto flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                       {edited && (
-                                        <PencilSquareIcon
+                                        <SquarePen
                                           className="h-3 w-3 text-amber-600 dark:text-amber-400"
                                           aria-label="Changed since first answering"
                                         />
@@ -1030,7 +1011,7 @@ function MemberChip({
         className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400 line-through"
       >
         <span className="h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center">
-          <XMarkIcon className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" />
         </span>
         {formatUserName(member)}
       </span>

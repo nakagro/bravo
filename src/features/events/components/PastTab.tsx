@@ -4,7 +4,7 @@ import { getTodayStr } from "../types";
 import { EventCard } from "./EventCard";
 import { EventListSkeleton } from "./UpcomingTab";
 import { EmptyState } from "../../../components/shared/EmptyState";
-import { ArchiveBoxIcon } from "@heroicons/react/24/outline";
+import { Archive } from "lucide-react";
 
 export function PastTab() {
   const events = useQuery(api.events.getPastEvents, { beforeDate: getTodayStr() });
@@ -24,7 +24,7 @@ export function PastTab() {
           <EventListSkeleton />
         ) : events.length === 0 ? (
           <EmptyState
-            icon={<ArchiveBoxIcon className="h-10 w-10 text-red-400 dark:text-red-500" />}
+            icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
             title="No past events"
             description="Past events stay here as an attendance record."
           />

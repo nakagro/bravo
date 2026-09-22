@@ -3,7 +3,7 @@ import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { Plus } from "lucide-react";
 
 export interface Vehicle {
   registration: string;
@@ -49,7 +49,7 @@ export function MobilePropertySection({ vehicles, onChange }: MobilePropertySect
         <CardTitle className="flex items-center justify-between">
           <span>Mobile Property</span>
           <Button type="button" variant="outline" size="sm" onClick={addVehicle} className="gap-2">
-            <PlusIcon className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Add Vehicle
           </Button>
         </CardTitle>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "../ui/button";
-import { ArrowLeftIcon, BookmarkIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { ArrowLeft, Bookmark, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "../../../convex/_generated/dataModel";
 
@@ -374,7 +374,7 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="outline" onClick={onBack} className="gap-2">
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
         <div>
@@ -476,7 +476,7 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
             disabled={isSubmitting}
             className="gap-2"
           >
-            <BookmarkIcon className="h-4 w-4" />
+            <Bookmark className="h-4 w-4" />
             Save Draft
           </Button>
           <Button
@@ -484,7 +484,7 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
             disabled={isSubmitting || !validateRequired()}
             className="gap-2"
           >
-            <PaperAirplaneIcon className="h-4 w-4" />
+            <Send className="h-4 w-4" />
             Submit Report
           </Button>
         </div>
