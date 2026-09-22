@@ -16,7 +16,7 @@ import {
   BellRing,
   ClipboardList,
 } from "lucide-react";
-import { FaMaskVentilator } from "react-icons/fa6";
+import { MaskVentilatorIcon } from "@/components/icons/MaskVentilatorIcon";
 
 export type NavGroup = "operations" | "equipment" | "brigade" | "support";
 
@@ -192,7 +192,7 @@ export const NAV_ITEMS: NavItem[] = [
     id: "baSkills",
     label: "BA Skills",
     path: "/ba-skills",
-    icon: FaMaskVentilator,
+    icon: MaskVentilatorIcon,
     group: "equipment",
     color: {
       bg: "bg-teal-100 dark:bg-teal-900/20",

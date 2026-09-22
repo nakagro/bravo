@@ -8,7 +8,7 @@
 // See docs/plans/kiosk-dashboard-plan.md.
 
 import { MapPin, BookOpen } from 'lucide-react';
-import { FaMaskVentilator } from 'react-icons/fa6';
+import { MaskVentilatorIcon } from '@/components/icons/MaskVentilatorIcon';
 import { GATE_DOOR_ID, TURNOUT_DOOR_ID, SHED_DOOR_ID, SHED_AREA_ID } from './gateApi';
 import type { NavIcon } from './widgets';
 
@@ -51,5 +51,5 @@ export const DEFAULT_LAYOUT: PlacedWidget[] = [
   { id: 'appliances',x: 0, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'appliance-locations', title: 'Appliance Locations', icon: MapPin } },
   { id: 'contacts',  x: 3, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'contact-directory',   title: 'D14 Contact List',   icon: BookOpen } },
   { id: 'lockup',    x: 6, y: 4, w: 3, h: 2, widget: { kind: 'sceneToggle', scene: 'communityLockup' } },
-  { id: 'ba-usage',  x: 9, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'ba-usage', title: 'Log BA Usage', icon: FaMaskVentilator } },
+  { id: 'ba-usage',  x: 9, y: 4, w: 3, h: 2, widget: { kind: 'nav', target: 'ba-usage', title: 'Log BA Usage', icon: MaskVentilatorIcon } },
 ];
