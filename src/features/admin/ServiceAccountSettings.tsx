@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, X, Ban, CircleCheckBig } from "lucide-react";
-import { Dialog } from "@headlessui/react";
+import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, Ban, CircleCheckBig } from "lucide-react";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ServiceAccountSettingsProps {
   showTitle?: boolean;
@@ -186,6 +187,18 @@ function ServiceAccountSettings({
       setPinCopied(true);
       setTimeout(() => setPinCopied(false), 2000);
     }
+  };
+
+  const closeRegenerate = () => {
+    setIsRegenerateOpen(false);
+    setFormPin("");
+    setRegeneratingId(null);
+  };
+
+  const closePinDisplay = () => {
+    setIsPinOpen(false);
+    setDisplayPin(null);
+    setPinCopied(false);
   };
 
   const toggleModule = (moduleId: string) => {
@@ -390,297 +403,255 @@ function ServiceAccountSettings({
       </div>
 
       {/* ─── Create Dialog ─── */}
-      <Dialog open={isCreateOpen} onClose={() => setIsCreateOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-lg w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                Create Service Account
-              </Dialog.Title>
-              <button
-                onClick={() => setIsCreateOpen(false)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <ResponsiveModal
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title="Create Service Account"
+        footer={
+          <div className="flex justify-end gap-2 border-t border-border p-4">
+            <button
+              onClick={() => setIsCreateOpen(false)}
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={!formName.trim() || !isPinValid(formPin) || isSubmitting}
+              className="px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Creating..." : "Create Account"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 pb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="e.g., Station Kiosk"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <input
+              type="text"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="What this account is used for"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              PIN *
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              value={formPin}
+              onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="4–10 digits"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
+            />
+            {formPin.length > 0 && !isPinValid(formPin) && (
+              <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Allowed Modules
+            </label>
+            <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
+              {availableModules.map((mod) => (
+                <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
+                  <input
+                    type="checkbox"
+                    checked={formModules.includes(mod.id)}
+                    onChange={() => toggleModule(mod.id)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
+                  <span className="text-xs text-gray-400">({mod.id})</span>
+                </label>
+              ))}
             </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g., Station Kiosk"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="What this account is used for"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  PIN *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  value={formPin}
-                  onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="4–10 digits"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
-                />
-                {formPin.length > 0 && !isPinValid(formPin) && (
-                  <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Allowed Modules
-                </label>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
-                  {availableModules.map((mod) => (
-                    <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
-                      <input
-                        type="checkbox"
-                        checked={formModules.includes(mod.id)}
-                        onChange={() => toggleModule(mod.id)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
-                      <span className="text-xs text-gray-400">({mod.id})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setIsCreateOpen(false)}
-                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!formName.trim() || !isPinValid(formPin) || isSubmitting}
-                className="px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? "Creating..." : "Create Account"}
-              </button>
-            </div>
-          </Dialog.Panel>
+          </div>
         </div>
-      </Dialog>
+      </ResponsiveModal>
 
       {/* ─── Edit Dialog ─── */}
-      <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-lg w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                Edit Service Account
-              </Dialog.Title>
-              <button
-                onClick={() => setIsEditOpen(false)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Name *
+      <ResponsiveModal
+        open={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title="Edit Service Account"
+        footer={
+          <div className="flex justify-end gap-2 border-t border-border p-4">
+            <button
+              onClick={() => setIsEditOpen(false)}
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpdate}
+              disabled={!formName.trim() || isSubmitting}
+              className="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 pb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <input
+              type="text"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Allowed Modules
+            </label>
+            <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
+              {availableModules.map((mod) => (
+                <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
+                  <input
+                    type="checkbox"
+                    checked={formModules.includes(mod.id)}
+                    onChange={() => toggleModule(mod.id)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
+                  <span className="text-xs text-gray-400">({mod.id})</span>
                 </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Allowed Modules
-                </label>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
-                  {availableModules.map((mod) => (
-                    <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
-                      <input
-                        type="checkbox"
-                        checked={formModules.includes(mod.id)}
-                        onChange={() => toggleModule(mod.id)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
-                      <span className="text-xs text-gray-400">({mod.id})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setIsEditOpen(false)}
-                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                disabled={!formName.trim() || isSubmitting}
-                className="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </Dialog.Panel>
+          </div>
         </div>
-      </Dialog>
+      </ResponsiveModal>
 
       {/* ─── Regenerate PIN Dialog ─── */}
-      <Dialog
-        open={isRegenerateOpen}
-        onClose={() => { setIsRegenerateOpen(false); setFormPin(""); setRegeneratingId(null); }}
-        className="relative z-50"
-      >
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-sm w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white">
-                Set New PIN
-              </Dialog.Title>
-              <button
-                onClick={() => { setIsRegenerateOpen(false); setFormPin(""); setRegeneratingId(null); }}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <Dialog open={isRegenerateOpen} onOpenChange={(o) => { if (!o) closeRegenerate(); }}>
+        <DialogContent className="max-w-sm gap-0 p-0" aria-describedby={undefined}>
+          <DialogHeader className="border-b border-border p-4 text-left">
+            <DialogTitle>Set New PIN</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 space-y-3">
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              The old PIN will stop working immediately and all active sessions will be revoked.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                New PIN *
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d*"
+                value={formPin}
+                onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="4–10 digits"
+                autoFocus
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
+              />
+              {formPin.length > 0 && !isPinValid(formPin) && (
+                <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
+              )}
             </div>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                The old PIN will stop working immediately and all active sessions will be revoked.
-              </p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  New PIN *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  value={formPin}
-                  onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="4–10 digits"
-                  autoFocus
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
-                />
-                {formPin.length > 0 && !isPinValid(formPin) && (
-                  <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => { setIsRegenerateOpen(false); setFormPin(""); setRegeneratingId(null); }}
-                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRegenerateSubmit}
-                disabled={!isPinValid(formPin) || isSubmitting}
-                className="px-4 py-2 text-sm text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? "Saving..." : "Set PIN"}
-              </button>
-            </div>
-          </Dialog.Panel>
-        </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border p-4">
+            <button
+              onClick={closeRegenerate}
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRegenerateSubmit}
+              disabled={!isPinValid(formPin) || isSubmitting}
+              className="px-4 py-2 text-sm text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Saving..." : "Set PIN"}
+            </button>
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* ─── PIN Display Dialog ─── */}
-      <Dialog
-        open={isPinOpen}
-        onClose={() => { setIsPinOpen(false); setDisplayPin(null); setPinCopied(false); }}
-        className="relative z-50"
-      >
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-sm w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-            <div className="p-6 text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
-                <Key className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <Dialog.Title className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Service Account PIN
-              </Dialog.Title>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Save this PIN now, it will not be shown again.
-              </p>
+      <Dialog open={isPinOpen} onOpenChange={(o) => { if (!o) closePinDisplay(); }}>
+        <DialogContent className="max-w-sm p-0" hideClose aria-describedby={undefined}>
+          <div className="p-6 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
+              <Key className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="mb-2">
+              Service Account PIN
+            </DialogTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Save this PIN now, it will not be shown again.
+            </p>
 
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <code className="text-3xl font-mono font-bold tracking-[0.25em] text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-6 py-3 rounded-lg">
-                  {displayPin}
-                </code>
-                <button
-                  onClick={copyPin}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                  title="Copy PIN"
-                >
-                  <Clipboard className="h-5 w-5" />
-                </button>
-              </div>
-
-              {pinCopied && (
-                <p className="text-sm text-green-600 dark:text-green-400 mb-3">
-                  Copied to clipboard!
-                </p>
-              )}
-
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-                Use this PIN at{" "}
-                <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">
-                  {window.location.origin}/service-login
-                </code>
-              </p>
-
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <code className="text-3xl font-mono font-bold tracking-[0.25em] text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-6 py-3 rounded-lg">
+                {displayPin}
+              </code>
               <button
-                onClick={() => { setIsPinOpen(false); setDisplayPin(null); setPinCopied(false); }}
-                className="w-full px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                onClick={copyPin}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Copy PIN"
               >
-                I've saved the PIN
+                <Clipboard className="h-5 w-5" />
               </button>
             </div>
-          </Dialog.Panel>
-        </div>
+
+            {pinCopied && (
+              <p className="text-sm text-green-600 dark:text-green-400 mb-3">
+                Copied to clipboard!
+              </p>
+            )}
+
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+              Use this PIN at{" "}
+              <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">
+                {window.location.origin}/service-login
+              </code>
+            </p>
+
+            <button
+              onClick={closePinDisplay}
+              className="w-full px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+            >
+              I've saved the PIN
+            </button>
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
