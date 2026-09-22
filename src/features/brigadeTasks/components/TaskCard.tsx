@@ -17,7 +17,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { CircleCheckBig, Circle, X, TriangleAlert, Calendar, Trash2, PenLine, Send, LoaderCircle, MessageCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { getRelativeTimeString } from "@/utils/dateUtils";
 
 export type TaskStatus = "active" | "completed" | "cancelled";
@@ -89,7 +89,6 @@ export function TaskCard({
     const [newComment, setNewComment] = useState("");
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const isMobile = useIsMobile();
-    const { toast } = useToast();
     const status = statusConfig[task.status];
     const priority = priorityConfig[task.priority || "normal"];
     const category = task.category ? categoryConfig[task.category] : null;
@@ -144,9 +143,9 @@ export function TaskCard({
         try {
             await addComment({ taskId: task._id, content: newComment.trim() });
             setNewComment("");
-            toast({ title: "Comment added" });
+            toast.success("Comment added");
         } catch {
-            toast({ title: "Error", description: "Failed to add comment", variant: "destructive" });
+            toast.error("Failed to add comment");
         } finally {
             setIsSubmittingComment(false);
         }
@@ -155,9 +154,9 @@ export function TaskCard({
     const handleDeleteComment = async (commentId: Id<"brigadeTaskComments">) => {
         try {
             await deleteComment({ commentId });
-            toast({ title: "Comment deleted" });
+            toast.success("Comment deleted");
         } catch {
-            toast({ title: "Error", description: "Failed to delete comment", variant: "destructive" });
+            toast.error("Failed to delete comment");
         }
     };
 

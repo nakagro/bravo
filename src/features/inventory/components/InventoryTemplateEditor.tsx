@@ -10,7 +10,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Info, Image, GripVertical } from "lucide-react";
-import { useToast } from "../../../hooks/use-toast";
+import { toast } from "sonner";
 import { DetailsEditorModal } from "./DetailsEditorModal";
 import {
   DndContext,
@@ -59,7 +59,6 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
   const [description, setDescription] = useState(template?.description ?? "");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (template && open) {
@@ -70,16 +69,16 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast({ title: "Error", description: "Template name is required", variant: "destructive" });
+      toast.error("Template name is required");
       return;
     }
     setIsLoading(true);
     try {
       await onSave(name.trim(), description.trim());
-      toast({ title: "Success", description: "Template updated successfully" });
+      toast.success("Template updated successfully");
       setOpen(false);
     } catch  {
-      toast({ title: "Error", description: "Failed to update template", variant: "destructive" });
+      toast.error("Failed to update template");
     } finally {
       setIsLoading(false);
     }
@@ -138,18 +137,17 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleAdd = async () => {
     if (!name.trim()) return;
     setIsLoading(true);
     try {
       await onAdd(name.trim());
-      toast({ title: "Success", description: "Section added successfully" });
+      toast.success("Section added successfully");
       setName("");
       setOpen(false);
     } catch  {
-      toast({ title: "Error", description: "Failed to add section", variant: "destructive" });
+      toast.error("Failed to add section");
     } finally {
       setIsLoading(false);
     }
@@ -199,18 +197,17 @@ function AddItemDialog({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleAdd = async () => {
     if (!name.trim()) return;
     setIsLoading(true);
     try {
       await onAdd(name.trim());
-      toast({ title: "Success", description: "Item added successfully" });
+      toast.success("Item added successfully");
       setName("");
       setOpen(false);
     } catch  {
-      toast({ title: "Error", description: "Failed to add item", variant: "destructive" });
+      toast.error("Failed to add item");
     } finally {
       setIsLoading(false);
     }
@@ -275,7 +272,6 @@ function EditDialog({
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (open) setValue(defaultValue);
@@ -286,10 +282,10 @@ function EditDialog({
     setIsLoading(true);
     try {
       await onSave(value.trim());
-      toast({ title: "Success", description: `${title} updated successfully` });
+      toast.success(`${title} updated successfully`);
       setOpen(false);
     } catch  {
-      toast({ title: "Error", description: `Failed to update ${title.toLowerCase()}`, variant: "destructive" });
+      toast.error(`Failed to update ${title.toLowerCase()}`);
     } finally {
       setIsLoading(false);
     }
@@ -538,7 +534,6 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
   const deleteItem = useMutation(api.inventoryTemplates.deleteItem);
   const reorderItems = useMutation(api.inventoryTemplates.reorderItems);
   const publishTemplate = useMutation(api.inventoryTemplates.publishTemplate);
-  const { toast } = useToast();
 
   const template = data?.template;
   const sections: ApplianceSection[] = (data?.sections as ApplianceSection[]) ?? [];
@@ -581,9 +576,9 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
   const handleDeleteSection = async (sectionId: Id<"applianceSections">) => {
     try {
       await deleteSection({ sectionId });
-      toast({ title: "Success", description: "Section deleted successfully" });
+      toast.success("Section deleted successfully");
     } catch  {
-      toast({ title: "Error", description: "Failed to delete section", variant: "destructive" });
+      toast.error("Failed to delete section");
     }
   };
 
@@ -618,9 +613,9 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
   const handleDeleteItem = async (itemId: Id<"applianceItems">) => {
     try {
       await deleteItem({ itemId });
-      toast({ title: "Success", description: "Item deleted successfully" });
+      toast.success("Item deleted successfully");
     } catch  {
-      toast({ title: "Error", description: "Failed to delete item", variant: "destructive" });
+      toast.error("Failed to delete item");
     }
   };
 
@@ -659,7 +654,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
         delete newState[sectionId];
         return newState;
       });
-      toast({ title: "Success", description: "Items reordered successfully" });
+      toast.success("Items reordered successfully");
     } catch  {
       // Revert optimistic update on error
       setOptimisticSections(prev => {
@@ -667,7 +662,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
         delete newState[sectionId];
         return newState;
       });
-      toast({ title: "Error", description: "Failed to reorder items", variant: "destructive" });
+      toast.error("Failed to reorder items");
     }
   };
 
@@ -675,9 +670,9 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     if (!template) return;
     try {
       await publishTemplate({ templateId: template._id });
-      toast({ title: "Success", description: `Version ${template.version + 1} published successfully` });
+      toast.success(`Version ${template.version + 1} published successfully`);
     } catch  {
-      toast({ title: "Error", description: "Failed to publish template", variant: "destructive" });
+      toast.error("Failed to publish template");
     }
   };
 

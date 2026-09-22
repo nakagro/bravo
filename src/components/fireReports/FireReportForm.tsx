@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "../ui/button";
 import { ArrowLeftIcon, BookmarkIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import { useToast } from "../../hooks/use-toast";
+import { toast } from "sonner";
 import { Id } from "../../../convex/_generated/dataModel";
 
 import { ActionsTakenSection } from "./sections/ActionsTakenSection";
@@ -164,7 +164,6 @@ const actionOptions = [
 export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
 
   // Mutations
   const createReport = useMutation(api.fireReports.createFireReport);
@@ -258,11 +257,7 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
 
   const handleSubmit = async (status: "draft" | "submitted") => {
     if (status === "submitted" && !validateRequired()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields before submitting.",
-        variant: "destructive",
-      });
+      toast.error("Please fill in all required fields before submitting.");
       return;
     }
 
@@ -346,26 +341,16 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
           reportId,
           ...reportData,
         });
-        toast({
-          title: "Report Updated",
-          description: `Fire report has been ${status === "submitted" ? "submitted" : "saved as draft"}.`,
-        });
+        toast.success("Report Updated", { description: `Fire report has been ${status === "submitted" ? "submitted" : "saved as draft"}.` });
       } else {
         await createReport(reportData);
-        toast({
-          title: "Report Created",
-          description: `Fire report has been ${status === "submitted" ? "submitted" : "saved as draft"}.`,
-        });
+        toast.success("Report Created", { description: `Fire report has been ${status === "submitted" ? "submitted" : "saved as draft"}.` });
       }
 
       onSaved();
     } catch (error) {
       console.error("Error saving report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save report. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to save report. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

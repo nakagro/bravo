@@ -5,7 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Plus, CircleCheckBig, TriangleAlert, Clock, Users } from "lucide-react";
 
 import { Task, TaskCard, TaskStatus, TaskPriority, TaskCategory } from "../components/TaskCard";
@@ -29,7 +29,6 @@ export function BrigadeTasksPage() {
     const [celebratingTaskId, setCelebratingTaskId] = useState<Id<"brigadeTasks"> | null>(null);
 
     const isMobile = useIsMobile();
-    const { toast } = useToast();
 
     const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
@@ -172,9 +171,9 @@ export function BrigadeTasksPage() {
         try {
             await createTask({ title: quickAddText.trim() });
             setQuickAddText("");
-            toast({ title: "Task added!", description: "Your task has been created" });
+            toast.success("Task added!", { description: "Your task has been created" });
         } catch {
-            toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
+            toast.error("Failed to create task");
         } finally {
             setIsQuickAdding(false);
         }
@@ -201,7 +200,7 @@ export function BrigadeTasksPage() {
                 priority,
                 category,
             });
-            toast({ title: "Task updated", description: "Your changes have been saved" });
+            toast.success("Task updated", { description: "Your changes have been saved" });
             setTaskToEdit(null);
         } else {
             await createTask({
@@ -212,7 +211,7 @@ export function BrigadeTasksPage() {
                 priority,
                 category,
             });
-            toast({ title: "Task created", description: data.assignedTo !== "self" ? "Task assigned successfully" : "Your task has been added" });
+            toast.success("Task created", { description: data.assignedTo !== "self" ? "Task assigned successfully" : "Your task has been added" });
         }
     };
 
@@ -221,11 +220,11 @@ export function BrigadeTasksPage() {
             if (newStatus === "completed") {
                 setCelebratingTaskId(taskId);
                 setTimeout(() => setCelebratingTaskId(null), 1000);
-                toast({ title: "Task completed!", description: "Great job getting that done!" });
+                toast.success("Task completed!", { description: "Great job getting that done!" });
             }
             await updateTaskStatus({ taskId, status: newStatus });
         } catch {
-            toast({ title: "Error", description: "Failed to update task status", variant: "destructive" });
+            toast.error("Failed to update task status");
         }
     };
 
@@ -233,10 +232,10 @@ export function BrigadeTasksPage() {
         if (!taskToDelete) return;
         try {
             await deleteTask({ taskId: taskToDelete });
-            toast({ title: "Task deleted", description: "The task has been removed" });
+            toast.success("Task deleted", { description: "The task has been removed" });
             setTaskToDelete(null);
         } catch {
-            toast({ title: "Error", description: "Failed to delete task", variant: "destructive" });
+            toast.error("Failed to delete task");
         }
     };
 
