@@ -8,7 +8,6 @@ import {
   Users,
   Crown,
   TriangleAlert,
-  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,8 +43,6 @@ interface DutyCrewHeroProps {
   /** True when `members` is a snapshot of the week rather than today's crew. */
   isHistoricalRoster?: boolean;
   submissionStatus: SubmissionStatus | "not_started";
-  onReopen?: () => void;
-  canReopen: boolean;
 }
 
 export function DutyCrewHero({
@@ -56,8 +53,6 @@ export function DutyCrewHero({
   members,
   isHistoricalRoster = false,
   submissionStatus,
-  onReopen,
-  canReopen,
 }: DutyCrewHeroProps) {
   const [expandedMemberIds, setExpandedMemberIds] = useState<Set<string>>(
     new Set()
@@ -157,17 +152,6 @@ export function DutyCrewHero({
                 >
                   {status.label}
                 </Badge>
-                {canReopen && submissionStatus === "completed" && onReopen && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-11 px-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    onClick={onReopen}
-                  >
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Reopen
-                  </Button>
-                )}
               </div>
 
               {isSpecial && (

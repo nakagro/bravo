@@ -1,10 +1,18 @@
-import { query, mutation, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  query,
+  mutation,
+  internalMutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { notifyEvent } from "./lib/notifyEvent";
 import { brigadeDayOfWeek, brigadeParts, brigadeTimestamp } from "./lib/dates";
+import { resolveCrewForSunday } from "./lib/dutyCrewRotation";
 
 type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
@@ -272,7 +280,7 @@ export function weekWindow(date: number) {
 // submission; the duty crew is whatever it was saved under, not whatever the
 // rotation rule derives now, because the two can disagree (manual schedule
 // overrides, 5th Sundays) and a mismatch used to hide the draft entirely.
-async function findSubmissionForWeek(
+export async function findSubmissionForWeek(
   ctx: QueryCtx,
   date: number,
   preferredCrewId?: Id<"dutyCrew">
@@ -735,13 +743,19 @@ async function resolveSubmissionItems(
   ctx: MutationCtx,
   incoming: SubmissionCheckItem[],
   existing: SubmissionCheckItem[] | undefined,
-  userId: Id<"users">,
+  // Absent when the system is writing (the week close-out): ticked items then
+  // keep exactly the attribution they already carry, and only derived rows
+  // are refreshed.
+  userId: Id<"users"> | undefined,
   now: number,
   date: number
 ): Promise<SubmissionCheckItem[]> {
+  const attribute = (items: SubmissionCheckItem[]) =>
+    userId ? applyItemAttribution(items, existing, userId, now) : items;
+
   const links = await linkedChecksFor(ctx, date);
   if (links.size === 0) {
-    return applyItemAttribution(incoming, existing, userId, now);
+    return attribute(incoming);
   }
 
   const linkOf = (item: SubmissionCheckItem) =>
@@ -749,12 +763,7 @@ async function resolveSubmissionItems(
 
   // Attribution still runs, just on the items it means something for. Order
   // and length are preserved, so the results zip back in a single pass.
-  const attributed = applyItemAttribution(
-    incoming.filter((item) => !linkOf(item)),
-    existing,
-    userId,
-    now
-  );
+  const attributed = attribute(incoming.filter((item) => !linkOf(item)));
 
   let next = 0;
   return incoming.map((item) => {
@@ -837,9 +846,10 @@ export const getCurrentWeekCheckStatus = query({
         _creationTime: v.number(),
         date: v.number(),
         dutyCrewId: v.id("dutyCrew"),
-        completedBy: v.id("users"),
+        completedBy: v.optional(v.id("users")),
         completedAt: v.number(),
         status: v.union(v.literal("draft"), v.literal("completed")),
+        closedAt: v.optional(v.number()),
         lastUpdatedBy: v.optional(v.id("users")),
         lastUpdatedAt: v.optional(v.number()),
         checkItems: v.array(checkItemValidator),
@@ -851,12 +861,14 @@ export const getCurrentWeekCheckStatus = query({
         name: v.string(),
         number: v.number(),
       }),
-      completedBy: v.object({
-        _id: v.id("users"),
-        name: v.string(),
-        firstName: v.optional(v.string()),
-        lastName: v.optional(v.string()),
-      }),
+      completedBy: v.optional(
+        v.object({
+          _id: v.id("users"),
+          name: v.string(),
+          firstName: v.optional(v.string()),
+          lastName: v.optional(v.string()),
+        })
+      ),
       lastUpdatedBy: v.optional(
         v.object({
           _id: v.id("users"),
@@ -943,11 +955,11 @@ export const getCurrentWeekCheckStatus = query({
       return null;
     }
 
-    // Get the user who completed the submission
-    const user = await ctx.db.get(submission.completedBy);
-    if (!user) {
-      return null;
-    }
+    // Who started the record. A week the close-out created on its own has
+    // nobody, and a deleted user must not hide the week either.
+    const user = submission.completedBy
+      ? await ctx.db.get(submission.completedBy)
+      : null;
 
     // Get the user who last updated the submission (if applicable)
     let lastUpdatedByUser = null;
@@ -983,12 +995,14 @@ export const getCurrentWeekCheckStatus = query({
         name: dutyCrew.name,
         number: dutyCrew.number,
       },
-      completedBy: {
-        _id: user._id,
-        name: user.name || "",
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
+      completedBy: user
+        ? {
+            _id: user._id,
+            name: user.name || "",
+            firstName: user.firstName,
+            lastName: user.lastName,
+          }
+        : undefined,
       lastUpdatedBy: lastUpdatedByUser ? {
         _id: lastUpdatedByUser._id,
         name: lastUpdatedByUser.name || "",
@@ -1096,7 +1110,9 @@ export const saveDraftStationCheck = mutation({
   },
 });
 
-// Submit a completed station check
+// DEPRECATED - weeks now close on their own (closeElapsedWeeks). Kept only
+// so a frontend still running the old Complete Checks button keeps working
+// until the new one is live on prod; delete it and reopenStationCheck then.
 export const submitStationCheck = mutation({
   args: {
     date: v.number(), // Timestamp for the date of submission
@@ -1250,7 +1266,7 @@ export const submitStationCheck = mutation({
   },
 });
 
-// Reopen a completed station check (change status from completed to draft)
+// DEPRECATED - see submitStationCheck. A closed week is edited in place now.
 export const reopenStationCheck = mutation({
   args: {
     submissionId: v.id("stationCheckSubmissions"),
@@ -1293,6 +1309,210 @@ export const reopenStationCheck = mutation({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Week close-out
+//
+// A duty week is a set of chores that either got done or didn't. It closes on
+// its own at the Monday boundary - nobody has to come back and press a button
+// to say so - and the summary email goes out then, naming what was and wasn't
+// done. That email is the follow-up mechanism; there is no submit gate.
+// ---------------------------------------------------------------------------
+
+// Drafts closed per transaction. Normally there is one (last week); the first
+// run after this shipped also sweeps up every week that was left in draft
+// under the old manual-submit flow.
+const CLOSE_BATCH = 25;
+
+// The checklist a week starts from when nobody opened it at all - the same
+// shape the This Week tab seeds before the first tick.
+async function blankWeekItems(ctx: QueryCtx): Promise<SubmissionCheckItem[]> {
+  const checks = await ctx.db
+    .query("stationChecks")
+    .withIndex("by_isActive", (q) => q.eq("isActive", true))
+    .take(500);
+  checks.sort((a, b) => a.order - b.order);
+
+  const items: SubmissionCheckItem[] = [];
+  for (const check of checks) {
+    items.push({
+      checkId: check._id,
+      name: check.name,
+      area: check.area,
+      isPriority: check.isPriority,
+      isCompleted: false,
+    });
+    const subItems = await ctx.db
+      .query("stationCheckSubitems")
+      .withIndex("by_stationCheckId_and_order", (q) =>
+        q.eq("stationCheckId", check._id)
+      )
+      .take(MAX_SUBITEMS_PER_CHECK);
+    for (const subItem of subItems) {
+      items.push({
+        subItemId: subItem._id,
+        parentCheckId: check._id,
+        name: subItem.name,
+        area: check.area,
+        isCompleted: false,
+      });
+    }
+  }
+  return items;
+}
+
+// The final state of a week's items: linked rows re-derived from that week's
+// inventory runs and then frozen, and rows for appliances that are off the run
+// dropped - the checklist hides those, so reporting them as "not done" would
+// be wrong. Ticked items keep their attribution untouched.
+async function finalWeekItems(
+  ctx: MutationCtx,
+  items: SubmissionCheckItem[],
+  date: number,
+  now: number
+): Promise<SubmissionCheckItem[]> {
+  const resolved = await resolveSubmissionItems(ctx, items, items, undefined, now, date);
+  const links = await linkedChecksFor(ctx, date);
+  return resolved.filter((item) => {
+    const link = item.checkId ? links.get(item.checkId) : undefined;
+    return !link || link.templateStatus === "active";
+  });
+}
+
+async function notifyWeekClosed(
+  ctx: MutationCtx,
+  submission: Pick<
+    Doc<"stationCheckSubmissions">,
+    "_id" | "date" | "dutyCrewId" | "checkItems" | "notes" | "crewSnapshot"
+  >
+) {
+  const crew = await ctx.db.get(submission.dutyCrewId);
+  const crewName = submission.crewSnapshot?.name ?? crew?.name ?? "Duty crew";
+  const notice = buildSubmissionNotice(submission.checkItems, crewName, submission.date);
+  const nothingRecorded = submission.checkItems.every((i) => !isResolved(i));
+
+  await notifyEvent(ctx, {
+    moduleId: "dutyCrew",
+    conditionKey: CHECKS_SUBMITTED_KEY,
+    title: "Duty crew week closed",
+    description: notice.description,
+    url: "/dutycrew?tab=history",
+    priority: notice.notDoneCount > 0 || notice.attention.length > 0 ? "medium" : "low",
+    sourceEntityId: submission._id,
+    emailSubject:
+      notice.notDoneCount > 0
+        ? `Duty crew week ending Sun ${notice.weekLabel}: ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} not done`
+        : `Duty crew week ending Sun ${notice.weekLabel}: all checks done`,
+    emailIntro: nothingRecorded
+      ? `The station checks week for ${crewName} has closed with nothing recorded against it.`
+      : `The station checks week for ${crewName} has closed. Here is what was and wasn't done.`,
+    emailDetails: [
+      { label: "Crew", value: crewName },
+      { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
+      { label: "Result", value: notice.summary },
+      ...(submission.notes?.trim()
+        ? [{ label: "Crew notes", value: submission.notes.trim() }]
+        : []),
+    ],
+    emailListTitle: "Needs attention",
+    emailList: notice.attention,
+  });
+}
+
+// Close every week that has ended. Runs daily from crons.ts; it catches up on
+// whatever is overdue rather than firing at an exact instant, so the fixed-UTC
+// cron schedule and DST don't matter, and a missed run just closes the week
+// on the next one. Idempotent: a closed week is never touched again.
+//
+// Only the week that has just ended is emailed. Anything older was abandoned
+// in draft under the old manual-submit flow; it is closed silently so it shows
+// up in History, rather than mailing the officer about months-old weeks.
+export const closeElapsedWeeks = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const thisWeek = weekWindow(now);
+    const lastWeek = weekWindow(thisWeek.start - 1);
+
+    const elapsed = await ctx.db
+      .query("stationCheckSubmissions")
+      .withIndex("by_status_and_date", (q) =>
+        q.eq("status", "draft").lt("date", thisWeek.start)
+      )
+      .take(CLOSE_BATCH);
+
+    for (const submission of elapsed) {
+      const checkItems = await finalWeekItems(
+        ctx,
+        submission.checkItems,
+        submission.date,
+        now
+      );
+      const isLastWeek = submission.date >= lastWeek.start;
+      // Today's roster is a fair record of the week that just ended, but not
+      // of one months ago - leave an old week without a snapshot rather than
+      // naming the wrong people.
+      const snapshot = isLastWeek
+        ? await crewSnapshotPatch(ctx, submission, submission.dutyCrewId)
+        : {};
+      await ctx.db.patch(submission._id, {
+        checkItems,
+        status: "completed",
+        closedAt: now,
+        ...snapshot,
+      });
+      if (isLastWeek) {
+        await notifyWeekClosed(ctx, {
+          ...submission,
+          checkItems,
+          crewSnapshot: submission.crewSnapshot ?? snapshot.crewSnapshot,
+        });
+      }
+    }
+
+    if (elapsed.length === CLOSE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.stationChecks.closeElapsedWeeks, {});
+      return null;
+    }
+
+    // A week nobody opened still closes, and still reports - an untouched week
+    // is exactly what the officer needs to hear about. Reads see the patches
+    // above, so a week that was just closed is found here and skipped.
+    if (await findSubmissionForWeek(ctx, lastWeek.end)) return null;
+
+    const { crew } = await resolveCrewForSunday(ctx, lastWeek.sunday);
+    if (!crew) return null;
+
+    const checkItems = await finalWeekItems(
+      ctx,
+      await blankWeekItems(ctx),
+      lastWeek.end,
+      now
+    );
+    if (checkItems.length === 0) return null;
+
+    const crewSnapshot = await buildCrewSnapshot(ctx, crew._id);
+    const submissionId = await ctx.db.insert("stationCheckSubmissions", {
+      // Same key the This Week tab writes: Sunday 23:59:59.999 Melbourne.
+      date: lastWeek.end,
+      dutyCrewId: crew._id,
+      checkItems,
+      completedAt: now,
+      status: "completed",
+      closedAt: now,
+      crewSnapshot,
+    });
+    await notifyWeekClosed(ctx, {
+      _id: submissionId,
+      date: lastWeek.end,
+      dutyCrewId: crew._id,
+      checkItems,
+      crewSnapshot,
+    });
+    return null;
+  },
+});
+
 // Paginated station check history, newest first, optionally filtered to one crew
 export const getStationCheckHistoryPage = query({
   args: {
@@ -1305,16 +1525,19 @@ export const getStationCheckHistoryPage = query({
         _id: v.id("stationCheckSubmissions"),
         date: v.number(),
         completedAt: v.number(),
+        closedAt: v.optional(v.number()),
         dutyCrew: v.union(
           v.object({ _id: v.id("dutyCrew"), name: v.string() }),
           v.null()
         ),
-        completedBy: v.object({
-          _id: v.id("users"),
-          name: v.string(),
-          firstName: v.optional(v.string()),
-          lastName: v.optional(v.string()),
-        }),
+        completedBy: v.optional(
+          v.object({
+            _id: v.id("users"),
+            name: v.string(),
+            firstName: v.optional(v.string()),
+            lastName: v.optional(v.string()),
+          })
+        ),
         checkItems: v.array(
           v.object({
             checkId: v.optional(v.id("stationChecks")),
@@ -1372,9 +1595,10 @@ export const getStationCheckHistoryPage = query({
 
     const page = [];
     for (const submission of result.page) {
-      let user = userCache.get(submission.completedBy);
-      if (user === undefined) {
-        user = await ctx.db.get(submission.completedBy);
+      let user: Doc<"users"> | null = null;
+      if (submission.completedBy) {
+        const cached = userCache.get(submission.completedBy);
+        user = cached === undefined ? await ctx.db.get(submission.completedBy) : cached;
         userCache.set(submission.completedBy, user);
       }
       let crew = crewCache.get(submission.dutyCrewId);
@@ -1382,7 +1606,6 @@ export const getStationCheckHistoryPage = query({
         crew = await ctx.db.get(submission.dutyCrewId);
         crewCache.set(submission.dutyCrewId, crew);
       }
-      if (!user) continue;
 
       // Explicitly construct the return object - never spread the raw document
       // to avoid leaking undeclared fields (_creationTime, status, etc.)
@@ -1390,15 +1613,18 @@ export const getStationCheckHistoryPage = query({
         _id: submission._id,
         date: submission.date,
         completedAt: submission.completedAt,
+        closedAt: submission.closedAt,
         dutyCrew: crew
           ? { _id: crew._id, name: crew.name }
           : null,
-        completedBy: {
-          _id: user._id,
-          name: user.name || "",
-          firstName: user.firstName,
-          lastName: user.lastName,
-        },
+        completedBy: user
+          ? {
+              _id: user._id,
+              name: user.name || "",
+              firstName: user.firstName,
+              lastName: user.lastName,
+            }
+          : undefined,
         checkItems: submission.checkItems.map((item) => ({
           checkId: item.checkId,
           subItemId: item.subItemId,

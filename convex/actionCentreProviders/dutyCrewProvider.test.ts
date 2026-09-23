@@ -4,19 +4,14 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { weekWindow } from "../stationChecks";
 
 const modules = import.meta.glob("../**/*.ts");
 
 // The provider works off the real clock, so tests pin a schedule override to
-// the Sunday of the current week.
-function thisWeeksSunday() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sunday = new Date(today);
-  const daysUntilSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
-  sunday.setDate(today.getDate() + daysUntilSunday);
-  return sunday;
-}
+// the Sunday of the current Melbourne week (UTC midnight of its date - the
+// dutyCrewSchedule key convention).
+const thisWeeksSunday = () => weekWindow(Date.now()).sunday;
 
 async function setup(opts: { onCrew: boolean }) {
   const t = convexTest(schema, modules);
@@ -73,19 +68,43 @@ describe("duty crew action centre provider", () => {
     expect(actions).toHaveLength(0);
   });
 
-  it("clears once the week's checks are submitted", async () => {
-    const { t, userId, dutyCrewId, sunday, asUser } = await setup({ onCrew: true });
+  it("clears early once every item is ticked or marked N/A", async () => {
+    const { t, userId, dutyCrewId, asUser } = await setup({ onCrew: true });
     await t.run(async (ctx) => {
       await ctx.db.insert("stationCheckSubmissions", {
-        date: sunday.getTime(),
+        // The key the This Week tab writes: Sunday 23:59:59.999 Melbourne
+        date: weekWindow(Date.now()).end,
         dutyCrewId,
         completedBy: userId,
         completedAt: Date.now(),
-        status: "completed",
-        checkItems: [{ name: "Empty bins", isCompleted: true }],
+        status: "draft",
+        checkItems: [
+          { name: "Empty bins", isCompleted: true },
+          { name: "Mow lawn", isCompleted: false, isNotApplicable: true },
+        ],
       });
     });
     const actions = dutyActions(await asUser.query(api.actionCentre.getMyActions, {}));
     expect(actions).toHaveLength(0);
+  });
+
+  it("counts what's left on a week in progress", async () => {
+    const { t, userId, dutyCrewId, asUser } = await setup({ onCrew: true });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("stationCheckSubmissions", {
+        date: weekWindow(Date.now()).end,
+        dutyCrewId,
+        completedBy: userId,
+        completedAt: Date.now(),
+        status: "draft",
+        checkItems: [
+          { name: "Empty bins", isCompleted: true },
+          { name: "Mow lawn", isCompleted: false },
+        ],
+      });
+    });
+    const actions = dutyActions(await asUser.query(api.actionCentre.getMyActions, {}));
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ count: 1 });
   });
 });

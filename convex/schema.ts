@@ -409,12 +409,18 @@ const applicationTables = {
   stationCheckSubmissions: defineTable({
     date: v.number(), // Timestamp for the date of submission (usually a Sunday)
     dutyCrewId: v.id("dutyCrew"), // Reference to the duty crew that completed the checks
-    completedBy: v.id("users"), // User who submitted the completed checklist
-    completedAt: v.number(), // Timestamp when the checklist was submitted
+    // Whoever started the week's record (or pressed the old Complete button).
+    // Absent on a week the close-out created because nobody touched it.
+    completedBy: v.optional(v.id("users")),
+    completedAt: v.number(), // When the record was created or finalised
     status: v.union(
-      v.literal("draft"), // Draft/in-progress submission
-      v.literal("completed") // Finalized submission
+      v.literal("draft"), // The week is still running
+      v.literal("completed") // The week has closed - see closedAt
     ),
+    // Set when closeElapsedWeeks finalised the week at the Monday boundary.
+    // Absent on weeks finalised by the old manual Complete button. A closed
+    // week stays editable - ticks land late - but its summary email has gone.
+    closedAt: v.optional(v.number()),
     lastUpdatedBy: v.optional(v.id("users")), // User who last updated the checklist
     lastUpdatedAt: v.optional(v.number()), // Timestamp of the last update
     checkItems: v.array(
