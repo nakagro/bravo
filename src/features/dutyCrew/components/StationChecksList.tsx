@@ -1,16 +1,6 @@
 import { useMemo, useState } from "react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Accordion } from "@/components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +8,7 @@ import {
   Plus,
   MessageSquare,
   AlertCircle,
+  Info,
   Trash2,
   UserRound,
   UsersRound,
@@ -27,7 +18,6 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
-  ChecklistActionBar,
   ChecklistNotesModal,
   ChecklistProgressHeader,
   ChecklistSection,
@@ -42,8 +32,8 @@ import {
 import {
   allocationTargetKey,
   checkItemStatus,
+  formatDateShort,
   getUserFullName,
-  isItemResolved,
   type AllocationTarget,
   type CheckItemData,
   type CrewAssignmentMember,
@@ -72,11 +62,11 @@ interface StationChecksListProps {
     isNotApplicable?: boolean
   ) => void;
   onGeneralNotesChange: (notes: string) => void;
-  onSubmit: () => void;
   onAddAdHocItem: (name: string) => void;
   onRemoveAdHocItem: (name: string) => void;
-  isSubmitting: boolean;
   submissionStatus: "draft" | "completed" | "not_started";
+  /** When the week closed itself; absent on weeks closed by the old button. */
+  closedAt?: number;
   isLeader: boolean;
   isAdmin: boolean;
   itemUsersById: Record<string, ItemUser>;
@@ -105,11 +95,10 @@ export function StationChecksList({
   onCheckToggle,
   onNotesChange,
   onGeneralNotesChange,
-  onSubmit,
   onAddAdHocItem,
   onRemoveAdHocItem,
-  isSubmitting,
   submissionStatus,
+  closedAt,
   isLeader,
   isAdmin,
   itemUsersById,
@@ -130,7 +119,6 @@ export function StationChecksList({
   const [showAddAdHoc, setShowAddAdHoc] = useState(false);
   const [newAdHocName, setNewAdHocName] = useState("");
   const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   // Allocating is an optional side-activity for the leader, so it lives behind
   // a mode rather than putting an "Assign" control on every single row.
   const [allocateMode, setAllocateMode] = useState(false);
@@ -159,8 +147,6 @@ export function StationChecksList({
     () => checkItems.filter((item) => item.isAdHoc),
     [checkItems],
   );
-  const unresolvedItems = checkItems.filter((item) => !isItemResolved(item));
-  const remainingCount = unresolvedItems.length;
   const progress = summariseChecklist(checkItems.map(checkItemStatus));
   const showAdHocSection = adHocItems.length > 0 || isLeader || isAdmin;
 
@@ -291,17 +277,6 @@ export function StationChecksList({
 
   const getCompletedByUser = (item: CheckItemData) =>
     item.completedBy ? itemUsersById[item.completedBy] ?? null : null;
-
-  // No submit gate. A week that can't be finished still gets submitted, and the
-  // notification names the outstanding items so the officer can follow up -
-  // gating it just left weeks sitting in draft, telling nobody anything.
-  const handleSubmit = () => {
-    if (remainingCount > 0) {
-      setShowSubmitConfirm(true);
-      return;
-    }
-    onSubmit();
-  };
 
   const handleSaveNotes = () => {
     if (!editingNotes) return;
@@ -660,51 +635,18 @@ export function StationChecksList({
         )}
       </div>
 
-      <ChecklistActionBar
-        state={submissionStatus === "completed" ? "completed" : "editable"}
-        primaryLabel="Complete Checks"
-        onPrimary={handleSubmit}
-        primaryDisabled={checkItems.length === 0}
-        isSubmitting={isSubmitting}
-      />
-
-      <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Submit with {remainingCount} item{remainingCount !== 1 ? "s" : ""}{" "}
-              outstanding?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              These weren't ticked off or marked N/A:{" "}
-              {unresolvedItems
-                .slice(0, 8)
-                .map((item) => item.name)
-                .join(", ")}
-              {unresolvedItems.length > 8
-                ? ` and ${unresolvedItems.length - 8} more`
-                : ""}
-              . They'll be named in the notification sent to the duty crew
-              officer, so add a note or mark an item N/A now if you can explain
-              why.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">
-              Keep checking
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setShowSubmitConfirm(false);
-                onSubmit();
-              }}
-            >
-              Submit anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Nothing to submit. The week closes itself early Monday and the
+          summary names what was and wasn't done - coming back to press a
+          button told the officer nothing a closed week doesn't. */}
+      <p
+        className="flex items-start gap-2 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-xs text-gray-500 dark:text-gray-400"
+        data-component="WeekCloseNote"
+      >
+        <Info className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
+        {submissionStatus === "completed"
+          ? `This week closed${closedAt ? ` on ${formatDateShort(closedAt)}` : ""} and its summary has gone to the duty crew officer. Late ticks still save to the record.`
+          : "No need to submit. The week closes on its own early Monday morning, and the duty crew officer gets a summary of what was and wasn't done."}
+      </p>
 
       <DeleteConfirmDialog
         open={confirmDeleteName !== null}

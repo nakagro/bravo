@@ -101,12 +101,14 @@ export const allocationTargetKey = (target: AllocationTarget) => {
 };
 
 export const statusConfig = {
+  // "completed" is the stored status of a week that has closed. It says
+  // nothing about whether every item got done, so it isn't painted green.
   completed: {
-    label: "Completed",
-    bg: "bg-green-100 dark:bg-green-900/30",
-    text: "text-green-800 dark:text-green-300",
-    border: "border-green-200 dark:border-green-800",
-    ringColor: "stroke-green-500 dark:stroke-green-400",
+    label: "Week Closed",
+    bg: "bg-blue-100 dark:bg-blue-900/30",
+    text: "text-blue-800 dark:text-blue-300",
+    border: "border-blue-200 dark:border-blue-800",
+    ringColor: "stroke-blue-500 dark:stroke-blue-400",
   },
   draft: {
     label: "In Progress",

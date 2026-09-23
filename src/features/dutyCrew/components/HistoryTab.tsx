@@ -51,12 +51,21 @@ import {
 
 const PAGE_SIZE = 12;
 
+// Weeks close themselves now, so "who submitted it" only exists on weeks
+// closed by the old Complete button - those keep their original byline.
+const submissionByline = (submission: HistorySubmission) =>
+  submission.closedAt
+    ? `Closed ${formatDateShort(submission.closedAt)}`
+    : `${submission.completedBy ? getUserFullName(submission.completedBy) : "Unknown"} · ${formatTime(submission.completedAt)}`;
+
 interface HistorySubmission {
   _id: Id<"stationCheckSubmissions">;
   date: number;
   completedAt: number;
+  closedAt?: number;
   dutyCrew: { _id: Id<"dutyCrew">; name: string } | null;
-  completedBy: {
+  // Absent on a week that closed with nobody having opened it
+  completedBy?: {
     _id: Id<"users">;
     name: string;
     firstName?: string;
@@ -134,8 +143,7 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
     <div className="space-y-3 p-4 overflow-y-auto">
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {submission.dutyCrew?.name ?? "Unknown crew"} &middot;{" "}
-        {getUserFullName(submission.completedBy)} &middot;{" "}
-        {formatTime(submission.completedAt)}
+        {submissionByline(submission)}
       </p>
 
       <Accordion
@@ -330,8 +338,7 @@ export function HistoryTab() {
                           )}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {getUserFullName(submission.completedBy)} &middot;{" "}
-                          {formatTime(submission.completedAt)}
+                          {submissionByline(submission)}
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />

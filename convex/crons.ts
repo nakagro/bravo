@@ -39,6 +39,17 @@ crons.daily(
   {}
 );
 
+// Close the duty crew week that has just ended and email what was and wasn't
+// done. Daily rather than weekly on purpose: the handler catches up on any
+// week that has ended, so a missed run closes it the next morning instead of
+// leaving it open for good.
+crons.cron(
+  "close elapsed duty crew weeks", // identifier
+  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Monday's run is the one that closes
+  internal.stationChecks.closeElapsedWeeks,
+  {}
+);
+
 // Process status transitions every 5 minutes
 crons.interval(
   "process status transitions", // identifier

@@ -114,17 +114,14 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     : crewMembers;
 
   // Mutations
-  const submitStationCheck = useMutation(api.stationChecks.submitStationCheck);
   const saveDraftStationCheck = useMutation(
     api.stationChecks.saveDraftStationCheck
   );
-  const reopenStationCheck = useMutation(api.stationChecks.reopenStationCheck);
   const setCheckAllocation = useMutation(
     api.stationCheckAllocations.setAllocation
   );
 
   // Local state
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkItems, setCheckItems] = useState<CheckItemData[]>([]);
   const [generalNotes, setGeneralNotes] = useState("");
 
@@ -234,14 +231,10 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         return;
       }
 
+      // A closed week is edited in place - a tick that lands Monday morning
+      // for a Sunday-night job just updates the record. Its summary email has
+      // already gone and is not re-sent.
       const submissionId = currentWeekStatus?.submission?._id;
-      if (currentWeekStatus?.submission?.status === "completed" && submissionId) {
-        await reopenStationCheck({ submissionId });
-        toast.info(
-          "Week reopened - tap Complete Checks again when you're finished."
-        );
-      }
-
       await saveDraftStationCheck({
         date: currentSunday.getTime(),
         dutyCrewId,
@@ -254,7 +247,6 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       getDutyCrewId,
       currentWeekStatus,
       currentSunday,
-      reopenStationCheck,
       saveDraftStationCheck,
     ]
   );
@@ -431,43 +423,6 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
     }
   };
 
-  const handleSubmit = async () => {
-    const dutyCrewId = getDutyCrewId();
-    if (!dutyCrewId) {
-      toast.error("Could not determine the duty crew for this week.");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await submitStationCheck({
-        date: currentSunday.getTime(),
-        dutyCrewId,
-        checkItems,
-        notes: generalNotes,
-        existingSubmissionId: currentWeekStatus?.submission?._id,
-      });
-      toast.success("Station checks completed!");
-    } catch (error) {
-      console.error("Error submitting station checks:", error);
-      toast.error("Failed to submit station checks. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReopen = async () => {
-    const submissionId = currentWeekStatus?.submission?._id;
-    if (!submissionId) return;
-    try {
-      await reopenStationCheck({ submissionId });
-      toast.info("Station checks reopened for editing.");
-    } catch (error) {
-      console.error("Error reopening station check:", error);
-      toast.error("Failed to reopen station checks.");
-    }
-  };
-
   const submissionStatus: "draft" | "completed" | "not_started" =
     currentWeekStatus?.submission?.status ?? "not_started";
 
@@ -498,8 +453,6 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         members={displayMembers}
         isHistoricalRoster={crewSnapshot !== undefined}
         submissionStatus={submissionStatus}
-        onReopen={handleReopen}
-        canReopen={isAdmin || isLeader === true}
       />
 
       <StationChecksList
@@ -510,11 +463,10 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         onCheckToggle={handleCheckToggle}
         onNotesChange={handleNotesChange}
         onGeneralNotesChange={handleGeneralNotesChange}
-        onSubmit={handleSubmit}
         onAddAdHocItem={handleAddAdHocItem}
         onRemoveAdHocItem={handleRemoveAdHocItem}
-        isSubmitting={isSubmitting}
         submissionStatus={submissionStatus}
+        closedAt={currentWeekStatus?.submission?.closedAt}
         isLeader={isLeader === true}
         isAdmin={isAdmin}
         itemUsersById={itemUsersById}

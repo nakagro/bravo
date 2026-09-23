@@ -1,52 +1,15 @@
-import { QueryCtx } from "../_generated/server";
-import { Doc } from "../_generated/dataModel";
 import { ActionProvider } from "./types";
-
-// Resolve which crew covers the week ending on the given Sunday: a manual
-// schedule override wins, otherwise the nth-Sunday-of-the-month rule (5th
-// Sundays are special all-crews weeks). Mirrors getCurrentWeekCheckStatus.
-async function resolveCrewForSunday(
-  ctx: QueryCtx,
-  sunday: Date
-): Promise<{ crew: Doc<"dutyCrew"> | null; isSpecial: boolean }> {
-  const schedule = await ctx.db
-    .query("dutyCrewSchedule")
-    .withIndex("by_date", (q) => q.eq("date", sunday.getTime()))
-    .first();
-  if (schedule) {
-    return {
-      crew: await ctx.db.get(schedule.dutyCrewId),
-      isSpecial: schedule.isSpecial,
-    };
-  }
-
-  let sundayCount = 0;
-  for (let i = 1; i <= sunday.getDate(); i++) {
-    if (new Date(sunday.getFullYear(), sunday.getMonth(), i).getDay() === 0) {
-      sundayCount++;
-    }
-  }
-  const isSpecial = sundayCount === 5;
-  const crew = await ctx.db
-    .query("dutyCrew")
-    .withIndex("by_number", (q) => q.eq("number", isSpecial ? 1 : sundayCount))
-    .first();
-  return { crew, isSpecial };
-}
+import { resolveCrewForSunday } from "../lib/dutyCrewRotation";
+import { findSubmissionForWeek, weekWindow } from "../stationChecks";
 
 // A single gentle "you're on duty crew this week" reminder - deliberately one
-// action for the whole week, never one per check item. Disappears once the
-// week's checks are submitted.
+// action for the whole week, never one per check item. Runs until the week
+// closes on its own (closeElapsedWeeks), or drops off early once every item is
+// ticked or marked N/A - there is no "submit" left to wait for.
 export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
   if (!p.hasModuleAccess("dutyCrew")) return [];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sunday = new Date(today);
-  const daysUntilSunday = today.getDay() === 0 ? 0 : 7 - today.getDay();
-  sunday.setDate(today.getDate() + daysUntilSunday);
-  const monday = new Date(sunday);
-  monday.setDate(sunday.getDate() - 6);
+  const { start: weekStart, sunday } = weekWindow(Date.now());
 
   const { crew, isSpecial } = await resolveCrewForSunday(ctx, sunday);
   if (!crew) return [];
@@ -58,20 +21,16 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
     : crew.members.includes(p.userId);
   if (!isOnDuty) return [];
 
-  const submission = await ctx.db
-    .query("stationCheckSubmissions")
-    .withIndex("by_date_and_dutyCrew", (q) =>
-      q.eq("date", sunday.getTime()).eq("dutyCrewId", crew._id)
-    )
-    .order("desc")
-    .first();
-  if (submission?.status === "completed") return [];
+  // Matched on the week window, not an exact date key: submissions are keyed
+  // to Sunday 23:59 Melbourne, which an exact UTC-midnight lookup never hit.
+  const submission = await findSubmissionForWeek(ctx, Date.now(), crew._id);
 
   const remaining = submission
     ? submission.checkItems.filter(
         (item) => !item.isCompleted && item.isNotApplicable !== true
       ).length
     : undefined;
+  if (remaining === 0) return [];
 
   const sundayLabel = sunday.toLocaleDateString("en-AU", {
     day: "numeric",
@@ -93,7 +52,7 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
       actionLabel: "Tick off checks",
       priority: "medium",
       count: remaining,
-      createdAt: monday.getTime(),
+      createdAt: weekStart,
       // Safe to wave away: the id carries this week's Sunday, so a dismissal
       // only silences the current week and next week's reminder is a new id.
       dismissible: true,
