@@ -35,6 +35,9 @@ interface EMVConditionsResponse {
 const REGION = "Central";
 const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
 
+// Muted card tones for "No Rating", so it sits back next to the rated colours.
+const NO_RATING_CLASSES = "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+
 // --- Startup timing helper ---
 const _t = (label: string) => (window as any).__BRAVO_T?.(label);
 
@@ -119,9 +122,6 @@ export function FireDangerRating() {
       .join(" ");
   };
 
-  // Detect dark mode
-  const isDarkMode = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
   const getFDRStyles = (category: string): React.CSSProperties => {
     switch (category?.toUpperCase()) {
       case "CATASTROPHIC":
@@ -149,14 +149,16 @@ export function FireDangerRating() {
           borderColor: "#67b436",
         };
       default:
-        // Softer colors for "No Rating" state
-        return {
-          backgroundColor: isDarkMode ? "#374151" : "#f3f4f6",
-          color: isDarkMode ? "#9ca3af" : "#374151",
-          borderColor: isDarkMode ? "#4b5563" : "#d1d5db",
-        };
+        // "No Rating" is styled by NO_RATING_CLASSES instead, so it follows the
+        // app's dark mode toggle rather than the device setting.
+        return {};
     }
   };
+
+  const isRated = (category: string) =>
+    ["CATASTROPHIC", "EXTREME", "HIGH", "MODERATE"].includes(category?.toUpperCase());
+
+  const fdrClasses = (category: string) => (isRated(category) ? "" : NO_RATING_CLASSES);
 
   if (loading) {
     return (
@@ -174,7 +176,7 @@ export function FireDangerRating() {
     <div className="flex items-center gap-2">
       {/* Today's FDR - colored and prominent */}
       <div
-        className="flex-1 rounded-lg shadow-sm px-4 py-2.5"
+        className={`flex-1 rounded-lg shadow-sm px-4 py-2.5 ${fdrClasses(currentFDR.category)}`}
         style={getFDRStyles(currentFDR.category)}
       >
         <div className="flex items-center gap-2">
@@ -197,7 +199,7 @@ export function FireDangerRating() {
       {/* Future forecasts - compact badges */}
       {tomorrowFDR && (
         <div
-          className="rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px]"
+          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${fdrClasses(tomorrowFDR.category)}`}
           style={getFDRStyles(tomorrowFDR.category)}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">Tomorrow</p>
@@ -211,7 +213,7 @@ export function FireDangerRating() {
       )}
       {dayAfterFDR && (
         <div
-          className="rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px]"
+          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${fdrClasses(dayAfterFDR.category)}`}
           style={getFDRStyles(dayAfterFDR.category)}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">{getFutureDayName(2)}</p>
