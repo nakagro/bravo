@@ -3,14 +3,14 @@ import { Button } from "../../../../components/ui/button";
 import { Toggle } from "../../../../components/ui/toggle";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { XIcon, HomeIcon, MapPinIcon, GlobeIcon, Zap } from 'lucide-react';
+import { XIcon, HomeIcon, MapPinIcon, GlobeIcon, Zap, Check, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from "../../../../lib/utils";
 import MessagePresetManager from "../MessagePresetManager";
 
 interface PersonalViewProps {
   deploymentDates: Date[];
   deploymentAvailability: { [key: string]: { notAvailable: boolean, local: boolean, shortHaul: boolean, longHaul: boolean, message?: string } };
-  handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => void;
+  handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => Promise<boolean>;
 }
 
 function PersonalView({
@@ -196,69 +196,87 @@ interface MessageInputProps {
     longHaul: boolean;
     message?: string;
   };
-  handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => void;
+  handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => Promise<boolean>;
 }
+
+type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
 
 function MessageInput({ date, initialValue, availability, handleDeploymentAvailabilityChange, id }: MessageInputProps) {
   // Local state for the input value
   const [inputValue, setInputValue] = useState(initialValue);
   const [showPresetManager, setShowPresetManager] = useState(false);
+  // The note saves itself, so tell the member where it's up to - otherwise
+  // there's no way to know it reached the server.
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   // Ref to store the timeout ID
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // The note still waiting on the debounce, so it can be flushed early
+  const pendingRef = useRef<string | null>(null);
+  // Only the newest save may report back; an older one finishing late must not
+  // overwrite its status.
+  const saveSeqRef = useRef(0);
 
   // Update local state when initialValue changes (e.g., when switching dates)
   useEffect(() => {
     setInputValue(initialValue);
   }, [initialValue]);
 
+  const persistMessage = async (message: string) => {
+    pendingRef.current = null;
+    const seq = ++saveSeqRef.current;
+    setSaveState("saving");
+    const ok = await handleDeploymentAvailabilityChange(
+      date,
+      availability.notAvailable ? 'notAvailable' : 'local', // Just pass the current state
+      availability.notAvailable ? true : availability.local, // Just pass the current state
+      message
+    );
+    if (seq === saveSeqRef.current) setSaveState(ok ? "saved" : "error");
+  };
+
+  const flushPending = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (pendingRef.current !== null) void persistMessage(pendingRef.current);
+  };
+
   // Handle input change with debouncing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
+    pendingRef.current = newValue;
+    setSaveState("pending");
 
     // Clear any existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    // Set a new timeout to update the database after 500ms of inactivity
+    // Save after 500ms of inactivity
     timeoutRef.current = setTimeout(() => {
-      // Update the message without changing availability options
-      handleDeploymentAvailabilityChange(
-        date,
-        availability.notAvailable ? 'notAvailable' : 'local', // Just pass the current state
-        availability.notAvailable ? true : availability.local, // Just pass the current state
-        newValue
-      );
+      timeoutRef.current = null;
+      void persistMessage(newValue);
     }, 500);
   };
 
-  // Clean up timeout on unmount
+  // Leaving the tab mid-typing used to drop the last keystrokes; send them.
+  const flushRef = useRef(flushPending);
+  flushRef.current = flushPending;
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
+    return () => flushRef.current();
   }, []);
-
-  const persistMessage = (message: string) => {
-    handleDeploymentAvailabilityChange(
-      date,
-      availability.notAvailable ? 'notAvailable' : 'local',
-      availability.notAvailable ? true : availability.local,
-      message
-    );
-  };
 
   const handlePresetSelect = (message: string) => {
     setInputValue(message);
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
 
-    persistMessage(message);
+    void persistMessage(message);
   };
 
   return (
@@ -270,6 +288,12 @@ function MessageInput({ date, initialValue, availability, handleDeploymentAvaila
           className="w-full text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600"
           value={inputValue}
           onChange={handleInputChange}
+          onBlur={flushPending}
+          enterKeyHint="done"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          aria-describedby={`${id}-status`}
         />
         <Button
           type="button"
@@ -282,6 +306,7 @@ function MessageInput({ date, initialValue, availability, handleDeploymentAvaila
           <Zap className="h-4 w-4" />
         </Button>
       </div>
+      <SaveStatus id={`${id}-status`} state={saveState} />
 
       {showPresetManager && (
         <MessagePresetManager
@@ -290,6 +315,35 @@ function MessageInput({ date, initialValue, availability, handleDeploymentAvaila
         />
       )}
     </>
+  );
+}
+
+function SaveStatus({ id, state }: { id: string; state: SaveState }) {
+  // Keep the line's height reserved so the card doesn't jump as the status changes
+  return (
+    <p id={id} role="status" aria-live="polite" className="mt-1 min-h-4 text-xs flex items-center gap-1">
+      {state === "pending" && (
+        <span className="text-gray-500 dark:text-gray-400">Unsaved changes…</span>
+      )}
+      {state === "saving" && (
+        <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none" />
+          Saving…
+        </span>
+      )}
+      {state === "saved" && (
+        <span className="flex items-center gap-1 text-green-700 dark:text-green-400">
+          <Check aria-hidden="true" className="h-3 w-3" />
+          Note saved
+        </span>
+      )}
+      {state === "error" && (
+        <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+          <AlertCircle aria-hidden="true" className="h-3 w-3" />
+          Not saved - check your connection and try again
+        </span>
+      )}
+    </p>
   );
 }
 

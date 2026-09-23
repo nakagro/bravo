@@ -9,6 +9,7 @@
 - Inventory: The "All OK" button is gone, so each item must now be checked on its own.
 - Hoses: New hose IDs must be two letters then four digits, e.g. WV3502.
 - Availability: Long member names now shorten with "…" instead of pushing the update time onto a second line.
+- Availability: Deployment notes now show "Saving…" and "Note saved", and failed changes tell you instead of silently undoing.
 
 ## [2026.09.20]
 - Sign in: Sign in with a 6-digit code sent to your email, password is still there as a fallback.
