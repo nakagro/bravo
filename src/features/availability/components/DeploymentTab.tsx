@@ -4,6 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
 import BrigadeView from './deployment/BrigadeView';
 import { Plane } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Helper to normalize a date to UTC midnight
 // This ensures consistent date handling across timezones
@@ -89,7 +90,8 @@ function DeploymentTab() {
 
   // Handle deployment availability change
   // Dates should already be UTC midnight, but we normalize to be safe
-  const handleDeploymentAvailabilityChange = async (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => {
+  // Resolves true once the server has the change, false if it was rolled back.
+  const handleDeploymentAvailabilityChange = async (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string): Promise<boolean> => {
     // Normalize the date to UTC midnight for consistent storage
     const normalizedDate = normalizeToUTCMidnight(date);
     const dateKey = getUTCDateKey(normalizedDate);
@@ -154,13 +156,17 @@ function DeploymentTab() {
       });
 
       // We already updated the local state above for better UX
+      return true;
     } catch (error) {
       console.error("Error updating deployment availability:", error);
-      // Revert local state if server update fails
+      // Revert local state if server update fails - and say so, otherwise the
+      // toggle just silently flips back.
       setDeploymentAvailability({
         ...deploymentAvailability,
         [dateKey]: currentAvailability
       });
+      toast.error("Couldn't save your deployment availability - please try again");
+      return false;
     }
   };
 
