@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { HOSE_ID_FORMAT_MESSAGE, isValidHoseId } from "../../../../convex/lib/hoseId";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import {
@@ -124,10 +125,14 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
   };
 
   const statusWarning = getStatusChangeWarning();
+  // Only new hoses are checked - an existing ID is locked and can't be edited.
+  const hoseIdInvalid = !hoseId && !isValidHoseId(formData.hoseId);
+  // Stay quiet while the prefilled "WV" is still being typed past.
+  const showHoseIdError = hoseIdInvalid && formData.hoseId.replace(/\s+/g, "").length >= 6;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || hoseIdInvalid) return;
     setIsSubmitting(true);
     try {
       if (hoseId) {
@@ -215,7 +220,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
             type="text"
             value={formData.hoseId}
             onChange={(e) => {
-              const next = e.target.value;
+              const next = e.target.value.toUpperCase();
               setFormData((f) => ({ ...f, hoseId: next }));
               if (!hoseId) {
                 const match = next.trim().toUpperCase().match(/^WV\s*(25|38|65)/i);
@@ -232,8 +237,17 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
             className="mt-2 h-12 text-base"
             placeholder="WV0001"
             required
+            maxLength={6}
+            autoCapitalize="characters"
+            aria-invalid={showHoseIdError}
+            aria-describedby={showHoseIdError ? "hoseId-error" : undefined}
             disabled={!!hoseId}
           />
+          {showHoseIdError && (
+            <p id="hoseId-error" className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {HOSE_ID_FORMAT_MESSAGE}
+            </p>
+          )}
         </div>
 
         {/* Type and Size */}
@@ -476,7 +490,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1 h-12 text-base">
         Cancel
       </Button>
-      <Button type="submit" form="hose-form" disabled={isSubmitting} className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
+      <Button type="submit" form="hose-form" disabled={isSubmitting || hoseIdInvalid} className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
         {isSubmitting && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
         {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
       </Button>

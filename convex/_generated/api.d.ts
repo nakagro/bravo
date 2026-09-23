@@ -62,6 +62,7 @@ import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_authUser from "../lib/authUser.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_dutyCrewRotation from "../lib/dutyCrewRotation.js";
+import type * as lib_hoseId from "../lib/hoseId.js";
 import type * as lib_launches from "../lib/launches.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
@@ -158,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authUser": typeof lib_authUser;
   "lib/dates": typeof lib_dates;
   "lib/dutyCrewRotation": typeof lib_dutyCrewRotation;
+  "lib/hoseId": typeof lib_hoseId;
   "lib/launches": typeof lib_launches;
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;

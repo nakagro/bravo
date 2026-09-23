@@ -7,6 +7,7 @@
 - Fire Danger: "No Rating" now follows dark mode.
 - Inventory: The item notes popup no longer jumps around when the keyboard opens.
 - Inventory: The "All OK" button is gone, so each item must now be checked on its own.
+- Hoses: New hose IDs must be two letters then four digits, e.g. WV3502.
 
 ## [2026.09.20]
 - Sign in: Sign in with a 6-digit code sent to your email, password is still there as a fallback.

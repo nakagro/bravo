@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { HOSE_ID_FORMAT_MESSAGE, HOSE_ID_PATTERN, normaliseHoseId } from "./lib/hoseId";
 
 export const list = query({
   args: {
@@ -106,9 +107,14 @@ export const add = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    const hoseId = normaliseHoseId(args.hoseId);
+    if (!HOSE_ID_PATTERN.test(hoseId)) {
+      throw new Error(HOSE_ID_FORMAT_MESSAGE);
+    }
+
     const existing = await ctx.db
       .query("hoses")
-      .withIndex("by_hoseId", q => q.eq("hoseId", args.hoseId))
+      .withIndex("by_hoseId", q => q.eq("hoseId", hoseId))
       .unique();
     
     if (existing) {
@@ -117,6 +123,7 @@ export const add = mutation({
 
     await ctx.db.insert("hoses", {
       ...args,
+      hoseId,
       createdBy: userId,
       updatedAt: Date.now(),
     });
