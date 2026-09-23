@@ -15,7 +15,7 @@ interface MemberComboboxProps {
   onChange: (value: Id<"users"> | null) => void;
   placeholder?: string;
   required?: boolean;
-  /** Offer a "Clear selection" row. Defaults to !required. */
+  /** Deleting the name and leaving the field clears it. Defaults to !required. */
   clearable?: boolean;
   emptyText?: string;
   error?: string;

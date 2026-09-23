@@ -166,12 +166,12 @@ function UserManagement() {
       badges: (
         <>
           {isSharedAccount(user) && (
-            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 group-data-[selected=true]:bg-white/20 group-data-[selected=true]:text-white">
               Shared
             </span>
           )}
           {isDisabledAccount(user) && (
-            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 group-data-[selected=true]:bg-white/20 group-data-[selected=true]:text-white">
               Disabled
             </span>
           )}

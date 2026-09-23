@@ -492,6 +492,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               placeholder="Search for a member..."
               emptyText="No members found."
               clearable
+              showClearButton
               listPosition="above"
             />
 
