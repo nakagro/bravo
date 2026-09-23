@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface UnableToCompleteSlot {
   label: string;
@@ -44,13 +45,20 @@ export function ChecklistNotesModal({
 }: ChecklistNotesModalProps) {
   // A reason is required so history explains why the item wasn't done
   const reasonMissing = !!unableToComplete?.value && !value.trim();
+  // On a phone, focusing the field while the drawer is still sliding in raises
+  // the keyboard mid-animation and throws the sheet off screen. Let the member
+  // tap the field once the drawer has settled.
+  const isMobile = useIsMobile();
 
   return (
     <ResponsiveModal
       open={open}
       onClose={onClose}
       title={title}
-      drawerHeight="h-[70vh]"
+      // Size to the content, capped by the *visible* viewport: a fixed 70vh
+      // sheet plus the keyboard is taller than the screen, so it got pushed
+      // up and left blank space where the form should be.
+      drawerHeight="h-auto max-h-[70dvh]"
     >
       <div className="space-y-4 pb-4">
         {unableToComplete && !readOnly && (
@@ -85,7 +93,7 @@ export function ChecklistNotesModal({
           }
           className="min-h-[120px] resize-none text-base"
           readOnly={readOnly}
-          autoFocus={!readOnly}
+          autoFocus={!readOnly && !isMobile}
         />
 
         {!readOnly && (

@@ -5,6 +5,7 @@
 - Duty Crew: The duty crew officer is emailed what was and wasn't done when a week closes.
 - Fire Danger: The dashboard widget now opens the Fire Danger page, which explains what each rating means.
 - Fire Danger: "No Rating" now follows dark mode.
+- Inventory: The item notes popup no longer jumps around when the keyboard opens.
 
 ## [2026.09.20]
 - Sign in: Sign in with a 6-digit code sent to your email, password is still there as a fallback.
