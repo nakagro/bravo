@@ -490,9 +490,9 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               value={onBehalfOf}
               onValueChange={(v) => setOnBehalfOf(v as Id<"users"> | "__blocked__" | null)}
               placeholder="Search for a member..."
-              searchPlaceholder="Search by name..."
               emptyText="No members found."
               clearable
+              listPosition="above"
             />
 
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">

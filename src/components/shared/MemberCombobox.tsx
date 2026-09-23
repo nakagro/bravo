@@ -48,7 +48,6 @@ export function MemberCombobox({
         value={value}
         onValueChange={(v) => onChange(v as Id<"users"> | null)}
         placeholder={placeholder}
-        searchPlaceholder="Search by name..."
         emptyText={emptyText}
         clearable={clearable}
         aria-invalid={!!error}

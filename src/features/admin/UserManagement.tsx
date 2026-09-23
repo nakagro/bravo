@@ -406,7 +406,6 @@ function UserManagement() {
           value={selectedUserId}
           onValueChange={(v) => handleUserChange(v as Id<"users"> | null)}
           placeholder="Search for a user"
-          searchPlaceholder="Search by name..."
           emptyText="No users found."
         />
       </div>
