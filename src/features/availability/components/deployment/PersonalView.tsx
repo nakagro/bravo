@@ -199,7 +199,7 @@ interface MessageInputProps {
   handleDeploymentAvailabilityChange: (date: Date, field: 'notAvailable' | 'local' | 'shortHaul' | 'longHaul', value: boolean, message?: string) => Promise<boolean>;
 }
 
-type SaveState = "idle" | "pending" | "saving" | "saved" | "error";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 function MessageInput({ date, initialValue, availability, handleDeploymentAvailabilityChange, id }: MessageInputProps) {
   // Local state for the input value
@@ -247,7 +247,8 @@ function MessageInput({ date, initialValue, availability, handleDeploymentAvaila
     const newValue = e.target.value;
     setInputValue(newValue);
     pendingRef.current = newValue;
-    setSaveState("pending");
+    // Clear a stale "Note saved" while typing; the status returns on save.
+    setSaveState("idle");
 
     // Clear any existing timeout
     if (timeoutRef.current) {
@@ -322,9 +323,6 @@ function SaveStatus({ id, state }: { id: string; state: SaveState }) {
   // Keep the line's height reserved so the card doesn't jump as the status changes
   return (
     <p id={id} role="status" aria-live="polite" className="mt-1 min-h-4 text-xs flex items-center gap-1">
-      {state === "pending" && (
-        <span className="text-gray-500 dark:text-gray-400">Unsaved changes…</span>
-      )}
       {state === "saving" && (
         <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
           <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none" />
