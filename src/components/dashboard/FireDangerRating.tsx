@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
+import { fdrAppearance, fdrLabel, NO_RATING_CARD_CLASSES } from "./fdrLevels";
 
 interface FDRData {
   category: string;
@@ -35,8 +38,6 @@ interface EMVConditionsResponse {
 const REGION = "Central";
 const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
 
-// Muted card tones for "No Rating", so it sits back next to the rated colours.
-const NO_RATING_CLASSES = "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 
 // --- Startup timing helper ---
 const _t = (label: string) => (window as any).__BRAVO_T?.(label);
@@ -115,50 +116,7 @@ export function FireDangerRating() {
     return date.toLocaleDateString("en-AU", { weekday: "short" });
   };
 
-  const capitalizeCategory = (category: string) => {
-    return category
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
-
-  const getFDRStyles = (category: string): React.CSSProperties => {
-    switch (category?.toUpperCase()) {
-      case "CATASTROPHIC":
-        return {
-          backgroundColor: "#af1917",
-          color: "#fff",
-          borderColor: "#af1917",
-        };
-      case "EXTREME":
-        return {
-          backgroundColor: "#f0820e",
-          color: "#000",
-          borderColor: "#f0820e",
-        };
-      case "HIGH":
-        return {
-          backgroundColor: "#fcdd37",
-          color: "#000",
-          borderColor: "#fcdd37",
-        };
-      case "MODERATE":
-        return {
-          backgroundColor: "#67b436",
-          color: "#000",
-          borderColor: "#67b436",
-        };
-      default:
-        // "No Rating" is styled by NO_RATING_CLASSES instead, so it follows the
-        // app's dark mode toggle rather than the device setting.
-        return {};
-    }
-  };
-
-  const isRated = (category: string) =>
-    ["CATASTROPHIC", "EXTREME", "HIGH", "MODERATE"].includes(category?.toUpperCase());
-
-  const fdrClasses = (category: string) => (isRated(category) ? "" : NO_RATING_CLASSES);
+  const badge = (category: string) => fdrAppearance(category, NO_RATING_CARD_CLASSES);
 
   if (loading) {
     return (
@@ -173,11 +131,15 @@ export function FireDangerRating() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <Link
+      to="/fdr"
+      className="group flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label="Fire danger ratings for all districts"
+    >
       {/* Today's FDR - colored and prominent */}
       <div
-        className={`flex-1 rounded-lg shadow-sm px-4 py-2.5 ${fdrClasses(currentFDR.category)}`}
-        style={getFDRStyles(currentFDR.category)}
+        className={`flex-1 rounded-lg shadow-sm px-4 py-2.5 ${badge(currentFDR.category).className}`}
+        style={badge(currentFDR.category).style}
       >
         <div className="flex items-center gap-2">
           {tfbStatus.today && (
@@ -191,7 +153,7 @@ export function FireDangerRating() {
             <p className="text-xs font-medium opacity-80">
               {tfbStatus.today ? "Total Fire Ban" : "Fire Danger"}
             </p>
-            <p className="text-base font-semibold">{capitalizeCategory(currentFDR.category)}</p>
+            <p className="text-base font-semibold">{fdrLabel(currentFDR.category)}</p>
           </div>
         </div>
       </div>
@@ -199,32 +161,36 @@ export function FireDangerRating() {
       {/* Future forecasts - compact badges */}
       {tomorrowFDR && (
         <div
-          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${fdrClasses(tomorrowFDR.category)}`}
-          style={getFDRStyles(tomorrowFDR.category)}
+          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${badge(tomorrowFDR.category).className}`}
+          style={badge(tomorrowFDR.category).style}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">Tomorrow</p>
           <div className="flex items-center justify-center gap-1">
             {tfbStatus.tomorrow && (
               <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
             )}
-            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(tomorrowFDR.category)}</p>
+            <p className="text-sm font-semibold leading-tight">{fdrLabel(tomorrowFDR.category)}</p>
           </div>
         </div>
       )}
       {dayAfterFDR && (
         <div
-          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${fdrClasses(dayAfterFDR.category)}`}
-          style={getFDRStyles(dayAfterFDR.category)}
+          className={`rounded-lg shadow-sm px-3 py-2.5 text-center min-w-[80px] ${badge(dayAfterFDR.category).className}`}
+          style={badge(dayAfterFDR.category).style}
         >
           <p className="text-[10px] font-medium opacity-80 leading-tight">{getFutureDayName(2)}</p>
           <div className="flex items-center justify-center gap-1">
             {tfbStatus.dayAfter && (
               <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
             )}
-            <p className="text-sm font-semibold leading-tight">{capitalizeCategory(dayAfterFDR.category)}</p>
+            <p className="text-sm font-semibold leading-tight">{fdrLabel(dayAfterFDR.category)}</p>
           </div>
         </div>
       )}
-    </div>
+      <ChevronRight
+        className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </Link>
   );
 }

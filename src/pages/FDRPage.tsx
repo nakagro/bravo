@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { RefreshCw } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FDR_LEVELS, fdrAppearance, fdrLabel } from "@/components/dashboard/fdrLevels";
+import { FdrAboutSheet } from "@/components/dashboard/FdrAboutSheet";
 
 interface RegionForecast {
   description: string;
@@ -26,8 +28,8 @@ interface TFBData {
 
 const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
 
-// Muted tones for "No Rating"; one step lighter than the gray-800 cards they sit on.
-const NO_RATING_CLASSES = "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+// The brigade's own fire district, tagged in the list.
+const HOME_DISTRICT = "Central";
 
 // Region display order (Central first, then alphabetical)
 const REGION_ORDER = [
@@ -48,6 +50,7 @@ export function FDRPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -135,35 +138,6 @@ export function FDRPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const getFDRStyles = (rating: string): React.CSSProperties => {
-    switch (rating?.toUpperCase()) {
-      case "CATASTROPHIC":
-        return { backgroundColor: "#af1917", color: "#fff" };
-      case "EXTREME":
-        return { backgroundColor: "#f0820e", color: "#000" };
-      case "HIGH":
-        return { backgroundColor: "#fcdd37", color: "#000" };
-      case "MODERATE":
-        return { backgroundColor: "#67b436", color: "#000" };
-      default:
-        // "No Rating" is styled by NO_RATING_CLASSES instead, so it follows the
-        // app's dark mode toggle.
-        return {};
-    }
-  };
-
-  const isRated = (rating: string) =>
-    ["CATASTROPHIC", "EXTREME", "HIGH", "MODERATE"].includes(rating?.toUpperCase());
-
-  const fdrClasses = (rating: string) => (isRated(rating) ? "" : NO_RATING_CLASSES);
-
-  const capitalizeRating = (rating: string) => {
-    return rating
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
-
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -243,14 +217,25 @@ export function FDRPage() {
       {/* Header */}
       <div className="flex justify-between items-center gap-2">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Fire Danger Ratings</h1>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setAboutOpen(true)}
+            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="About this data"
+            title="About this data"
+          >
+            <Info className="h-5 w-5" />
+          </button>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            aria-label="Refresh"
+            title="Refresh"
+          >
+            <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {/* Issue time */}
@@ -260,24 +245,17 @@ export function FDRPage() {
         </p>
       )}
 
-      {/* Legend with FBI thresholds */}
-      <div className="flex flex-wrap gap-1.5 text-xs">
-        {[
-          { rating: "No Rating", fbi: "< 12", style: getFDRStyles("No Rating") },
-          { rating: "Moderate", fbi: "12-23", style: getFDRStyles("Moderate") },
-          { rating: "High", fbi: "24-49", style: getFDRStyles("High") },
-          { rating: "Extreme", fbi: "50-99", style: getFDRStyles("Extreme") },
-          { rating: "Catastrophic", fbi: "≥ 100", style: getFDRStyles("Catastrophic") },
-        ].map(({ rating, fbi, style }) => (
-          <div
-            key={rating}
-            className={`flex flex-col items-center px-2 py-1 rounded ${fdrClasses(rating)}`}
-            style={style}
-          >
-            <span className="font-semibold">{rating}</span>
-            <span className="text-[10px] opacity-80">({fbi})</span>
-          </div>
-        ))}
+      {/* Legend: rating, FBI range and what it asks of you */}
+      <div className="grid grid-cols-5 gap-1 text-center text-xs">
+        {FDR_LEVELS.map((level) => {
+          const look = fdrAppearance(level.key);
+          return (
+            <div key={level.key} className={`rounded px-1 py-1.5 ${look.className}`} style={look.style}>
+              <span className="block text-[11px] font-semibold leading-tight sm:text-xs">{level.label}</span>
+              <span className="block text-[10px] opacity-80">FBI {level.fbi}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Mobile: Card-based layout */}
@@ -291,6 +269,11 @@ export function FDRPage() {
                     <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
                   )}
                   {region.description}
+                  {region.description === HOME_DISTRICT && (
+                    <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                      Our district
+                    </span>
+                  )}
                   {hasTFB(region.description, 0) && (
                     <span className="text-xs font-bold text-red-600 dark:text-red-400">TOTAL FIRE BAN</span>
                   )}
@@ -299,8 +282,8 @@ export function FDRPage() {
                   {region.forecasts.map((forecast, idx) => (
                     <div
                       key={idx}
-                      className={`rounded p-1.5 text-center ${fdrClasses(forecast.rating)}`}
-                      style={getFDRStyles(forecast.rating)}
+                      className={`rounded p-1.5 text-center ${fdrAppearance(forecast.rating).className}`}
+                      style={fdrAppearance(forecast.rating).style}
                     >
                       <p className="text-[10px] opacity-80 leading-tight flex items-center justify-center gap-0.5">
                         {hasTFB(region.description, idx) && (
@@ -309,9 +292,7 @@ export function FDRPage() {
                         {getDayLabel(idx, forecast.startDate)}
                       </p>
                       <p className="text-xs font-semibold leading-tight">
-                        {forecast.rating.toUpperCase() === "NO RATING" 
-                          ? "No Rating" 
-                          : capitalizeRating(forecast.rating)}{" "}
+                        {fdrLabel(forecast.rating)}{" "}
                         <span className="font-normal opacity-80">{forecast.index}</span>
                       </p>
                     </div>
@@ -353,6 +334,11 @@ export function FDRPage() {
                           <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-4 w-4" />
                         )}
                         {region.description}
+                        {region.description === HOME_DISTRICT && (
+                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            Our district
+                          </span>
+                        )}
                         {hasTFB(region.description, 0) && (
                           <span className="text-xs font-bold text-red-600 dark:text-red-400">TOTAL FIRE BAN</span>
                         )}
@@ -361,14 +347,14 @@ export function FDRPage() {
                     {region.forecasts.map((forecast, idx) => (
                       <td key={idx} className="p-2 text-center">
                         <div
-                          className={`inline-flex flex-col items-center justify-center rounded px-2 py-1.5 min-w-[80px] ${fdrClasses(forecast.rating)}`}
-                          style={getFDRStyles(forecast.rating)}
+                          className={`inline-flex flex-col items-center justify-center rounded px-2 py-1.5 min-w-[80px] ${fdrAppearance(forecast.rating).className}`}
+                          style={fdrAppearance(forecast.rating).style}
                         >
                           <span className="font-semibold text-xs flex items-center gap-1">
                             {hasTFB(region.description, idx) && (
                               <img src="/icons/tfb_icon_big.png" alt="TFB" className="h-3.5 w-3.5" />
                             )}
-                            {capitalizeRating(forecast.rating)}
+                            {fdrLabel(forecast.rating)}
                           </span>
                           <span className="text-[10px] opacity-80">
                             FBI: {forecast.index}
@@ -384,10 +370,23 @@ export function FDRPage() {
         </Card>
       )}
 
-      {/* Footer info */}
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
-        Data sourced from Bureau of Meteorology.
-      </p>
+      {/* Footer: where the data comes from */}
+      <button
+        onClick={() => setAboutOpen(true)}
+        className="flex w-full items-center gap-2 rounded-lg border border-border p-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/60"
+      >
+        <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="flex-1">
+          Ratings from the Bureau of Meteorology, fire bans from the CFA.{" "}
+          <span className="font-medium text-foreground">Where the data comes from and how to check it</span>
+        </span>
+      </button>
+
+      <FdrAboutSheet
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        issueTime={data?.issueTime ? formatIssueTime(data.issueTime) : undefined}
+      />
     </div>
   );
 }
