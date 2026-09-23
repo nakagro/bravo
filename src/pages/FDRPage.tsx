@@ -26,6 +26,9 @@ interface TFBData {
 
 const TFB_ACTIVE = "YES - TOTAL FIRE BAN IN FORCE";
 
+// Muted tones for "No Rating"; one step lighter than the gray-800 cards they sit on.
+const NO_RATING_CLASSES = "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+
 // Region display order (Central first, then alphabetical)
 const REGION_ORDER = [
   "Central",
@@ -143,9 +146,16 @@ export function FDRPage() {
       case "MODERATE":
         return { backgroundColor: "#67b436", color: "#000" };
       default:
-        return { backgroundColor: "#e5e7eb", color: "#374151" };
+        // "No Rating" is styled by NO_RATING_CLASSES instead, so it follows the
+        // app's dark mode toggle.
+        return {};
     }
   };
+
+  const isRated = (rating: string) =>
+    ["CATASTROPHIC", "EXTREME", "HIGH", "MODERATE"].includes(rating?.toUpperCase());
+
+  const fdrClasses = (rating: string) => (isRated(rating) ? "" : NO_RATING_CLASSES);
 
   const capitalizeRating = (rating: string) => {
     return rating
@@ -261,7 +271,7 @@ export function FDRPage() {
         ].map(({ rating, fbi, style }) => (
           <div
             key={rating}
-            className="flex flex-col items-center px-2 py-1 rounded"
+            className={`flex flex-col items-center px-2 py-1 rounded ${fdrClasses(rating)}`}
             style={style}
           >
             <span className="font-semibold">{rating}</span>
@@ -289,7 +299,7 @@ export function FDRPage() {
                   {region.forecasts.map((forecast, idx) => (
                     <div
                       key={idx}
-                      className="rounded p-1.5 text-center"
+                      className={`rounded p-1.5 text-center ${fdrClasses(forecast.rating)}`}
                       style={getFDRStyles(forecast.rating)}
                     >
                       <p className="text-[10px] opacity-80 leading-tight flex items-center justify-center gap-0.5">
@@ -351,7 +361,7 @@ export function FDRPage() {
                     {region.forecasts.map((forecast, idx) => (
                       <td key={idx} className="p-2 text-center">
                         <div
-                          className="inline-flex flex-col items-center justify-center rounded px-2 py-1.5 min-w-[80px]"
+                          className={`inline-flex flex-col items-center justify-center rounded px-2 py-1.5 min-w-[80px] ${fdrClasses(forecast.rating)}`}
                           style={getFDRStyles(forecast.rating)}
                         >
                           <span className="font-semibold text-xs flex items-center gap-1">
