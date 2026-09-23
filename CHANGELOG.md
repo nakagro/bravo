@@ -1,11 +1,21 @@
 # Changelog
 
+## [2026.09.23]
+- Duty Crew: Weeks now close themselves at the Monday boundary, no Complete button needed.
+- Duty Crew: The duty crew officer is emailed what was and wasn't done when a week closes.
+- Fire Danger: The dashboard widget now opens the Fire Danger page, which explains what each rating means.
+- Fire Danger: "No Rating" now follows dark mode.
+
+## [2026.09.20]
+- Sign in: Sign in with a 6-digit code sent to your email, password is still there as a fallback.
+- Sign in: One sign-in now carries over to other brigade apps.
+
 ## [2026.09.15]
-- Events: An event can now let members bring guests. Turn on "Members can bring guests" when creating or editing one, and anyone who says they're going gets a simple counter to say how many they're bringing. The event shows the real headcount, members plus guests, so catering isn't a guessing game. Off by default and set per event, so nothing changes on an event that doesn't need it.
-- Events: Guest numbers are unlimited unless you set a limit. If the venue caps the numbers, set "Max guests per member" and the counter stops there. Lowering a limit later never quietly changes an answer someone has already given.
-- Events: Optionally ask for dietary requirements alongside guests. Each member gets one box covering themselves and anyone they're bringing, and only the organiser and the event's team leaders can read what's written there.
-- Events: Organisers can now see when each member answered and when they last changed their mind, shown beside their name in the Responses list with a pencil marking anyone who has been back to change it. This works for every event that already exists.
-- Events: New "Response activity" list on the Responses panel showing exactly what changed, newest first. A yes that became a no the night before is now on the record, as is a shift picked up and quietly dropped, which previously left no trace at all. Only covers changes made from this release onwards.
+- Events: An event can now let members bring guests.
+- Events: Organisers can set a max number of guests per member.
+- Events: Optionally ask for dietary requirements, visible only to the organiser and team leaders.
+- Events: Organisers can see when each member responded and when they changed it.
+- Events: New "Response activity" list showing every change to responses, newest first.
 
 ## [2026.08.28]
 - Inventory: Appliance templates now have a lifecycle. A template can be active, taken out of service, or archived, instead of only existing or being destroyed. Out of service suits a spare appliance that isn't in use, archived retires a template while keeping every check ever done against it.
@@ -51,7 +61,6 @@
 - Duty Crew and Inventory checklists now look and behave the same way. Both have a progress ring that stays in view as you scroll and a bottom bar that tells you how many items are left, tap it to jump to the next one. Sections can be collapsed, show their own count, and the notes, confirmation and empty screens are now identical across the two.
 - Inventory: Browser pop-ups replaced with proper in-app confirmations, and the tab you're on is now part of the address, so a link to an inventory check opens where you expect.
 - Inventory: When a check is completed, the people responsible are now told automatically, in the Action Centre and by email, with anything that came up short named in the notice. Choose who gets told under Inventory → Admin → Notify.
-- Duty Crew: A week no longer has to be fully ticked off before it can be submitted. Submitting with items outstanding asks you to confirm, and the notice sent to the duty crew officer names exactly what was left undone. Weeks were previously sitting in draft forever, which told nobody anything.
 
 ## [2026.08.06]
 - Events: Organisers can now close member responses, useful once a roster is set. Members see a "Can't attend" button instead of the usual RSVP, so late changes still get through without reopening the whole event to everyone.

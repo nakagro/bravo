@@ -70,6 +70,18 @@ is *not* in `main`; merge and find out why it diverged.
 Agents cannot push `main` (`.husky/pre-push` blocks non-TTY shells), so in practice: commit, then
 hand the push **and** the `uat` re-sync back to Shaun as a pair — not just the push.
 
+## Changelog
+
+`CHANGELOG.md` feeds the in-app About page. **Whenever a user-facing change is committed, add it to
+`CHANGELOG.md` in the same piece of work** — don't wait to be asked. At the start of a session, if
+`git log` shows user-facing commits dated after the newest `## [YYYY.MM.DD]` heading, offer to
+catch it up.
+
+- Heading is the date, `## [YYYY.MM.DD]`, newest first.
+- One bullet per change, **one short sentence**, prefixed with the module (`- Events: ...`).
+  No second sentences, no explaining why. E.g. `- Events: An event can now let members bring guests.`
+- Plain language for members. Skip refactors, dependency bumps and tooling unless members notice them.
+
 ## Documentation
 
 `docs/README.md` is a **generated index** of every doc, grouped by status. Read it before assuming a
