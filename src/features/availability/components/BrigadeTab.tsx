@@ -185,8 +185,8 @@ function BrigadeTab({
                     <div className="px-3 pb-1 space-y-0.5">
                       {groupedByStatus['available - station'].map((user) => (
                         <div key={user._id} className="border-l-4 border-transparent py-0.5">
-                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1 min-w-0">
                               {isAtStation(user) && (
                                 <svg 
                                   xmlns="http://www.w3.org/2000/svg" 
@@ -199,15 +199,16 @@ function BrigadeTab({
                                   <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                                 </svg>
                               )}
-                              {formatUserName(user)}
+                              {/* Long names ellipsise rather than wrap the time onto a second line. */}
+                              <span className="truncate" title={formatUserName(user)}>{formatUserName(user)}</span>
                               {user.isBirthday && (
-                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                <span aria-label="Birthday" title="Birthday" className="text-base shrink-0">
                                   🎂
                                 </span>
                               )}
                             </span>
                             {user.statusUpdatedAt && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap">
                                 {getRelativeTimeCompact(user.statusUpdatedAt)}
                               </span>
                             )}
@@ -235,17 +236,18 @@ function BrigadeTab({
                     <div className="px-3 pb-1 space-y-0.5">
                       {groupedByStatus['available - satellite'].map((user) => (
                         <div key={user._id} className="border-l-4 border-transparent py-0.5">
-                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
-                              {formatUserName(user)}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1 min-w-0">
+                              {/* Long names ellipsise rather than wrap the time onto a second line. */}
+                              <span className="truncate" title={formatUserName(user)}>{formatUserName(user)}</span>
                               {user.isBirthday && (
-                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                <span aria-label="Birthday" title="Birthday" className="text-base shrink-0">
                                   🎂
                                 </span>
                               )}
                             </span>
                             {user.statusUpdatedAt && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap">
                                 {getRelativeTimeCompact(user.statusUpdatedAt)}
                               </span>
                             )}
@@ -282,8 +284,8 @@ function BrigadeTab({
                     <div className="px-3 pb-1 space-y-0.5">
                       {users.map((user) => (
                         <div key={user._id} className="border-l-4 border-transparent py-0.5">
-                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1 min-w-0">
                               {isAtStation(user) && (
                                 <svg 
                                   xmlns="http://www.w3.org/2000/svg" 
@@ -296,15 +298,16 @@ function BrigadeTab({
                                   <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                                 </svg>
                               )}
-                              {formatUserName(user)}
+                              {/* Long names ellipsise rather than wrap the time onto a second line. */}
+                              <span className="truncate" title={formatUserName(user)}>{formatUserName(user)}</span>
                               {user.isBirthday && (
-                                <span aria-label="Birthday" title="Birthday" className="text-base">
+                                <span aria-label="Birthday" title="Birthday" className="text-base shrink-0">
                                   🎂
                                 </span>
                               )}
                             </span>
                             {user.statusUpdatedAt && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap">
                                 {getRelativeTimeCompact(user.statusUpdatedAt)}
                               </span>
                             )}
