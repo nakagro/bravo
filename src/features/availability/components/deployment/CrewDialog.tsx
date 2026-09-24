@@ -8,17 +8,40 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 
-const QUICK_NAMES = ['Pumper', 'Tanker', 'FCV'];
+const BRIGADE_NAME = 'Wyndham Vale';
+const QUICK_APPLIANCES = ['Pumper', 'Tanker', 'FCV'];
 const CREW_SEATS = 3;
+
+/**
+ * A seat holds a BRAVO member or, for crew from another brigade, a typed name.
+ * Both are kept while editing so flipping between them doesn't lose either.
+ */
+export interface SeatDraft {
+  external: boolean;
+  userId: Id<"users"> | null;
+  name: string;
+}
+
+export const emptySeat = (): SeatDraft => ({ external: false, userId: null, name: '' });
 
 export interface CrewDraft {
   crewId?: Id<"deploymentCrews">;
   date: number;
   applianceName: string;
-  driverId: Id<"users"> | null;
-  crewLeaderId: Id<"users"> | null;
-  crewMemberIds: Array<Id<"users"> | null>;
+  crewLeader: SeatDraft;
+  driver: SeatDraft;
+  crewMembers: SeatDraft[];
   notes: string;
+}
+
+type SeatKey = 'crewLeader' | 'driver' | number;
+
+function toSeat(seat: SeatDraft) {
+  if (seat.external) {
+    const name = seat.name.trim();
+    return name ? { name } : undefined;
+  }
+  return seat.userId ? { userId: seat.userId } : undefined;
 }
 
 interface CrewDialogProps {
@@ -83,22 +106,65 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
       .map(({ order: _order, ...option }) => option);
   }, [members, dayAvailability]);
 
+  const getSeat = (key: SeatKey) => (typeof key === 'number' ? draft.crewMembers[key] : draft[key]);
+
+  const updateSeat = (key: SeatKey, change: Partial<SeatDraft>) =>
+    setDraft((d) => {
+      if (typeof key === 'number') {
+        const crewMembers = [...d.crewMembers];
+        crewMembers[key] = { ...crewMembers[key], ...change };
+        return { ...d, crewMembers };
+      }
+      return { ...d, [key]: { ...d[key], ...change } };
+    });
+
   // Hide members already seated elsewhere on this truck from each picker.
   const optionsFor = (current: Id<"users"> | null) => {
     const taken = new Set(
-      [draft.driverId, draft.crewLeaderId, ...draft.crewMemberIds].filter(
-        (id): id is Id<"users"> => id !== null && id !== current
-      )
+      [draft.driver, draft.crewLeader, ...draft.crewMembers]
+        .filter((s) => !s.external && s.userId !== null && s.userId !== current)
+        .map((s) => s.userId)
     );
     return options.filter((o) => !taken.has(o._id));
   };
 
-  const setCrewMember = (index: number, value: Id<"users"> | null) =>
-    setDraft((d) => {
-      const next = [...d.crewMemberIds];
-      next[index] = value;
-      return { ...d, crewMemberIds: next };
-    });
+  const renderSeat = (key: SeatKey, label: string) => {
+    const seat = getSeat(key);
+    const inputId = `crew-seat-${key}`;
+    return (
+      <div key={label}>
+        {seat.external ? (
+          <div>
+            <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {label}
+            </label>
+            <input
+              id={inputId}
+              value={seat.name}
+              onChange={(e) => updateSeat(key, { name: e.target.value })}
+              placeholder="Name and brigade, e.g. Pat Lee (Werribee)"
+              maxLength={60}
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base"
+            />
+          </div>
+        ) : (
+          <MemberCombobox
+            label={label}
+            options={optionsFor(seat.userId)}
+            value={seat.userId}
+            onChange={(v) => updateSeat(key, { userId: v })}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => updateSeat(key, { external: !seat.external })}
+          className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {seat.external ? 'Pick a BRAVO member instead' : 'Not on BRAVO? Type a name'}
+        </button>
+      </div>
+    );
+  };
 
   const handleSave = async () => {
     const applianceName = draft.applianceName.trim();
@@ -109,9 +175,9 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
     const payload = {
       date: draft.date,
       applianceName,
-      driverId: draft.driverId ?? undefined,
-      crewLeaderId: draft.crewLeaderId ?? undefined,
-      crewMemberIds: draft.crewMemberIds.filter((id): id is Id<"users"> => id !== null),
+      driver: toSeat(draft.driver),
+      crewLeader: toSeat(draft.crewLeader),
+      crewMembers: draft.crewMembers.flatMap((seat) => toSeat(seat) ?? []),
       notes: draft.notes.trim() || undefined,
     };
     setSaving(true);
@@ -152,27 +218,30 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
             Appliance<span className="text-red-500 ml-0.5">*</span>
           </label>
           <div className="flex flex-wrap gap-2 mb-2">
-            {QUICK_NAMES.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => { setDraft((d) => ({ ...d, applianceName: name })); setNameError(undefined); }}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[36px]',
-                  draft.applianceName === name
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
-                )}
-              >
-                {name}
-              </button>
-            ))}
+            {QUICK_APPLIANCES.map((appliance) => {
+              const name = `${BRIGADE_NAME} ${appliance}`;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => { setDraft((d) => ({ ...d, applianceName: name })); setNameError(undefined); }}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[36px]',
+                    draft.applianceName === name
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+                  )}
+                >
+                  {appliance}
+                </button>
+              );
+            })}
           </div>
           <input
             id="crew-appliance"
             value={draft.applianceName}
             onChange={(e) => { setDraft((d) => ({ ...d, applianceName: e.target.value })); setNameError(undefined); }}
-            placeholder="Or type a name, e.g. Strike Team Pumper"
+            placeholder="Or type a name, e.g. Werribee Tanker"
             maxLength={60}
             aria-invalid={!!nameError}
             className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base"
@@ -202,27 +271,9 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
           Members available for short or long haul that day are listed first.
         </p>
 
-        <MemberCombobox
-          label="Crew Leader"
-          options={optionsFor(draft.crewLeaderId)}
-          value={draft.crewLeaderId}
-          onChange={(v) => setDraft((d) => ({ ...d, crewLeaderId: v }))}
-        />
-        <MemberCombobox
-          label="Driver"
-          options={optionsFor(draft.driverId)}
-          value={draft.driverId}
-          onChange={(v) => setDraft((d) => ({ ...d, driverId: v }))}
-        />
-        {Array.from({ length: CREW_SEATS }, (_, i) => (
-          <MemberCombobox
-            key={i}
-            label={`Crew ${i + 1}`}
-            options={optionsFor(draft.crewMemberIds[i] ?? null)}
-            value={draft.crewMemberIds[i] ?? null}
-            onChange={(v) => setCrewMember(i, v)}
-          />
-        ))}
+        {renderSeat('crewLeader', 'Crew Leader')}
+        {renderSeat('driver', 'Driver')}
+        {Array.from({ length: CREW_SEATS }, (_, i) => renderSeat(i, `Crew ${i + 1}`))}
 
         <div>
           <label htmlFor="crew-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>

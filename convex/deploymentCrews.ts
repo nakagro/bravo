@@ -1,5 +1,5 @@
 import { query, mutation, type MutationCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireModuleAccess } from "./modules";
@@ -18,27 +18,49 @@ function normalizeToMidnight(timestamp: number): number {
   return date.getTime();
 }
 
+// A BRAVO member, or a typed name for someone from another brigade.
+const seatValidator = v.union(
+  v.object({ userId: v.id("users") }),
+  v.object({ name: v.string() }),
+);
+type Seat = Infer<typeof seatValidator>;
+
 const crewFields = {
   date: v.number(),
   applianceName: v.string(),
-  driverId: v.optional(v.id("users")),
-  crewLeaderId: v.optional(v.id("users")),
-  crewMemberIds: v.array(v.id("users")),
+  driver: v.optional(seatValidator),
+  crewLeader: v.optional(seatValidator),
+  crewMembers: v.array(seatValidator),
   notes: v.optional(v.string()),
 };
 
-const seatValidator = v.union(
-  v.null(),
-  v.object({ userId: v.id("users"), name: v.string() }),
-);
+const seatOutput = v.object({
+  userId: v.optional(v.id("users")),
+  name: v.string(),
+  external: v.boolean(),
+});
+
+async function cleanSeat(ctx: MutationCtx, seat: Seat | undefined): Promise<Seat | undefined> {
+  if (!seat) return undefined;
+  if ("userId" in seat) {
+    if (!(await ctx.db.get(seat.userId))) throw new Error("One of the chosen members no longer exists");
+    return { userId: seat.userId };
+  }
+  const name = seat.name.trim();
+  if (!name) return undefined;
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Names must be ${MAX_NAME_LENGTH} characters or fewer`);
+  }
+  return { name };
+}
 
 async function validateCrew(
   ctx: MutationCtx,
   args: {
     applianceName: string;
-    driverId?: Id<"users">;
-    crewLeaderId?: Id<"users">;
-    crewMemberIds: Id<"users">[];
+    driver?: Seat;
+    crewLeader?: Seat;
+    crewMembers: Seat[];
     notes?: string;
   },
 ) {
@@ -47,7 +69,7 @@ async function validateCrew(
   if (applianceName.length > MAX_NAME_LENGTH) {
     throw new Error(`Appliance name must be ${MAX_NAME_LENGTH} characters or fewer`);
   }
-  if (args.crewMemberIds.length > MAX_CREW_MEMBERS) {
+  if (args.crewMembers.length > MAX_CREW_MEMBERS) {
     throw new Error(`An appliance takes at most ${MAX_CREW_MEMBERS} crew members`);
   }
   const notes = args.notes?.trim() || undefined;
@@ -55,23 +77,22 @@ async function validateCrew(
     throw new Error(`Notes must be ${MAX_NOTES_LENGTH} characters or fewer`);
   }
 
-  const seated = [args.driverId, args.crewLeaderId, ...args.crewMemberIds].filter(
-    (id): id is Id<"users"> => id !== undefined,
-  );
-  if (new Set(seated).size !== seated.length) {
-    throw new Error("A member can only take one seat on the appliance");
-  }
-  for (const id of seated) {
-    if (!(await ctx.db.get(id))) throw new Error("One of the chosen members no longer exists");
+  const driver = await cleanSeat(ctx, args.driver);
+  const crewLeader = await cleanSeat(ctx, args.crewLeader);
+  const crewMembers: Seat[] = [];
+  for (const seat of args.crewMembers) {
+    const cleaned = await cleanSeat(ctx, seat);
+    if (cleaned) crewMembers.push(cleaned);
   }
 
-  return {
-    applianceName,
-    driverId: args.driverId,
-    crewLeaderId: args.crewLeaderId,
-    crewMemberIds: args.crewMemberIds,
-    notes,
-  };
+  const memberIds = [driver, crewLeader, ...crewMembers].flatMap((s) =>
+    s && "userId" in s ? [s.userId] : [],
+  );
+  if (new Set(memberIds).size !== memberIds.length) {
+    throw new Error("A member can only take one seat on the appliance");
+  }
+
+  return { applianceName, driver, crewLeader, crewMembers, notes };
 }
 
 function displayName(user: Doc<"users"> | null | undefined): string {
@@ -88,9 +109,9 @@ export const listCrews = query({
       _id: v.id("deploymentCrews"),
       date: v.number(),
       applianceName: v.string(),
-      driver: seatValidator,
-      crewLeader: seatValidator,
-      crewMembers: v.array(v.object({ userId: v.id("users"), name: v.string() })),
+      driver: v.union(v.null(), seatOutput),
+      crewLeader: v.union(v.null(), seatOutput),
+      crewMembers: v.array(seatOutput),
       notes: v.optional(v.string()),
       updatedAt: v.number(),
       updatedByName: v.string(),
@@ -107,26 +128,28 @@ export const listCrews = query({
 
     const userIds = new Set<Id<"users">>();
     for (const crew of crews) {
-      if (crew.driverId) userIds.add(crew.driverId);
-      if (crew.crewLeaderId) userIds.add(crew.crewLeaderId);
-      crew.crewMemberIds.forEach((id) => userIds.add(id));
+      for (const seat of [crew.driver, crew.crewLeader, ...crew.crewMembers]) {
+        if (seat && "userId" in seat) userIds.add(seat.userId);
+      }
       userIds.add(crew.updatedBy);
     }
     const users = new Map<Id<"users">, Doc<"users"> | null>();
     await Promise.all(
       [...userIds].map(async (id) => users.set(id, await ctx.db.get(id))),
     );
-    const seat = (id: Id<"users"> | undefined) =>
-      id ? { userId: id, name: displayName(users.get(id)) } : null;
+    const resolve = (seat: Seat) =>
+      "userId" in seat
+        ? { userId: seat.userId, name: displayName(users.get(seat.userId)), external: false }
+        : { name: seat.name, external: true };
 
     return crews
       .map((crew) => ({
         _id: crew._id,
         date: crew.date,
         applianceName: crew.applianceName,
-        driver: seat(crew.driverId),
-        crewLeader: seat(crew.crewLeaderId),
-        crewMembers: crew.crewMemberIds.map((id) => ({ userId: id, name: displayName(users.get(id)) })),
+        driver: crew.driver ? resolve(crew.driver) : null,
+        crewLeader: crew.crewLeader ? resolve(crew.crewLeader) : null,
+        crewMembers: crew.crewMembers.map(resolve),
         notes: crew.notes,
         updatedAt: crew.updatedAt,
         updatedByName: displayName(users.get(crew.updatedBy)),
