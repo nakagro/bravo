@@ -124,6 +124,20 @@ const applicationTables = {
     .index("by_date", ["date"])
     .index("by_user_date", ["userId", "date"]),
 
+  // A truck crewed ahead of time on the Deployment tab. One row per appliance
+  // per day; seats may be left empty while the crew is still being worked out.
+  deploymentCrews: defineTable({
+    date: v.number(), // UTC midnight, matching deploymentAvailability.date
+    applianceName: v.string(),
+    driverId: v.optional(v.id("users")),
+    crewLeaderId: v.optional(v.id("users")),
+    crewMemberIds: v.array(v.id("users")), // up to 3
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_date", ["date"]),
+
   // Module settings table
   moduleSettings: defineTable({
     // Module identifier
