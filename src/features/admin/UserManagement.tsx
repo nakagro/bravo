@@ -421,16 +421,9 @@ function UserManagement() {
         title={selectedUser ? formatUserName(selectedUser) : "User Settings"}
         footer={
           selectedUser ? (
-            <div className="border-t border-border p-4">
-              <Button
-                type="submit"
-                form={USER_FORM_ID}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? "Updating..." : "Update User"}
-              </Button>
-            </div>
+            <Button type="submit" form={USER_FORM_ID} disabled={isSubmitting}>
+              {isSubmitting ? "Updating..." : "Update User"}
+            </Button>
           ) : undefined
         }
       >

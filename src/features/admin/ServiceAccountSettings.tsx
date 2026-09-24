@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, Ban, CircleCheckBig } from "lucide-react";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ServiceAccountSettingsProps {
@@ -408,21 +409,14 @@ function ServiceAccountSettings({
         onClose={() => setIsCreateOpen(false)}
         title="Create Service Account"
         footer={
-          <div className="flex justify-end gap-2 border-t border-border p-4">
-            <button
-              onClick={() => setIsCreateOpen(false)}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
+          <>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={!formName.trim() || !isPinValid(formPin) || isSubmitting}
-              className="px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50"
-            >
+            </Button>
+            <Button onClick={handleCreate} disabled={!formName.trim() || !isPinValid(formPin) || isSubmitting}>
               {isSubmitting ? "Creating..." : "Create Account"}
-            </button>
-          </div>
+            </Button>
+          </>
         }
       >
         <div className="space-y-4 pb-4">
@@ -495,21 +489,14 @@ function ServiceAccountSettings({
         onClose={() => setIsEditOpen(false)}
         title="Edit Service Account"
         footer={
-          <div className="flex justify-end gap-2 border-t border-border p-4">
-            <button
-              onClick={() => setIsEditOpen(false)}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
+          <>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
-            </button>
-            <button
-              onClick={handleUpdate}
-              disabled={!formName.trim() || isSubmitting}
-              className="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors disabled:opacity-50"
-            >
+            </Button>
+            <Button onClick={handleUpdate} disabled={!formName.trim() || isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
+            </Button>
+          </>
         }
       >
         <div className="space-y-4 pb-4">

@@ -125,23 +125,19 @@ export function DetailsEditorModal({
       onClose={onClose}
       title={title}
       footer={
-        <div className="flex flex-col gap-2 p-4 pt-2">
-          <Button
-            onClick={() => void handleSave()}
-            disabled={uploading}
-            className="w-full"
-            size="lg"
-          >
-            {uploading ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Saving...
-              </span>
-            ) : (
-              "Save Details"
-            )}
-          </Button>
-        </div>
+        <Button
+          onClick={() => void handleSave()}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <span className="flex items-center gap-2">
+              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Saving...
+            </span>
+          ) : (
+            "Save Details"
+          )}
+        </Button>
       }
     >
       <div className="space-y-4">

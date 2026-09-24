@@ -168,6 +168,22 @@ export function EventFormModal({
         onClose={onClose}
         onRequestClose={guard.requestClose}
         title={event ? "Edit event" : "New event"}
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (guard.requestClose()) onClose();
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => void handleSubmit()} disabled={saving}>
+              {saving ? "Saving…" : event ? "Save changes" : "Add event"}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 pb-4">
           <div className="space-y-1.5">
@@ -259,21 +275,6 @@ export function EventFormModal({
               rows={3}
               maxLength={2000}
             />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (guard.requestClose()) onClose();
-              }}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={() => void handleSubmit()} disabled={saving}>
-              {saving ? "Saving…" : event ? "Save changes" : "Add event"}
-            </Button>
           </div>
         </div>
       </ResponsiveModal>
