@@ -92,6 +92,12 @@ const extendedAuthTables = {
     .index("by_isDutyOfficer", ["isDutyOfficer"])
 };
 
+// A deployment crew seat: a BRAVO member, or a name for crew from another brigade.
+const crewSeat = v.union(
+  v.object({ userId: v.id("users") }),
+  v.object({ name: v.string() }),
+);
+
 const applicationTables = {
   // Skills table to store available skills in the system
   skills: defineTable({
@@ -129,9 +135,10 @@ const applicationTables = {
   deploymentCrews: defineTable({
     date: v.number(), // UTC midnight, matching deploymentAvailability.date
     applianceName: v.string(),
-    driverId: v.optional(v.id("users")),
-    crewLeaderId: v.optional(v.id("users")),
-    crewMemberIds: v.array(v.id("users")), // up to 3
+    // A seat is a BRAVO member, or just a name for crew from another brigade.
+    driver: v.optional(crewSeat),
+    crewLeader: v.optional(crewSeat),
+    crewMembers: v.array(crewSeat), // up to 3
     notes: v.optional(v.string()),
     createdBy: v.id("users"),
     updatedBy: v.id("users"),

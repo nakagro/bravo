@@ -1,18 +1,25 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Pencil, Plus, Trash2, Truck } from 'lucide-react';
 import { toast } from 'sonner';
-import CrewDialog, { type CrewDraft } from './CrewDialog';
+import CrewDialog, { emptySeat, type CrewDraft, type SeatDraft } from './CrewDialog';
 
 interface CrewsViewProps {
   deploymentDates: Date[];
 }
 
 type Crew = NonNullable<ReturnType<typeof useQuery<typeof api.deploymentCrews.listCrews>>>[number];
+type CrewSeat = Crew['crewMembers'][number];
+
+function toSeatDraft(seat: CrewSeat | null | undefined): SeatDraft {
+  if (!seat) return emptySeat();
+  return seat.external
+    ? { external: true, userId: null, name: seat.name }
+    : { external: false, userId: seat.userId ?? null, name: '' };
+}
 
 function formatDayHeading(timestamp: number) {
   return new Intl.DateTimeFormat('en-AU', {
@@ -20,12 +27,16 @@ function formatDayHeading(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
-function Seat({ role, name }: { role: string; name?: string }) {
+function Seat({ role, seat }: { role: string; seat?: CrewSeat | null }) {
+  const name = seat?.name;
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5 border-b last:border-b-0 border-gray-100 dark:border-gray-700">
       <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 shrink-0">{role}</span>
       <span className={name ? 'text-sm font-medium text-right truncate' : 'text-sm italic text-gray-400 dark:text-gray-500'}>
         {name ?? 'Unfilled'}
+        {seat?.external && (
+          <span className="ml-1.5 text-xs font-normal text-gray-500 dark:text-gray-400">(not on BRAVO)</span>
+        )}
       </span>
     </div>
   );
@@ -58,9 +69,9 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
     setEditing({
       date,
       applianceName: '',
-      driverId: null,
-      crewLeaderId: null,
-      crewMemberIds: [null, null, null],
+      crewLeader: emptySeat(),
+      driver: emptySeat(),
+      crewMembers: [emptySeat(), emptySeat(), emptySeat()],
       notes: '',
     });
 
@@ -69,9 +80,9 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
       crewId: crew._id,
       date: crew.date,
       applianceName: crew.applianceName,
-      driverId: (crew.driver?.userId as Id<"users">) ?? null,
-      crewLeaderId: (crew.crewLeader?.userId as Id<"users">) ?? null,
-      crewMemberIds: [0, 1, 2].map((i) => crew.crewMembers[i]?.userId ?? null),
+      crewLeader: toSeatDraft(crew.crewLeader),
+      driver: toSeatDraft(crew.driver),
+      crewMembers: [0, 1, 2].map((i) => toSeatDraft(crew.crewMembers[i])),
       notes: crew.notes ?? '',
     });
 
@@ -122,10 +133,7 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
               {dayCrews.map((crew) => (
                 <article key={crew._id} className="bg-white dark:bg-gray-800 shadow-sm rounded border border-gray-200 dark:border-gray-700">
                   <header className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                    <h4 className="font-bold flex items-center gap-2 min-w-0">
-                      <Truck className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
-                      <span className="truncate">{crew.applianceName}</span>
-                    </h4>
+                    <h4 className="font-bold truncate min-w-0">{crew.applianceName}</h4>
                     {canManage && (
                       <div className="flex shrink-0">
                         <Button variant="ghost" size="icon" aria-label={`Edit ${crew.applianceName} crew`} onClick={() => openEdit(crew)}>
@@ -138,14 +146,17 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
                     )}
                   </header>
                   <div className="px-3 py-1">
-                    <Seat role="Crew Leader" name={crew.crewLeader?.name} />
-                    <Seat role="Driver" name={crew.driver?.name} />
+                    <Seat role="Crew Leader" seat={crew.crewLeader} />
+                    <Seat role="Driver" seat={crew.driver} />
                     {[0, 1, 2].map((i) => (
-                      <Seat key={i} role={`Crew ${i + 1}`} name={crew.crewMembers[i]?.name} />
+                      <Seat key={i} role={`Crew ${i + 1}`} seat={crew.crewMembers[i]} />
                     ))}
                   </div>
                   {crew.notes && (
-                    <p className="px-3 pb-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{crew.notes}</p>
+                    <div className="px-3 pb-2 pt-1">
+                      <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Notes:</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{crew.notes}</p>
+                    </div>
                   )}
                 </article>
               ))}

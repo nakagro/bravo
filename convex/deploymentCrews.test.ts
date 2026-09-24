@@ -46,9 +46,9 @@ describe("deployment crews", () => {
     await asOfficer.mutation(api.deploymentCrews.createCrew, {
       date: DAY + 5 * 3600_000, // stored at midnight
       applianceName: "  Pumper ",
-      driverId: memberId,
-      crewLeaderId: officerId,
-      crewMemberIds: [otherId],
+      driver: { userId: memberId },
+      crewLeader: { userId: officerId },
+      crewMembers: [{ userId: otherId }, { name: " Pat Lee (Werribee) " }],
     });
 
     const crews = await asMember.query(api.deploymentCrews.listCrews, {
@@ -61,7 +61,10 @@ describe("deployment crews", () => {
       applianceName: "Pumper",
       driver: { name: "Jo Adams" },
       crewLeader: { name: "Alex Carter" },
-      crewMembers: [{ name: "Sam Zhu" }],
+      crewMembers: [
+        { name: "Sam Zhu", external: false },
+        { name: "Pat Lee (Werribee)", external: true },
+      ],
     });
   });
 
@@ -69,7 +72,7 @@ describe("deployment crews", () => {
     const { asMember } = await setup();
     await expect(
       asMember.mutation(api.deploymentCrews.createCrew, {
-        date: DAY, applianceName: "Tanker", crewMemberIds: [],
+        date: DAY, applianceName: "Tanker", crewMembers: [],
       }),
     ).rejects.toThrow("permission");
   });
@@ -78,12 +81,12 @@ describe("deployment crews", () => {
     const { asOfficer, memberId, otherId, officerId } = await setup();
     await expect(
       asOfficer.mutation(api.deploymentCrews.createCrew, {
-        date: DAY, applianceName: "Tanker", driverId: memberId, crewMemberIds: [memberId],
+        date: DAY, applianceName: "Tanker", driver: { userId: memberId }, crewMembers: [{ userId: memberId }],
       }),
     ).rejects.toThrow("one seat");
     await expect(
       asOfficer.mutation(api.deploymentCrews.createCrew, {
-        date: DAY, applianceName: "Tanker", crewMemberIds: [memberId, otherId, officerId, memberId],
+        date: DAY, applianceName: "Tanker", crewMembers: [{ userId: memberId }, { userId: otherId }, { userId: officerId }, { name: "Extra" }],
       }),
     ).rejects.toThrow("at most 3");
   });
@@ -91,10 +94,10 @@ describe("deployment crews", () => {
   it("editing can clear a seat, and delete removes the crew", async () => {
     const { asOfficer, memberId } = await setup();
     const crewId = await asOfficer.mutation(api.deploymentCrews.createCrew, {
-      date: DAY, applianceName: "FCV", driverId: memberId, crewMemberIds: [],
+      date: DAY, applianceName: "FCV", driver: { userId: memberId }, crewMembers: [],
     });
     await asOfficer.mutation(api.deploymentCrews.updateCrew, {
-      crewId, date: DAY, applianceName: "FCV", crewMemberIds: [],
+      crewId, date: DAY, applianceName: "FCV", crewMembers: [],
     });
     let crews = await asOfficer.query(api.deploymentCrews.listCrews, { startDate: DAY, endDate: DAY });
     expect(crews[0].driver).toBeNull();
