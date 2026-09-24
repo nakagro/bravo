@@ -27,12 +27,6 @@ const VIEWS = [
   { key: 'crews', label: 'Crews' },
 ] as const;
 
-const VIEW_CONTEXT: Record<DeploymentView, string> = {
-  you: 'Set your availability for the next 7 days',
-  brigade: "Who's available to deploy",
-  crews: 'Appliances crewed for the next 7 days',
-};
-
 function DeploymentTab() {
   // State for deployment availability
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
@@ -208,7 +202,6 @@ function DeploymentTab() {
           onChange={setView}
           ariaLabel="Deployment views"
         />
-        <p className="mt-2 px-1 text-sm text-gray-500 dark:text-gray-400">{VIEW_CONTEXT[view]}</p>
       </div>
 
       {/* Content Section */}
