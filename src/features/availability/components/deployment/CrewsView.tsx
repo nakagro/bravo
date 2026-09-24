@@ -17,8 +17,8 @@ type CrewSeat = Crew['crewMembers'][number];
 function toSeatDraft(seat: CrewSeat | null | undefined): SeatDraft {
   if (!seat) return emptySeat();
   return seat.external
-    ? { external: true, userId: null, name: seat.name }
-    : { external: false, userId: seat.userId ?? null, name: '' };
+    ? { userId: null, name: seat.name }
+    : { userId: seat.userId ?? null, name: '' };
 }
 
 function formatDayHeading(timestamp: number) {

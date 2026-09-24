@@ -12,17 +12,13 @@ const BRIGADE_NAME = 'Wyndham Vale';
 const QUICK_APPLIANCES = ['Pumper', 'Tanker', 'FCV'];
 const CREW_SEATS = 3;
 
-/**
- * A seat holds a BRAVO member or, for crew from another brigade, a typed name.
- * Both are kept while editing so flipping between them doesn't lose either.
- */
+/** A seat holds a BRAVO member or, for crew from another brigade, a typed name. */
 export interface SeatDraft {
-  external: boolean;
   userId: Id<"users"> | null;
   name: string;
 }
 
-export const emptySeat = (): SeatDraft => ({ external: false, userId: null, name: '' });
+export const emptySeat = (): SeatDraft => ({ userId: null, name: '' });
 
 export interface CrewDraft {
   crewId?: Id<"deploymentCrews">;
@@ -37,11 +33,9 @@ export interface CrewDraft {
 type SeatKey = 'crewLeader' | 'driver' | number;
 
 function toSeat(seat: SeatDraft) {
-  if (seat.external) {
-    const name = seat.name.trim();
-    return name ? { name } : undefined;
-  }
-  return seat.userId ? { userId: seat.userId } : undefined;
+  if (seat.userId) return { userId: seat.userId };
+  const name = seat.name.trim();
+  return name ? { name } : undefined;
 }
 
 interface CrewDialogProps {
@@ -122,7 +116,7 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
   const optionsFor = (current: Id<"users"> | null) => {
     const taken = new Set(
       [draft.driver, draft.crewLeader, ...draft.crewMembers]
-        .filter((s) => !s.external && s.userId !== null && s.userId !== current)
+        .filter((s) => s.userId !== null && s.userId !== current)
         .map((s) => s.userId)
     );
     return options.filter((o) => !taken.has(o._id));
@@ -130,39 +124,16 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
 
   const renderSeat = (key: SeatKey, label: string) => {
     const seat = getSeat(key);
-    const inputId = `crew-seat-${key}`;
     return (
-      <div key={label}>
-        {seat.external ? (
-          <div>
-            <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {label}
-            </label>
-            <input
-              id={inputId}
-              value={seat.name}
-              onChange={(e) => updateSeat(key, { name: e.target.value })}
-              placeholder="Name and brigade, e.g. Pat Lee (Werribee)"
-              maxLength={60}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base"
-            />
-          </div>
-        ) : (
-          <MemberCombobox
-            label={label}
-            options={optionsFor(seat.userId)}
-            value={seat.userId}
-            onChange={(v) => updateSeat(key, { userId: v })}
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => updateSeat(key, { external: !seat.external })}
-          className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {seat.external ? 'Pick a BRAVO member instead' : 'Not on BRAVO? Type a name'}
-        </button>
-      </div>
+      <MemberCombobox
+        key={label}
+        label={label}
+        options={optionsFor(seat.userId)}
+        value={seat.userId}
+        onChange={(v) => updateSeat(key, { userId: v })}
+        externalName={seat.name}
+        onExternalChange={(name) => updateSeat(key, { name })}
+      />
     );
   };
 
@@ -268,7 +239,8 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Members available for short or long haul that day are listed first.
+          Members available for short or long haul that day are listed first. Crew from
+          another brigade? Type their name and tap Add.
         </p>
 
         {renderSeat('crewLeader', 'Crew Leader')}
