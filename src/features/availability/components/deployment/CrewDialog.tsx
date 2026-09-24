@@ -199,7 +199,7 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
                   className={cn(
                     'px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[36px]',
                     draft.applianceName === name
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
                   )}
                 >
