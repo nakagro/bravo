@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
 import BrigadeView from './deployment/BrigadeView';
+import CrewsView from './deployment/CrewsView';
 import { Plane } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,8 +23,9 @@ function DeploymentTab() {
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
   const [deploymentAvailability, setDeploymentAvailability] = useState<{ [key: string]: { notAvailable: boolean, local: boolean, shortHaul: boolean, longHaul: boolean, message?: string } }>({});
 
-  // Toggle between personal and brigade view
-  const [showBrigadeView, setShowBrigadeView] = useState(false);
+  // Toggle between personal, brigade and crews views
+  const [view, setView] = useState<'you' | 'brigade' | 'crews'>('you');
+  const showBrigadeView = view === 'brigade';
 
   // Calculate the date range for deployment availability (today + 6 days)
   // IMPORTANT: All dates are normalized to UTC midnight to ensure consistency
@@ -174,37 +176,33 @@ function DeploymentTab() {
     <>
       {/* Header Section */}
       <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm p-3 rounded">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold flex items-center">
             <Plane className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
             Deployment Availability
           </h2>
-          {/* Toggle buttons for personal/brigade view */}
+          {/* Toggle buttons for personal/brigade/crews view */}
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5">
-            <button
-              onClick={() => setShowBrigadeView(false)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${!showBrigadeView
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-            >
-              You
-            </button>
-            <button
-              onClick={() => setShowBrigadeView(true)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${showBrigadeView
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-            >
-              Brigade
-            </button>
+            {([['you', 'You'], ['brigade', 'Brigade'], ['crews', 'Crews']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setView(key)}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${view === key
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Content Section */}
-      {!showBrigadeView ? (
+      {view === 'crews' ? (
+        <CrewsView deploymentDates={deploymentDates} />
+      ) : !showBrigadeView ? (
         <PersonalView
           deploymentDates={deploymentDates}
           deploymentAvailability={deploymentAvailability}

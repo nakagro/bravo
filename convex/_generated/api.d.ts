@@ -35,6 +35,7 @@ import type * as calendarWrite from "../calendarWrite.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as deploymentAvailability from "../deploymentAvailability.js";
+import type * as deploymentCrews from "../deploymentCrews.js";
 import type * as dutyCrew from "../dutyCrew.js";
 import type * as dutyCrewMembers from "../dutyCrewMembers.js";
 import type * as emailSettings from "../emailSettings.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dashboard: typeof dashboard;
   deploymentAvailability: typeof deploymentAvailability;
+  deploymentCrews: typeof deploymentCrews;
   dutyCrew: typeof dutyCrew;
   dutyCrewMembers: typeof dutyCrewMembers;
   emailSettings: typeof emailSettings;
