@@ -2,6 +2,7 @@
 
 ## [2026.09.24]
 - Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.
+- General: Save and Cancel buttons in pop-up forms now look the same everywhere and sit clear of the bottom of the screen on phones.
 
 ## [2026.09.23]
 - Duty Crew: Weeks now close themselves at the Monday boundary, no Complete button needed.

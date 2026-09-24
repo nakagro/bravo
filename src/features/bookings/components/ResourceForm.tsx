@@ -310,26 +310,25 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
   );
 
   const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <>
       <Button
         type="button"
         variant="outline"
         onClick={() => {
           if (guard.requestClose()) onClose();
         }}
-        className="flex-1 h-12 text-base"
-      >
+              >
         Cancel
       </Button>
       <Button
         type="submit"
         form="resource-form"
         disabled={isSubmitting}
-        className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800"
+        className="bg-red-700 hover:bg-red-800"
       >
         {isSubmitting ? "Saving..." : resourceId ? "Update Resource" : "Create Resource"}
       </Button>
-    </div>
+    </>
   );
 
   return (

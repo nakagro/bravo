@@ -5,6 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { formatUserName, getInitials } from "../types";
 
@@ -94,23 +95,14 @@ export function ResponsesModeDialog({
   };
 
   const footer = (
-    <div className="flex gap-2 justify-end">
-      <button
-        type="button"
-        onClick={onClose}
-        className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      >
+    <>
+      <Button variant="outline" onClick={onClose}>
         Cancel
-      </button>
-      <button
-        type="button"
-        onClick={handleConfirm}
-        disabled={saving}
-        className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-      >
+      </Button>
+      <Button onClick={handleConfirm} disabled={saving}>
         {closing ? "Close responses" : "Open responses"}
-      </button>
-    </div>
+      </Button>
+    </>
   );
 
   return (

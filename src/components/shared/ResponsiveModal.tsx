@@ -11,7 +11,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerFooter,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -23,6 +22,12 @@ interface ResponsiveModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /**
+   * The action buttons, e.g. Cancel then Save. Pass the buttons themselves -
+   * the modal owns the bar around them (border, padding, safe-area inset on
+   * phones) and sizes direct-child buttons to equal-width 48px tap targets,
+   * so every modal's actions look and sit the same. Don't wrap them.
+   */
   footer?: ReactNode;
   /** Mobile drawer height - defaults to "h-[90vh]" */
   drawerHeight?: string;
@@ -41,6 +46,22 @@ interface ResponsiveModalProps {
    * stack and throw the form off the top of the screen - pass false there.
    */
   repositionInputs?: boolean;
+}
+
+// One action bar for every modal. On phones the bottom padding clears the home
+// indicator, so buttons never sit on the edge of the screen.
+function ModalFooter({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-3 border-t border-border bg-background p-4 sm:px-6",
+        "pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-4",
+        "[&>button]:h-12 [&>button]:flex-1 [&>button]:touch-manipulation [&>button]:text-base",
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function ResponsiveModal({
@@ -117,9 +138,7 @@ export function ResponsiveModal({
           >
             {children}
           </div>
-          {footer ? (
-            <DrawerFooter className="shrink-0 p-0">{footer}</DrawerFooter>
-          ) : null}
+          {footer ? <ModalFooter>{footer}</ModalFooter> : null}
         </DrawerContent>
       </Drawer>
     );
@@ -146,7 +165,7 @@ export function ResponsiveModal({
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-4 pb-4">
           {children}
         </div>
-        {footer ? <div className="shrink-0">{footer}</div> : null}
+        {footer ? <ModalFooter>{footer}</ModalFooter> : null}
       </SheetContent>
     </Sheet>
   );

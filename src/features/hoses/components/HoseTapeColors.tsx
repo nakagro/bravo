@@ -404,11 +404,10 @@ export function HoseTapeColors() {
           drawerHeight="h-[88vh]"
           maxWidth="sm:max-w-md"
           footer={
-            <div className="flex gap-3 border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+            <>
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 flex-1 touch-manipulation"
                 disabled={isSaving}
                 onClick={() => {
                   if (guard.requestClose()) closeEditor();
@@ -419,7 +418,6 @@ export function HoseTapeColors() {
               <Button
                 type="submit"
                 form="tape-colour-form"
-                className="h-11 flex-1 touch-manipulation"
                 disabled={isSaving}
               >
                 {isSaving ? (
@@ -430,7 +428,7 @@ export function HoseTapeColors() {
                 ) : null}
                 {isSaving ? "Saving…" : "Save Tape Colour"}
               </Button>
-            </div>
+            </>
           }
         >
           <TapeColorEditor

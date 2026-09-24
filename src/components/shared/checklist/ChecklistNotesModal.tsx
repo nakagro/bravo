@@ -60,6 +60,19 @@ export function ChecklistNotesModal({
       // up and left blank space where the form should be.
       drawerHeight="h-auto max-h-[70dvh]"
       repositionInputs={false}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {readOnly ? "Close" : "Cancel"}
+          </Button>
+          {!readOnly && (
+            <Button onClick={onSave} disabled={reasonMissing}>
+              <Check className="h-4 w-4 mr-1" aria-hidden="true" />
+              Save Notes
+            </Button>
+          )}
+        </>
+      }
     >
       <div className="space-y-4 pb-4">
         {unableToComplete && !readOnly && (
@@ -104,18 +117,6 @@ export function ChecklistNotesModal({
               : `${value.length} characters`}
           </p>
         )}
-
-        <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>
-            {readOnly ? "Close" : "Cancel"}
-          </Button>
-          {!readOnly && (
-            <Button onClick={onSave} disabled={reasonMissing}>
-              <Check className="h-4 w-4 mr-1" aria-hidden="true" />
-              Save Notes
-            </Button>
-          )}
-        </div>
       </div>
     </ResponsiveModal>
   );

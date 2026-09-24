@@ -507,26 +507,25 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
   );
 
   const formFooter = (
-    <div className="flex gap-3 p-4 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <>
       <Button
         type="button"
         variant="outline"
         onClick={() => {
           if (guard.requestClose()) onClose();
         }}
-        className="flex-1 h-12 text-base"
-      >
+              >
         Cancel
       </Button>
       <Button
         type="submit"
         form="booking-form"
         disabled={isSubmitting}
-        className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800"
+        className="bg-red-700 hover:bg-red-800"
       >
         {isSubmitting ? "Submitting..." : "Submit Request"}
       </Button>
-    </div>
+    </>
   );
 
   return (

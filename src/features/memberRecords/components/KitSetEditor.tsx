@@ -84,14 +84,10 @@ export function KitSetEditor({ userId, setId, itemId, onClose }: KitSetEditorPro
   };
 
   const footer = (
-    <div
-      className="flex flex-col-reverse gap-2 border-t border-border p-4 sm:flex-row sm:justify-end"
-      style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
-    >
+    <>
       <Button
         type="button"
         variant="outline"
-        className="min-h-11 w-full sm:w-auto"
         onClick={() => {
           if (guard.requestClose()) onClose();
         }}
@@ -100,14 +96,14 @@ export function KitSetEditor({ userId, setId, itemId, onClose }: KitSetEditorPro
       </Button>
       <Button
         type="button"
-        className="min-h-11 w-full bg-red-700 text-white hover:bg-red-800 sm:w-auto dark:bg-red-600 dark:hover:bg-red-700"
+        className="bg-red-700 text-white hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
         disabled={!isDirty || saving}
         aria-busy={saving}
         onClick={handleSave}
       >
         {saving ? "Saving…" : "Save"}
       </Button>
-    </div>
+    </>
   );
 
   return (

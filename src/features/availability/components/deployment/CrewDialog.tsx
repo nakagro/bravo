@@ -175,12 +175,12 @@ function CrewDialog({ open, onClose, initial, dates }: CrewDialogProps) {
       onClose={onClose}
       title={draft.crewId ? 'Edit crew' : 'Crew an appliance'}
       footer={
-        <div className="flex gap-2 w-full">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSave} disabled={saving}>
+        <>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save crew'}
           </Button>
-        </div>
+        </>
       }
     >
       <div className="space-y-4 pb-4">

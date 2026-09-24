@@ -95,13 +95,22 @@ export function ScheduleOverridePanel({
       title="Edit Schedule"
       drawerHeight="h-auto max-h-[90vh]"
       footer={
-        <div className="flex flex-col gap-2 p-4 pt-2">
-          <Button
-            onClick={handleSave}
-            disabled={!selectedCrewId || isSaving}
-            className="w-full"
-            size="lg"
-          >
+        <>
+          {assignment.scheduleId && (
+            <DeleteConfirmDialog
+              title="Reset to default rotation?"
+              description="This removes the manual override for this Sunday. The crew will revert to the normal rotation (1st Sunday = Crew 1, and so on)."
+              confirmLabel="Reset"
+              trigger={
+                <Button variant="outline">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset rotation
+                </Button>
+              }
+              onConfirm={handleReset}
+            />
+          )}
+          <Button onClick={handleSave} disabled={!selectedCrewId || isSaving}>
             {isSaving ? (
               <span className="flex items-center gap-2">
                 <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -111,21 +120,7 @@ export function ScheduleOverridePanel({
               "Save"
             )}
           </Button>
-          {assignment.scheduleId && (
-            <DeleteConfirmDialog
-              title="Reset to default rotation?"
-              description="This removes the manual override for this Sunday. The crew will revert to the normal rotation (1st Sunday = Crew 1, and so on)."
-              confirmLabel="Reset"
-              trigger={
-                <Button variant="outline" className="w-full" size="lg">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset to default rotation
-                </Button>
-              }
-              onConfirm={handleReset}
-            />
-          )}
-        </div>
+        </>
       }
     >
       <div className="space-y-4 pb-4">
