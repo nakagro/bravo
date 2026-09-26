@@ -59,6 +59,7 @@ import type * as keyAuditTrail from "../keyAuditTrail.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
+import type * as labsMember from "../labsMember.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_authUser from "../lib/authUser.js";
 import type * as lib_dates from "../lib/dates.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
+  labsMember: typeof labsMember;
   "lib/accountType": typeof lib_accountType;
   "lib/authUser": typeof lib_authUser;
   "lib/dates": typeof lib_dates;

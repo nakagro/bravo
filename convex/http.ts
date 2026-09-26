@@ -4,6 +4,7 @@ import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
 import { isMemberAccount } from "./lib/accountType";
+import { secretMatches } from "./labsMember";
 
 const http = httpRouter();
 
@@ -386,6 +387,43 @@ http.route({
   path: "/api/shortcuts/availability",
   method: "GET",
   handler: shortcutsHandler,
+});
+
+// ============================================================================
+// LABS MEMBERSHIP CHECK - server-to-server, for labs.grayhux.io sessions
+// ============================================================================
+
+// Labs' server calls this to confirm a session holder is still a Labs member.
+// Contract: docs/plans/cross-project-sso-bravo-ghmaps.md, "Labs membership check".
+http.route({
+  path: "/labs/member",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const json = (status: number, body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const header = request.headers.get("Authorization");
+    const presented = header?.startsWith("Bearer ") ? header.slice(7) : null;
+    if (!(await secretMatches(presented, process.env.LABS_MEMBER_CHECK_SECRET))) {
+      return json(401, { error: "Unauthorized" });
+    }
+
+    let userId: unknown;
+    try {
+      userId = ((await request.json()) as { userId?: unknown } | null)?.userId;
+    } catch {
+      return json(400, { error: "Malformed body" });
+    }
+    if (typeof userId !== "string" || userId.length === 0 || userId.length > 64) {
+      return json(400, { error: "Malformed userId" });
+    }
+
+    const member = await ctx.runQuery(internal.labsMember.isLabsMember, { userId });
+    return json(200, { member });
+  }),
 });
 
 export default http;
