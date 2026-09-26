@@ -89,25 +89,21 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
         title={isEditing ? "Rename Crew" : "New Duty Crew"}
         drawerHeight="h-auto max-h-[90vh]"
         footer={
-          <div className="flex flex-col gap-2 p-4 pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={!name.trim() || isSaving}
-              className="w-full"
-              size="lg"
-            >
-              {isSaving ? (
-                <span className="flex items-center gap-2">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                  Saving...
-                </span>
-              ) : isEditing ? (
-                "Save"
-              ) : (
-                "Create"
-              )}
-            </Button>
-          </div>
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || isSaving}
+          >
+            {isSaving ? (
+              <span className="flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Saving...
+              </span>
+            ) : isEditing ? (
+              "Save"
+            ) : (
+              "Create"
+            )}
+          </Button>
         }
       >
         <div className="space-y-4 pb-4">

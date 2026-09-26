@@ -88,6 +88,8 @@ function AvailabilityPage() {
   const handleTabChange = (tab: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      // Sub-views (e.g. Deployment's ?view=) belong to the tab being left.
+      next.delete("view");
       if (tab === "you") {
         next.delete("tab");
       } else {

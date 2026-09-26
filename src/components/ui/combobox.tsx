@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
-import { Check, ChevronsUpDown, CircleX, Search } from "lucide-react"
+import { Check, ChevronsUpDown, CircleX, Plus, Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -33,6 +33,13 @@ interface ComboboxProps {
   disabled?: boolean
   id?: string
   "aria-invalid"?: boolean
+  /**
+   * Offer the typed text as a new entry at the foot of the list. The caller
+   * decides what adding means; the field then shows the text as typed.
+   */
+  onCreate?: (text: string) => void
+  /** Non-selectable tip atop the full list, e.g. that a new name can be typed. */
+  createHint?: string
 }
 
 // Type-in-place picker, deliberately (it replaces a Headless UI Combobox and
@@ -54,6 +61,8 @@ export function Combobox({
   disabled = false,
   id,
   "aria-invalid": ariaInvalid,
+  onCreate,
+  createHint,
 }: ComboboxProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [open, setOpen] = React.useState(false)
@@ -96,6 +105,18 @@ export function Combobox({
     setText(options.find((o) => o.value === next)?.label ?? "")
   }
 
+  const create = () => {
+    const created = query.trim()
+    onCreate?.(created)
+    setOpen(false)
+    setQuery("")
+    setText(created)
+  }
+
+  // Offer to add the typed text unless it exactly matches an existing option.
+  const canCreate =
+    !!onCreate && needle !== "" && !options.some((o) => o.label.toLowerCase() === needle)
+
   return (
     <CommandPrimitive
       shouldFilter={false}
@@ -127,7 +148,7 @@ export function Combobox({
           }}
           placeholder={placeholder}
           className={cn(
-            "w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white",
+            "w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white",
             ariaInvalid && "border-red-500 dark:border-red-500"
           )}
         />
@@ -179,6 +200,11 @@ export function Combobox({
             listPosition === "above" ? "bottom-full mb-1" : "top-full mt-1"
           )}
         >
+          {onCreate && createHint && needle === "" && (
+            <div className="px-4 py-2 text-xs text-muted-foreground border-b border-gray-100 dark:border-gray-700">
+              {createHint}
+            </div>
+          )}
           <CommandPrimitive.Empty className="relative cursor-default select-none px-4 py-2 text-gray-700 dark:text-gray-300">
             {emptyText}
           </CommandPrimitive.Empty>
@@ -189,25 +215,39 @@ export function Combobox({
                 key={option.value}
                 value={option.value}
                 onSelect={() => select(option.value)}
-                className="group relative flex cursor-default select-none items-center gap-2 py-2 pl-10 pr-4 text-gray-900 outline-none data-[selected=true]:bg-indigo-600 data-[selected=true]:text-white dark:text-gray-200"
+                className="group relative flex cursor-default select-none items-center gap-2 py-2 pl-10 pr-4 text-gray-900 outline-none data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground dark:text-gray-200"
               >
                 <span className={cn("truncate", isSelected ? "font-medium" : "font-normal")}>
                   {option.label}
                 </span>
                 {option.hint && (
-                  <span className="shrink-0 text-xs text-muted-foreground group-data-[selected=true]:text-white/80">
+                  <span className="shrink-0 text-xs text-muted-foreground group-data-[selected=true]:text-primary-foreground/80">
                     {option.hint}
                   </span>
                 )}
                 {option.badges}
                 {isSelected && (
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 group-data-[selected=true]:text-white">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary group-data-[selected=true]:text-primary-foreground">
                     <Check className="h-5 w-5" aria-hidden="true" />
                   </span>
                 )}
               </CommandPrimitive.Item>
             )
           })}
+          {canCreate && (
+            <CommandPrimitive.Item
+              value="__create__"
+              onSelect={create}
+              className="group relative flex cursor-default select-none items-center gap-2 border-t border-gray-100 py-2 pl-10 pr-4 text-gray-900 outline-none data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground dark:border-gray-700 dark:text-gray-200"
+            >
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary group-data-[selected=true]:text-primary-foreground">
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="truncate">
+                Add <span className="font-medium">&ldquo;{query.trim()}&rdquo;</span>
+              </span>
+            </CommandPrimitive.Item>
+          )}
         </CommandPrimitive.List>
       )}
     </CommandPrimitive>

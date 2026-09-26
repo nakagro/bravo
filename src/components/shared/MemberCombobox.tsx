@@ -20,7 +20,16 @@ interface MemberComboboxProps {
   emptyText?: string;
   error?: string;
   helperText?: string;
+  /**
+   * Let the picker hold someone who isn't on BRAVO, typed in as a name. Pass
+   * the current name (or "") to enable it; typing a name offers "Add ...".
+   */
+  externalName?: string;
+  onExternalChange?: (name: string) => void;
 }
+
+// Stands in for an external name so the underlying picker can show it as chosen.
+const EXTERNAL_VALUE = "__external__";
 
 export function MemberCombobox({
   label,
@@ -33,6 +42,8 @@ export function MemberCombobox({
   emptyText = "No members found.",
   error,
   helperText,
+  externalName,
+  onExternalChange,
 }: MemberComboboxProps) {
   const id = useId();
 
@@ -44,9 +55,25 @@ export function MemberCombobox({
       </label>
       <Combobox
         id={id}
-        options={options.map((o) => ({ value: o._id, label: o.name, hint: o.rank }))}
-        value={value}
-        onValueChange={(v) => onChange(v as Id<"users"> | null)}
+        options={[
+          ...(externalName ? [{ value: EXTERNAL_VALUE, label: externalName, hint: "Not on BRAVO" }] : []),
+          ...options.map((o) => ({ value: o._id, label: o.name, hint: o.rank })),
+        ]}
+        value={externalName ? EXTERNAL_VALUE : value}
+        onValueChange={(v) => {
+          if (v === EXTERNAL_VALUE) return;
+          if (externalName) onExternalChange?.("");
+          onChange(v as Id<"users"> | null);
+        }}
+        onCreate={
+          onExternalChange
+            ? (name) => {
+                if (value) onChange(null);
+                onExternalChange(name);
+              }
+            : undefined
+        }
+        createHint={onExternalChange ? "Not listed? Type their name to add them." : undefined}
         placeholder={placeholder}
         emptyText={emptyText}
         clearable={clearable}

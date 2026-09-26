@@ -5,6 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Check, Search } from "lucide-react";
 import { formatUserName, getInitials } from "../types";
 
@@ -186,37 +187,19 @@ export function ConfirmAttendanceDialog({ open, onClose, eventId }: ConfirmAtten
   );
 
   const footer = (
-    <div className="flex items-center justify-between gap-2">
-      {alreadyConfirmed ? (
-        <button
-          type="button"
-          onClick={handleClear}
-          disabled={saving}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 transition-colors"
-        >
+    <>
+      {alreadyConfirmed && (
+        <Button variant="ghost" onClick={handleClear} disabled={saving} className="text-muted-foreground">
           Clear record
-        </button>
-      ) : (
-        <span />
+        </Button>
       )}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !sheet}
-          className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
-        >
-          {alreadyConfirmed ? "Save changes" : `Confirm ${present.size} attended`}
-        </button>
-      </div>
-    </div>
+      <Button variant="outline" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button onClick={handleSave} disabled={saving || !sheet}>
+        {alreadyConfirmed ? "Save changes" : `Confirm ${present.size} attended`}
+      </Button>
+    </>
   );
 
   return (

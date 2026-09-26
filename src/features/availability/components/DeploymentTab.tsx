@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from "convex/react";
+import { useSearchParams } from 'react-router-dom';
 import { api } from "../../../../convex/_generated/api";
 import PersonalView from './deployment/PersonalView';
 import BrigadeView from './deployment/BrigadeView';
-import { Plane } from 'lucide-react';
+import CrewsView from './deployment/CrewsView';
+import { SegmentedTabs } from '@/components/shared/SegmentedTabs';
 import { toast } from 'sonner';
 
 // Helper to normalize a date to UTC midnight
@@ -17,13 +19,34 @@ function getUTCDateKey(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
+type DeploymentView = 'you' | 'brigade' | 'crews';
+
+const VIEWS = [
+  { key: 'you', label: 'You' },
+  { key: 'brigade', label: 'Brigade' },
+  { key: 'crews', label: 'Crews' },
+] as const;
+
 function DeploymentTab() {
   // State for deployment availability
   const [deploymentDates, setDeploymentDates] = useState<Date[]>([]);
   const [deploymentAvailability, setDeploymentAvailability] = useState<{ [key: string]: { notAvailable: boolean, local: boolean, shortHaul: boolean, longHaul: boolean, message?: string } }>({});
 
-  // Toggle between personal and brigade view
-  const [showBrigadeView, setShowBrigadeView] = useState(false);
+  // The sub-view lives in the URL (?view=) so refresh, back and shared links
+  // land on the same view. "you" is the default and stays out of the URL.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedView = searchParams.get('view');
+  const view: DeploymentView = VIEWS.some((v) => v.key === requestedView)
+    ? (requestedView as DeploymentView)
+    : 'you';
+  const showBrigadeView = view === 'brigade';
+  const setView = (next: DeploymentView) =>
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next === 'you') params.delete('view');
+      else params.set('view', next);
+      return params;
+    }, { replace: true });
 
   // Calculate the date range for deployment availability (today + 6 days)
   // IMPORTANT: All dates are normalized to UTC midnight to ensure consistency
@@ -172,39 +195,19 @@ function DeploymentTab() {
 
   return (
     <>
-      {/* Header Section */}
-      <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm p-3 rounded">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center">
-            <Plane className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-            Deployment Availability
-          </h2>
-          {/* Toggle buttons for personal/brigade view */}
-          <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5">
-            <button
-              onClick={() => setShowBrigadeView(false)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${!showBrigadeView
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-            >
-              You
-            </button>
-            <button
-              onClick={() => setShowBrigadeView(true)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${showBrigadeView
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-            >
-              Brigade
-            </button>
-          </div>
-        </div>
+      <div className="mb-4">
+        <SegmentedTabs
+          segments={VIEWS}
+          value={view}
+          onChange={setView}
+          ariaLabel="Deployment views"
+        />
       </div>
 
       {/* Content Section */}
-      {!showBrigadeView ? (
+      {view === 'crews' ? (
+        <CrewsView deploymentDates={deploymentDates} />
+      ) : !showBrigadeView ? (
         <PersonalView
           deploymentDates={deploymentDates}
           deploymentAvailability={deploymentAvailability}

@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026.09.24]
+- Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.
+- Availability: The Deployment tab's You, Brigade and Crews switch is now a full-width bar that's easier to tap on phones.
+- General: Save and Cancel buttons in pop-up forms now look the same everywhere and sit clear of the bottom of the screen on phones.
+
 ## [2026.09.23]
 - Duty Crew: Weeks now close themselves at the Monday boundary, no Complete button needed.
 - Duty Crew: The duty crew officer is emailed what was and wasn't done when a week closes.
