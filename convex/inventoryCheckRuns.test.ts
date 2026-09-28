@@ -383,3 +383,47 @@ describe("run summaries", () => {
     ]);
   });
 });
+
+describe("admin overview and records", () => {
+  it("gives each active appliance its open check and latest completed one", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const done = await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+      { itemName: "Spare torch", value: "no" },
+    ]);
+    await asChecker.mutation(api.inventoryCheckRuns.completeRun, { runId: done });
+    const open = await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    // An archived appliance isn't in the overview
+    await t.run((ctx) =>
+      ctx.db.insert("applianceTemplates", {
+        name: "Old tanker",
+        version: 1,
+        status: "archived" as const,
+        createdBy: checkerId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        updatedBy: checkerId,
+      })
+    );
+
+    const overview = await asChecker.query(api.inventoryCheckRuns.getApplianceOverview, {});
+    expect(overview).toHaveLength(1);
+    expect(overview[0].name).toBe("Pumper");
+    expect(overview[0].openRun?.run._id).toBe(open);
+    expect(overview[0].lastCompleted?.run._id).toBe(done);
+    expect(overview[0].lastCompleted?.deviations).toBe(1);
+  });
+
+  it("filters records by status on the server", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const cancelled = await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    await asChecker.mutation(api.inventoryCheckRuns.cancelRun, { runId: cancelled });
+    await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+
+    const { page } = await asChecker.query(api.inventoryCheckRuns.listRunSummariesPage, {
+      status: "cancelled",
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    expect(page.map((s) => s.run._id)).toEqual([cancelled]);
+  });
+});

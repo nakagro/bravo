@@ -460,6 +460,12 @@ export const listRecentRuns = query({
   },
 });
 
+const runStatusValidator = v.union(
+  v.literal("in_progress"),
+  v.literal("completed"),
+  v.literal("cancelled")
+);
+
 type SummaryUser = {
   name?: string;
   firstName?: string;
@@ -516,6 +522,10 @@ async function summariseRun(ctx: QueryCtx, run: Doc<"applianceCheckRuns">, cache
   };
 }
 
+// No longer called by this frontend (History and Admin page through
+// listRunSummariesPage). Kept because the backend deploys ahead of the
+// frontend and the live Admin tab still calls it; remove once this frontend
+// has shipped to prod.
 export const listRunSummaries = query({
   args: {
     limit: v.optional(v.number()),
@@ -550,12 +560,16 @@ export const listRunSummaries = query({
 // History, a page at a time and optionally for one appliance. Filtering on
 // the server means a quiet appliance's older checks are still reachable,
 // rather than only whatever made the newest 50 overall.
+//
+// One filter at a time - by appliance (History) or by status (Admin → Records)
+// - so each is a straight index walk; `templateId` wins if both are sent.
 export const listRunSummariesPage = query({
   args: {
     templateId: v.optional(v.id("applianceTemplates")),
+    status: v.optional(runStatusValidator),
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx, { templateId, paginationOpts }) => {
+  handler: async (ctx, { templateId, status, paginationOpts }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return { page: [], isDone: true, continueCursor: "" };
 
@@ -566,7 +580,13 @@ export const listRunSummariesPage = query({
           .withIndex("by_template", (q) => q.eq("templateId", templateId))
           .order("desc")
           .paginate(paginationOpts)
-      : await ctx.db
+      : status
+        ? await ctx.db
+            .query("applianceCheckRuns")
+            .withIndex("by_status", (q) => q.eq("status", status))
+            .order("desc")
+            .paginate(paginationOpts)
+        : await ctx.db
           .query("applianceCheckRuns")
           .withIndex("by_startedAt")
           .order("desc")
@@ -576,6 +596,47 @@ export const listRunSummariesPage = query({
     const page = [];
     for (const run of result.page) page.push(await summariseRun(ctx, run, cache));
     return { ...result, page };
+  },
+});
+
+// Admin overview: every active appliance with its open check (if any) and
+// its most recent completed one, so the officer can see at a glance what's
+// been done this week and what's stuck.
+export const getApplianceOverview = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const templates = await ctx.db
+      .query("applianceTemplates")
+      .withIndex("by_updatedAt")
+      .order("desc")
+      .collect();
+
+    const cache: UserCache = new Map();
+    const overview = [];
+    for (const template of templates) {
+      if (templateStatus(template) !== "active") continue;
+      // Only one run per appliance can be open, and it blocks new ones, so
+      // the open run and the latest completed one are both near the top.
+      const recent = await ctx.db
+        .query("applianceCheckRuns")
+        .withIndex("by_template", (q) => q.eq("templateId", template._id))
+        .order("desc")
+        .take(20);
+      const open = recent.find((r) => r.status === "in_progress");
+      const last = recent
+        .filter((r) => r.status === "completed")
+        .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0];
+      overview.push({
+        templateId: template._id,
+        name: template.name,
+        openRun: open ? await summariseRun(ctx, open, cache) : null,
+        lastCompleted: last ? await summariseRun(ctx, last, cache) : null,
+      });
+    }
+    return overview.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

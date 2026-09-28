@@ -18,6 +18,8 @@ interface DeleteConfirmDialogProps {
   trigger?: ReactNode;
   onConfirm: () => void;
   confirmLabel?: string;
+  /** Dismiss button label - override when the action itself is a "cancel" */
+  cancelLabel?: string;
   destructive?: boolean;
   /** Controlled mode (e.g. opened from a dropdown menu item) */
   open?: boolean;
@@ -30,6 +32,7 @@ export function DeleteConfirmDialog({
   trigger,
   onConfirm,
   confirmLabel = "Delete",
+  cancelLabel = "Cancel",
   destructive = true,
   open,
   onOpenChange,
@@ -43,7 +46,7 @@ export function DeleteConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-          <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+          <AlertDialogCancel className="w-full sm:w-auto">{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             className={`w-full sm:w-auto ${
               destructive

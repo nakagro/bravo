@@ -14,6 +14,7 @@
 - Inventory: History loads more as you scroll back, and the appliance filter now finds older checks.
 - Inventory: History now counts a miscounted item as an issue, not a pass.
 - Inventory: Each answered item shows who answered it and when.
+- Inventory: The Admin tab is reorganised into Overview, Records and Notify, with this week's progress for every appliance at a glance.
 
 ## [2026.09.24]
 - Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.
