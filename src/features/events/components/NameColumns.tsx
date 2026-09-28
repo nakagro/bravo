@@ -34,7 +34,9 @@ export function NameColumns({
 }: NameColumnsProps) {
   const sorted = [...members].sort(compareUserNames);
   return (
-    <ul className="columns-2 sm:columns-3 gap-x-6">
+    // One column on phones - two there cut long names off mid-word, and a
+    // name you can't read defeats the list. Wider screens have the room.
+    <ul className="columns-1 sm:columns-2 lg:columns-3 gap-x-6">
       {sorted.map((member) => {
         const name = formatUserName(member);
         const isMe = member._id === myUserId;
