@@ -1,5 +1,7 @@
 import { forwardRef, useCallback, useState } from "react";
 import { useMutation } from "convex/react";
+import { toast } from "sonner";
+import { formatDayTime } from "@/lib/dateFormat";
 import { api } from "../../../../convex/_generated/api";
 import { Badge } from "../../../components/ui/badge";
 import { StepperInput } from "../../../components/common/StepperInput";
@@ -19,11 +21,50 @@ import type { RunItemDoc } from "../types/inventory.types";
 interface InventoryCheckItemProps {
   item: RunItemDoc;
   isReadOnly: boolean;
+  answeredByName?: string;
 }
 
 export const InventoryCheckItem = forwardRef<HTMLDivElement, InventoryCheckItemProps>(
-  function InventoryCheckItem({ item, isReadOnly }, ref) {
-    const updateItem = useMutation(api.inventoryCheckRuns.updateRunItem);
+  function InventoryCheckItem({ item, isReadOnly, answeredByName }, ref) {
+    // Taps show straight away rather than after the round trip - in a shed or
+    // on a truck the signal is often poor, and a button that only lights up
+    // seconds later gets tapped again or assumed saved. Convex holds the
+    // write and retries it on reconnect; a rejected one rolls back.
+    const updateItemMutation = useMutation(
+      api.inventoryCheckRuns.updateRunItem
+    ).withOptimisticUpdate((store, args) => {
+      const query = { runId: item.runId };
+      const data = store.getQuery(api.inventoryCheckRuns.getRun, query);
+      if (!data) return;
+      store.setQuery(api.inventoryCheckRuns.getRun, query, {
+        ...data,
+        items: data.items.map((it) => {
+          if (it._id !== args.runItemId) return it;
+          const next = { ...it, updatedAt: Date.now() };
+          if (args.value !== undefined) next.value = args.value ?? undefined;
+          if (args.actualQuantity !== undefined) {
+            next.actualQuantity = args.actualQuantity ?? undefined;
+          }
+          if (args.notes !== undefined) next.notes = args.notes;
+          return next;
+        }),
+      });
+    });
+
+    // A save that fails must say so - before this it failed silently and the
+    // tap just didn't stick.
+    const updateItem = async (args: Parameters<typeof updateItemMutation>[0]) => {
+      try {
+        await updateItemMutation(args);
+      } catch (error) {
+        toast.error(`"${item.itemName}" didn't save`, {
+          description:
+            error instanceof Error && error.message.includes("not editable")
+              ? "This check has been completed or cancelled."
+              : "Check your signal and tap it again.",
+        });
+      }
+    };
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [noteDraft, setNoteDraft] = useState("");
     const [tapFlash, setTapFlash] = useState<"resolved" | "attention" | null>(null);
@@ -90,6 +131,14 @@ export const InventoryCheckItem = forwardRef<HTMLDivElement, InventoryCheckItemP
               : item.itemName
           }
           notes={item.notes}
+          meta={
+            status !== "unanswered" && item.updatedAt ? (
+              <span className="text-[10px] text-muted-foreground">
+                {answeredByName ? `${answeredByName} · ` : ""}
+                {formatDayTime(item.updatedAt)}
+              </span>
+            ) : null
+          }
           badges={
             <>
               <InventoryItemInfoButton item={item} />

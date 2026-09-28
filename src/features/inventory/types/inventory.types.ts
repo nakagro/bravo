@@ -17,6 +17,9 @@ export interface RunItemDoc {
   imageStorageId?: Id<"_storage">;
   expectedQuantity?: number;
   actualQuantity?: number;
+  /** Whoever last answered or noted the item, and when */
+  updatedBy?: Id<"users">;
+  updatedAt?: number;
 }
 
 export interface DeviationItem {

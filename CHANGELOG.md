@@ -8,6 +8,12 @@
 - Duty Crew: A "Mine" filter on This Week shows just the checks allocated to you.
 - Duty Crew: The Action Centre reminder now says how many of the checks left are allocated to you.
 - Duty Crew: History now shows who ticked each item and when.
+- Inventory: Taps on an item show straight away, and you're told if one didn't save.
+- Inventory: Finishing a check twice no longer sends the officer two notices.
+- Inventory: An in-progress check now shows who started it, when, and how far it got.
+- Inventory: History loads more as you scroll back, and the appliance filter now finds older checks.
+- Inventory: History now counts a miscounted item as an issue, not a pass.
+- Inventory: Each answered item shows who answered it and when.
 
 ## [2026.09.24]
 - Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.

@@ -36,6 +36,9 @@ interface InProgressRunDoc {
   templateVersion: number;
   status: "in_progress" | "completed" | "cancelled";
   startedAt: number;
+  startedByName?: string;
+  answeredCount: number;
+  itemCount: number;
 }
 
 interface LastCompletedRunDoc {
@@ -218,6 +221,24 @@ export function InventoryTemplateSelector() {
                       : "Never checked"}
                   </span>
                 </div>
+
+                {/* Only one check per appliance can be open, so say whose it
+                    is and how far it got - otherwise an abandoned one blocks
+                    the next crew with no clue who to ask. */}
+                {run && (
+                  <p className="mt-1.5 text-xs text-blue-700 dark:text-blue-400">
+                    Started {formatRelativeTime(run.startedAt).toLowerCase()}
+                    {run.startedByName ? ` by ${run.startedByName}` : ""} ·{" "}
+                    {run.answeredCount}/{run.itemCount} done
+                  </p>
+                )}
+                {run && run.startedAt < weekBoundaries(0).start.getTime() && (
+                  <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                    Started before this duty week, so some answers may be out
+                    of date. Finish it, or cancel it from inside the check and
+                    start again.
+                  </p>
+                )}
 
                 {/* Say why the button is dead. Without this the card is inert
                     with no explanation, and most members can't publish. */}

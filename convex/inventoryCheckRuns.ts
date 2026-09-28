@@ -1,7 +1,8 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { notifyEvent } from "./lib/notifyEvent";
 import { templateStatus } from "./inventoryTemplates";
 
@@ -163,6 +164,8 @@ export const startRun = mutation({
   },
 });
 
+// In-progress runs, with who started each and how far it has got - only one
+// run per appliance can be open, so the Checks tab needs to say whose it is.
 export const getInProgressRuns = query({
   args: {},
   handler: async (ctx) => {
@@ -170,7 +173,28 @@ export const getInProgressRuns = query({
       .query("applianceCheckRuns")
       .withIndex("by_status", (q) => q.eq("status", "in_progress"))
       .collect();
-    return runs.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+    runs.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+
+    const cache: UserCache = new Map();
+    const result = [];
+    for (const run of runs) {
+      const items = await ctx.db
+        .query("applianceCheckRunItems")
+        .withIndex("by_run", (q) => q.eq("runId", run._id))
+        .collect();
+      const starter = run.startedBy ? await cachedUser(ctx, cache, run.startedBy) : null;
+      result.push({
+        ...run,
+        startedByName: starter
+          ? [starter.firstName, starter.lastName].filter(Boolean).join(" ") ||
+            starter.name ||
+            undefined
+          : undefined,
+        answeredCount: items.filter(isAnswered).length,
+        itemCount: items.length,
+      });
+    }
+    return result;
   },
 });
 
@@ -190,10 +214,25 @@ export const getRun = query({
     const startedByUser = run.startedBy ? await ctx.db.get(run.startedBy) : null;
     const completedByUser = run.completedBy ? await ctx.db.get(run.completedBy) : null;
 
+    // Who answered each item, for the per-item attribution
+    const itemUsers = [];
+    for (const userId of new Set(items.flatMap((i) => (i.updatedBy ? [i.updatedBy] : [])))) {
+      const user = await ctx.db.get(userId);
+      if (user) {
+        itemUsers.push({
+          _id: user._id,
+          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        });
+      }
+    }
+
     // Return flat; client can group by sectionOrder/sectionName
     return { 
       run, 
       items,
+      itemUsers,
       startedByUser: startedByUser ? {
         firstName: startedByUser.firstName,
         lastName: startedByUser.lastName,
@@ -260,6 +299,13 @@ export const completeRun = mutation({
 
     const run = await ctx.db.get(runId);
     if (!run) throw new Error("Run not found");
+    // A double-tap, or two people finishing together, must not overwrite who
+    // completed it or send the officer the notice twice. Already completed is
+    // a no-op; a cancelled run can't be revived.
+    if (run.status === "completed") return true;
+    if (run.status !== "in_progress") {
+      throw new Error("This check was cancelled and can't be completed");
+    }
 
     const runNotes = notes ?? run.notes;
 
@@ -414,6 +460,62 @@ export const listRecentRuns = query({
   },
 });
 
+type SummaryUser = {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  memberNumber?: string;
+};
+
+type UserCache = Map<Id<"users">, Doc<"users"> | null>;
+
+async function cachedUser(ctx: QueryCtx, cache: UserCache, userId: Id<"users">) {
+  if (!cache.has(userId)) cache.set(userId, await ctx.db.get(userId));
+  return cache.get(userId) ?? null;
+}
+
+const summaryUser = (user: Doc<"users"> | null): SummaryUser | null =>
+  user
+    ? {
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        memberNumber: user.memberNumber,
+      }
+    : null;
+
+// One run's list-row summary. `yes` is everything that checked out, `no` the
+// items answered No, and `deviations` everything that didn't match (a No or a
+// miscount) - a short quantity used to be counted as a yes.
+async function summariseRun(ctx: QueryCtx, run: Doc<"applianceCheckRuns">, cache: UserCache) {
+  const items = await ctx.db
+    .query("applianceCheckRunItems")
+    .withIndex("by_run", (q) => q.eq("runId", run._id))
+    .collect();
+  let yes = 0,
+    no = 0,
+    unanswered = 0;
+  for (const it of items) {
+    if (!isAnswered(it)) unanswered++;
+    else if (!isDeviation(it)) yes++;
+    else if (!isQuantityItem(it)) no++;
+  }
+  return {
+    run,
+    total: items.length,
+    yes,
+    no,
+    unanswered,
+    deviations: items.filter(isDeviation).length,
+    completedByUser: summaryUser(
+      run.completedBy ? await cachedUser(ctx, cache, run.completedBy) : null
+    ),
+    startedByUser: summaryUser(
+      run.startedBy ? await cachedUser(ctx, cache, run.startedBy) : null
+    ),
+  };
+}
+
 export const listRunSummaries = query({
   args: {
     limit: v.optional(v.number()),
@@ -424,99 +526,56 @@ export const listRunSummaries = query({
     )),
   },
   handler: async (ctx, { limit, status }) => {
-    let runs;
-    if (status) {
-      runs = await ctx.db
-        .query("applianceCheckRuns")
-        .withIndex("by_status", (q) => q.eq("status", status))
-        .collect();
-      // Sort locally by startedAt desc when filtering by status
-      runs.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
-    } else {
-      runs = await ctx.db
-        .query("applianceCheckRuns")
-        .withIndex("by_startedAt")
-        .order("desc")
-        .collect();
-    }
+    // Newest first straight off the index - this used to collect every run
+    // ever recorded just to keep the first few.
+    const runs = status
+      ? await ctx.db
+          .query("applianceCheckRuns")
+          .withIndex("by_status", (q) => q.eq("status", status))
+          .order("desc")
+          .take(limit ?? 20)
+      : await ctx.db
+          .query("applianceCheckRuns")
+          .withIndex("by_startedAt")
+          .order("desc")
+          .take(limit ?? 20);
 
-    const limited = runs.slice(0, limit ?? 20);
-
-    const results = [] as Array<{
-      run: any;
-      total: number;
-      yes: number;
-      no: number;
-      unanswered: number;
-      completedByUser?: {
-        name?: string;
-        firstName?: string;
-        lastName?: string;
-        memberNumber?: string;
-      } | null;
-      startedByUser?: {
-        name?: string;
-        firstName?: string;
-        lastName?: string;
-        memberNumber?: string;
-      } | null;
-    }>;
-
-    for (const run of limited) {
-      const items = await ctx.db
-        .query("applianceCheckRunItems")
-        .withIndex("by_run", (q) => q.eq("runId", run._id))
-        .collect();
-      const total = items.length;
-      let yes = 0, no = 0, unanswered = 0;
-      for (const it of items) {
-        // For quantity items, check if actualQuantity is set
-        if (it.expectedQuantity !== undefined) {
-          if (it.actualQuantity !== undefined) {
-            yes++; // Count as answered
-          } else {
-            unanswered++;
-          }
-        } else {
-          // For boolean items, check value
-          if (it.value === "yes") yes++;
-          else if (it.value === "no") no++;
-          else unanswered++;
-        }
-      }
-
-      // Fetch user information
-      let completedByUser = null;
-      let startedByUser = null;
-
-      if (run.completedBy) {
-        const user = await ctx.db.get(run.completedBy);
-        if (user) {
-          completedByUser = {
-            name: user.name,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            memberNumber: user.memberNumber,
-          };
-        }
-      }
-
-      if (run.startedBy) {
-        const user = await ctx.db.get(run.startedBy);
-        if (user) {
-          startedByUser = {
-            name: user.name,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            memberNumber: user.memberNumber,
-          };
-        }
-      }
-
-      results.push({ run, total, yes, no, unanswered, completedByUser, startedByUser });
-    }
-
+    const cache: UserCache = new Map();
+    const results = [];
+    for (const run of runs) results.push(await summariseRun(ctx, run, cache));
     return results;
+  },
+});
+
+// History, a page at a time and optionally for one appliance. Filtering on
+// the server means a quiet appliance's older checks are still reachable,
+// rather than only whatever made the newest 50 overall.
+export const listRunSummariesPage = query({
+  args: {
+    templateId: v.optional(v.id("applianceTemplates")),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { templateId, paginationOpts }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { page: [], isDone: true, continueCursor: "" };
+
+    // Runs are inserted as they start, so creation order is start order.
+    const result = templateId
+      ? await ctx.db
+          .query("applianceCheckRuns")
+          .withIndex("by_template", (q) => q.eq("templateId", templateId))
+          .order("desc")
+          .paginate(paginationOpts)
+      : await ctx.db
+          .query("applianceCheckRuns")
+          .withIndex("by_startedAt")
+          .order("desc")
+          .paginate(paginationOpts);
+
+    const cache: UserCache = new Map();
+    const page = [];
+    for (const run of result.page) page.push(await summariseRun(ctx, run, cache));
+    return { ...result, page };
   },
 });
 
