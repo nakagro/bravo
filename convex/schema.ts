@@ -1271,6 +1271,23 @@ const applicationTables = {
     .index("by_event_user", ["eventId", "userId"])
     .index("by_slot_user", ["slotId", "userId"]),
 
+  // Appliances crewed for an event - a truck at a school visit or community
+  // day. Same seats as deploymentCrews, one crew per appliance for the whole
+  // event (never per shift). Deliberately independent of the roster: being in
+  // a seat doesn't put a member on eventSlotAllocations, and neither excludes
+  // the other.
+  eventCrews: defineTable({
+    eventId: v.id("events"),
+    applianceName: v.string(),
+    crewLeader: v.optional(crewSeat),
+    driver: v.optional(crewSeat),
+    crewMembers: v.array(crewSeat), // up to 3
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_event", ["eventId"]),
+
   // Who actually turned up. Deliberately a separate layer from both the RSVPs
   // (what members said beforehand) and eventSlotAllocations (who was rostered):
   // the whole point is that real attendance deviates from both, and the

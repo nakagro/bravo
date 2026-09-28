@@ -24,6 +24,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { eventTypeColors } from "../types";
+import { CrewAppliancesField } from "./CrewAppliancesField";
 
 const slotSchema = z.object({
   _id: z.string().optional(),
@@ -61,6 +62,9 @@ const eventFormSchema = z
     // which can offer to carry existing responses onto the roster.
     responsesClosed: z.boolean(),
     slots: z.array(slotSchema),
+    // Appliances the event needs crewed; the seats are filled on the event page
+    needsCrew: z.boolean(),
+    crewAppliances: z.array(z.string()),
     description: z.string(),
   })
   .refine(
@@ -72,6 +76,10 @@ const eventFormSchema = z
         Number(data.maxGuestsPerMember) <= 50),
     { message: "Guest limit must be a whole number from 1 to 50", path: ["maxGuestsPerMember"] }
   )
+  .refine((data) => !data.needsCrew || data.crewAppliances.length > 0, {
+    message: "Pick at least one appliance, or turn this off",
+    path: ["crewAppliances"],
+  })
   .refine((data) => !data.hasShifts || data.slots.length > 0, {
     message: "Add at least one shift, or turn off shifts",
     path: ["slots"],
@@ -116,6 +124,8 @@ const blankDefaults: EventFormValues = {
   collectsDietary: false,
   responsesClosed: false,
   slots: [],
+  needsCrew: false,
+  crewAppliances: [],
   description: "",
 };
 
@@ -140,6 +150,24 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   const existingSlots = useQuery(
     api.events.getEventSlots,
     eventId ? { eventId } : "skip"
+  );
+  const existingCrews = useQuery(
+    api.eventCrews.listEventCrews,
+    eventId ? { eventId } : "skip"
+  );
+  const savedCrewNames = useMemo(
+    () => (existingCrews ?? []).map((crew) => crew.applianceName),
+    [existingCrews]
+  );
+  // Appliances with someone already seated - dropping one loses its crew
+  const crewedNames = useMemo(
+    () =>
+      new Set(
+        (existingCrews ?? [])
+          .filter((crew) => crew.crewLeader || crew.driver || crew.crewMembers.length > 0)
+          .map((crew) => crew.applianceName.trim().toLowerCase())
+      ),
+    [existingCrews]
   );
   const createEvent = useMutation(api.events.createEvent);
   const updateEvent = useMutation(api.events.updateEvent);
@@ -194,11 +222,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
   const watchIsMultiDay = form.watch("isMultiDay");
   const watchHasShifts = form.watch("hasShifts");
   const watchAllowsGuests = form.watch("allowsGuests");
+  const watchNeedsCrew = form.watch("needsCrew");
 
-  // Load existing event data when editing (wait for slots too, so the field
-  // array is populated in the same reset)
+  // Load existing event data when editing (wait for slots and crews too, so
+  // everything is populated in the same reset)
   useEffect(() => {
-    if (existingEvent && existingSlots !== undefined) {
+    if (existingEvent && existingSlots !== undefined && existingCrews !== undefined) {
       form.reset({
         title: existingEvent.title,
         eventTypeId: existingEvent.eventTypeId || "",
@@ -230,10 +259,12 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           date: slot.date || "",
           targetCount: slot.targetCount != null ? String(slot.targetCount) : "",
         })),
+        needsCrew: existingCrews.length > 0,
+        crewAppliances: existingCrews.map((crew) => crew.applianceName),
         description: existingEvent.description || "",
       });
     }
-  }, [existingEvent, existingSlots, form]);
+  }, [existingEvent, existingSlots, existingCrews, form]);
 
   // Persist the new-event draft on every change so an accidental close doesn't
   // lose progress. Editing an existing event doesn't touch the draft.
@@ -279,6 +310,14 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         }))
       : [];
 
+    const crewAppliances = values.needsCrew ? values.crewAppliances : [];
+    // Only reconcile when the list actually changed, so an appliance someone
+    // added from the event page while this form was open isn't swept away.
+    const sameNames = (a: string[], b: string[]) =>
+      a.length === b.length &&
+      a.every((name) => b.some((other) => other.trim().toLowerCase() === name.trim().toLowerCase()));
+    const crewChanged = !sameNames(crewAppliances, savedCrewNames);
+
     try {
       if (isEditing && eventId) {
         // Hand-over is its own mutation (own permission rule, own audit entry),
@@ -309,6 +348,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
               : ("" as const)
             : ("" as const),
           slots,
+          crewAppliances: crewChanged ? crewAppliances : undefined,
         });
         guard.release();
         toast.success("Event updated");
@@ -333,6 +373,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           // setMemberResponses so the carry-over can be offered.
           memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
           slots: values.hasShifts ? slots : undefined,
+          crewAppliances: crewAppliances.length > 0 ? crewAppliances : undefined,
         });
         if (values.teamLeaderIds.length > 0) {
           await setTeamLeaders({
@@ -1020,6 +1061,59 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
               Add shift
             </Button>
           </div>
+        )}
+
+        {/* Appliance crewing - which trucks the event needs. Independent of
+            shifts and the roster: a seat on a truck is its own thing. */}
+        <FormField
+          control={form.control}
+          name="needsCrew"
+          render={({ field }) => (
+            <FormItem>
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                <span>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Needs an appliance crewed
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    A truck at the event, with a crew leader, driver and crew
+                  </span>
+                </span>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Needs an appliance crewed"
+                    className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                  />
+                </FormControl>
+              </label>
+            </FormItem>
+          )}
+        />
+        {(watchNeedsCrew || savedCrewNames.length > 0) && (
+          <FormField
+            control={form.control}
+            name="crewAppliances"
+            render={({ field }) => (
+              <FormItem>
+                {watchNeedsCrew ? (
+                  <CrewAppliancesField
+                    value={field.value}
+                    onChange={field.onChange}
+                    crewedNames={crewedNames}
+                    savedNames={savedCrewNames}
+                  />
+                ) : crewedNames.size > 0 ? (
+                  // Switched off on an event that has crew: say what saving does
+                  <p className="px-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    Saving removes every appliance from this event, and the crew already on them.
+                  </p>
+                ) : null}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
         {/* Description */}

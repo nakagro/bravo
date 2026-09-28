@@ -8,6 +8,8 @@ import {
   eventTypeChipClasses,
   RsvpStatus,
 } from "../types";
+import { Truck } from "lucide-react";
+import { BRIGADE_NAME } from "@/components/shared/crew/crewSeats";
 
 /**
  * Category chip for an event. Prefers the structured type (name + colour);
@@ -86,6 +88,41 @@ export function ShiftsBadge({ className = "" }: { className?: string }) {
     </span>
   );
 }
+
+/**
+ * An appliance crewed for the event, with how many of its seats are filled -
+ * amber until it's fully crewed. The brigade's own name is dropped so the
+ * chip reads "Pumper 3/5" rather than repeating "Wyndham Vale" on every card.
+ */
+export function CrewBadge({
+  applianceName,
+  filled,
+  total,
+  className = "",
+}: {
+  applianceName: string;
+  filled: number;
+  total: number;
+  className?: string;
+}) {
+  const full = filled >= total;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+        full
+          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
+          : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
+      } ${className}`}
+      title={`${applianceName}: ${filled} of ${total} seats filled`}
+    >
+      <Truck className="h-3 w-3" aria-hidden="true" />
+      {shortApplianceName(applianceName)} {filled}/{total}
+    </span>
+  );
+}
+
+export const shortApplianceName = (name: string) =>
+  name.replace(new RegExp(`^${BRIGADE_NAME}\\s+`, "i"), "");
 
 /**
  * Small indicator that member responses are closed - the organiser has set the

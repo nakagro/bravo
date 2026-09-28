@@ -29,6 +29,7 @@ import { DeclineButton } from "../features/events/components/RsvpButtons";
 import { GuestControls } from "../features/events/components/GuestControls";
 import { ResponseActivity } from "../features/events/components/ResponseActivity";
 import { EventForm } from "../features/events/components/EventForm";
+import { EventCrewsSection } from "../features/events/components/EventCrewsSection";
 import {
   AttendanceBadge,
   EventTypeChip,
@@ -40,7 +41,7 @@ import { NotifyMembersDialog } from "../features/events/components/NotifyMembers
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, X, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, X, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -89,6 +90,7 @@ export function EventDetailPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [showAllocateDialog, setShowAllocateDialog] = useState(false);
+  const [addingCrew, setAddingCrew] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showResponsesDialog, setShowResponsesDialog] = useState(false);
   const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
@@ -389,6 +391,10 @@ export function EventDetailPage() {
                       <Users className="h-4 w-4" />
                       {event.hasShifts ? "Allocate shifts" : "Set who's going"}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setAddingCrew(true)}>
+                      <Truck className="h-4 w-4" />
+                      Crew an appliance
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowResponsesDialog(true)}>
                       {responsesClosed ? (
                         <LockOpen className="h-4 w-4" />
@@ -512,6 +518,14 @@ export function EventDetailPage() {
           the read-only board below carries the turnout (it highlights "you"). */}
       {showRsvp && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-5">
+          {/* A seat on a truck is separate from the roster, so it's said on
+              its own line rather than folded into "you're on". */}
+          {event.myCrewSeat && (
+            <div className="mb-3 flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+              <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              You&apos;re crewing the {event.myCrewSeat.applianceName} as {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role}
+            </div>
+          )}
           {responsesClosed ? (
             // Nothing to opt into - the organiser set the list. All that's left
             // is telling them if you can't make it after all, which stays
@@ -665,6 +679,14 @@ export function EventDetailPage() {
               </div>
             )}
           </div>
+
+          <EventCrewsSection
+            eventId={event._id}
+            canManage={canManageEvents}
+            isEditable={event.status === "active"}
+            adding={addingCrew}
+            onAddingChange={setAddingCrew}
+          />
 
           {/* Attendance - what actually happened, kept apart from the RSVP
               board above it. The two are allowed to disagree; that difference

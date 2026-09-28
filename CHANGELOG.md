@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2026.09.28]
+- Events: An event can now need an appliance crewed, with a crew leader, driver and crew picked on the event page.
 - Duty Crew: The duty week now runs Tuesday to Monday, changing over at training night instead of Monday.
 - Inventory: An appliance check done on a Monday now counts toward the week that is ending.
 - Duty Crew: Ticked checks now show the day and date they were done, not just the time.
