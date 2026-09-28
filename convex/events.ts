@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
+import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib/eventCrews";
 import { brigadeParts } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
 
@@ -193,6 +194,14 @@ const enrichedEventValidator = v.object({
   // means unconfirmed - a different thing from "nobody came", and the state the
   // past-events list nudges about.
   attendedCount: v.union(v.number(), v.null()),
+  // Appliances crewed for the event (eventCrews), in the order added, with how
+  // many of each one's seats are filled.
+  crews: v.array(
+    v.object({ applianceName: v.string(), filled: v.number(), total: v.number() })
+  ),
+  // The caller's own seat, if they're crewing an appliance - independent of
+  // whether they're on the roster.
+  myCrewSeat: v.union(v.null(), v.object({ applianceName: v.string(), role: v.string() })),
   // Resolved category (name + colour) from eventTypeId; null when unset/deleted
   eventTypeInfo: v.union(
     v.object({
@@ -225,7 +234,7 @@ export function responsesAreOpen(event: Doc<"events">): boolean {
  * a conflict for the organiser to resolve, not a head to count - which is why
  * declining stays available even when responses are closed.
  */
-async function attendanceFor(
+export async function attendanceFor(
   ctx: QueryCtx,
   event: Doc<"events">
 ): Promise<{
@@ -357,10 +366,14 @@ async function enrichEvent(
     }
   }
 
+  const crewSummary = await crewSummaryFor(ctx, event._id, userId);
+
   return {
     ...event,
     counts,
     myRsvp,
+    crews: crewSummary.crews,
+    myCrewSeat: crewSummary.mySeat,
     // Only meaningful while the event is asking; a stale count on a shift or
     // closed event would show the member a number nobody is counting.
     myGuestCount:
@@ -1201,6 +1214,8 @@ export const createEvent = mutation({
     maxGuestsPerMember: v.optional(v.number()),
     collectsDietary: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
+    // Appliances that need crewing; each becomes an empty eventCrews row
+    crewAppliances: v.optional(v.array(v.string())),
     isAllDay: v.boolean(),
   },
   returns: v.id("events"),
@@ -1235,6 +1250,10 @@ export const createEvent = mutation({
 
     if (args.hasShifts && args.slots && args.slots.length > 0) {
       await reconcileSlots(ctx, eventId, args.slots);
+    }
+
+    if (args.crewAppliances && args.crewAppliances.length > 0) {
+      await reconcileCrewAppliances(ctx, eventId, args.crewAppliances, userId);
     }
 
     await recordHistory(ctx, {
@@ -1275,6 +1294,9 @@ export const updateEvent = mutation({
     maxGuestsPerMember: v.optional(v.union(v.number(), v.literal(""))),
     collectsDietary: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
+    // The full list of appliances needing crew. Sent = reconcile (an empty
+    // list removes them all); absent = leave the crews alone.
+    crewAppliances: v.optional(v.array(v.string())),
     isAllDay: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -1354,6 +1376,12 @@ export const updateEvent = mutation({
       }
       // Turning shifts off clears all slots; otherwise sync to the payload.
       await reconcileSlots(ctx, args.eventId, hasShifts ? args.slots : []);
+    }
+
+    // Independent of column changes, like the slots: an appliance-only edit
+    // must still apply.
+    if (args.crewAppliances !== undefined) {
+      await reconcileCrewAppliances(ctx, args.eventId, args.crewAppliances, userId);
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -1595,6 +1623,8 @@ export const deleteEvent = mutation({
       .query("eventAttendance")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
+
+    await deleteEventCrews(ctx, args.eventId);
 
     for (const row of [
       ...rsvps,

@@ -4,15 +4,17 @@ import { api } from "../../../../convex/_generated/api";
 import { formatTime, formatShortDate, formatCountsSummary, getTodayStr } from "../types";
 import {
   AttendanceBadge,
+  CrewBadge,
   DateBadge,
   EventStatusBadge,
   EventTypeChip,
   SetListBadge,
   ShiftsBadge,
   TeamLeaderBadge,
+  shortApplianceName,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
-import { ChevronRight, Clock, MapPin, Users } from "lucide-react";
+import { ChevronRight, Clock, MapPin, Truck, Users } from "lucide-react";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
 
@@ -77,6 +79,10 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             </span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
             {event.hasShifts && <ShiftsBadge />}
+            {!isCancelled &&
+              event.crews.map((crew) => (
+                <CrewBadge key={crew.applianceName} {...crew} />
+              ))}
             {responsesClosed && <SetListBadge />}
             {/* Only ever shown to the leader themselves - it marks the events
                 they're running, not a fact about the event for everyone. */}
@@ -120,6 +126,14 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             <Users className="h-4 w-4" />
             {countsSummary}
           </div>
+
+          {event.myCrewSeat && !isCancelled && (
+            <div className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+              <Truck className="h-4 w-4" />
+              You&apos;re {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role} on the{" "}
+              {shortApplianceName(event.myCrewSeat.applianceName)}
+            </div>
+          )}
 
           {showRespondBy && (
             <div className="mt-1 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
