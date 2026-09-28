@@ -43,7 +43,7 @@ import {
   formatDate,
   formatDateShort,
   formatMonthYear,
-  formatTime,
+  formatDayTime,
   getUserFullName,
   isItemResolved,
   checkItemStatus,
@@ -56,7 +56,7 @@ const PAGE_SIZE = 12;
 const submissionByline = (submission: HistorySubmission) =>
   submission.closedAt
     ? `Closed ${formatDateShort(submission.closedAt)}`
-    : `${submission.completedBy ? getUserFullName(submission.completedBy) : "Unknown"} · ${formatTime(submission.completedAt)}`;
+    : `${submission.completedBy ? getUserFullName(submission.completedBy) : "Unknown"} · ${formatDayTime(submission.completedAt)}`;
 
 interface HistorySubmission {
   _id: Id<"stationCheckSubmissions">;

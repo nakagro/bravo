@@ -6,7 +6,7 @@ import { ChecklistRow } from "@/components/shared/checklist";
 import {
   checkItemStatus,
   getUserInitials,
-  formatTime,
+  formatDayTime,
   type CheckItemData,
   type LinkedInventoryInfo,
 } from "../types";
@@ -112,7 +112,7 @@ export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps
               <span className="text-[10px] text-blue-700 dark:text-blue-400">
                 via Inventory
                 {linked.completedByName ? ` - ${linked.completedByName}` : ""}
-                {` - ${formatTime(linked.completedAt)}`}
+                {` - ${formatDayTime(linked.completedAt)}`}
               </span>
             ) : (
               <span className="text-[10px] text-gray-500 dark:text-gray-400">
@@ -141,7 +141,7 @@ export const StationCheckItem = forwardRef<HTMLDivElement, StationCheckItemProps
                     : "text-green-700 dark:text-green-400",
                 )}
               >
-                {formatTime(item.completedAt)}
+                {formatDayTime(item.completedAt)}
               </span>
             </div>
           ) : null

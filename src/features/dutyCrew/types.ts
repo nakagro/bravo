@@ -155,6 +155,13 @@ export const formatTime = (timestamp: number) => {
   });
 };
 
+/**
+ * Day, date and time, e.g. "Sat 3 Oct, 2:15 pm". A tick's time alone is no use
+ * once the week has moved on - the day it was done is the point.
+ */
+export const formatDayTime = (timestamp: number) =>
+  `${formatDateShort(timestamp)}, ${formatTime(timestamp)}`;
+
 export const getUserFullName = (user: {
   firstName?: string;
   lastName?: string;

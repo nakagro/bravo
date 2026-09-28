@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toUtcMidnight, weekBoundaries } from "./types";
+import { formatDayTime, toUtcMidnight, weekBoundaries } from "./types";
 
 describe("weekBoundaries", () => {
   it("returns the Tue-Mon duty week containing a midweek day", () => {
@@ -47,5 +47,14 @@ describe("toUtcMidnight", () => {
       expect(utc.getUTCHours()).toBe(0);
       expect(utc.getUTCMinutes()).toBe(0);
     }
+  });
+});
+
+describe("formatDayTime", () => {
+  it("includes the day and date, not just the time", () => {
+    const stamp = formatDayTime(new Date(2026, 9, 3, 14, 15).getTime()); // Sat 3 Oct 2026
+    expect(stamp).toContain("Sat");
+    expect(stamp).toContain("3 Oct");
+    expect(stamp).toMatch(/2:15/);
   });
 });
