@@ -70,6 +70,15 @@ export function InventoryChecksTab() {
       }));
   }, [items]);
 
+  const userNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const user of runData?.itemUsers ?? []) {
+      names[user._id] =
+        [user.firstName, user.lastName].filter(Boolean).join(" ") || user.name || "Unknown";
+    }
+    return names;
+  }, [runData]);
+
   const run = runData?.run;
   const isReadOnly = run?.status !== "in_progress";
 
@@ -228,6 +237,7 @@ export function InventoryChecksTab() {
             ref={registerSectionRef(sectionKey(section.order))}
             section={section}
             isReadOnly={isReadOnly}
+            userNames={userNames}
           />
         ))}
       </Accordion>

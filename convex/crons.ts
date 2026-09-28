@@ -45,8 +45,19 @@ crons.daily(
 // leaving it open for good.
 crons.cron(
   "close elapsed duty crew weeks", // identifier
-  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Monday's run is the one that closes
+  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Tuesday's run is the one that closes
   internal.stationChecks.closeElapsedWeeks,
+  {}
+);
+
+// Nudge the outgoing duty crew on the Monday afternoon, the last day of the
+// Tuesday-to-Monday duty week, if checks are still outstanding. 05:00 and
+// 06:00 UTC Monday are 4pm Melbourne in AEDT and AEST respectively; the
+// handler only sends from whichever run is actually 4pm in Melbourne.
+crons.cron(
+  "duty crew week closing reminder", // identifier
+  "0 5,6 * * 1",
+  internal.dutyCrewReminders.sendWeekClosingReminder,
   {}
 );
 

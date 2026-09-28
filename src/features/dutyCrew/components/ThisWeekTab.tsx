@@ -231,8 +231,8 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         return;
       }
 
-      // A closed week is edited in place - a tick that lands Monday morning
-      // for a Sunday-night job just updates the record. Its summary email has
+      // A closed week is edited in place - a tick that lands Tuesday morning
+      // for a Monday-night job just updates the record. Its summary email has
       // already gone and is not re-sent.
       const submissionId = currentWeekStatus?.submission?._id;
       await saveDraftStationCheck({
@@ -470,6 +470,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         isLeader={isLeader === true}
         isAdmin={isAdmin}
         itemUsersById={itemUsersById}
+        currentUserId={loggedInUser?._id}
         crewMembers={crewMembers ?? []}
         allocationByTarget={allocationByTarget}
         canAssign={

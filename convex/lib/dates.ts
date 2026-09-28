@@ -69,8 +69,8 @@ function brigadeOffset(timestamp: number): number {
 // The instant at which a given Melbourne wall-clock time occurs. Two passes:
 // the offset depends on the answer, so guess with the offset at the naive
 // instant, then re-read the offset at the guess. Melbourne's DST switches at
-// 02:00/03:00 on a Sunday, so no boundary this module asks for (Monday 00:00,
-// Sunday 23:59:59.999) lands in a skipped or repeated hour.
+// 02:00/03:00 on a Sunday, so no boundary this module asks for (Tuesday 00:00,
+// Monday 23:59:59.999) lands in a skipped or repeated hour.
 export function brigadeTimestamp(
   year: number,
   month: number, // 1-12

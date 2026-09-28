@@ -29,6 +29,15 @@ async function setup(opts: { onCrew: boolean }) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    // Something to tick - with no checks at all there's nothing to remind about
+    await ctx.db.insert("stationChecks", {
+      name: "Sweep bay",
+      isActive: true,
+      order: 0,
+      createdBy: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     await ctx.db.insert("dutyCrewSchedule", {
       date: sunday.getTime(),
       dutyCrewId,
@@ -72,7 +81,7 @@ describe("duty crew action centre provider", () => {
     const { t, userId, dutyCrewId, asUser } = await setup({ onCrew: true });
     await t.run(async (ctx) => {
       await ctx.db.insert("stationCheckSubmissions", {
-        // The key the This Week tab writes: Sunday 23:59:59.999 Melbourne
+        // Any instant inside the current week keys it
         date: weekWindow(Date.now()).end,
         dutyCrewId,
         completedBy: userId,

@@ -8,9 +8,11 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
-// Monday 3 Aug 2026, 04:15 AEST - the moment the cron closes the week of
-// Mon 27 Jul - Sun 2 Aug (the first Sunday of August, so crew 1's week).
-const CLOSE_RUN = Date.parse("2026-08-02T18:15:00Z");
+// Tuesday 4 Aug 2026, 04:15 AEST - the moment the cron closes the week of
+// Tue 28 Jul - Mon 3 Aug (named by Sun 2 Aug, the first Sunday of August, so
+// crew 1's week).
+const CLOSE_RUN = Date.parse("2026-08-03T18:15:00Z");
+const DAY_MS = 24 * 60 * 60 * 1000;
 const LAST_WEEK = weekWindow(CLOSE_RUN - 7 * 24 * 60 * 60 * 1000);
 const THIS_WEEK = weekWindow(CLOSE_RUN);
 const OLD_WEEK = weekWindow(CLOSE_RUN - 5 * 7 * 24 * 60 * 60 * 1000);
@@ -113,6 +115,25 @@ describe("duty crew week close-out", () => {
     expect(notices[0].description).toContain("1 not done");
   });
 
+  it("leaves the week open through Monday, for a crew catching up on missed checks", async () => {
+    const { t, dutyCrewId, asMember } = await setup();
+    // Monday 3 Aug 2026, 19:00 AEST - a crew doing the weekend's checks late
+    const mondayNight = Date.parse("2026-08-03T09:00:00Z");
+    vi.setSystemTime(mondayNight);
+    expect(weekWindow(mondayNight).start).toBe(LAST_WEEK.start);
+
+    const submissionId = await asMember.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: LAST_WEEK.end,
+      dutyCrewId,
+      checkItems: [adHoc("Sweep bay", true)],
+    });
+    // Monday's 04:15 run has been and gone; this is the one before Tuesday's
+    vi.setSystemTime(CLOSE_RUN - DAY_MS);
+    await t.mutation(internal.stationChecks.closeElapsedWeeks, {});
+
+    expect((await t.run((ctx) => ctx.db.get(submissionId)))?.status).toBe("draft");
+  });
+
   it("closes a week nobody opened, with every check reported not done", async () => {
     const { t, dutyCrewId, asOfficer } = await setup();
     vi.setSystemTime(CLOSE_RUN);
@@ -139,7 +160,7 @@ describe("duty crew week close-out", () => {
     const { t, asOfficer } = await setup();
     vi.setSystemTime(CLOSE_RUN);
     await t.mutation(internal.stationChecks.closeElapsedWeeks, {});
-    vi.setSystemTime(CLOSE_RUN + 24 * 60 * 60 * 1000);
+    vi.setSystemTime(CLOSE_RUN + DAY_MS);
     await t.mutation(internal.stationChecks.closeElapsedWeeks, {});
 
     const rows = await t.run((ctx) => ctx.db.query("stationCheckSubmissions").take(10));
@@ -202,6 +223,29 @@ describe("duty crew week close-out", () => {
     const after = await t.run((ctx) => ctx.db.get(status!.submission._id));
     expect(after?.status).toBe("completed");
     expect(after?.checkItems[0].isCompleted).toBe(true);
+  });
+
+  it("shows in History who ticked each item and when", async () => {
+    const { t, dutyCrewId, memberId, asMember } = await setup();
+    const tickedAt = LAST_WEEK.start + 60 * 60 * 1000;
+    vi.setSystemTime(tickedAt);
+    await asMember.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: LAST_WEEK.end,
+      dutyCrewId,
+      checkItems: [adHoc("Sweep bay", true), adHoc("Mow lawn", false)],
+    });
+    vi.setSystemTime(CLOSE_RUN);
+    await t.mutation(internal.stationChecks.closeElapsedWeeks, {});
+
+    const page = await asMember.query(api.stationChecks.getStationCheckHistoryPage, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    const [ticked, untouched] = page.page[0].checkItems;
+    expect(ticked).toMatchObject({ completedBy: memberId, completedAt: tickedAt });
+    expect(untouched.completedBy).toBeUndefined();
+    expect(page.page[0].itemUsers).toEqual([
+      expect.objectContaining({ _id: memberId, firstName: "Crew", lastName: "Member" }),
+    ]);
   });
 
   it("lists a system-closed week in History", async () => {

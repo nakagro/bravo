@@ -2,6 +2,7 @@ import { query, mutation, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { weekWindow } from "./stationChecks";
 
 // Get all duty crews
 export const getAllDutyCrews = query({
@@ -347,8 +348,10 @@ export const getUpcomingDutyCrewAssignments = query({
   ),
   handler: async (ctx, args) => {
     const count = args.count ?? 4; // Default to 4 upcoming assignments
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Start from the Sunday of the current duty week, not today: the week runs
+    // Tuesday to Monday, so on a Monday "this week" is still yesterday's
+    // Sunday. UTC midnight of that date, the dutyCrewSchedule key convention.
+    const thisWeekSunday = weekWindow(Date.now()).sunday;
 
     const result = [];
     const allDutyCrews = await ctx.db.query("dutyCrew").collect();
@@ -357,7 +360,7 @@ export const getUpcomingDutyCrewAssignments = query({
     // Get all manual assignments in the future
     const manualAssignments = await ctx.db
       .query("dutyCrewSchedule")
-      .withIndex("by_date", (q) => q.gte("date", today.getTime()))
+      .withIndex("by_date", (q) => q.gte("date", thisWeekSunday.getTime()))
       .order("asc")
       .take(count);
 
@@ -384,7 +387,7 @@ export const getUpcomingDutyCrewAssignments = query({
 
     // If we don't have enough manual assignments, calculate the upcoming Sundays
     if (result.length < count) {
-      let currentDate = new Date(today);
+      let currentDate = new Date(thisWeekSunday);
 
       // Find the next Sunday
       const daysUntilNextSunday = (7 - currentDate.getDay()) % 7;

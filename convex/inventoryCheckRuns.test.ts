@@ -262,3 +262,168 @@ describe("completeRun notifications", () => {
     expect(actions.find((a) => a.kind === "notice")).toBeUndefined();
   });
 });
+
+describe("completeRun guards", () => {
+  it("treats a second completion as a no-op - one notice, original completer kept", async () => {
+    const { t, templateId, checkerId, officerId, asChecker, asOfficer } =
+      await setup();
+    await mapPortfolio(t, [officerId]);
+    const runId = await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+    ]);
+
+    await asChecker.mutation(api.inventoryCheckRuns.completeRun, { runId });
+    const first = await t.run((ctx) => ctx.db.get(runId));
+    await asOfficer.mutation(api.inventoryCheckRuns.completeRun, { runId });
+    const second = await t.run((ctx) => ctx.db.get(runId));
+
+    expect(second?.completedBy).toBe(checkerId);
+    expect(second?.completedAt).toBe(first?.completedAt);
+    const notices = (await asOfficer.query(api.actionCentre.getMyActions, {})).filter(
+      (a) => a.kind === "notice"
+    );
+    expect(notices).toHaveLength(1);
+  });
+
+  it("refuses to complete a cancelled check", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const runId = await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+    ]);
+    await asChecker.mutation(api.inventoryCheckRuns.cancelRun, { runId });
+
+    await expect(
+      asChecker.mutation(api.inventoryCheckRuns.completeRun, { runId })
+    ).rejects.toThrow("cancelled");
+    expect((await t.run((ctx) => ctx.db.get(runId)))?.status).toBe("cancelled");
+  });
+});
+
+describe("run summaries", () => {
+  it("says who started an open check and how far it has got", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+      { itemName: "Spare torch" },
+      { itemName: "Branches", expectedQuantity: 2, actualQuantity: 2 },
+    ]);
+
+    const [run] = await asChecker.query(api.inventoryCheckRuns.getInProgressRuns, {});
+    expect(run).toMatchObject({
+      startedByName: "Crew Member",
+      answeredCount: 2,
+      itemCount: 3,
+    });
+  });
+
+  it("counts a miscount as a deviation, not a yes", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+      { itemName: "Spare torch", value: "no" },
+      { itemName: "Branches", expectedQuantity: 2, actualQuantity: 1 },
+      { itemName: "Nozzles" },
+    ]);
+
+    const { page } = await asChecker.query(api.inventoryCheckRuns.listRunSummariesPage, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    expect(page[0]).toMatchObject({ total: 4, yes: 1, no: 1, unanswered: 1, deviations: 2 });
+  });
+
+  it("filters History to one appliance on the server, beyond the newest page", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const tankerId = await t.run((ctx) =>
+      ctx.db.insert("applianceTemplates", {
+        name: "Tanker",
+        version: 1,
+        createdBy: checkerId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        updatedBy: checkerId,
+      })
+    );
+    const tankerRun = await seedRun(t, tankerId, checkerId, [{ itemName: "Hose reel" }]);
+    // Pumper checks pile up on top of the one Tanker check
+    for (let i = 0; i < 3; i++) {
+      await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    }
+
+    const newest = await asChecker.query(api.inventoryCheckRuns.listRunSummariesPage, {
+      paginationOpts: { numItems: 2, cursor: null },
+    });
+    expect(newest.page.map((s) => s.run._id)).not.toContain(tankerRun);
+
+    const tanker = await asChecker.query(api.inventoryCheckRuns.listRunSummariesPage, {
+      templateId: tankerId,
+      paginationOpts: { numItems: 2, cursor: null },
+    });
+    expect(tanker.page.map((s) => s.run._id)).toEqual([tankerRun]);
+  });
+
+  it("names who answered each item on the run", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const runId = await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    const [item] = await t.run((ctx) =>
+      ctx.db
+        .query("applianceCheckRunItems")
+        .withIndex("by_run", (q) => q.eq("runId", runId))
+        .collect()
+    );
+
+    await asChecker.mutation(api.inventoryCheckRuns.updateRunItem, {
+      runItemId: item._id,
+      value: "yes",
+    });
+
+    const data = await asChecker.query(api.inventoryCheckRuns.getRun, { runId });
+    expect(data?.items[0].updatedBy).toBe(checkerId);
+    expect(data?.itemUsers).toEqual([
+      expect.objectContaining({ _id: checkerId, firstName: "Crew", lastName: "Member" }),
+    ]);
+  });
+});
+
+describe("admin overview and records", () => {
+  it("gives each active appliance its open check and latest completed one", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const done = await seedRun(t, templateId, checkerId, [
+      { itemName: "Hose reel", value: "yes" },
+      { itemName: "Spare torch", value: "no" },
+    ]);
+    await asChecker.mutation(api.inventoryCheckRuns.completeRun, { runId: done });
+    const open = await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    // An archived appliance isn't in the overview
+    await t.run((ctx) =>
+      ctx.db.insert("applianceTemplates", {
+        name: "Old tanker",
+        version: 1,
+        status: "archived" as const,
+        createdBy: checkerId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        updatedBy: checkerId,
+      })
+    );
+
+    const overview = await asChecker.query(api.inventoryCheckRuns.getApplianceOverview, {});
+    expect(overview).toHaveLength(1);
+    expect(overview[0].name).toBe("Pumper");
+    expect(overview[0].openRun?.run._id).toBe(open);
+    expect(overview[0].lastCompleted?.run._id).toBe(done);
+    expect(overview[0].lastCompleted?.deviations).toBe(1);
+  });
+
+  it("filters records by status on the server", async () => {
+    const { t, templateId, checkerId, asChecker } = await setup();
+    const cancelled = await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+    await asChecker.mutation(api.inventoryCheckRuns.cancelRun, { runId: cancelled });
+    await seedRun(t, templateId, checkerId, [{ itemName: "Hose reel" }]);
+
+    const { page } = await asChecker.query(api.inventoryCheckRuns.listRunSummariesPage, {
+      status: "cancelled",
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    expect(page.map((s) => s.run._id)).toEqual([cancelled]);
+  });
+});

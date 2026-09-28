@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CircleCheckBig, CircleX, Clock, User, History } from "lucide-react";
+import { CircleCheckBig, CircleX, Clock, User, History, LoaderCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 
 interface RunSummary {
@@ -21,6 +21,8 @@ interface RunSummary {
   yes: number;
   no: number;
   unanswered: number;
+  /** Missing items plus miscounts - what actually needs a look */
+  deviations: number;
   completedByUser?: {
     name?: string;
     firstName?: string;
@@ -53,29 +55,47 @@ function formatRelativeDate(ts?: number) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const PAGE_SIZE = 15;
+
 export function InventoryRecentChecks() {
-  const summaries = useQuery(api.inventoryCheckRuns.listRunSummaries, { limit: 50 }) as RunSummary[] | undefined;
   const navigate = useNavigate();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("all");
+  const [selectedTemplateId, setSelectedTemplateId] =
+    useState<Id<"applianceTemplates"> | null>(null);
 
-  // Get unique template names for filtering
-  const templateNames = useMemo(() => {
-    if (!summaries) return [];
-    const names = new Set(summaries.map(s => s.run.templateName));
-    return Array.from(names).sort();
-  }, [summaries]);
+  // Every appliance that can have history, including ones since taken out of
+  // service - their past checks still matter.
+  const templates = useQuery(api.inventoryTemplates.listTemplates, {
+    statuses: ["active", "inactive", "archived"],
+  });
+  const templateOptions = useMemo(
+    () =>
+      (templates ?? [])
+        .map((t) => ({ _id: t._id, name: t.name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [templates]
+  );
+  const selectedName = templateOptions.find((t) => t._id === selectedTemplateId)?.name;
 
-  // Filter summaries by selected template
-  const filteredSummaries = useMemo(() => {
-    if (!summaries) return [];
-    if (selectedTemplate === "all") return summaries;
-    return summaries.filter(s => s.run.templateName === selectedTemplate);
-  }, [summaries, selectedTemplate]);
+  // Paged and filtered on the server, so an appliance that's checked less
+  // often still shows its older checks.
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.inventoryCheckRuns.listRunSummariesPage,
+    selectedTemplateId ? { templateId: selectedTemplateId } : {},
+    { initialNumItems: PAGE_SIZE }
+  );
+  const filteredSummaries = results as RunSummary[];
+
+  const chipClass = (active: boolean) =>
+    `px-3 py-1.5 min-h-[36px] rounded-md text-sm font-medium transition-colors ${
+      active
+        ? "bg-red-600 text-white dark:bg-red-600"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+    }`;
 
   return (
     <div className="space-y-4">
       {/* Template Filter */}
-      {templateNames.length > 0 && (
+      {templateOptions.length > 1 && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Template</h3>
@@ -83,29 +103,22 @@ export function InventoryRecentChecks() {
           <div className="p-3">
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setSelectedTemplate("all")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedTemplate === "all"
-                  ? "bg-red-600 text-white dark:bg-red-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                  }`}
+                onClick={() => setSelectedTemplateId(null)}
+                aria-pressed={selectedTemplateId === null}
+                className={chipClass(selectedTemplateId === null)}
               >
-                All ({summaries?.length || 0})
+                All
               </button>
-              {templateNames.map((name) => {
-                const count = summaries?.filter(s => s.run.templateName === name).length || 0;
-                return (
-                  <button
-                    key={name}
-                    onClick={() => setSelectedTemplate(name)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedTemplate === name
-                      ? "bg-red-600 text-white dark:bg-red-600"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                      }`}
-                  >
-                    {name} ({count})
-                  </button>
-                );
-              })}
+              {templateOptions.map((t) => (
+                <button
+                  key={t._id}
+                  onClick={() => setSelectedTemplateId(t._id)}
+                  aria-pressed={selectedTemplateId === t._id}
+                  className={chipClass(selectedTemplateId === t._id)}
+                >
+                  {t.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -113,21 +126,29 @@ export function InventoryRecentChecks() {
 
       {/* History List */}
       <div className="space-y-3">
-        {(!filteredSummaries || filteredSummaries.length === 0) && (
+        {status === "LoadingFirstPage" && (
+          <div className="flex justify-center py-8">
+            <LoaderCircle className="h-6 w-6 animate-spin text-gray-400" />
+          </div>
+        )}
+
+        {status !== "LoadingFirstPage" && filteredSummaries.length === 0 && (
           <EmptyState
             icon={<History className="h-10 w-10 text-red-500 dark:text-red-400" />}
-            title={selectedTemplate === "all" ? "No check history" : `No history for ${selectedTemplate}`}
+            title={selectedName ? `No history for ${selectedName}` : "No check history"}
             description={
-              selectedTemplate === "all"
+              !selectedName
                 ? "Completed inventory checks will appear here."
                 : "Completed checks for this template will appear here."
             }
           />
         )}
 
-        {filteredSummaries?.map((s) => {
-          const completionRate = s.total > 0 ? Math.round(((s.yes + s.no) / s.total) * 100) : 0;
-          const hasIssues = s.no > 0;
+        {filteredSummaries.map((s) => {
+          const completionRate =
+            s.total > 0 ? Math.round(((s.total - s.unanswered) / s.total) * 100) : 0;
+          // A miscount is as much an issue as a missing item
+          const hasIssues = s.deviations > 0;
 
           // Get user display name
           const getUserName = (user: RunSummary['completedByUser']) => {
@@ -204,10 +225,10 @@ export function InventoryRecentChecks() {
                       <CircleCheckBig className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                       <span>{s.yes}</span>
                     </div>
-                    {s.no > 0 && (
-                      <div className="flex items-center gap-1">
+                    {s.deviations > 0 && (
+                      <div className="flex items-center gap-1" title="Missing or miscounted">
                         <CircleX className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                        <span>{s.no}</span>
+                        <span>{s.deviations}</span>
                       </div>
                     )}
                   </div>
@@ -224,6 +245,24 @@ export function InventoryRecentChecks() {
             </div>
           );
         })}
+
+        {status !== "LoadingFirstPage" && status !== "Exhausted" && (
+          <Button
+            variant="outline"
+            className="w-full min-h-[44px]"
+            disabled={status === "LoadingMore"}
+            onClick={() => loadMore(PAGE_SIZE)}
+          >
+            {status === "LoadingMore" ? (
+              <span className="flex items-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Loading...
+              </span>
+            ) : (
+              "Show earlier"
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

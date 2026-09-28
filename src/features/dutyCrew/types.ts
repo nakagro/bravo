@@ -51,18 +51,7 @@ export const checkItemStatus = (item: {
       ? "attention"
       : "unanswered";
 
-/** The Mon 00:00 - Sun 23:59 window for a week `weekOffset` weeks from `now`, in local time. */
-export const weekBoundaries = (weekOffset: number, now: Date = new Date()) => {
-  const currentDay = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() + weekOffset * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return { monday, sunday };
-};
+export { weekBoundaries } from "@/lib/dutyWeek";
 
 /**
  * A local date as UTC midnight of the same calendar day, for backend queries
@@ -165,6 +154,8 @@ export const formatTime = (timestamp: number) => {
     minute: "2-digit",
   });
 };
+
+export { formatDayTime } from "@/lib/dateFormat";
 
 export const getUserFullName = (user: {
   firstName?: string;

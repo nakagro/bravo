@@ -18,6 +18,7 @@ import {
 } from "../../../components/ui/alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { weekBoundaries } from "@/lib/dutyWeek";
 
 interface ApplianceTemplateDoc {
   _id: Id<"applianceTemplates">;
@@ -35,6 +36,9 @@ interface InProgressRunDoc {
   templateVersion: number;
   status: "in_progress" | "completed" | "cancelled";
   startedAt: number;
+  startedByName?: string;
+  answeredCount: number;
+  itemCount: number;
 }
 
 interface LastCompletedRunDoc {
@@ -88,23 +92,15 @@ export function InventoryTemplateSelector() {
     return `${diffYears} years ago`;
   };
 
-  const getCurrentWeekRange = () => {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayOffset);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    return { monday: monday.getTime(), sunday: sunday.getTime() };
-  };
-
+  // The duty week (Tue-Mon), so a check done on the Monday night still counts
+  // for the crew whose week it is - and matches the Duty Crew checklist.
   const isCompletedThisWeek = (lastCompletedTimestamp: number | undefined) => {
     if (!lastCompletedTimestamp) return false;
-    const { monday, sunday } = getCurrentWeekRange();
-    return lastCompletedTimestamp >= monday && lastCompletedTimestamp <= sunday;
+    const { start, end } = weekBoundaries(0);
+    return (
+      lastCompletedTimestamp >= start.getTime() &&
+      lastCompletedTimestamp <= end.getTime()
+    );
   };
 
   const doStartCheck = async (tpl: ApplianceTemplateDoc) => {
@@ -225,6 +221,24 @@ export function InventoryTemplateSelector() {
                       : "Never checked"}
                   </span>
                 </div>
+
+                {/* Only one check per appliance can be open, so say whose it
+                    is and how far it got - otherwise an abandoned one blocks
+                    the next crew with no clue who to ask. */}
+                {run && (
+                  <p className="mt-1.5 text-xs text-blue-700 dark:text-blue-400">
+                    Started {formatRelativeTime(run.startedAt).toLowerCase()}
+                    {run.startedByName ? ` by ${run.startedByName}` : ""} ·{" "}
+                    {run.answeredCount}/{run.itemCount} done
+                  </p>
+                )}
+                {run && run.startedAt < weekBoundaries(0).start.getTime() && (
+                  <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                    Started before this duty week, so some answers may be out
+                    of date. Finish it, or cancel it from inside the check and
+                    start again.
+                  </p>
+                )}
 
                 {/* Say why the button is dead. Without this the card is inert
                     with no explanation, and most members can't publish. */}

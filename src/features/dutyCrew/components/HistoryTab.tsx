@@ -43,7 +43,7 @@ import {
   formatDate,
   formatDateShort,
   formatMonthYear,
-  formatTime,
+  formatDayTime,
   getUserFullName,
   isItemResolved,
   checkItemStatus,
@@ -56,7 +56,7 @@ const PAGE_SIZE = 12;
 const submissionByline = (submission: HistorySubmission) =>
   submission.closedAt
     ? `Closed ${formatDateShort(submission.closedAt)}`
-    : `${submission.completedBy ? getUserFullName(submission.completedBy) : "Unknown"} · ${formatTime(submission.completedAt)}`;
+    : `${submission.completedBy ? getUserFullName(submission.completedBy) : "Unknown"} · ${formatDayTime(submission.completedAt)}`;
 
 interface HistorySubmission {
   _id: Id<"stationCheckSubmissions">;
@@ -84,6 +84,14 @@ interface HistorySubmission {
     isAdHoc?: boolean;
     linkedApplianceTemplateId?: Id<"applianceTemplates">;
     linkedRunId?: Id<"applianceCheckRuns">;
+    completedBy?: Id<"users">;
+    completedAt?: number;
+  }>;
+  itemUsers: Array<{
+    _id: Id<"users">;
+    name: string;
+    firstName?: string;
+    lastName?: string;
   }>;
   notes?: string;
 }
@@ -112,6 +120,7 @@ function ItemStatusIcon({
 
 function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
   const navigate = useNavigate();
+  const usersById = new Map(submission.itemUsers.map((u) => [u._id, u]));
   const templateItems = submission.checkItems.filter((i) => !i.isAdHoc);
   const adHocItems = submission.checkItems.filter((i) => i.isAdHoc);
 
@@ -174,6 +183,30 @@ function SubmissionDetail({ submission }: { submission: HistorySubmission }) {
                     name={item.name}
                     notes={item.notes}
                     leading={<ItemStatusIcon item={item} />}
+                    meta={(() => {
+                      // Who and when, so a past week says which day things
+                      // actually got done. Linked rows credit the inventory run.
+                      if (status === "unanswered" || !item.completedAt) return null;
+                      const user = item.completedBy ? usersById.get(item.completedBy) : undefined;
+                      const who = item.linkedApplianceTemplateId
+                        ? `via Inventory${user ? ` - ${getUserFullName(user)}` : ""}`
+                        : user
+                          ? getUserFullName(user)
+                          : null;
+                      return (
+                        <span
+                          className={cn(
+                            "text-[10px]",
+                            status === "attention"
+                              ? "text-amber-700 dark:text-amber-400"
+                              : "text-green-700 dark:text-green-400"
+                          )}
+                        >
+                          {who ? `${who} · ` : ""}
+                          {formatDayTime(item.completedAt)}
+                        </span>
+                      );
+                    })()}
                     badges={
                       <>
                         {status === "attention" && (
