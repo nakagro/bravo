@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import { buildSubmissionNotice, weekWindow } from "./stationChecks";
 import schema from "./schema";
+import { weekBoundaries } from "../src/lib/dutyWeek";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -341,16 +342,7 @@ describe("buildSubmissionNotice", () => {
 // the rotation rule, so a saved draft was invisible on reload and every tick
 // looked like it had been thrown away.
 function frontendSunday(weekOffset: number) {
-  const today = new Date();
-  const currentDay = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() + weekOffset * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return sunday.getTime();
+  return weekBoundaries(weekOffset).sunday.getTime();
 }
 
 describe("draft round trip", () => {
@@ -483,35 +475,46 @@ describe("weekWindow resolves a Melbourne week", () => {
       hour12: false,
     }).format(new Date(ts));
 
-  it("starts on Melbourne Monday midnight during AEST", () => {
+  it("runs Tuesday to Monday, Melbourne time, during AEST", () => {
     // Wed 26 Aug 2026, midday Melbourne (UTC+10)
     const w = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
-    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
-    expect(inMelbourne(w.end)).toBe("Sun, 30/08/2026, 23:59:59");
+    expect(inMelbourne(w.start)).toBe("Tue, 25/08/2026, 00:00:00");
+    expect(inMelbourne(w.end)).toBe("Mon, 31/08/2026, 23:59:59");
   });
 
-  it("starts on Melbourne Monday midnight during AEDT", () => {
+  it("runs Tuesday to Monday, Melbourne time, during AEDT", () => {
     // Wed 9 Dec 2026, midday Melbourne (UTC+11)
     const w = weekWindow(Date.UTC(2026, 11, 9, 1, 0, 0));
-    expect(inMelbourne(w.start)).toBe("Mon, 07/12/2026, 00:00:00");
-    expect(inMelbourne(w.end)).toBe("Sun, 13/12/2026, 23:59:59");
+    expect(inMelbourne(w.start)).toBe("Tue, 08/12/2026, 00:00:00");
+    expect(inMelbourne(w.end)).toBe("Mon, 14/12/2026, 23:59:59");
   });
 
-  it("puts a Monday-morning check in the week that is starting, not the one that ended", () => {
-    // Mon 24 Aug 2026, 08:00 Melbourne - the usual time these get done, and
-    // the case the UTC-based window got wrong by putting it in the prior week.
-    const mondayMorning = Date.UTC(2026, 7, 23, 22, 0, 0);
-    const w = weekWindow(mondayMorning);
-    expect(mondayMorning).toBeGreaterThanOrEqual(w.start);
-    expect(mondayMorning).toBeLessThanOrEqual(w.end);
-    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
+  it("keeps Monday night in the week that is ending, for crews catching up", () => {
+    // Mon 31 Aug 2026, 20:00 Melbourne
+    const mondayNight = Date.UTC(2026, 7, 31, 10, 0, 0);
+    const w = weekWindow(mondayNight);
+    expect(inMelbourne(w.start)).toBe("Tue, 25/08/2026, 00:00:00");
+    expect(w.sunday.getTime()).toBe(Date.UTC(2026, 7, 30));
   });
 
-  it("treats Sunday as the end of its own week, not the start of the next", () => {
-    // Sun 30 Aug 2026, 20:00 Melbourne
-    const w = weekWindow(Date.UTC(2026, 7, 30, 10, 0, 0));
-    expect(inMelbourne(w.start)).toBe("Mon, 24/08/2026, 00:00:00");
-    expect(inMelbourne(w.sunday.getTime())).toContain("30/08/2026");
+  it("starts the new week at Tuesday midnight, when the duty crew changes over", () => {
+    // Tue 1 Sep 2026, 00:30 Melbourne - the UTC date is still Monday
+    const w = weekWindow(Date.UTC(2026, 7, 31, 14, 30, 0));
+    expect(inMelbourne(w.start)).toBe("Tue, 01/09/2026, 00:00:00");
+    expect(w.sunday.getTime()).toBe(Date.UTC(2026, 8, 6));
+  });
+
+  it("names the week by its Sunday and ends it on the Monday after", () => {
+    const { sunday, lastDay } = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
+    expect(lastDay.getTime() - sunday.getTime()).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it("still finds a week keyed under the old Mon-Sun window", () => {
+    // Pre-change submissions were keyed to Sunday 23:59:59.999 Melbourne
+    const oldKey = Date.parse("2026-08-30T23:59:59.999+10:00");
+    const w = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
+    expect(oldKey).toBeGreaterThanOrEqual(w.start);
+    expect(oldKey).toBeLessThanOrEqual(w.end);
   });
 
   it("returns consecutive, non-overlapping windows", () => {

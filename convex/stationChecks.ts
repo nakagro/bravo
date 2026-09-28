@@ -233,36 +233,44 @@ function applyItemAttribution(
 // A week's submission is keyed by its Sunday, but the client sends the Sunday
 // as end-of-day (23:59:59.999) while the reader used to normalise it to
 // midnight - so a draft was written under one key and looked up under another
-// and every tick appeared to vanish on reload. Match on the whole Mon–Sun
-// window instead, which is also tolerant of the timestamps already in the
-// database from before this was fixed.
+// and every tick appeared to vanish on reload. Match on the whole week window
+// instead, which is also tolerant of the timestamps already in the database
+// from before this was fixed.
 //
-// The week is a *Melbourne* Mon–Sun, resolved through `convex/lib/dates.ts`
-// rather than the runtime's own clock, which is UTC. Built with local-time
-// `setHours`/`getDay` this window used to run Mon 10:00 AEST to the following
-// Mon 09:59, so a station check or inventory run done on Monday morning - the
-// usual time - counted toward the week that had just ended.
+// The week runs Tuesday to Monday, because the duty officer - and with them
+// the duty crew - changes over at Tuesday training night. A crew that misses
+// its weekend checks can still catch up on the Monday night. The week is still
+// named by the Sunday inside it (the nth-Sunday rotation and
+// `dutyCrewSchedule.date` both key on it), which is also why submissions keyed
+// under the old Mon-Sun window (Sunday 23:59) still land in the right week.
+//
+// The week is a *Melbourne* week, resolved through `convex/lib/dates.ts`
+// rather than the runtime's own clock, which is UTC.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function weekWindow(date: number) {
   const p = brigadeParts(date);
   const day = brigadeDayOfWeek(date); // 0 = Sunday
+  const daysSinceTuesday = (day + 5) % 7;
 
-  // Melbourne's civil Monday and Sunday of this week. Date.UTC normalises the
-  // month/year rollover, and the fields are read back as UTC because that is
-  // the calendar arithmetic - not an instant - being done here.
-  const mondayCivil = new Date(
-    Date.UTC(p.year, p.month - 1, p.day - (day === 0 ? 6 : day - 1))
+  // Melbourne's civil Tuesday, Sunday and Monday of this week. Date.UTC
+  // normalises the month/year rollover, and the fields are read back as UTC
+  // because that is the calendar arithmetic - not an instant - being done here.
+  const tuesdayCivil = new Date(
+    Date.UTC(p.year, p.month - 1, p.day - daysSinceTuesday)
   );
-  const sundayCivil = new Date(mondayCivil.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const sundayCivil = new Date(tuesdayCivil.getTime() + 5 * DAY_MS);
+  const mondayCivil = new Date(tuesdayCivil.getTime() + 6 * DAY_MS);
 
   const start = brigadeTimestamp(
-    mondayCivil.getUTCFullYear(),
-    mondayCivil.getUTCMonth() + 1,
-    mondayCivil.getUTCDate()
+    tuesdayCivil.getUTCFullYear(),
+    tuesdayCivil.getUTCMonth() + 1,
+    tuesdayCivil.getUTCDate()
   );
   const end = brigadeTimestamp(
-    sundayCivil.getUTCFullYear(),
-    sundayCivil.getUTCMonth() + 1,
-    sundayCivil.getUTCDate(),
+    mondayCivil.getUTCFullYear(),
+    mondayCivil.getUTCMonth() + 1,
+    mondayCivil.getUTCDate(),
     23,
     59,
     59,
@@ -272,8 +280,9 @@ export function weekWindow(date: number) {
   // `sunday` stays a UTC-midnight Date of the Sunday's *calendar date*, which
   // is the key convention `dutyCrewSchedule.date` is written under (see
   // dutyCrew.ts:178) and what the callers reading .getMonth()/.getDate() off
-  // it expect on a UTC runtime.
-  return { start, end, sunday: sundayCivil };
+  // it expect on a UTC runtime. `lastDay` is the same for the Monday the week
+  // ends on, for "week ending" labels.
+  return { start, end, sunday: sundayCivil, lastDay: mondayCivil };
 }
 
 // Find the submission covering the week that `date` falls in. A week has one
@@ -326,9 +335,13 @@ export function buildSubmissionNotice(
   const notDone = items.filter((i) => !isResolved(i));
   const withNotes = items.filter((i) => i.notes && i.notes.trim().length > 0);
 
-  const weekLabel = new Date(weekEnding).toLocaleDateString("en-AU", {
+  // Label by the Monday the week ends on, whatever timestamp in the week the
+  // submission happens to be keyed under. `lastDay` is a civil date held as
+  // UTC midnight, so it is formatted in UTC.
+  const weekLabel = weekWindow(weekEnding).lastDay.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
   });
 
   const summary = [
@@ -358,7 +371,7 @@ export function buildSubmissionNotice(
     summary,
     attention,
     notDoneCount: notDone.length,
-    description: `${crewName} · week ending Sun ${weekLabel} · ${summary}`,
+    description: `${crewName} · week ending Mon ${weekLabel} · ${summary}`,
   };
 }
 
@@ -1167,12 +1180,12 @@ export const submitStationCheck = mutation({
         actorUserId: currentUser._id,
         emailSubject:
           notice.notDoneCount > 0
-            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding - week ending Sun ${notice.weekLabel}`
-            : `Duty crew checks submitted - week ending Sun ${notice.weekLabel}`,
+            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding - week ending Mon ${notice.weekLabel}`
+            : `Duty crew checks submitted - week ending Mon ${notice.weekLabel}`,
         emailIntro: `${submitterName} submitted the station checks for ${crew?.name ?? "the duty crew"}.`,
         emailDetails: [
           { label: "Crew", value: crew?.name ?? "Unknown" },
-          { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
+          { label: "Week ending", value: `Monday ${notice.weekLabel}` },
           { label: "Submitted by", value: submitterName },
           { label: "Result", value: notice.summary },
           ...(args.notes?.trim()
@@ -1313,7 +1326,7 @@ export const reopenStationCheck = mutation({
 // Week close-out
 //
 // A duty week is a set of chores that either got done or didn't. It closes on
-// its own at the Monday boundary - nobody has to come back and press a button
+// its own at the Tuesday boundary - nobody has to come back and press a button
 // to say so - and the summary email goes out then, naming what was and wasn't
 // done. That email is the follow-up mechanism; there is no submit gate.
 // ---------------------------------------------------------------------------
@@ -1400,14 +1413,14 @@ async function notifyWeekClosed(
     sourceEntityId: submission._id,
     emailSubject:
       notice.notDoneCount > 0
-        ? `Duty crew week ending Sun ${notice.weekLabel}: ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} not done`
-        : `Duty crew week ending Sun ${notice.weekLabel}: all checks done`,
+        ? `Duty crew week ending Mon ${notice.weekLabel}: ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} not done`
+        : `Duty crew week ending Mon ${notice.weekLabel}: all checks done`,
     emailIntro: nothingRecorded
       ? `The station checks week for ${crewName} has closed with nothing recorded against it.`
       : `The station checks week for ${crewName} has closed. Here is what was and wasn't done.`,
     emailDetails: [
       { label: "Crew", value: crewName },
-      { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
+      { label: "Week ending", value: `Monday ${notice.weekLabel}` },
       { label: "Result", value: notice.summary },
       ...(submission.notes?.trim()
         ? [{ label: "Crew notes", value: submission.notes.trim() }]
@@ -1493,7 +1506,8 @@ export const closeElapsedWeeks = internalMutation({
 
     const crewSnapshot = await buildCrewSnapshot(ctx, crew._id);
     const submissionId = await ctx.db.insert("stationCheckSubmissions", {
-      // Same key the This Week tab writes: Sunday 23:59:59.999 Melbourne.
+      // Any instant inside the week keys it (lookups match on the window). The
+      // This Week tab writes Sunday 23:59:59.999; the window's end is as good.
       date: lastWeek.end,
       dutyCrewId: crew._id,
       checkItems,

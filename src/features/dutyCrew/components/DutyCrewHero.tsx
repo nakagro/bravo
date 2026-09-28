@@ -21,7 +21,7 @@ import {
 interface DutyCrewHeroProps {
   weekOffset: number;
   onWeekChange: (offset: number) => void;
-  currentSunday: Date;
+  weekEnd: Date;
   assignment: {
     date: number;
     dutyCrew: {
@@ -48,7 +48,7 @@ interface DutyCrewHeroProps {
 export function DutyCrewHero({
   weekOffset,
   onWeekChange,
-  currentSunday,
+  weekEnd,
   assignment,
   members,
   isHistoricalRoster = false,
@@ -100,7 +100,7 @@ export function DutyCrewHero({
             Week ending
           </span>
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
-            {formatDate(currentSunday.getTime())}
+            {formatDate(weekEnd.getTime())}
           </span>
           {weekOffset !== 0 && (
             <button

@@ -77,6 +77,7 @@ import type * as messagePresets from "../messagePresets.js";
 import type * as messages from "../messages.js";
 import type * as migrations_migrateHoseTapeColors from "../migrations/migrateHoseTapeColors.js";
 import type * as migrations_normalizeDeploymentDates from "../migrations/normalizeDeploymentDates.js";
+import type * as migrations_rekeyAllocationsToTuesdayWeeks from "../migrations/rekeyAllocationsToTuesdayWeeks.js";
 import type * as modules from "../modules.js";
 import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationHistory from "../notificationHistory.js";
@@ -176,6 +177,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   "migrations/migrateHoseTapeColors": typeof migrations_migrateHoseTapeColors;
   "migrations/normalizeDeploymentDates": typeof migrations_normalizeDeploymentDates;
+  "migrations/rekeyAllocationsToTuesdayWeeks": typeof migrations_rekeyAllocationsToTuesdayWeeks;
   modules: typeof modules;
   notificationAudit: typeof notificationAudit;
   notificationHistory: typeof notificationHistory;

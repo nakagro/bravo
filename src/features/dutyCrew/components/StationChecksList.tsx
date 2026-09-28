@@ -635,7 +635,7 @@ export function StationChecksList({
         )}
       </div>
 
-      {/* Nothing to submit. The week closes itself early Monday and the
+      {/* Nothing to submit. The week closes itself early Tuesday and the
           summary names what was and wasn't done - coming back to press a
           button told the officer nothing a closed week doesn't. */}
       <p
@@ -645,7 +645,7 @@ export function StationChecksList({
         <Info className="h-3.5 w-3.5 mt-px shrink-0" aria-hidden="true" />
         {submissionStatus === "completed"
           ? `This week closed${closedAt ? ` on ${formatDateShort(closedAt)}` : ""} and its summary has gone to the duty crew officer. Late ticks still save to the record.`
-          : "No need to submit. The week closes on its own early Monday morning, and the duty crew officer gets a summary of what was and wasn't done."}
+          : "No need to submit. The week closes on its own early Tuesday morning, and the duty crew officer gets a summary of what was and wasn't done."}
       </p>
 
       <DeleteConfirmDialog

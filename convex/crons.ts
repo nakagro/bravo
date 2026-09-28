@@ -45,7 +45,7 @@ crons.daily(
 // leaving it open for good.
 crons.cron(
   "close elapsed duty crew weeks", // identifier
-  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Monday's run is the one that closes
+  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Tuesday's run is the one that closes
   internal.stationChecks.closeElapsedWeeks,
   {}
 );

@@ -26,7 +26,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
 
-  const { sunday: currentSunday } = weekBoundaries(weekOffset);
+  const { sunday: currentSunday, end: weekEnd } = weekBoundaries(weekOffset);
 
   // Queries
   const stationChecks = useQuery(api.stationChecks.getAllStationChecks, {});
@@ -231,8 +231,8 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         return;
       }
 
-      // A closed week is edited in place - a tick that lands Monday morning
-      // for a Sunday-night job just updates the record. Its summary email has
+      // A closed week is edited in place - a tick that lands Tuesday morning
+      // for a Monday-night job just updates the record. Its summary email has
       // already gone and is not re-sent.
       const submissionId = currentWeekStatus?.submission?._id;
       await saveDraftStationCheck({
@@ -448,7 +448,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       <DutyCrewHero
         weekOffset={weekOffset}
         onWeekChange={setWeekOffset}
-        currentSunday={currentSunday}
+        weekEnd={weekEnd}
         assignment={currentAssignment}
         members={displayMembers}
         isHistoricalRoster={crewSnapshot !== undefined}

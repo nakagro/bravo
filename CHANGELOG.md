@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.09.28]
+- Duty Crew: The duty week now runs Tuesday to Monday, changing over at training night instead of Monday.
+- Inventory: An appliance check done on a Monday now counts toward the week that is ending.
+
 ## [2026.09.24]
 - Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.
 - Availability: The Deployment tab's You, Brigade and Crews switch is now a full-width bar that's easier to tap on phones.

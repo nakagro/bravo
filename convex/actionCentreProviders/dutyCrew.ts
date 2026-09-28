@@ -9,7 +9,7 @@ import { findSubmissionForWeek, weekWindow } from "../stationChecks";
 export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
   if (!p.hasModuleAccess("dutyCrew")) return [];
 
-  const { start: weekStart, sunday } = weekWindow(Date.now());
+  const { start: weekStart, sunday, lastDay } = weekWindow(Date.now());
 
   const { crew, isSpecial } = await resolveCrewForSunday(ctx, sunday);
   if (!crew) return [];
@@ -22,7 +22,7 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
   if (!isOnDuty) return [];
 
   // Matched on the week window, not an exact date key: submissions are keyed
-  // to Sunday 23:59 Melbourne, which an exact UTC-midnight lookup never hit.
+  // to an instant inside the week, which an exact UTC-midnight lookup never hit.
   const submission = await findSubmissionForWeek(ctx, Date.now(), crew._id);
 
   const remaining = submission
@@ -32,9 +32,12 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
     : undefined;
   if (remaining === 0) return [];
 
-  const sundayLabel = sunday.toLocaleDateString("en-AU", {
+  // The week runs Tuesday to Monday, so it is labelled by the Monday it ends
+  // on. `lastDay` is a civil date held as UTC midnight.
+  const endLabel = lastDay.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
   });
 
   return [
@@ -44,8 +47,8 @@ export const dutyCrewProvider: ActionProvider = async (ctx, p) => {
       kind: "dutyCrewWeek",
       title: isSpecial ? "All-Crews Duty Week" : "Your Duty Crew Week",
       description: isSpecial
-        ? `All duty crew members attend this week (ending Sun ${sundayLabel}).`
-        : `${crew.name} is on station duties for the week ending Sun ${sundayLabel}.`,
+        ? `All duty crew members attend this week (ending Mon ${endLabel}).`
+        : `${crew.name} is on station duties for the week ending Mon ${endLabel}.`,
       // Route is /dutycrew (no hyphen); This Week is the default tab, which
       // lands straight on the tickable station checks.
       url: "/dutycrew",

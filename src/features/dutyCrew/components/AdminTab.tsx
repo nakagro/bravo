@@ -50,7 +50,7 @@ export function AdminTab() {
           moduleId="dutyCrew"
           url="/dutycrew?tab=history"
           title="Weekly station checks summary"
-          description="Tell the people who hold the duty crew portfolio what was and wasn't done when each week closes (early Monday), including anything marked N/A or left with a note."
+          description="Tell the people who hold the duty crew portfolio what was and wasn't done when each week closes (early Tuesday), including anything marked N/A or left with a note."
         />
       )}
     </div>

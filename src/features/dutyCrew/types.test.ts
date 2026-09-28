@@ -2,18 +2,25 @@ import { describe, expect, it } from "vitest";
 import { toUtcMidnight, weekBoundaries } from "./types";
 
 describe("weekBoundaries", () => {
-  it("returns the Mon-Sun window containing a midweek day", () => {
-    const { monday, sunday } = weekBoundaries(0, new Date(2026, 7, 19, 14, 30)); // Wed 19 Aug 2026
-    expect(monday.getDate()).toBe(17);
-    expect(monday.getHours()).toBe(0);
+  it("returns the Tue-Mon duty week containing a midweek day", () => {
+    const { start, sunday, end } = weekBoundaries(0, new Date(2026, 7, 19, 14, 30)); // Wed 19 Aug 2026
+    expect(start.getDay()).toBe(2);
+    expect(start.getDate()).toBe(18);
+    expect(start.getHours()).toBe(0);
     expect(sunday.getDate()).toBe(23);
-    expect(sunday.getHours()).toBe(23);
+    expect(end.getDay()).toBe(1);
+    expect(end.getDate()).toBe(24);
+    expect(end.getHours()).toBe(23);
   });
 
-  it("keeps Sunday in the week that is ending, not the one starting", () => {
-    const { monday, sunday } = weekBoundaries(0, new Date(2026, 7, 23, 9, 0)); // Sun 23 Aug 2026
-    expect(monday.getDate()).toBe(17);
-    expect(sunday.getDate()).toBe(23);
+  it("keeps Monday in the week that is ending, until the Tuesday changeover", () => {
+    const monday = weekBoundaries(0, new Date(2026, 7, 24, 20, 0)); // Mon 24 Aug 2026, 8pm
+    expect(monday.start.getDate()).toBe(18);
+    expect(monday.sunday.getDate()).toBe(23);
+
+    const tuesday = weekBoundaries(0, new Date(2026, 7, 25, 0, 5)); // Tue 25 Aug 2026
+    expect(tuesday.start.getDate()).toBe(25);
+    expect(tuesday.sunday.getDate()).toBe(30);
   });
 
   it("steps whole weeks for a non-zero offset", () => {

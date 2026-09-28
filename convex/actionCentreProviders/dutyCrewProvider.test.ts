@@ -72,7 +72,7 @@ describe("duty crew action centre provider", () => {
     const { t, userId, dutyCrewId, asUser } = await setup({ onCrew: true });
     await t.run(async (ctx) => {
       await ctx.db.insert("stationCheckSubmissions", {
-        // The key the This Week tab writes: Sunday 23:59:59.999 Melbourne
+        // Any instant inside the current week keys it
         date: weekWindow(Date.now()).end,
         dutyCrewId,
         completedBy: userId,

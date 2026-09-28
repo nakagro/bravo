@@ -18,6 +18,7 @@ import {
 } from "../../../components/ui/alert-dialog";
 import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { weekBoundaries } from "@/lib/dutyWeek";
 
 interface ApplianceTemplateDoc {
   _id: Id<"applianceTemplates">;
@@ -88,23 +89,15 @@ export function InventoryTemplateSelector() {
     return `${diffYears} years ago`;
   };
 
-  const getCurrentWeekRange = () => {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayOffset);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    return { monday: monday.getTime(), sunday: sunday.getTime() };
-  };
-
+  // The duty week (Tue-Mon), so a check done on the Monday night still counts
+  // for the crew whose week it is - and matches the Duty Crew checklist.
   const isCompletedThisWeek = (lastCompletedTimestamp: number | undefined) => {
     if (!lastCompletedTimestamp) return false;
-    const { monday, sunday } = getCurrentWeekRange();
-    return lastCompletedTimestamp >= monday && lastCompletedTimestamp <= sunday;
+    const { start, end } = weekBoundaries(0);
+    return (
+      lastCompletedTimestamp >= start.getTime() &&
+      lastCompletedTimestamp <= end.getTime()
+    );
   };
 
   const doStartCheck = async (tpl: ApplianceTemplateDoc) => {
