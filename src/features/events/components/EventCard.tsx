@@ -14,7 +14,7 @@ import {
   shortApplianceName,
 } from "./badges";
 import { DeclineButton, RsvpButtons, ShiftRsvpButtons } from "./RsvpButtons";
-import { ChevronRight, Clock, MapPin, Truck, Users } from "lucide-react";
+import { ChevronRight, Clock, MapPin, Users } from "lucide-react";
 
 export type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
 
@@ -81,7 +81,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             {event.hasShifts && <ShiftsBadge />}
             {!isCancelled &&
               event.crews.map((crew) => (
-                <CrewBadge key={crew.applianceName} {...crew} />
+                <CrewBadge key={crew.applianceName} applianceName={crew.applianceName} />
               ))}
             {responsesClosed && <SetListBadge />}
             {/* Only ever shown to the leader themselves - it marks the events
@@ -128,8 +128,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
           </div>
 
           {event.myCrewSeat && !isCancelled && (
-            <div className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-              <Truck className="h-4 w-4" />
+            <div className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">
               You&apos;re {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role} on the{" "}
               {shortApplianceName(event.myCrewSeat.applianceName)}
             </div>

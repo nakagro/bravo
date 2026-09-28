@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2, Truck } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { CrewSeatRow } from "@/components/shared/crew/CrewSeatRow";
-import {
-  CREW_SEATS,
-  SEATS_PER_APPLIANCE,
-  emptySeats,
-  toSeatsDraft,
-} from "@/components/shared/crew/crewSeats";
+import { emptySeats, toSeatsDraft } from "@/components/shared/crew/crewSeats";
 import { EventCrewDialog, type EventCrewDraft } from "./EventCrewDialog";
 
 type Crew = NonNullable<
@@ -35,8 +30,8 @@ interface EventCrewsSectionProps {
   onAddingChange: (adding: boolean) => void;
 }
 
-const filledCount = (crew: Crew) =>
-  (crew.crewLeader ? 1 : 0) + (crew.driver ? 1 : 0) + crew.crewMembers.length;
+const hasCrew = (crew: Crew) =>
+  !!crew.crewLeader || !!crew.driver || crew.crewMembers.length > 0;
 
 /**
  * The appliances crewed for an event. Hidden entirely when there are none -
@@ -94,7 +89,6 @@ export function EventCrewsSection({
 
       <div className="grid gap-3 sm:grid-cols-2">
         {crews.map((crew) => {
-          const filled = filledCount(crew);
           const isMine = (seat: Crew["driver"]) => !!seat?.userId && seat.userId === me?._id;
           return (
             <div
@@ -102,18 +96,8 @@ export function EventCrewsSection({
               className="rounded-lg border border-gray-200 dark:border-gray-700 p-3"
             >
               <div className="flex items-center gap-2 mb-1">
-                <Truck className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate font-semibold text-gray-900 dark:text-white">
                   {crew.applianceName}
-                </span>
-                <span
-                  className={`shrink-0 text-xs font-semibold tabular-nums ${
-                    filled === SEATS_PER_APPLIANCE
-                      ? "text-green-700 dark:text-green-400"
-                      : "text-amber-700 dark:text-amber-400"
-                  }`}
-                >
-                  {filled}/{SEATS_PER_APPLIANCE}
                 </span>
                 {canEdit && (
                   <>
@@ -146,17 +130,19 @@ export function EventCrewsSection({
                 )}
               </div>
 
-              <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} emptyLabel="Needed" isMine={isMine(crew.crewLeader)} />
-              <CrewSeatRow role="Driver" seat={crew.driver} emptyLabel="Needed" isMine={isMine(crew.driver)} />
-              {Array.from({ length: CREW_SEATS }, (_, i) => (
-                <CrewSeatRow
-                  key={i}
-                  role={`Crew ${i + 1}`}
-                  seat={crew.crewMembers[i]}
-                  emptyLabel="Needed"
-                  isMine={isMine(crew.crewMembers[i])}
-                />
+              {/* Only the seats someone is in - an empty seat isn't shown */}
+              {crew.crewLeader && (
+                <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} isMine={isMine(crew.crewLeader)} />
+              )}
+              {crew.driver && (
+                <CrewSeatRow role="Driver" seat={crew.driver} isMine={isMine(crew.driver)} />
+              )}
+              {crew.crewMembers.map((seat, i) => (
+                <CrewSeatRow key={i} role={`Crew ${i + 1}`} seat={seat} isMine={isMine(seat)} />
               ))}
+              {!hasCrew(crew) && (
+                <p className="py-1.5 text-sm text-gray-400 dark:text-gray-500">No crew yet</p>
+              )}
               {crew.notes && (
                 <p className="mt-2 text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                   {crew.notes}

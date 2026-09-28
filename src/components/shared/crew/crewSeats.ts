@@ -6,8 +6,6 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 export const BRIGADE_NAME = "Wyndham Vale";
 export const QUICK_APPLIANCES = ["Pumper", "Tanker", "FCV"];
 export const CREW_SEATS = 3;
-/** Crew Leader + Driver + crew */
-export const SEATS_PER_APPLIANCE = 2 + CREW_SEATS;
 
 /** The full name a quick-pick chip stands for, e.g. "Wyndham Vale Pumper". */
 export const quickApplianceName = (appliance: string) => `${BRIGADE_NAME} ${appliance}`;

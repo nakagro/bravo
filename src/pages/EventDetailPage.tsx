@@ -521,8 +521,7 @@ export function EventDetailPage() {
           {/* A seat on a truck is separate from the roster, so it's said on
               its own line rather than folded into "you're on". */}
           {event.myCrewSeat && (
-            <div className="mb-3 flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-              <Truck className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <div className="mb-3 rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
               You&apos;re crewing the {event.myCrewSeat.applianceName} as {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role}
             </div>
           )}
@@ -679,14 +678,6 @@ export function EventDetailPage() {
               </div>
             )}
           </div>
-
-          <EventCrewsSection
-            eventId={event._id}
-            canManage={canManageEvents}
-            isEditable={event.status === "active"}
-            adding={addingCrew}
-            onAddingChange={setAddingCrew}
-          />
 
           {/* Attendance - what actually happened, kept apart from the RSVP
               board above it. The two are allowed to disagree; that difference
@@ -886,6 +877,16 @@ export function EventDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Appliances crewed for the event - after who's coming, ahead of
+              the response activity */}
+          <EventCrewsSection
+            eventId={event._id}
+            canManage={canManageEvents}
+            isEditable={event.status === "active"}
+            adding={addingCrew}
+            onAddingChange={setAddingCrew}
+          />
         </div>
 
         {/* Responses panel - admin-only drill-down of every response state. */}
