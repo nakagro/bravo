@@ -2,9 +2,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { X } from "lucide-react";
 import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
-import { TeamLeaderBadge } from "./badges";
+import { NameColumns, NameSentence } from "./NameColumns";
 
 interface ShiftBoardProps {
   eventId: Id<"events">;
@@ -12,36 +11,25 @@ interface ShiftBoardProps {
   leaderIds?: Id<"users">[];
 }
 
-/** A member as it arrives on a slot (roster or interest list). */
-interface SlotMember {
-  _id: Id<"users">;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  /** Rostered but has since marked "can't make it" - a conflict to surface */
-  declined?: boolean;
-}
-
 /**
  * Zone 3 read-only turnout board for a shift event - the communal noticeboard.
  *
  * Purely display: no toggles, no input (the caller expresses interest in the
- * SlotPicker card above). Because nothing here is interactive, showing the
- * confirmed roster and the interested bench side by side reads plainly as "who's
- * on / who's available", not as a control.
+ * SlotPicker card above).
  *
- * Each shift shows two tiers that only ever grow - the roster never wipes out
- * the interest list:
- *  - "Rostered" - the confirmed people the organiser has allocated (solid).
- *  - "Interested" / "Also interested" - everyone who put their hand up but isn't
- *    (yet) rostered (muted). Before allocation this is the whole story; after,
- *    it's the bench, so nobody who offered ever disappears.
+ * Each shift reads top to bottom as the organiser thinks about it:
+ *  - who's on: the rostered people, in columns - the answer to "who's on";
+ *  - the gap: anyone rostered who has since said they can't make it, pulled out
+ *    of the list onto one amber line rather than struck through inside it;
+ *  - the bench: everyone else who put their hand up, as one muted sentence.
+ * Before anyone is rostered, interest is the whole picture, so it gets the
+ * columns instead. Nobody who offered ever disappears.
  */
 export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
   const slots = useQuery(api.events.getEventSlots, { eventId });
   // Marks "you" in the lists - the one thing you can't work out by looking,
   // since offers get spread across shifts by the organiser
-  const myUserId = useQuery(api.messages.getCurrentUserId);
+  const myUserId = useQuery(api.messages.getCurrentUserId) ?? null;
 
   if (slots === undefined) {
     return (
@@ -71,149 +59,74 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="divide-y divide-gray-100 dark:divide-gray-700">
       {slots.map((slot) => {
         const when = formatSlotWhen(slot);
-        const rostered = [...slot.allocated].sort(compareUserNames);
+        const onRoster = slot.allocated.filter((m) => !m.declined);
+        const cantMakeIt = slot.allocated.filter((m) => m.declined).sort(compareUserNames);
         // The bench: interested but not on the roster. Dedupe against the roster
         // so someone interested who then got allocated only shows once (rostered).
-        const rosteredIds = new Set(rostered.map((m) => m._id));
-        const interested = slot.interested
-          .filter((m) => !rosteredIds.has(m._id))
-          .sort(compareUserNames);
+        const rosteredIds = new Set(slot.allocated.map((m) => m._id));
+        const interested = slot.interested.filter((m) => !rosteredIds.has(m._id));
         const underfilled = !!slot.targetCount && slot.allocatedCount < slot.targetCount;
-        const empty = rostered.length === 0 && interested.length === 0;
+        const hasRoster = slot.allocated.length > 0;
+
+        const summary = [
+          hasRoster ? `${slotCoverageLabel(slot.allocatedCount, slot.targetCount)} rostered` : null,
+          interested.length > 0
+            ? `${interested.length} ${hasRoster ? "also interested" : "interested"}`
+            : null,
+        ].filter(Boolean);
+
         return (
-          <div key={slot._id}>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          <div key={slot._id} className="py-4 first:pt-0 last:pb-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {slot.label}
               </span>
-              {when && <span className="text-xs text-gray-500 dark:text-gray-400">{when}</span>}
-              {slot.targetCount ? (
-                <span
-                  className={`ml-auto px-2 py-0.5 text-[11px] font-semibold rounded-full ${
-                    underfilled
-                      ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                  }`}
-                >
-                  {slotCoverageLabel(slot.allocatedCount, slot.targetCount)} rostered
-                </span>
-              ) : null}
+              {when && (
+                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">{when}</span>
+              )}
             </div>
+            <p
+              className={`text-xs ${
+                underfilled
+                  ? "font-medium text-amber-700 dark:text-amber-400"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {summary.length > 0 ? summary.join(" · ") : "Nobody yet"}
+            </p>
 
-            {empty ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1.5">Nobody yet</p>
-            ) : (
-              <div className="mt-1.5 space-y-2">
-                {rostered.length > 0 && (
-                  <BoardTier
-                    label="Rostered"
-                    members={rostered}
-                    tone="rostered"
-                    myUserId={myUserId ?? null}
-                    leaderIds={leaderIds}
-                  />
-                )}
-                {interested.length > 0 && (
-                  <BoardTier
-                    // Before anyone's rostered, interest is the whole picture;
-                    // after, it's the bench of people still available
-                    label={rostered.length > 0 ? "Also interested" : "Interested"}
-                    members={interested}
-                    tone="interested"
-                    myUserId={myUserId ?? null}
-                    leaderIds={leaderIds}
-                  />
-                )}
+            {onRoster.length > 0 && (
+              <div className="mt-2">
+                <NameColumns members={onRoster} myUserId={myUserId} leaderIds={leaderIds} />
               </div>
             )}
+
+            {cantMakeIt.length > 0 && (
+              <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                Can&apos;t make it: {cantMakeIt.map(formatUserName).join(", ")}
+              </p>
+            )}
+
+            {interested.length > 0 &&
+              (hasRoster ? (
+                <NameSentence
+                  label="Also interested"
+                  members={interested}
+                  myUserId={myUserId}
+                  leaderIds={leaderIds}
+                  className="mt-2 text-gray-500 dark:text-gray-400"
+                />
+              ) : (
+                <div className="mt-2">
+                  <NameColumns members={interested} myUserId={myUserId} leaderIds={leaderIds} />
+                </div>
+              ))}
           </div>
         );
       })}
     </div>
-  );
-}
-
-/**
- * A labelled row of member chips inside a shift block. Two tones:
- *  - "rostered" - confirmed, solid indigo.
- *  - "interested" - expressed interest, muted with a dashed edge so the bench
- *    reads lighter than the roster without disappearing.
- * "You" (red) and "can't make it" (struck-through red) always win over the tone.
- */
-function BoardTier({
-  label,
-  members,
-  tone,
-  myUserId,
-  leaderIds,
-}: {
-  label: string;
-  members: SlotMember[];
-  tone: "rostered" | "interested";
-  myUserId: Id<"users"> | null;
-  leaderIds: Id<"users">[];
-}) {
-  return (
-    <div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1">
-        {label}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {members.map((member) => (
-          <BoardChip
-            key={member._id}
-            member={member}
-            tone={tone}
-            isMe={member._id === myUserId}
-            isLeader={leaderIds.includes(member._id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BoardChip({
-  member,
-  tone,
-  isMe,
-  isLeader,
-}: {
-  member: SlotMember;
-  tone: "rostered" | "interested";
-  isMe: boolean;
-  isLeader: boolean;
-}) {
-  if (member.declined) {
-    return (
-      <span
-        title={`${formatUserName(member)}: can't make it`}
-        className="inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 line-through"
-      >
-        <span className="h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center">
-          <X className="h-3 w-3" />
-        </span>
-        {formatUserName(member)}
-      </span>
-    );
-  }
-  const muted = tone === "interested" && !isMe;
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs ${
-        isMe
-          ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-gray-900 dark:text-white font-medium"
-          : muted
-            ? "bg-transparent border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400"
-            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
-      }`}
-    >
-      {formatUserName(member)}
-      {isLeader && <TeamLeaderBadge compact />}
-      {isMe && <span className="text-[10px] text-red-700 dark:text-red-300">you</span>}
-    </span>
   );
 }

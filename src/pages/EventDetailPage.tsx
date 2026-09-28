@@ -9,8 +9,7 @@ import {
   formatTime,
   formatUserName,
   formatWeekday,
-  formatHeadcount,
-  formatGuestSuffix,
+  formatGuestSplit,
   formatResponseTiming,
   formatCompactAgo,
   responseWasEdited,
@@ -30,6 +29,7 @@ import { GuestControls } from "../features/events/components/GuestControls";
 import { ResponseActivity } from "../features/events/components/ResponseActivity";
 import { EventForm } from "../features/events/components/EventForm";
 import { EventCrewsSection } from "../features/events/components/EventCrewsSection";
+import { NameColumns } from "../features/events/components/NameColumns";
 import {
   AttendanceBadge,
   EventTypeChip,
@@ -41,7 +41,7 @@ import { NotifyMembersDialog } from "../features/events/components/NotifyMembers
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, X, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -744,16 +744,7 @@ export function EventDetailPage() {
                   Confirmed as nobody attending.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {[...attendees].sort(compareUserNames).map((member) => (
-                    <MemberChip
-                      key={member._id}
-                      member={member}
-                      isMe={member._id === myUserId}
-                      isLeader={leaderIds.includes(member._id)}
-                    />
-                  ))}
-                </div>
+                <NameColumns members={attendees} myUserId={myUserId} leaderIds={leaderIds} />
               )}
 
               {/* Where it deviated from the plan - managers only, same rule as
@@ -802,28 +793,32 @@ export function EventDetailPage() {
                   ? "Who said they'd come"
                   : "Who's coming"}
               {!event.hasShifts && attendance
-                ? ` (${formatHeadcount(attendance.attending.length, guestTotal)})`
+                ? ` (${attendance.attending.length + guestTotal})`
                 : ""}
             </h3>
+            {/* The breakdown sits under the heading as plain text, not crammed
+                into it - it only matters when someone is bringing guests */}
+            {!event.hasShifts && attendance && guestTotal > 0 && (
+              <p className="-mt-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
+                {formatGuestSplit(attendance.attending.length, guestTotal)}
+              </p>
+            )}
             {event.hasShifts ? (
               <>
                 <ShiftBoard eventId={event._id} leaderIds={leaderIds} />
                 {/* Rostered, but not against any shift - otherwise they'd
                     appear nowhere on this page */}
                 {attendance && attendance.rosteredNoShift.length > 0 && (
-                  <div className="mt-5">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 mb-1">
+                  <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
                       Rostered, no shift yet
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {[...attendance.rosteredNoShift].sort(compareUserNames).map((member) => (
-                        <MemberChip
-                          key={member._id}
-                          member={member}
-                          isMe={member._id === myUserId}
-                          isLeader={leaderIds.includes(member._id)}
-                        />
-                      ))}
+                    <div className="mt-2">
+                      <NameColumns
+                        members={attendance.rosteredNoShift}
+                        myUserId={myUserId}
+                        leaderIds={leaderIds}
+                      />
                     </div>
                   </div>
                 )}
@@ -839,17 +834,12 @@ export function EventDetailPage() {
                     : "Nobody marked themselves as going."}
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {[...attendance.attending].sort(compareUserNames).map((member) => (
-                  <MemberChip
-                    key={member._id}
-                    member={member}
-                    isMe={member._id === myUserId}
-                    isLeader={leaderIds.includes(member._id)}
-                    guestCount={guestsByMember.get(member._id)}
-                  />
-                ))}
-              </div>
+              <NameColumns
+                members={attendance.attending}
+                myUserId={myUserId}
+                leaderIds={leaderIds}
+                guestCounts={guestsByMember}
+              />
             )}
 
             {/* Dietary requirements - managers only (the query returns null for
@@ -998,67 +988,5 @@ export function EventDetailPage() {
         )}
       </div>
     </div>
-  );
-}
-
-interface ChipMember {
-  _id: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  /** Marked "can't make it" - struck through in red */
-  declined?: boolean;
-}
-
-/**
- * Name chip for the simple (non-shift) attending list. "You" and "can't
- * make it" get their own accents so you can find yourself and spot conflicts at
- * a glance. Shift events render their own chips inside the ShiftBoard.
- */
-function MemberChip({
-  member,
-  isMe = false,
-  isLeader = false,
-  guestCount,
-}: {
-  member: ChipMember;
-  isMe?: boolean;
-  isLeader?: boolean;
-  /** Extra heads this member is bringing, rendered as a "+2" on the chip */
-  guestCount?: number;
-}) {
-  if (member.declined) {
-    return (
-      <span
-        title={`${formatUserName(member)}: can't make it`}
-        className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400 line-through"
-      >
-        <span className="h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center">
-          <X className="h-3.5 w-3.5" />
-        </span>
-        {formatUserName(member)}
-      </span>
-    );
-  }
-  return (
-    <span
-      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm ${
-        isMe
-          ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-gray-900 dark:text-white font-medium"
-          : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
-      }`}
-    >
-      {formatUserName(member)}
-      {guestCount ? (
-        <span
-          title={`Bringing ${guestCount} ${guestCount === 1 ? "guest" : "guests"}`}
-          className="text-[11px] font-semibold text-blue-700 dark:text-blue-300"
-        >
-          {formatGuestSuffix(guestCount).trim()}
-        </span>
-      ) : null}
-      {isLeader && <TeamLeaderBadge compact />}
-      {isMe && <span className="text-[11px] text-red-700 dark:text-red-300">you</span>}
-    </span>
   );
 }

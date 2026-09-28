@@ -110,18 +110,12 @@ export function formatCountsSummary(counts: {
   ].join(" · ");
 }
 
-// Total heads for catering: members going plus the guests they're bringing.
-// Only worth spelling out when somebody is actually bringing someone.
-export function formatHeadcount(attending: number, guests: number): string {
-  if (guests <= 0) return `${attending}`;
-  return `${attending + guests} · ${attending} ${attending === 1 ? "member" : "members"} + ${guests} ${
+// How a headcount splits for catering: "32 members + 13 guests". Shown under
+// the "Who's coming" total, and only when somebody is bringing someone.
+export function formatGuestSplit(attending: number, guests: number): string {
+  return `${attending} ${attending === 1 ? "member" : "members"} + ${guests} ${
     guests === 1 ? "guest" : "guests"
   }`;
-}
-
-// "+2" suffix for a name chip in the attending list.
-export function formatGuestSuffix(count: number | undefined): string {
-  return count && count > 0 ? ` +${count}` : "";
 }
 
 // Initials for avatar chips: "Shaun Gordon" → "SG"

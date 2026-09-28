@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareUserNames, formatCountsSummary, formatHeadcount, formatCompactAgo, responseWasEdited } from "./types";
+import { compareUserNames, formatCountsSummary, formatGuestSplit, formatCompactAgo, responseWasEdited } from "./types";
 
 describe("compareUserNames", () => {
   it("sorts members by their displayed full name without case sensitivity", () => {
@@ -39,11 +39,10 @@ describe("formatCountsSummary with guests", () => {
   });
 });
 
-describe("formatHeadcount", () => {
-  it("spells out the split only when guests are coming", () => {
-    expect(formatHeadcount(12, 0)).toBe("12");
-    expect(formatHeadcount(12, 4)).toBe("16 · 12 members + 4 guests");
-    expect(formatHeadcount(1, 1)).toBe("2 · 1 member + 1 guest");
+describe("formatGuestSplit", () => {
+  it("splits members from guests, singular or plural", () => {
+    expect(formatGuestSplit(12, 4)).toBe("12 members + 4 guests");
+    expect(formatGuestSplit(1, 1)).toBe("1 member + 1 guest");
   });
 });
 
