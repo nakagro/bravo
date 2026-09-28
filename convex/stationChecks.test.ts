@@ -504,11 +504,6 @@ describe("weekWindow resolves a Melbourne week", () => {
     expect(w.sunday.getTime()).toBe(Date.UTC(2026, 8, 6));
   });
 
-  it("names the week by its Sunday and ends it on the Monday after", () => {
-    const { sunday, lastDay } = weekWindow(Date.UTC(2026, 7, 26, 2, 0, 0));
-    expect(lastDay.getTime() - sunday.getTime()).toBe(24 * 60 * 60 * 1000);
-  });
-
   it("still finds a week keyed under the old Mon-Sun window", () => {
     // Pre-change submissions were keyed to Sunday 23:59:59.999 Melbourne
     const oldKey = Date.parse("2026-08-30T23:59:59.999+10:00");

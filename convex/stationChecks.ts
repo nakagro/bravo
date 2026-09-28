@@ -280,9 +280,8 @@ export function weekWindow(date: number) {
   // `sunday` stays a UTC-midnight Date of the Sunday's *calendar date*, which
   // is the key convention `dutyCrewSchedule.date` is written under (see
   // dutyCrew.ts:178) and what the callers reading .getMonth()/.getDate() off
-  // it expect on a UTC runtime. `lastDay` is the same for the Monday the week
-  // ends on, for "week ending" labels.
-  return { start, end, sunday: sundayCivil, lastDay: mondayCivil };
+  // it expect on a UTC runtime. It is also what "week ending" labels show.
+  return { start, end, sunday: sundayCivil };
 }
 
 // Find the submission covering the week that `date` falls in. A week has one
@@ -335,10 +334,11 @@ export function buildSubmissionNotice(
   const notDone = items.filter((i) => !isResolved(i));
   const withNotes = items.filter((i) => i.notes && i.notes.trim().length > 0);
 
-  // Label by the Monday the week ends on, whatever timestamp in the week the
-  // submission happens to be keyed under. `lastDay` is a civil date held as
-  // UTC midnight, so it is formatted in UTC.
-  const weekLabel = weekWindow(weekEnding).lastDay.toLocaleDateString("en-AU", {
+  // Members know a duty week by its Sunday, even though it runs on to the
+  // Monday night, so label it that way whatever timestamp in the week the
+  // submission is keyed under. `sunday` is a civil date held as UTC midnight,
+  // so it is formatted in UTC.
+  const weekLabel = weekWindow(weekEnding).sunday.toLocaleDateString("en-AU", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -371,7 +371,7 @@ export function buildSubmissionNotice(
     summary,
     attention,
     notDoneCount: notDone.length,
-    description: `${crewName} · week ending Mon ${weekLabel} · ${summary}`,
+    description: `${crewName} · week ending Sun ${weekLabel} · ${summary}`,
   };
 }
 
@@ -1180,12 +1180,12 @@ export const submitStationCheck = mutation({
         actorUserId: currentUser._id,
         emailSubject:
           notice.notDoneCount > 0
-            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding - week ending Mon ${notice.weekLabel}`
-            : `Duty crew checks submitted - week ending Mon ${notice.weekLabel}`,
+            ? `Duty crew checks submitted with ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} outstanding - week ending Sun ${notice.weekLabel}`
+            : `Duty crew checks submitted - week ending Sun ${notice.weekLabel}`,
         emailIntro: `${submitterName} submitted the station checks for ${crew?.name ?? "the duty crew"}.`,
         emailDetails: [
           { label: "Crew", value: crew?.name ?? "Unknown" },
-          { label: "Week ending", value: `Monday ${notice.weekLabel}` },
+          { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
           { label: "Submitted by", value: submitterName },
           { label: "Result", value: notice.summary },
           ...(args.notes?.trim()
@@ -1413,14 +1413,14 @@ async function notifyWeekClosed(
     sourceEntityId: submission._id,
     emailSubject:
       notice.notDoneCount > 0
-        ? `Duty crew week ending Mon ${notice.weekLabel}: ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} not done`
-        : `Duty crew week ending Mon ${notice.weekLabel}: all checks done`,
+        ? `Duty crew week ending Sun ${notice.weekLabel}: ${notice.notDoneCount} item${notice.notDoneCount === 1 ? "" : "s"} not done`
+        : `Duty crew week ending Sun ${notice.weekLabel}: all checks done`,
     emailIntro: nothingRecorded
       ? `The station checks week for ${crewName} has closed with nothing recorded against it.`
       : `The station checks week for ${crewName} has closed. Here is what was and wasn't done.`,
     emailDetails: [
       { label: "Crew", value: crewName },
-      { label: "Week ending", value: `Monday ${notice.weekLabel}` },
+      { label: "Week ending", value: `Sunday ${notice.weekLabel}` },
       { label: "Result", value: notice.summary },
       ...(submission.notes?.trim()
         ? [{ label: "Crew notes", value: submission.notes.trim() }]

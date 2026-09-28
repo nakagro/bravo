@@ -26,7 +26,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
 
-  const { sunday: currentSunday, end: weekEnd } = weekBoundaries(weekOffset);
+  const { sunday: currentSunday } = weekBoundaries(weekOffset);
 
   // Queries
   const stationChecks = useQuery(api.stationChecks.getAllStationChecks, {});
@@ -448,7 +448,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
       <DutyCrewHero
         weekOffset={weekOffset}
         onWeekChange={setWeekOffset}
-        weekEnd={weekEnd}
+        currentSunday={currentSunday}
         assignment={currentAssignment}
         members={displayMembers}
         isHistoricalRoster={crewSnapshot !== undefined}
