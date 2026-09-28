@@ -225,6 +225,29 @@ describe("duty crew week close-out", () => {
     expect(after?.checkItems[0].isCompleted).toBe(true);
   });
 
+  it("shows in History who ticked each item and when", async () => {
+    const { t, dutyCrewId, memberId, asMember } = await setup();
+    const tickedAt = LAST_WEEK.start + 60 * 60 * 1000;
+    vi.setSystemTime(tickedAt);
+    await asMember.mutation(api.stationChecks.saveDraftStationCheck, {
+      date: LAST_WEEK.end,
+      dutyCrewId,
+      checkItems: [adHoc("Sweep bay", true), adHoc("Mow lawn", false)],
+    });
+    vi.setSystemTime(CLOSE_RUN);
+    await t.mutation(internal.stationChecks.closeElapsedWeeks, {});
+
+    const page = await asMember.query(api.stationChecks.getStationCheckHistoryPage, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    const [ticked, untouched] = page.page[0].checkItems;
+    expect(ticked).toMatchObject({ completedBy: memberId, completedAt: tickedAt });
+    expect(untouched.completedBy).toBeUndefined();
+    expect(page.page[0].itemUsers).toEqual([
+      expect.objectContaining({ _id: memberId, firstName: "Crew", lastName: "Member" }),
+    ]);
+  });
+
   it("lists a system-closed week in History", async () => {
     const { t, asMember } = await setup();
     vi.setSystemTime(CLOSE_RUN);

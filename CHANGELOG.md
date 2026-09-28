@@ -4,6 +4,10 @@
 - Duty Crew: The duty week now runs Tuesday to Monday, changing over at training night instead of Monday.
 - Inventory: An appliance check done on a Monday now counts toward the week that is ending.
 - Duty Crew: Ticked checks now show the day and date they were done, not just the time.
+- Duty Crew: The outgoing crew gets a push at 4pm Monday if station checks are still left to do.
+- Duty Crew: A "Mine" filter on This Week shows just the checks allocated to you.
+- Duty Crew: The Action Centre reminder now says how many of the checks left are allocated to you.
+- Duty Crew: History now shows who ticked each item and when.
 
 ## [2026.09.24]
 - Availability: Officers can now crew an appliance for a deployment day, and everyone can see it under Deployment → Crews.

@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { weekWindow } from "./stationChecks";
+import { targetKey } from "./lib/stationCheckAllocations";
 
 const allocationTargetValidator = v.union(
   v.object({ kind: v.literal("area"), area: v.string() }),
@@ -19,17 +20,6 @@ const allocationValidator = v.object({
   assignedBy: v.id("users"),
   updatedAt: v.number(),
 });
-
-function targetKey(
-  target:
-    | { kind: "area"; area: string }
-    | { kind: "check"; checkId: string }
-    | { kind: "subitem"; subItemId: string },
-) {
-  if (target.kind === "area") return `area:${target.area.trim()}`;
-  if (target.kind === "check") return `check:${target.checkId}`;
-  return `subitem:${target.subItemId}`;
-}
 
 export const getWeekAllocations = query({
   args: {

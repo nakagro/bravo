@@ -79,6 +79,8 @@ interface StationChecksListProps {
   ) => void;
   /** Drops every allocation for the week in one go. */
   onClearAllAllocations: () => void;
+  /** The viewer, for the "Mine" filter over their allocated checks. */
+  currentUserId?: Id<"users">;
 }
 
 // Stable key for an item, used for scroll targets and highlight state
@@ -86,6 +88,25 @@ const itemKey = (item: CheckItemData) =>
   item.subItemId ?? item.checkId ?? `adhoc-${item.name}`;
 
 const AD_HOC_SECTION = "section-adhoc";
+
+// Who an item is allocated to: its own allocation, else its area's. A subitem
+// doesn't inherit its parent check's. Mirrors effectiveAssignee in
+// convex/lib/stationCheckAllocations.ts.
+const assigneeOf = (
+  item: CheckItemData,
+  allocationByTarget: Record<string, Id<"users">>,
+) => {
+  const target: AllocationTarget | null = item.subItemId
+    ? { kind: "subitem", subItemId: item.subItemId }
+    : item.checkId
+      ? { kind: "check", checkId: item.checkId }
+      : null;
+  const direct = target ? allocationByTarget[allocationTargetKey(target)] : undefined;
+  const area = item.area
+    ? allocationByTarget[allocationTargetKey({ kind: "area", area: item.area })]
+    : undefined;
+  return direct ?? area;
+};
 
 export function StationChecksList({
   checkItems,
@@ -107,6 +128,7 @@ export function StationChecksList({
   canAssign,
   onAllocationChange,
   onClearAllAllocations,
+  currentUserId,
 }: StationChecksListProps) {
   const [editingNotes, setEditingNotes] = useState<{
     type: "item" | "general";
@@ -131,6 +153,7 @@ export function StationChecksList({
   } | null>(null);
 
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
+  const [onlyMine, setOnlyMine] = useState(false);
   const allocationCount = Object.keys(allocationByTarget).length;
 
   const memberById = useMemo(() => {
@@ -229,6 +252,39 @@ export function StationChecksList({
     [groupedTemplateItems, adHocItems, showAdHocSection],
   );
 
+  const myItems = useMemo(
+    () =>
+      currentUserId
+        ? checkItems.filter(
+            (item) => assigneeOf(item, allocationByTarget) === currentUserId
+          )
+        : [],
+    [checkItems, allocationByTarget, currentUserId],
+  );
+  const myProgress = summariseChecklist(myItems.map(checkItemStatus));
+  // Falls back to everything if the viewer's allocations are cleared mid-view
+  const showingMine = onlyMine && myItems.length > 0;
+
+  const visibleSections = useMemo(() => {
+    if (!showingMine) return sections;
+    const mine = new Set(myItems.map(itemKey));
+    // A subitem on its own reads as nonsense ("Tyres"), so keep its parent row
+    // as context even when the parent itself isn't the viewer's.
+    const parentsOfMine = new Set(
+      myItems.map((item) => item.parentCheckId).filter(Boolean)
+    );
+    return sections
+      .map((s) => {
+        const items = s.items.filter(
+          (item) =>
+            mine.has(itemKey(item)) ||
+            (!item.parentCheckId && item.checkId && parentsOfMine.has(item.checkId))
+        );
+        return { ...s, items, progress: summariseChecklist(items.map(checkItemStatus)) };
+      })
+      .filter((s) => s.items.length > 0);
+  }, [showingMine, sections, myItems]);
+
   // Who's on the hook for each section, shown on the collapsed header so a
   // member can spot their own name without opening every area.
   const allocationSummaryBySection = useMemo(() => {
@@ -264,12 +320,12 @@ export function StationChecksList({
 
   const navSections = useMemo(
     () =>
-      sections.map((s) => ({
+      visibleSections.map((s) => ({
         key: s.key,
         answered: s.progress.answered,
         total: s.progress.total,
       })),
-    [sections],
+    [visibleSections],
   );
 
   const { registerSectionRef, openSections, setOpenSections } =
@@ -399,6 +455,37 @@ export function StationChecksList({
         }
       />
 
+      {myItems.length > 0 && !allocateMode && (
+        <div
+          className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+          role="group"
+          aria-label="Show checks"
+        >
+          <Button
+            variant={showingMine ? "ghost" : "secondary"}
+            size="sm"
+            className="h-10"
+            aria-pressed={!showingMine}
+            onClick={() => setOnlyMine(false)}
+          >
+            All checks
+          </Button>
+          <Button
+            variant={showingMine ? "secondary" : "ghost"}
+            size="sm"
+            className="h-10"
+            aria-pressed={showingMine}
+            onClick={() => setOnlyMine(true)}
+          >
+            <UserRound className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+            Mine
+            <span className="ml-1.5 tabular-nums text-muted-foreground">
+              {myProgress.answered}/{myProgress.total}
+            </span>
+          </Button>
+        </div>
+      )}
+
       {canAssign && allocateMode && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/40">
           <div className="flex items-start gap-2">
@@ -434,7 +521,7 @@ export function StationChecksList({
         onValueChange={setOpenSections}
         className="space-y-3"
       >
-        {sections.map((section) => (
+        {visibleSections.map((section) => (
           <ChecklistSection
             key={section.key}
             ref={registerSectionRef(section.key)}

@@ -35,7 +35,7 @@ type SubmissionCheckItem = {
 };
 
 // An item counts toward submission when it is either completed or marked N/A
-const isResolved = (item: { isCompleted: boolean; isNotApplicable?: boolean }) =>
+export const isResolved = (item: { isCompleted: boolean; isNotApplicable?: boolean }) =>
   item.isCompleted || item.isNotApplicable === true;
 
 // Reusable validator for a single submission check item
@@ -1391,6 +1391,31 @@ async function finalWeekItems(
   });
 }
 
+// The running week as the checklist shows it right now: the saved items (or a
+// blank checklist if nobody has opened the week yet), with linked rows read
+// from this week's inventory runs and rows for appliances off the run dropped.
+// Read-only - for the Action Centre reminder and the week-closing push, so the
+// two count the same things the member sees.
+export async function currentWeekItems(ctx: QueryCtx, now: number) {
+  const week = weekWindow(now);
+  const { crew, isSpecial } = await resolveCrewForSunday(ctx, week.sunday);
+  if (!crew) return null;
+
+  const submission = await findSubmissionForWeek(ctx, now, crew._id);
+  const items = submission?.checkItems ?? (await blankWeekItems(ctx));
+  const links = await linkedChecksFor(ctx, now);
+  const live = items.flatMap((item) => {
+    const link = item.checkId ? links.get(item.checkId) : undefined;
+    if (!link) return [item];
+    if (link.templateStatus !== "active") return [];
+    return [
+      { ...item, isCompleted: link.completedRunId !== undefined, isNotApplicable: undefined },
+    ];
+  });
+
+  return { week, crew, isSpecial, items: live };
+}
+
 async function notifyWeekClosed(
   ctx: MutationCtx,
   submission: Pick<
@@ -1567,6 +1592,17 @@ export const getStationCheckHistoryPage = query({
             addedBy: v.optional(v.id("users")),
             linkedApplianceTemplateId: v.optional(v.id("applianceTemplates")),
             linkedRunId: v.optional(v.id("applianceCheckRuns")),
+            completedBy: v.optional(v.id("users")),
+            completedAt: v.optional(v.number()),
+          })
+        ),
+        // Who ticked or N/A'd each item, for the per-item attribution
+        itemUsers: v.array(
+          v.object({
+            _id: v.id("users"),
+            name: v.string(),
+            firstName: v.optional(v.string()),
+            lastName: v.optional(v.string()),
           })
         ),
         notes: v.optional(v.string()),
@@ -1621,6 +1657,23 @@ export const getStationCheckHistoryPage = query({
         crewCache.set(submission.dutyCrewId, crew);
       }
 
+      const itemUsers = [];
+      for (const itemUserId of new Set(
+        submission.checkItems.flatMap((item) => (item.completedBy ? [item.completedBy] : []))
+      )) {
+        const cached = userCache.get(itemUserId);
+        const itemUser = cached === undefined ? await ctx.db.get(itemUserId) : cached;
+        userCache.set(itemUserId, itemUser);
+        if (itemUser) {
+          itemUsers.push({
+            _id: itemUser._id,
+            name: itemUser.name || "",
+            firstName: itemUser.firstName,
+            lastName: itemUser.lastName,
+          });
+        }
+      }
+
       // Explicitly construct the return object - never spread the raw document
       // to avoid leaking undeclared fields (_creationTime, status, etc.)
       page.push({
@@ -1653,7 +1706,10 @@ export const getStationCheckHistoryPage = query({
           addedBy: item.addedBy,
           linkedApplianceTemplateId: item.linkedApplianceTemplateId,
           linkedRunId: item.linkedRunId,
+          completedBy: item.completedBy,
+          completedAt: item.completedAt,
         })),
+        itemUsers,
         notes: submission.notes,
       });
     }

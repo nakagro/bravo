@@ -29,6 +29,15 @@ async function setup(opts: { onCrew: boolean }) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    // Something to tick - with no checks at all there's nothing to remind about
+    await ctx.db.insert("stationChecks", {
+      name: "Sweep bay",
+      isActive: true,
+      order: 0,
+      createdBy: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     await ctx.db.insert("dutyCrewSchedule", {
       date: sunday.getTime(),
       dutyCrewId,

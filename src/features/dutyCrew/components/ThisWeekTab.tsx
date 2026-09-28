@@ -470,6 +470,7 @@ export function ThisWeekTab({ isAdmin }: ThisWeekTabProps) {
         isLeader={isLeader === true}
         isAdmin={isAdmin}
         itemUsersById={itemUsersById}
+        currentUserId={loggedInUser?._id}
         crewMembers={crewMembers ?? []}
         allocationByTarget={allocationByTarget}
         canAssign={
