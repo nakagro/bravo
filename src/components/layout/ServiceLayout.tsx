@@ -25,7 +25,6 @@ const MODULE_NAV: Record<string, { path: string; label: string }> = {
   links: { path: "/links", label: "Links" },
   equipment: { path: "/equipment", label: "Equipment" },
   baSkills: { path: "/ba-skills", label: "BA Skills" },
-  brigadeTasks: { path: "/brigade-tasks", label: "Tasks" },
 };
 
 export function ServiceLayout({ children }: ServiceLayoutProps) {

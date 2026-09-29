@@ -3,6 +3,11 @@
 ## [2026.09.29]
 - Events: Who's coming is now an easy-to-scan list of names in columns instead of pills.
 - Events: Anyone rostered who can't make it is now listed on its own line under their shift.
+- Action Centre: Notices like a completed inventory check now show the day and time they came through.
+- Action Centre: To-dos and updates now sit in separate sections, with the newest updates first and a Clear all.
+- Action Centre: The bell's red number now counts only things you need to do, with a small dot for new updates.
+- Action Centre: You can set your availability straight from the Action Centre.
+- Brigade Tasks: The Brigade Tasks module has been removed.
 
 ## [2026.09.28]
 - Events: An event can now need an appliance crewed, with a crew leader, driver and crew picked on the event page.

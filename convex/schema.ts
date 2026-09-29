@@ -1415,60 +1415,6 @@ const applicationTables = {
     .index("by_verifiedBy", ["verifiedBy"])
     .index("by_createdAt", ["createdAt"]),
 
-  // Brigade Tasks - Task/Todo tracking for brigade management
-  brigadeTasks: defineTable({
-    title: v.string(), // Task title
-    description: v.optional(v.string()), // Detailed description
-    status: v.union(
-      v.literal("active"), // Active task (default)
-      v.literal("completed"), // Done
-      v.literal("cancelled") // No longer needed
-    ),
-    priority: v.optional(v.union(
-      v.literal("low"),
-      v.literal("normal"),
-      v.literal("high"),
-      v.literal("urgent")
-    )), // Task priority level
-    category: v.optional(v.union(
-      v.literal("maintenance"),
-      v.literal("training"),
-      v.literal("admin"),
-      v.literal("equipment"),
-      v.literal("operations"),
-      v.literal("other")
-    )), // Task category for organisation
-    dueDate: v.optional(v.string()), // ISO date string (YYYY-MM-DD)
-    assignedTo: v.id("users"), // User the task is assigned to
-    createdBy: v.id("users"), // User who created the task
-    completedAt: v.optional(v.number()), // Timestamp when marked complete
-    completedBy: v.optional(v.id("users")), // User who marked it complete
-    deletedAt: v.optional(v.number()), // Soft delete timestamp
-    deletedBy: v.optional(v.id("users")), // User who deleted
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    updatedBy: v.id("users"),
-  })
-    .index("by_assignedTo", ["assignedTo"])
-    .index("by_createdBy", ["createdBy"])
-    .index("by_status", ["status"])
-    .index("by_dueDate", ["dueDate"])
-    .index("by_createdAt", ["createdAt"])
-    .index("by_assignedTo_status", ["assignedTo", "status"])
-    .index("by_priority", ["priority"])
-    .index("by_category", ["category"]),
-
-  // Brigade Task Comments - Comments on tasks
-  brigadeTaskComments: defineTable({
-    taskId: v.id("brigadeTasks"), // The task this comment belongs to
-    content: v.string(), // Comment text
-    createdBy: v.id("users"), // User who wrote the comment
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_taskId", ["taskId"])
-    .index("by_createdBy", ["createdBy"]),
-
   // Shortcut tokens table for automating status changes via tools like Apple Shortcuts
   shortcutTokens: defineTable({
     userId: v.id("users"),
@@ -1543,45 +1489,6 @@ const applicationTables = {
   })
     .index("by_ipIdentifier_attemptedAt", ["ipIdentifier", "attemptedAt"])
     .index("by_attemptedAt", ["attemptedAt"]),
-
-  // Action Centre - human-created tasks (derived actions are computed, not stored)
-  actionTasks: defineTable({
-    title: v.string(),
-    description: v.optional(v.string()),
-    status: v.union(v.literal("open"), v.literal("completed"), v.literal("cancelled")),
-    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-    dueDate: v.optional(v.string()),
-    assignedUserIds: v.array(v.id("users")),
-    assignedRoles: v.array(v.string()),
-    minimumRank: v.optional(v.union(
-      v.literal("Brigade Member"), v.literal("Probationary"), v.literal("Firefighter"),
-      v.literal("Lieutenant"), v.literal("Captain")
-    )),
-    sourceModuleId: v.optional(v.string()),
-    sourceEntityId: v.optional(v.string()),
-    completedAt: v.optional(v.number()),
-    completedBy: v.optional(v.id("users")),
-    completionNotes: v.optional(v.string()),
-    createdBy: v.id("users"),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_status", ["status"])
-    .index("by_createdBy", ["createdBy"])
-    .index("by_status_dueDate", ["status", "dueDate"]),
-
-  actionTaskHistory: defineTable({
-    taskId: v.id("actionTasks"),
-    timestamp: v.number(),
-    userId: v.id("users"),
-    changeType: v.string(),
-    field: v.string(),
-    oldValue: v.any(),
-    newValue: v.any(),
-    notes: v.optional(v.string()),
-  })
-    .index("by_task", ["taskId"])
-    .index("by_timestamp", ["timestamp"]),
 
   // Maps a brigade-wide condition to accountable people. Read by Role-policy
   // providers and by notifyEvent() when a module reports something happened.

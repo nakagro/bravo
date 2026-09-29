@@ -311,27 +311,11 @@ export const seedDevDatabase = internalMutation({
         minimumRank: "Lieutenant",
       },
       {
-        moduleId: "brigadeTasks",
-        moduleName: "Brigade Tasks",
-        isEnabled: true,
-        adminOnly: true,
-        requiredRoles: [],
-        minimumRank: "Probationary",
-      },
-      {
         moduleId: "actions",
         moduleName: "Action Centre",
         isEnabled: true,
         adminOnly: false,
         requiredRoles: [],
-      },
-      {
-        moduleId: "actionsAdmin",
-        moduleName: "Action Centre Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as const,
       },
     ];
 

@@ -1,19 +1,13 @@
 import { ActionProvider } from "./types";
-import { formatDateAU } from "../lib/dates";
-
-function aestDateOffset(days: number): string {
-  return new Date(Date.now() + 10 * 60 * 60 * 1000 + days * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-}
+import { brigadeDateStr, formatDateAU } from "../lib/dates";
 
 export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
   if (!p.hasModuleAccess("events")) return [];
 
   const { userId } = p;
-  const today = aestDateOffset(0);
-  const thirtyDaysFromNow = aestDateOffset(30);
-  const twoDaysFromNow = aestDateOffset(2);
+  const today = brigadeDateStr();
+  const thirtyDaysFromNow = brigadeDateStr(30);
+  const twoDaysFromNow = brigadeDateStr(2);
 
   // All active future events - no upper bound on startDate so events with a
   // future respondBy date always surface regardless of how far away they are.

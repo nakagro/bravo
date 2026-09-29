@@ -17,7 +17,9 @@ import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import type { ActionItem } from "../types";
-import { priorityColors } from "../types";
+import { isUpdate, priorityColors } from "../types";
+import { MAIN_STATUS_OPTIONS } from "@/constants/statusOptions";
+import { formatDayTime } from "@/lib/dateFormat";
 
 const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   availability: CalendarDays,
@@ -116,6 +118,17 @@ export function ActionCard({ action }: ActionCardProps) {
         {action.description && (
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{action.description}</p>
         )}
+        {/* Only updates get a timestamp - they report something that happened.
+            Standing to-dos (BA usage to log, RSVPs) are current state, where a
+            date would just be noise. */}
+        {isUpdate(action) && (
+          <time
+            dateTime={new Date(action.createdAt).toISOString()}
+            className="mt-1 block text-xs text-gray-500 dark:text-gray-500"
+          >
+            {formatDayTime(action.createdAt)}
+          </time>
+        )}
       </div>
       {action.url && !action.dismissible && (
         <ChevronRight
@@ -151,6 +164,8 @@ export function ActionCard({ action }: ActionCardProps) {
       ) : (
         content
       )}
+
+      {action.kind === "setAvailability" && <AvailabilityQuickSet />}
 
       {eventId && hasShifts && (
         <div className="flex gap-2 px-3 pb-3 pl-11">
@@ -200,6 +215,51 @@ export function ActionCard({ action }: ActionCardProps) {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+type StatusValue = (typeof MAIN_STATUS_OPTIONS)[number]["value"];
+
+/**
+ * One tap to set a status from the card, like the RSVP buttons. Durations and
+ * the at-station variants stay on the Availability page - the card links there
+ * for anything past the plain choice.
+ */
+function AvailabilityQuickSet() {
+  const updateStatus = useMutation(api.availability.updateUserStatus);
+  const [pending, setPending] = useState<StatusValue | null>(null);
+  const options = MAIN_STATUS_OPTIONS.filter((o) => !("hidden" in o && o.hidden));
+
+  const handleSet = async (option: (typeof options)[number]) => {
+    setPending(option.value);
+    try {
+      await updateStatus({ status: option.value });
+      toast.success(`Status set to ${option.shortLabel}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-2 px-3 pb-3 pl-11">
+      {options.map((option, i) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => handleSet(option)}
+          disabled={pending !== null}
+          className={`flex items-center justify-center gap-1.5 rounded-md border bg-white py-2 text-xs font-medium transition-colors disabled:opacity-50 dark:bg-gray-800 ${option.buttonColorClass} ${option.buttonBorderColorClass} ${option.buttonHoverColorClass} ${
+            // An odd one out spans the row rather than leaving a hole
+            i === options.length - 1 && options.length % 2 === 1 ? "col-span-2" : ""
+          }`}
+        >
+          {pending === option.value && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
+          {option.shortLabel}
+        </button>
+      ))}
     </div>
   );
 }

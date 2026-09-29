@@ -135,10 +135,10 @@ The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/au
 ### Feature-Driven Architecture
 
 `src/features/` — one directory per domain. Run `ls src/features` for the current list rather than
-trusting a snapshot here; as of 2026-08-23 it is:
+trusting a snapshot here; as of 2026-09-29 it is:
 
 ```
-actionCentre  admin      auth        availability  baSkills   bookings   brigadeTasks
+actionCentre  admin      auth        availability  baSkills   bookings
 calendar      contacts   dutyCrew    equipment     events     hoses      inventory
 keys          kiosk      memberRecords            qrCodes    serviceAccounts
 userSettings  vehicleFaults

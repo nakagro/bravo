@@ -59,7 +59,6 @@ const AboutPage = lazy(() => import("./pages/AboutPage"));
 const FDRPage = lazy(() => import("./pages/FDRPage").then((m) => ({ default: m.FDRPage })));
 const EquipmentPage = lazy(() => import("./pages/EquipmentPage").then((m) => ({ default: m.EquipmentPage })));
 const BASkillsPage = lazy(() => import("./pages/BASkillsPage").then((m) => ({ default: m.BASkillsPage })));
-const BrigadeTasksPage = lazy(() => import("./features/brigadeTasks/pages/BrigadeTasksPage").then((m) => ({ default: m.BrigadeTasksPage })));
 const ExtrasPage = lazy(() => import("./pages/ExtrasPage"));
 const ContactDirectoryPage = lazy(() => import("./features/contacts/ContactDirectoryPage"));
 const ShortcutsPage = lazy(() => import("./pages/ShortcutsPage"));
@@ -202,9 +201,6 @@ function ServiceAccountApp() {
     links: <Route key="links" path="/links" element={<LinksPage />} />,
     equipment: <Route key="equipment" path="/equipment" element={<EquipmentPage />} />,
     baSkills: <Route key="baSkills" path="/ba-skills" element={<BASkillsPage />} />,
-    brigadeTasks: (
-      <Route key="brigadeTasks" path="/brigade-tasks" element={<BrigadeTasksPage />} />
-    ),
   };
 
   // Determine the default landing page - first allowed module, or kiosk if available
@@ -434,11 +430,6 @@ function AuthenticatedApp() {
           <Route path="/ba-skills" element={
             <ProtectedRoute moduleId="baSkills">
               <BASkillsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/brigade-tasks" element={
-            <ProtectedRoute moduleId="brigadeTasks">
-              <BrigadeTasksPage />
             </ProtectedRoute>
           } />
           <Route path="/qr" element={<QRCodesPage />} />
