@@ -17,7 +17,6 @@ import type * as actionCentreProviders_dutyCrew from "../actionCentreProviders/d
 import type * as actionCentreProviders_events from "../actionCentreProviders/events.js";
 import type * as actionCentreProviders_notices from "../actionCentreProviders/notices.js";
 import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
-import type * as actionCentreProviders_tasks from "../actionCentreProviders/tasks.js";
 import type * as actionCentreProviders_types from "../actionCentreProviders/types.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
@@ -29,7 +28,6 @@ import type * as availabilityActions from "../availabilityActions.js";
 import type * as baCurrency from "../baCurrency.js";
 import type * as baRecords from "../baRecords.js";
 import type * as bookings from "../bookings.js";
-import type * as brigadeTasks from "../brigadeTasks.js";
 import type * as calendarProxy from "../calendarProxy.js";
 import type * as calendarWrite from "../calendarWrite.js";
 import type * as crons from "../crons.js";
@@ -83,6 +81,7 @@ import type * as messages from "../messages.js";
 import type * as migrations_migrateHoseTapeColors from "../migrations/migrateHoseTapeColors.js";
 import type * as migrations_normalizeDeploymentDates from "../migrations/normalizeDeploymentDates.js";
 import type * as migrations_rekeyAllocationsToTuesdayWeeks from "../migrations/rekeyAllocationsToTuesdayWeeks.js";
+import type * as migrations_removeBrigadeTasks from "../migrations/removeBrigadeTasks.js";
 import type * as modules from "../modules.js";
 import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationHistory from "../notificationHistory.js";
@@ -122,7 +121,6 @@ declare const fullApi: ApiFromModules<{
   "actionCentreProviders/events": typeof actionCentreProviders_events;
   "actionCentreProviders/notices": typeof actionCentreProviders_notices;
   "actionCentreProviders/profile": typeof actionCentreProviders_profile;
-  "actionCentreProviders/tasks": typeof actionCentreProviders_tasks;
   "actionCentreProviders/types": typeof actionCentreProviders_types;
   adminUsers: typeof adminUsers;
   apiKeyAuth: typeof apiKeyAuth;
@@ -134,7 +132,6 @@ declare const fullApi: ApiFromModules<{
   baCurrency: typeof baCurrency;
   baRecords: typeof baRecords;
   bookings: typeof bookings;
-  brigadeTasks: typeof brigadeTasks;
   calendarProxy: typeof calendarProxy;
   calendarWrite: typeof calendarWrite;
   crons: typeof crons;
@@ -188,6 +185,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/migrateHoseTapeColors": typeof migrations_migrateHoseTapeColors;
   "migrations/normalizeDeploymentDates": typeof migrations_normalizeDeploymentDates;
   "migrations/rekeyAllocationsToTuesdayWeeks": typeof migrations_rekeyAllocationsToTuesdayWeeks;
+  "migrations/removeBrigadeTasks": typeof migrations_removeBrigadeTasks;
   modules: typeof modules;
   notificationAudit: typeof notificationAudit;
   notificationHistory: typeof notificationHistory;

@@ -33,13 +33,6 @@ const EXTRA_LINKS: ExtraLink[] = [
     moduleId: "equipment",
   },
   {
-    title: "Brigade Tasks",
-    description: "Track your personal todo list and brigade activities.",
-    to: "/brigade-tasks",
-    emoji: "📋",
-    moduleId: "brigadeTasks",
-  },
-  {
     title: "Kiosk Mode",
     description: "Touch-friendly dashboard for the station kiosk.",
     to: "/kiosk",

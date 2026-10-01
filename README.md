@@ -193,7 +193,7 @@ the feature directory and `docs/README.md` rather than trusting a summary here.
 *   **Inventory** (`inventory`) — appliance inventory checks; the backend tables are named `appliance*` (see Database Schema)
 *   **Member Records** (`memberRecords`) — kit register tracking gear issued to members
 *   **Calendar** (`calendar`) — month view overlaying Events and Bookings, with CalDAV write support
-*   **Contacts** (`contacts`), **QR Codes** (`qrCodes`), **Equipment** (`equipment`), **BA Skills** (`baSkills`), **Brigade Tasks** (`brigadeTasks`), **Kiosk** (`kiosk`, wall-mounted station tablets), **Service Accounts** (`serviceAccounts`)
+*   **Contacts** (`contacts`), **QR Codes** (`qrCodes`), **Equipment** (`equipment`), **BA Skills** (`baSkills`), **Kiosk** (`kiosk`, wall-mounted station tablets), **Service Accounts** (`serviceAccounts`)
 
 `ls src/features` is the authoritative list.
 

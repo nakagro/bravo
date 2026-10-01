@@ -5,7 +5,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
 import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib/eventCrews";
-import { brigadeParts } from "./lib/dates";
+import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -99,16 +99,6 @@ export async function requireEventManager(
   }
 
   return { userId: await requireEventsAdmin(ctx), event };
-}
-
-// Today as a YYYY-MM-DD string in Melbourne. Event dates are stored as bare
-// calendar dates, so "has this already happened" has to be asked in the
-// brigade's own timezone - the runtime's is UTC, where a summer evening is
-// still the previous day and an event would stay open ten hours too long.
-// Follows AEDT: this used to add a hardcoded +10 and drift for half the year.
-function brigadeTodayStr(): string {
-  const { year, month, day } = brigadeParts(Date.now());
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 const rsvpStatusValidator = v.union(
@@ -1672,7 +1662,7 @@ export const setRsvp = mutation({
     if (event.status !== "active") {
       throw new Error("This event has been cancelled");
     }
-    if ((event.endDate ?? event.startDate) < brigadeTodayStr()) {
+    if ((event.endDate ?? event.startDate) < brigadeDateStr()) {
       throw new Error("This event has already happened");
     }
     // Shift events don't take yes/maybe RSVPs - picking a slot is the response
@@ -1809,7 +1799,7 @@ async function requireOpenEvent(ctx: MutationCtx, eventId: Id<"events">): Promis
   if (event.status !== "active") {
     throw new Error("This event has been cancelled");
   }
-  if ((event.endDate ?? event.startDate) < brigadeTodayStr()) {
+  if ((event.endDate ?? event.startDate) < brigadeDateStr()) {
     throw new Error("This event has already happened");
   }
   return event;

@@ -19,6 +19,7 @@ import { getVersionString } from "@/utils/version";
 import { AnimatedHamburger } from "@/components/common/AnimatedHamburger";
 import { DarkModeToggle } from "@/components/common/DarkModeToggle";
 import { NAV_GROUPS, NAV_ITEMS, type NavItem } from "@/config/navigation";
+import { isUpdate } from "@/features/actionCentre/types";
 
 export const HamburgerMenu = () => {
   const { isAuthenticated } = useConvexAuth();
@@ -60,7 +61,9 @@ export const HamburgerMenu = () => {
     const Icon = item.icon;
     const isActive = location.pathname === item.path;
     const pendingCount =
-      item.badge === "pendingActions" && pendingActions ? pendingActions.length : 0;
+      item.badge === "pendingActions" && pendingActions
+        ? pendingActions.filter((a) => !isUpdate(a)).length
+        : 0;
 
     return (
       <button

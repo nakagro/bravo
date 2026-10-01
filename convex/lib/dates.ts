@@ -90,3 +90,11 @@ export function brigadeDayOfWeek(timestamp: number): number {
   const p = brigadeParts(timestamp);
   return new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
 }
+
+// Today in Melbourne as a YYYY-MM-DD civil date, optionally some days ahead.
+// Event dates are stored as bare calendar dates, so "is it today yet" has to be
+// asked in the brigade's own timezone, AEST or AEDT as the season has it.
+export function brigadeDateStr(daysAhead = 0): string {
+  const { year, month, day } = brigadeParts(Date.now());
+  return new Date(Date.UTC(year, month - 1, day + daysAhead)).toISOString().slice(0, 10);
+}

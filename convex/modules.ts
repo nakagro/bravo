@@ -311,14 +311,6 @@ export const syncModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
-        moduleId: "brigadeTasks",
-        moduleName: "Brigade Tasks",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
         moduleId: "events",
         moduleName: "Events",
         isEnabled: true,
@@ -357,14 +349,6 @@ export const syncModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: undefined
-      },
-      {
-        moduleId: "actionsAdmin",
-        moduleName: "Action Centre Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "kiosk",
@@ -585,14 +569,6 @@ export const initializeModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
-        moduleId: "brigadeTasks",
-        moduleName: "Brigade Tasks",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
         moduleId: "events",
         moduleName: "Events",
         isEnabled: true,
@@ -631,14 +607,6 @@ export const initializeModuleSettings = mutation({
         adminOnly: false,
         requiredRoles: [],
         minimumRank: undefined
-      },
-      {
-        moduleId: "actionsAdmin",
-        moduleName: "Action Centre Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
         moduleId: "kiosk",
@@ -831,7 +799,6 @@ export const getAllModuleAccess = query({
     equipmentAdmin: v.boolean(),
     baSkills: v.boolean(),
     baSkillsAdmin: v.boolean(),
-    brigadeTasks: v.boolean(),
     bookings: v.boolean(),
     bookingsAdmin: v.boolean(),
     events: v.boolean(),
@@ -844,7 +811,6 @@ export const getAllModuleAccess = query({
     kiosk: v.boolean(),
     admin: v.boolean(),
     actions: v.boolean(),
-    actionsAdmin: v.boolean(),
   }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -866,7 +832,6 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
-        brigadeTasks: false,
         bookings: false,
         bookingsAdmin: false,
         events: false,
@@ -879,7 +844,6 @@ export const getAllModuleAccess = query({
         kiosk: false,
         admin: false,
         actions: false,
-        actionsAdmin: false,
       };
     }
 
@@ -902,7 +866,6 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
-        brigadeTasks: false,
         bookings: false,
         bookingsAdmin: false,
         events: false,
@@ -915,7 +878,6 @@ export const getAllModuleAccess = query({
         kiosk: false,
         admin: false,
         actions: false,
-        actionsAdmin: false,
       };
     }
 
@@ -938,7 +900,6 @@ export const getAllModuleAccess = query({
         equipmentAdmin: true,
         baSkills: true,
         baSkillsAdmin: true,
-        brigadeTasks: true,
         bookings: true,
         bookingsAdmin: true,
         events: true,
@@ -951,7 +912,6 @@ export const getAllModuleAccess = query({
         kiosk: true,
         admin: true,
         actions: true,
-        actionsAdmin: true,
       };
     }
 
@@ -980,7 +940,6 @@ export const getAllModuleAccess = query({
       equipmentAdmin: checkAccess("equipmentAdmin"),
       baSkills: checkAccess("baSkills"),
       baSkillsAdmin: checkAccess("baSkillsAdmin"),
-      brigadeTasks: checkAccess("brigadeTasks"),
       bookings: checkAccess("bookings"),
       bookingsAdmin: checkAccess("bookingsAdmin"),
       events: checkAccess("events"),
@@ -993,7 +952,6 @@ export const getAllModuleAccess = query({
       kiosk: checkAccess("kiosk"),
       admin: checkAccess("admin"),
       actions: checkAccess("actions"),
-      actionsAdmin: checkAccess("actionsAdmin"),
     };
   },
 });

@@ -11,13 +11,13 @@ const modules = import.meta.glob("./**/*.ts");
 /**
  * A signed-in account with every relevant module open and nothing filled in, so
  * each members-only provider has something to complain about: no status set
- * (availability), no skills (profile). `actions` is open too so an explicitly
- * assigned task proves duty-driven providers still run for shared accounts.
+ * (availability), no skills (profile). A notice addressed to the account proves
+ * duty-driven providers still run for shared accounts.
  */
 async function setup(accountType?: "member" | "shared") {
   const t = convexTest(schema, modules);
 
-  const { userId, taskId } = await t.run(async (ctx) => {
+  const { userId, noticeId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
       name: "Duty Officer Phone",
       firstName: "Duty Officer",
@@ -27,7 +27,7 @@ async function setup(accountType?: "member" | "shared") {
     });
 
     const updatedAt = Date.now();
-    for (const moduleId of ["availability", "settings", "events", "actions"]) {
+    for (const moduleId of ["availability", "settings", "events"]) {
       await ctx.db.insert("moduleSettings", {
         moduleId,
         moduleName: moduleId,
@@ -38,21 +38,20 @@ async function setup(accountType?: "member" | "shared") {
       });
     }
 
-    const taskId = await ctx.db.insert("actionTasks", {
-      title: "Check the shed roller door",
-      status: "open" as const,
+    const noticeId = await ctx.db.insert("actionNotices", {
+      moduleId: "events",
+      conditionKey: "test.notice",
+      title: "Station checks completed",
+      url: "/dutycrew",
       priority: "medium" as const,
-      assignedUserIds: [userId],
-      assignedRoles: [],
-      createdBy: userId,
+      recipientUserIds: [userId],
       createdAt: updatedAt,
-      updatedAt,
     });
 
-    return { userId, taskId };
+    return { userId, noticeId };
   });
 
-  return { t, as: t.withIdentity({ subject: userId }), userId, taskId };
+  return { t, as: t.withIdentity({ subject: userId }), userId, noticeId };
 }
 
 type SignedIn = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>;
@@ -80,11 +79,11 @@ describe("action centre / shared accounts", () => {
     expect(ids.filter((id) => id.startsWith("events:rsvp:"))).toHaveLength(0);
   });
 
-  it("still delivers an explicitly assigned task to a shared account", async () => {
-    const { as, taskId } = await setup("shared");
+  it("still delivers a notice addressed to a shared account", async () => {
+    const { as, noticeId } = await setup("shared");
     const ids = await actionIds(as);
 
-    expect(ids.some((id) => id.includes(taskId as string))).toBe(true);
+    expect(ids).toContain(`notice:${noticeId}`);
   });
 
   it("treats an absent accountType exactly as a member (no-backfill guarantee)", async () => {
