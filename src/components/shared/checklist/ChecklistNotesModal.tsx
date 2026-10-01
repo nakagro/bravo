@@ -59,7 +59,6 @@ export function ChecklistNotesModal({
       // sheet plus the keyboard is taller than the screen, so it got pushed
       // up and left blank space where the form should be.
       drawerHeight="h-auto max-h-[70dvh]"
-      repositionInputs={false}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>

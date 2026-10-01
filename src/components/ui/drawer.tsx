@@ -2,15 +2,26 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
+import { useKeyboardInset } from "@/hooks/useKeyboardInset"
 
-function Drawer({
-  shouldScaleBackground = true,
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+// Keyboard handling lives here so every drawer gets it, not per form.
+// vaul's own repositionInputs is off and can't be turned back on: it moved the
+// sheet while iOS was also scrolling the focused field into view, and the two
+// stacked and threw the form off screen. DrawerContent pins itself to the
+// visible area instead.
+// vaul's props are a union (with/without snap points); a plain Omit flattens it
+type DrawerProps = React.ComponentProps<typeof DrawerPrimitive.Root> extends infer P
+  ? P extends unknown
+    ? Omit<P, "repositionInputs">
+    : never
+  : never
+
+function Drawer({ shouldScaleBackground = true, ...props }: DrawerProps) {
   return (
     <DrawerPrimitive.Root
       shouldScaleBackground={shouldScaleBackground}
       {...props}
+      repositionInputs={false}
     />
   )
 }
@@ -31,12 +42,75 @@ function DrawerOverlay({ className, ref, ...props }: React.ComponentProps<typeof
   )
 }
 
-function DrawerContent({ className, children, ref, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+// Gap kept above the sheet while the keyboard is up, so its top edge shows.
+const KEYBOARD_TOP_GAP = 8
+
+// Scroll the nearest scrolling ancestor (inside the sheet) just enough to show
+// the field. Not element.scrollIntoView - that also scrolls the page behind.
+function revealInSheet(el: HTMLElement, sheet: HTMLElement) {
+  let box = el.parentElement
+  while (box && box !== sheet) {
+    const { overflowY } = getComputedStyle(box)
+    if ((overflowY === "auto" || overflowY === "scroll") && box.scrollHeight > box.clientHeight) {
+      const field = el.getBoundingClientRect()
+      const view = box.getBoundingClientRect()
+      if (field.bottom > view.bottom) box.scrollTop += field.bottom - view.bottom + 16
+      else if (field.top < view.top) box.scrollTop -= view.top - field.top + 16
+      return
+    }
+    box = box.parentElement
+  }
+}
+
+// Mounted only while the drawer is open (it sits inside the portal), so the
+// viewport listeners come and go with it.
+function KeyboardAwareContent({ style, ref, onFocus, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+  const inset = useKeyboardInset()
+  const sheetRef = React.useRef<HTMLDivElement | null>(null)
+
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      sheetRef.current = node
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
+
+  // Once the sheet has shrunk to fit above the keyboard, bring the focused
+  // field back into view inside it.
+  React.useEffect(() => {
+    const sheet = sheetRef.current
+    const focused = document.activeElement
+    if (!inset || !sheet || !(focused instanceof HTMLElement) || !sheet.contains(focused)) return
+    revealInSheet(focused, sheet)
+  }, [inset])
+
+  return (
+    <DrawerPrimitive.Content
+      ref={setRefs}
+      style={
+        inset
+          ? { ...style, bottom: inset.bottom, maxHeight: inset.height - KEYBOARD_TOP_GAP }
+          : style
+      }
+      onFocus={(e) => {
+        onFocus?.(e)
+        // Moving between fields with the keyboard already up
+        if (inset && sheetRef.current && e.target instanceof HTMLElement) {
+          revealInSheet(e.target, sheetRef.current)
+        }
+      }}
+      {...props}
+    />
+  )
+}
+
+function DrawerContent({ className, children, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
   return (
     <DrawerPortal>
       <DrawerOverlay />
-      <DrawerPrimitive.Content
-        ref={ref}
+      <KeyboardAwareContent
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
           className
@@ -45,7 +119,7 @@ function DrawerContent({ className, children, ref, ...props }: React.ComponentPr
       >
         <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
         {children}
-      </DrawerPrimitive.Content>
+      </KeyboardAwareContent>
     </DrawerPortal>
   )
 }
