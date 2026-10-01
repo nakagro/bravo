@@ -62,11 +62,47 @@ function revealInSheet(el: HTMLElement, sheet: HTMLElement) {
   }
 }
 
+// iOS scrolls the page behind on every focus, even when the field is already
+// in view, and the sheet visibly dipped and came back as each field took
+// focus. The fix (the one React Aria and vaul use): move the field far off
+// screen for one frame as it takes focus, so iOS finds nothing it can scroll
+// to, then reveal it inside the sheet ourselves.
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iP(hone|ad|od)/.test(navigator.platform) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+
+const NON_TEXT_INPUTS = new Set([
+  "checkbox", "radio", "range", "color", "file", "image", "button", "submit", "reset",
+])
+
+function isTextEntry(el: EventTarget | null): el is HTMLElement {
+  if (!(el instanceof HTMLElement)) return false
+  if (el instanceof HTMLInputElement) return !NON_TEXT_INPUTS.has(el.type)
+  return el instanceof HTMLTextAreaElement || el.isContentEditable
+}
+
+function hideFromIOSScroll(el: HTMLElement, then: () => void) {
+  el.style.transform = "translateY(-2000px)"
+  requestAnimationFrame(() => {
+    el.style.transform = ""
+    requestAnimationFrame(then)
+  })
+}
+
 // Mounted only while the drawer is open (it sits inside the portal), so the
 // viewport listeners come and go with it.
-function KeyboardAwareContent({ style, ref, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+function KeyboardAwareContent({
+  style,
+  ref,
+  onTouchEnd,
+  onFocusCapture,
+  ...props
+}: React.ComponentProps<typeof DrawerPrimitive.Content>) {
   const inset = useKeyboardInset()
   const sheetRef = React.useRef<HTMLDivElement | null>(null)
+  const keyboardUp = React.useRef(false)
+  keyboardUp.current = inset !== null
 
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -78,10 +114,8 @@ function KeyboardAwareContent({ style, ref, ...props }: React.ComponentProps<typ
   )
 
   // Once the sheet has shrunk to fit above the keyboard, bring the focused
-  // field back into view inside it. Only on a size change: moving between
-  // fields with the keyboard already up is left to the browser, which reveals
-  // the newly focused field itself - doing it here too made a small jump.
-  // Keyed on height alone, so iOS panning the viewport doesn't re-trigger it.
+  // field back into view inside it. Keyed on height alone, so a pan of the
+  // viewport doesn't re-trigger it.
   const visibleHeight = inset?.height
   React.useEffect(() => {
     const sheet = sheetRef.current
@@ -98,6 +132,25 @@ function KeyboardAwareContent({ style, ref, ...props }: React.ComponentProps<typ
           ? { ...style, bottom: inset.bottom, maxHeight: inset.height - KEYBOARD_TOP_GAP }
           : style
       }
+      // A tap: the transform has to be on before focus lands, so focus it here
+      onTouchEnd={(e) => {
+        onTouchEnd?.(e)
+        const field = e.target
+        if (!isIOS || !isTextEntry(field) || field === document.activeElement) return
+        e.preventDefault()
+        field.style.transform = "translateY(-2000px)"
+        field.focus({ preventScroll: true })
+      }}
+      // Any focus, including the keyboard's up/down arrows
+      onFocusCapture={(e) => {
+        onFocusCapture?.(e)
+        const field = e.target
+        if (!isIOS || !isTextEntry(field)) return
+        hideFromIOSScroll(field, () => {
+          // With the keyboard still rising, the height effect above reveals it
+          if (keyboardUp.current && sheetRef.current) revealInSheet(field, sheetRef.current)
+        })
+      }}
       {...props}
     />
   )
