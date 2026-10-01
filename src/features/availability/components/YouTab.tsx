@@ -5,7 +5,9 @@ import { usePostHog } from 'posthog-js/react';
 import { api } from "../../../../convex/_generated/api";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { MAIN_STATUS_OPTIONS, NEXT_STATUS_OPTIONS } from "../../../constants/statusOptions";
-import { Users } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
+import { format, isSameDay } from "date-fns";
+import { PlannedShiftsEditor } from "./plannedShifts/PlannedShiftsEditor";
 
 const MAX_DURATION_HOURS = 744; // approximately 1 month (31 days)
 
@@ -64,6 +66,24 @@ function YouTab({
 
   // State for officer selection modal
   const [showOfficerSelection, setShowOfficerSelection] = useState(false);
+  const [showPlannedShifts, setShowPlannedShifts] = useState(false);
+
+  // Planned shifts: the entry row's subtitle and the status card's
+  // "Planned:" line when the next shift starts within 24 hours.
+  const canPlanShifts = userInfo?.canPlanShifts ?? false;
+  const plannedSummary = userInfo?.plannedShifts;
+  const nextShift = plannedSummary?.next;
+  const formatShiftStart = (startAt: number) => {
+    const start = new Date(startAt);
+    return isSameDay(start, new Date()) ? format(start, 'HH:mm') : format(start, 'EEE HH:mm');
+  };
+  const plannedStatusWord: Record<string, string> = {
+    'not available': 'unavailable',
+    'delayed response': 'delayed',
+    'WFH': 'WFH',
+  };
+  const startsWithinADay =
+    !!nextShift && nextShift.startAt > Date.now() && nextShift.startAt - Date.now() <= 24 * 60 * 60 * 1000;
   
   // Use userInfo for status if available, fallback to prop for backward compatibility
   const effectiveUserStatus = userInfo ? {
@@ -263,8 +283,8 @@ function YouTab({
       timeStr = `${minutes}m`;
     }
     
-    const nextStatusDisplay = nextStatus === 'reset' ? 'Available' : getStatusDisplayName(nextStatus);
-    return `In ${timeStr} you will be: ${nextStatusDisplay}`;
+    if (nextStatus === 'reset') return `In ${timeStr} your status clears`;
+    return `In ${timeStr} you will be: ${getStatusDisplayName(nextStatus)}`;
   };
   
   // Helper function to get status background color
@@ -419,6 +439,16 @@ function YouTab({
                   Your status has been reset. Please set a new status for today.
                 </p>
               </>
+            )}
+            {canPlanShifts && startsWithinADay && nextShift && (
+              <button
+                type="button"
+                onClick={() => setShowPlannedShifts(true)}
+                className="mt-1 block text-left text-sm text-gray-500 dark:text-gray-400"
+              >
+                Planned: {plannedStatusWord[nextShift.status] ?? nextShift.status} from{' '}
+                {formatShiftStart(nextShift.startAt)} ({nextShift.name})
+              </button>
             )}
           </div>
         ) : (
@@ -730,6 +760,30 @@ function YouTab({
             </div>
           )}
         </div>
+      )}
+
+      {/* Planned shifts - sits after Add Duration, the other "status over time" control */}
+      {isAuthenticated && canPlanShifts && (
+        <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowPlannedShifts(true)}
+            className="w-full px-3 py-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+          >
+            <span className="flex flex-col">
+              <span className="text-lg font-medium">Planned shifts</span>
+              {plannedSummary && plannedSummary.upcomingCount > 0 && nextShift && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {plannedSummary.upcomingCount} upcoming · next {format(new Date(nextShift.startAt), 'EEE HH:mm')}
+                </span>
+              )}
+            </span>
+            <ChevronRight className="w-5 h-5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+      {canPlanShifts && (
+        <PlannedShiftsEditor open={showPlannedShifts} onClose={() => setShowPlannedShifts(false)} />
       )}
 
       {/* Duty Officer Section - Only show for users with Officer skill */}

@@ -9,6 +9,7 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  components,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
   return (
@@ -64,6 +65,8 @@ function Calendar({
           if (orientation === "right") return <ChevronRight className="h-4 w-4" />;
           return <ChevronDown className="h-3.5 w-3.5 text-gray-400" />;
         },
+        // Merged, not replaced, so a caller's custom DayButton keeps the chevrons.
+        ...components,
       }}
       {...props}
     />

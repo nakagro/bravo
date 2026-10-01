@@ -1,7 +1,7 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { trackCronNotification } from "./posthogAnalytics";
 
@@ -30,7 +30,7 @@ export const nightlyReset = action({
         
         if (!hasActiveDuration) {
           // Only clear status if no active duration
-          await ctx.runMutation(api.availability.clearStatus, { userId: user._id });
+          await ctx.runMutation(internal.availability.clearStatus, { userId: user._id });
           
           // Only send notification if enabled
           if (notificationsEnabled) {

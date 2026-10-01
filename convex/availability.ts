@@ -1,8 +1,10 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
+import { plannedStatusValidator } from "./lib/statusValidators";
+import { upcomingShiftSummary } from "./plannedShifts";
 
 // Get all user statuses, resetting at 4am each day
 export const getStatuses = query({
@@ -489,11 +491,17 @@ export const getUsersWithOfficerSkill = query({
   },
 });
 
-// Clear a user's status (internal helper)
-export const clearStatus = mutation({
+// Clear a user's status. Only the nightly reset calls this.
+export const clearStatus = internalMutation({
   args: { userId: v.id("users") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // The reset reads every user in one query and clears them one by one
+    // afterwards, so re-read: a timed status set in between (by hand, or by a
+    // planned shift starting) must survive.
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    if (user.statusExpiresAt && user.statusExpiresAt > Date.now()) return null;
     await ctx.db.patch(args.userId, {
       currentStatus: undefined,
       statusUpdatedAt: undefined,
@@ -733,6 +741,20 @@ export const getUserInfoForYouTab = query({
         v.literal("reset")
       )),
       nextStatusAt: v.optional(v.number()),
+      // Planned shifts: off for shared accounts, which have no roster.
+      canPlanShifts: v.boolean(),
+      plannedShifts: v.object({
+        upcomingCount: v.number(),
+        next: v.union(
+          v.object({
+            name: v.string(),
+            status: plannedStatusValidator,
+            startAt: v.number(),
+            endAt: v.number(),
+          }),
+          v.null()
+        ),
+      }),
     }),
     v.null()
   ),
@@ -773,6 +795,8 @@ export const getUserInfoForYouTab = query({
       statusDurationHours: hasExpired ? undefined : user.statusDurationHours,
       nextStatus: hasExpired ? undefined : user.nextStatus,
       nextStatusAt: hasExpired ? undefined : user.nextStatusAt,
+      canPlanShifts: isMemberAccount(user),
+      plannedShifts: await upcomingShiftSummary(ctx, userId),
     };
   },
 });

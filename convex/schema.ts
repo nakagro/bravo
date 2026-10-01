@@ -3,6 +3,10 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 import { accountTypeValidator } from "./lib/accountType";
 import {
+  nextStatusValidator,
+  plannedStatusValidator,
+} from "./lib/statusValidators";
+import {
   legacyTapeColorValidator,
   tapeColorValidator,
 } from "./lib/tapeColors";
@@ -66,16 +70,8 @@ const extendedAuthTables = {
     statusExpiresAt: v.optional(v.number()), // Timestamp when status expires (null = no expiration)
     statusDurationHours: v.optional(v.number()), // Original duration in hours for display
     // Auto-transition fields
-    nextStatus: v.optional(v.union(
-      v.literal("available - station"),
-      v.literal("available - at station"),
-      v.literal("available - satellite"),
-      v.literal("not available"),
-      v.literal("delayed response"),
-      v.literal("WFH"),
-      v.literal("WFH - at station"),
-      v.literal("reset") // Special value meaning "clear status" (daily reset behavior)
-    )), // Status to transition to after duration expires
+    // Status to transition to after duration expires; "reset" means clear it
+    nextStatus: v.optional(nextStatusValidator),
     nextStatusAt: v.optional(v.number()), // Timestamp when to transition to next status
     isDutyOfficer: v.optional(v.boolean()),
     // Disabled accounts are people who have left the brigade. The row stays so
@@ -1559,6 +1555,41 @@ const applicationTables = {
   })
     .index("by_user", ["userId"])
     .index("by_user_and_device", ["userId", "deviceId"]),
+
+  // A member's reusable shift definition, e.g. "Night 21:00-07:30". Times are
+  // Melbourne wall clock "HH:mm"; an end earlier than the start runs overnight.
+  // Private to the member: nobody else reads their roster.
+  shiftTypes: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    status: plannedStatusValidator,
+    // What to switch to when the shift ends; "reset" clears the status.
+    afterStatus: nextStatusValidator,
+    colour: v.number(), // palette index 0-5
+  }).index("by_userId", ["userId"]),
+
+  // One shift stamped on a date. Times and statuses are copied from the type
+  // when stamped. Editing the type re-stamps only shifts still pending; applied
+  // ones keep what they did. Each pending shift has an applyShift job scheduled
+  // at startAt, which does nothing if the row has gone or moved.
+  plannedShifts: defineTable({
+    userId: v.id("users"),
+    // May point at a deleted type, so name and colour are copied here.
+    shiftTypeId: v.id("shiftTypes"),
+    name: v.string(),
+    colour: v.number(),
+    status: plannedStatusValidator,
+    afterStatus: nextStatusValidator,
+    date: v.string(), // "YYYY-MM-DD", the Melbourne date the shift starts on
+    startAt: v.number(),
+    endAt: v.number(),
+    state: v.union(v.literal("pending"), v.literal("applied"), v.literal("skipped")),
+  })
+    .index("by_userId_and_date", ["userId", "date"])
+    .index("by_shiftTypeId_and_state", ["shiftTypeId", "state"])
+    .index("by_endAt", ["endAt"]),
 };
 
 export default defineSchema({

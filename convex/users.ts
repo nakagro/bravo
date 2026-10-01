@@ -4,6 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { deletePlannedShiftsForUser } from "./plannedShifts";
 
 /**
  * Shared gate for the account-lifecycle mutations below: only a signed-in admin
@@ -482,6 +483,8 @@ export const deleteUser = mutation({
     for (const subscription of subscriptions) {
       await ctx.db.delete(subscription._id);
     }
+
+    await deletePlannedShiftsForUser(ctx, userId);
 
     // Delete the user
     await ctx.db.delete(userId);

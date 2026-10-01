@@ -103,4 +103,13 @@ crons.daily(
   {}
 );
 
+// Delete planned shifts that ended over a week ago. memberStatusHistory already
+// records what they did.
+crons.cron(
+  "cleanup old planned shifts", // identifier
+  "45 17 * * *", // 03:45 AEST / 04:45 AEDT
+  internal.plannedShifts.cleanupOldPlannedShifts,
+  {}
+);
+
 export default crons;
