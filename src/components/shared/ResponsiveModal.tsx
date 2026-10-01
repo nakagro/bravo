@@ -40,12 +40,6 @@ interface ResponsiveModalProps {
    * behave exactly as before.
    */
   onRequestClose?: () => boolean;
-  /**
-   * Let vaul lift the drawer above the on-screen keyboard (its default). iOS
-   * also scrolls the focused field into view, so on a short drawer the two
-   * stack and throw the form off the top of the screen - pass false there.
-   */
-  repositionInputs?: boolean;
 }
 
 // One action bar for every modal. On phones the bottom padding clears the home
@@ -73,7 +67,6 @@ export function ResponsiveModal({
   drawerHeight = "h-[90vh]",
   maxWidth = "sm:max-w-md md:max-w-lg",
   onRequestClose,
-  repositionInputs,
 }: ResponsiveModalProps) {
   const isMobile = useIsMobile();
   // While a text field inside the drawer has focus the on-screen keyboard is up
@@ -103,7 +96,6 @@ export function ResponsiveModal({
       <Drawer
         open={open}
         dismissible={!isTypingInside}
-        repositionInputs={repositionInputs}
         onOpenChange={(o) => {
           if (!o) attemptClose();
         }}

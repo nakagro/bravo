@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.10.01]
+- General: Pop-up forms on phones no longer jump around when the keyboard opens.
+
 ## [2026.09.29]
 - Events: Who's coming is now an easy-to-scan list of names in columns instead of pills.
 - Events: Anyone rostered who can't make it is now listed on its own line under their shift.
