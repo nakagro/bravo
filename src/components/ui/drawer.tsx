@@ -64,7 +64,7 @@ function revealInSheet(el: HTMLElement, sheet: HTMLElement) {
 
 // Mounted only while the drawer is open (it sits inside the portal), so the
 // viewport listeners come and go with it.
-function KeyboardAwareContent({ style, ref, onFocus, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+function KeyboardAwareContent({ style, ref, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
   const inset = useKeyboardInset()
   const sheetRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -78,13 +78,17 @@ function KeyboardAwareContent({ style, ref, onFocus, ...props }: React.Component
   )
 
   // Once the sheet has shrunk to fit above the keyboard, bring the focused
-  // field back into view inside it.
+  // field back into view inside it. Only on a size change: moving between
+  // fields with the keyboard already up is left to the browser, which reveals
+  // the newly focused field itself - doing it here too made a small jump.
+  // Keyed on height alone, so iOS panning the viewport doesn't re-trigger it.
+  const visibleHeight = inset?.height
   React.useEffect(() => {
     const sheet = sheetRef.current
     const focused = document.activeElement
-    if (!inset || !sheet || !(focused instanceof HTMLElement) || !sheet.contains(focused)) return
+    if (!visibleHeight || !sheet || !(focused instanceof HTMLElement) || !sheet.contains(focused)) return
     revealInSheet(focused, sheet)
-  }, [inset])
+  }, [visibleHeight])
 
   return (
     <DrawerPrimitive.Content
@@ -94,13 +98,6 @@ function KeyboardAwareContent({ style, ref, onFocus, ...props }: React.Component
           ? { ...style, bottom: inset.bottom, maxHeight: inset.height - KEYBOARD_TOP_GAP }
           : style
       }
-      onFocus={(e) => {
-        onFocus?.(e)
-        // Moving between fields with the keyboard already up
-        if (inset && sheetRef.current && e.target instanceof HTMLElement) {
-          revealInSheet(e.target, sheetRef.current)
-        }
-      }}
       {...props}
     />
   )
