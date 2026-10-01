@@ -27,7 +27,10 @@ interface ComboboxProps {
   clearable?: boolean
   /** While a value is set, swap the chevron for an X that clears it. */
   showClearButton?: boolean
-  /** Open the list above the field, for pickers near the bottom of a form. */
+  /**
+   * Which side the list prefers. It still flips to the other side when that
+   * has more room, e.g. with the phone keyboard up.
+   */
   listPosition?: "below" | "above"
   className?: string
   disabled?: boolean
@@ -42,12 +45,54 @@ interface ComboboxProps {
   createHint?: string
 }
 
+const LIST_MAX_HEIGHT = 240
+const LIST_GAP = 4
+// Below this, the preferred side is too cramped and the other side wins
+const LIST_COMFORTABLE = 160
+
+// The part of the screen the list can show in: the nearest scrolling box
+// (e.g. a drawer's form), cut down to what's above the phone keyboard.
+function visibleBounds(from: HTMLElement) {
+  const vv = window.visualViewport
+  let top = vv ? vv.offsetTop : 0
+  let bottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+  let box = from.parentElement
+  while (box) {
+    const { overflowY } = getComputedStyle(box)
+    if (overflowY === "auto" || overflowY === "scroll") {
+      const rect = box.getBoundingClientRect()
+      top = Math.max(top, rect.top)
+      bottom = Math.min(bottom, rect.bottom)
+      break
+    }
+    box = box.parentElement
+  }
+  return { top, bottom }
+}
+
+// cmdk keeps the highlighted row visible with element.scrollIntoView, which
+// scrolls every box around it too - the drawer and the page jumped on each
+// pick. Scroll the list alone instead.
+function scrollWithinList(item: HTMLElement | null) {
+  if (!item) return
+  item.scrollIntoView = () => {
+    const list = item.closest<HTMLElement>("[cmdk-list]")
+    if (!list) return
+    const top = item.offsetTop
+    const bottom = top + item.offsetHeight
+    if (top < list.scrollTop) list.scrollTop = top
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight
+  }
+}
+
 // Type-in-place picker, deliberately (it replaces a Headless UI Combobox and
 // keeps its behaviour):
 // - the field is the search box; focusing it only gives you a cursor
 // - typing opens the list and filters it as you go
 // - the chevron opens the full list
-// The list renders inline (not portalled) so it scrolls inside drawers.
+// The list renders inline (not portalled) so it scrolls inside drawers. It
+// opens into whichever side of the field has room and is sized to fit there,
+// so opening it, picking and closing it never scroll anything.
 export function Combobox({
   options,
   value,
@@ -65,7 +110,40 @@ export function Combobox({
   createHint,
 }: ComboboxProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const fieldRef = React.useRef<HTMLDivElement>(null)
   const [open, setOpen] = React.useState(false)
+  const [placement, setPlacement] = React.useState<{
+    side: "below" | "above"
+    maxHeight: number
+  }>({ side: listPosition, maxHeight: LIST_MAX_HEIGHT })
+
+  // Measure before paint, and again as the keyboard finishes rising.
+  React.useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      const field = fieldRef.current
+      if (!field) return
+      const rect = field.getBoundingClientRect()
+      const bounds = visibleBounds(field)
+      const room = {
+        below: bounds.bottom - rect.bottom - LIST_GAP * 2,
+        above: rect.top - bounds.top - LIST_GAP * 2,
+      }
+      const other = listPosition === "below" ? "above" : "below"
+      const side =
+        room[listPosition] >= LIST_COMFORTABLE || room[listPosition] >= room[other]
+          ? listPosition
+          : other
+      const maxHeight = Math.max(96, Math.min(LIST_MAX_HEIGHT, room[side]))
+      setPlacement((prev) =>
+        prev.side === side && prev.maxHeight === maxHeight ? prev : { side, maxHeight }
+      )
+    }
+    place()
+    const vv = window.visualViewport
+    vv?.addEventListener("resize", place)
+    return () => vv?.removeEventListener("resize", place)
+  }, [open, listPosition])
   const [query, setQuery] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
@@ -131,7 +209,7 @@ export function Combobox({
         }
       }}
     >
-      <div className="relative">
+      <div ref={fieldRef} className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
           <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
         </div>
@@ -196,9 +274,10 @@ export function Combobox({
           // close the list before the selection lands.
           onMouseDown={(e) => e.preventDefault()}
           className={cn(
-            "absolute z-50 max-h-60 w-full overflow-auto overscroll-contain rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800 sm:text-sm",
-            listPosition === "above" ? "bottom-full mb-1" : "top-full mt-1"
+            "absolute z-50 w-full overflow-auto overscroll-contain rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800 sm:text-sm",
+            placement.side === "above" ? "bottom-full mb-1" : "top-full mt-1"
           )}
+          style={{ maxHeight: placement.maxHeight }}
         >
           {onCreate && createHint && needle === "" && (
             <div className="px-4 py-2 text-xs text-muted-foreground border-b border-gray-100 dark:border-gray-700">
@@ -213,6 +292,7 @@ export function Combobox({
             return (
               <CommandPrimitive.Item
                 key={option.value}
+                ref={scrollWithinList}
                 value={option.value}
                 onSelect={() => select(option.value)}
                 className="group relative flex cursor-default select-none items-center gap-2 py-2 pl-10 pr-4 text-gray-900 outline-none data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground dark:text-gray-200"
@@ -236,6 +316,7 @@ export function Combobox({
           })}
           {canCreate && (
             <CommandPrimitive.Item
+              ref={scrollWithinList}
               value="__create__"
               onSelect={create}
               className="group relative flex cursor-default select-none items-center gap-2 border-t border-gray-100 py-2 pl-10 pr-4 text-gray-900 outline-none data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground dark:border-gray-700 dark:text-gray-200"
