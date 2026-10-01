@@ -1576,10 +1576,11 @@ const applicationTables = {
   // at startAt, which does nothing if the row has gone or moved.
   plannedShifts: defineTable({
     userId: v.id("users"),
-    // May point at a deleted type, so name and colour are copied here.
-    shiftTypeId: v.id("shiftTypes"),
+    // Absent for a one-off shift entered by its times in the week view. May
+    // point at a deleted type, so name and colour are copied here.
+    shiftTypeId: v.optional(v.id("shiftTypes")),
     name: v.string(),
-    colour: v.number(),
+    colour: v.number(), // palette index 0-5, or -1 for a one-off shift
     status: plannedStatusValidator,
     afterStatus: nextStatusValidator,
     date: v.string(), // "YYYY-MM-DD", the Melbourne date the shift starts on

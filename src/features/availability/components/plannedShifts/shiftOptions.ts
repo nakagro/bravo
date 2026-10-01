@@ -39,8 +39,11 @@ export const SHIFT_COLOURS = [
   { dot: "bg-slate-500", ring: "ring-slate-500" },
 ] as const;
 
+/** A one-off shift from the week view has no type, so no palette colour. */
+export const ONE_OFF_COLOUR = { dot: "bg-gray-400 dark:bg-gray-500", ring: "ring-gray-400" } as const;
+
 export function shiftColour(index: number) {
-  return SHIFT_COLOURS[index % SHIFT_COLOURS.length];
+  return index < 0 ? ONE_OFF_COLOUR : SHIFT_COLOURS[index % SHIFT_COLOURS.length];
 }
 
 /** "2100" -> "21:00", or null if it isn't a valid 24-hour time. */

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { SHIFT_TYPE_FORM_ID, ShiftTypeForm } from "./ShiftTypeForm";
+import { WeekView } from "./WeekView";
 import {
   HORIZON_DAYS,
   SHIFT_COLOURS,
@@ -26,14 +27,37 @@ const MAX_SHIFT_TYPES = 6;
 const UPCOMING_PREVIEW = 5;
 
 type View =
-  | { kind: "calendar" }
+  | { kind: "main" }
   | { kind: "new" }
   | { kind: "edit"; typeId: Id<"shiftTypes"> };
 
+// Week suits shifts whose times vary; Calendar suits fixed shift types. Both
+// edit the same shifts. The choice is a per-device convenience, so it lives in
+// localStorage and falls back to Week.
+type Tab = "week" | "calendar";
+const TAB_STORAGE_KEY = "bravo.plannedShifts.tab";
+
+function readStoredTab(): Tab {
+  try {
+    return localStorage.getItem(TAB_STORAGE_KEY) === "calendar" ? "calendar" : "week";
+  } catch {
+    return "week";
+  }
+}
+
+function storeTab(tab: Tab) {
+  try {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  } catch {
+    // Storage blocked: the choice just isn't remembered.
+  }
+}
+
 // A day cell with a coloured bar under the number for the shift on that date.
-// The bar's colour comes from the `shift0`..`shift5` modifiers.
+// The bar's colour comes from the `shift0`..`shift5` modifiers, or
+// `shiftOneOff` for a shift entered by its times in the week view.
 function ShiftDayButton({ day: _day, modifiers, className, children, ...props }: DayButtonProps) {
-  const colour = SHIFT_COLOURS.findIndex((_, i) => modifiers[`shift${i}`]);
+  const colour = modifiers.shiftOneOff ? -1 : SHIFT_COLOURS.findIndex((_, i) => modifiers[`shift${i}`]);
   return (
     <button
       {...props}
@@ -46,7 +70,10 @@ function ShiftDayButton({ day: _day, modifiers, className, children, ...props }:
       <span>{children}</span>
       <span
         aria-hidden="true"
-        className={cn("h-1 w-5 rounded-full", colour >= 0 ? SHIFT_COLOURS[colour].dot : "bg-transparent")}
+        className={cn(
+          "h-1 w-5 rounded-full",
+          modifiers.shiftOneOff || colour >= 0 ? shiftColour(colour).dot : "bg-transparent",
+        )}
       />
     </button>
   );
@@ -65,8 +92,10 @@ interface PlannedShiftsEditorProps {
 }
 
 /**
- * Planned shifts: pick a shift type, then tap dates to stamp it. Shift types are
- * created and edited in a second view inside the same modal.
+ * Planned shifts, two ways in to the same shifts: a Week view of start and
+ * finish times for rosters that vary, and a Calendar where a shift type is
+ * picked and then stamped on dates. Shift types are created and edited in a
+ * second view inside the same modal.
  */
 export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps) {
   const posthog = usePostHog();
@@ -81,7 +110,8 @@ export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps)
   const toggleShift = useMutation(api.plannedShifts.toggleShiftOnDate);
   const removeShift = useMutation(api.plannedShifts.removePlannedShift);
 
-  const [view, setView] = useState<View>({ kind: "calendar" });
+  const [view, setView] = useState<View>({ kind: "main" });
+  const [tab, setTab] = useState<Tab>(readStoredTab);
   const [selectedId, setSelectedId] = useState<Id<"shiftTypes"> | undefined>();
   const [month, setMonth] = useState(today);
   const [busyDates, setBusyDates] = useState<ReadonlySet<string>>(new Set());
@@ -91,13 +121,15 @@ export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps)
   const selected = types?.find((t) => t._id === selectedId) ?? types?.[0];
   const editing = view.kind === "edit" ? types?.find((t) => t._id === view.typeId) : undefined;
   const noTypesYet = types !== undefined && types.length === 0;
-  const showForm = view.kind === "new" || !!editing || noTypesYet;
+  const showForm = view.kind === "new" || !!editing;
 
   const modifiers = useMemo(() => {
     const result: Record<string, Date[]> = { busy: [...busyDates].map((d) => parseISO(d)) };
+    result.shiftOneOff = [];
     SHIFT_COLOURS.forEach((_, i) => (result[`shift${i}`] = []));
     for (const shift of shifts ?? []) {
-      result[`shift${shift.colour % SHIFT_COLOURS.length}`].push(parseISO(shift.date));
+      const key = shift.colour < 0 ? "shiftOneOff" : `shift${shift.colour % SHIFT_COLOURS.length}`;
+      result[key].push(parseISO(shift.date));
     }
     return result;
   }, [shifts, busyDates]);
@@ -107,7 +139,7 @@ export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps)
   const visibleUpcoming = showAll ? upcoming : upcoming.slice(0, UPCOMING_PREVIEW);
 
   const close = () => {
-    setView({ kind: "calendar" });
+    setView({ kind: "main" });
     setShowAll(false);
     onClose();
   };
@@ -150,7 +182,7 @@ export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps)
       <Button
         type="button"
         variant="outline"
-        onClick={() => (noTypesYet ? close() : setView({ kind: "calendar" }))}
+        onClick={() => setView({ kind: "main" })}
       >
         Cancel
       </Button>
@@ -212,95 +244,126 @@ export function PlannedShiftsEditor({ open, onClose }: PlannedShiftsEditorProps)
     </section>
   );
 
+  const calendar = (
+    <Calendar
+      month={month}
+      onMonthChange={setMonth}
+      startMonth={today}
+      endMonth={lastDay}
+      weekStartsOn={1}
+      showOutsideDays={false}
+      disabled={[{ before: today }, { after: lastDay }]}
+      modifiers={modifiers}
+      onDayClick={handleDayClick}
+      components={{ DayButton: ShiftDayButton }}
+      className="px-0"
+    />
+  );
+
+  const calendarTab = noTypesYet ? (
+    <>
+      <p className="text-sm text-muted-foreground">
+        For shifts with the same times each time, like Night 21:00 to 07:30. Add it once, then tap
+        the dates you work it.
+      </p>
+      <Button type="button" variant="outline" className="mt-3 h-10" onClick={() => setView({ kind: "new" })}>
+        <Plus aria-hidden="true" />
+        New shift type
+      </Button>
+      {calendar}
+      {upcomingList}
+    </>
+  ) : (
+    <>
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={selected?._id ?? ""}
+          onValueChange={(value) => {
+            // Tapping the chip that's already selected opens it for editing.
+            if (!value) {
+              if (selected) setView({ kind: "edit", typeId: selected._id });
+              return;
+            }
+            setSelectedId(value as Id<"shiftTypes">);
+          }}
+          className="w-max flex-nowrap justify-start"
+          aria-label="Shift type"
+        >
+          {(types ?? []).map((type) => (
+            <ToggleGroupItem
+              key={type._id}
+              value={type._id}
+              className={cn("h-10 shrink-0 px-3 data-[state=on]:ring-2", shiftColour(type.colour).ring)}
+            >
+              <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-full", shiftColour(type.colour).dot)} />
+              {type.name}
+            </ToggleGroupItem>
+          ))}
+          {(types ?? []).length < MAX_SHIFT_TYPES && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 shrink-0 px-3"
+              onClick={() => setView({ kind: "new" })}
+            >
+              <Plus aria-hidden="true" />
+              New
+            </Button>
+          )}
+        </ToggleGroup>
+      </div>
+
+      {calendar}
+
+      {selected && (
+        <p className="text-center text-sm text-muted-foreground">
+          Tap a date to add or remove a {selected.name} shift. Tap {selected.name} again to edit it.
+        </p>
+      )}
+
+      {upcomingList}
+    </>
+  );
+
   return (
     <ResponsiveModal open={open} onClose={close} title={title} footer={footer}>
-      {types === undefined ? (
+      {types === undefined || shifts === undefined ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : showForm ? (
-        <>
-          {noTypesYet && view.kind === "calendar" && (
-            <p className="mb-4 text-sm text-muted-foreground">
-              Add the shifts you work, then tap dates on a calendar. You'll be marked unavailable
-              automatically while you're at work.
-            </p>
-          )}
-          <ShiftTypeForm
-            key={editing?._id ?? "new"}
-            initial={editing}
-            onSavingChange={setSaving}
-            onDone={(createdId) => {
-              if (createdId) setSelectedId(createdId);
-              setView({ kind: "calendar" });
-            }}
-          />
-          {noTypesYet && upcomingList}
-        </>
+        <ShiftTypeForm
+          key={editing?._id ?? "new"}
+          initial={editing}
+          onSavingChange={setSaving}
+          onDone={(createdId) => {
+            if (createdId) setSelectedId(createdId);
+            setView({ kind: "main" });
+          }}
+        />
       ) : (
         <>
-          <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              value={selected?._id ?? ""}
-              onValueChange={(value) => {
-                // Tapping the chip that's already selected opens it for editing.
-                if (!value) {
-                  if (selected) setView({ kind: "edit", typeId: selected._id });
-                  return;
-                }
-                setSelectedId(value as Id<"shiftTypes">);
-              }}
-              className="w-max flex-nowrap justify-start"
-              aria-label="Shift type"
-            >
-              {types.map((type) => (
-                <ToggleGroupItem
-                  key={type._id}
-                  value={type._id}
-                  className={cn(
-                    "h-10 shrink-0 px-3 data-[state=on]:ring-2",
-                    shiftColour(type.colour).ring,
-                  )}
-                >
-                  <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-full", shiftColour(type.colour).dot)} />
-                  {type.name}
-                </ToggleGroupItem>
-              ))}
-              {types.length < MAX_SHIFT_TYPES && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-10 shrink-0 px-3"
-                  onClick={() => setView({ kind: "new" })}
-                >
-                  <Plus aria-hidden="true" />
-                  New
-                </Button>
-              )}
-            </ToggleGroup>
-          </div>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={tab}
+            onValueChange={(value) => {
+              if (!value) return;
+              setTab(value as Tab);
+              storeTab(value as Tab);
+            }}
+            className="mb-3 grid grid-cols-2"
+            aria-label="How to enter shifts"
+          >
+            <ToggleGroupItem value="week" className="h-10">
+              Week
+            </ToggleGroupItem>
+            <ToggleGroupItem value="calendar" className="h-10">
+              Calendar
+            </ToggleGroupItem>
+          </ToggleGroup>
 
-          <Calendar
-            month={month}
-            onMonthChange={setMonth}
-            startMonth={today}
-            endMonth={lastDay}
-            weekStartsOn={1}
-            showOutsideDays={false}
-            disabled={[{ before: today }, { after: lastDay }]}
-            modifiers={modifiers}
-            onDayClick={handleDayClick}
-            components={{ DayButton: ShiftDayButton }}
-            className="px-0"
-          />
-
-          {selected && (
-            <p className="text-center text-sm text-muted-foreground">
-              Tap a date to add or remove a {selected.name} shift. Tap {selected.name} again to edit it.
-            </p>
-          )}
-
-          {upcomingList}
+          {tab === "week" ? <WeekView shifts={shifts} today={today} lastDay={lastDay} /> : calendarTab}
         </>
       )}
     </ResponsiveModal>

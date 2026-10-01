@@ -32,6 +32,9 @@ export const HORIZON_DAYS = 92;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH = 500;
 const MAX_NAME_LENGTH = 30;
+/** A one-off shift entered by its times has no type, name or palette colour. */
+export const ONE_OFF_NAME = "Shift";
+export const ONE_OFF_COLOUR = -1;
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -56,7 +59,7 @@ const shiftTypeReturn = v.object({
 
 const plannedShiftReturn = v.object({
   _id: v.id("plannedShifts"),
-  shiftTypeId: v.id("shiftTypes"),
+  shiftTypeId: v.optional(v.id("shiftTypes")),
   name: v.string(),
   colour: v.number(),
   status: plannedStatusValidator,
@@ -219,6 +222,29 @@ async function scheduleApply(
     shiftId,
     startAt,
   });
+}
+
+/** Today up to the horizon, read in Melbourne. */
+function assertPlannableDate(date: string) {
+  parseDate(date);
+  if (date < brigadeDateStr()) throw new Error("That date has passed.");
+  if (date > brigadeDateStr(HORIZON_DAYS)) {
+    throw new Error("Shifts can be planned up to 3 months ahead.");
+  }
+}
+
+async function assertUnderCap(ctx: QueryCtx, userId: Id<"users">) {
+  const pending = (
+    await ctx.db
+      .query("plannedShifts")
+      .withIndex("by_userId_and_date", (q) =>
+        q.eq("userId", userId).gte("date", brigadeDateStr()),
+      )
+      .take(MAX_PENDING_SHIFTS * 2)
+  ).filter((s) => s.state === "pending");
+  if (pending.length >= MAX_PENDING_SHIFTS) {
+    throw new Error(`You can have up to ${MAX_PENDING_SHIFTS} upcoming shifts.`);
+  }
 }
 
 /**
@@ -458,12 +484,7 @@ export const toggleShiftOnDate = mutation({
   handler: async (ctx, args) => {
     const user = await requireMember(ctx);
     const type = await requireOwnShiftType(ctx, user._id, args.shiftTypeId);
-    parseDate(args.date);
-    const today = brigadeDateStr();
-    if (args.date < today) throw new Error("That date has passed.");
-    if (args.date > brigadeDateStr(HORIZON_DAYS)) {
-      throw new Error("Shifts can be planned up to 3 months ahead.");
-    }
+    assertPlannableDate(args.date);
 
     const existing = await shiftOnDate(ctx, user._id, args.date);
     if (existing && existing.shiftTypeId === type._id) {
@@ -477,17 +498,7 @@ export const toggleShiftOnDate = mutation({
     if (existing) {
       await removeShift(ctx, existing);
     } else {
-      const pending = (
-        await ctx.db
-          .query("plannedShifts")
-          .withIndex("by_userId_and_date", (q) =>
-            q.eq("userId", user._id).gte("date", today),
-          )
-          .take(MAX_PENDING_SHIFTS * 2)
-      ).filter((s) => s.state === "pending");
-      if (pending.length >= MAX_PENDING_SHIFTS) {
-        throw new Error(`You can have up to ${MAX_PENDING_SHIFTS} upcoming shifts.`);
-      }
+      await assertUnderCap(ctx, user._id);
     }
 
     const shiftId = await ctx.db.insert("plannedShifts", {
@@ -504,6 +515,53 @@ export const toggleShiftOnDate = mutation({
     });
     await scheduleApply(ctx, shiftId, times.startAt);
     return existing ? "swapped" : "added";
+  },
+});
+
+/**
+ * The week view: set a date's shift by its start and finish, for members whose
+ * times vary. A one-off shift has no type. Changing the times of a shift that
+ * came from a type detaches it, so a later edit of the type leaves this
+ * exception alone; its name, colour and statuses are kept.
+ */
+export const setShiftTimes = mutation({
+  args: { date: v.string(), startTime: v.string(), endTime: v.string() },
+  returns: v.union(v.literal("added"), v.literal("updated"), v.literal("unchanged")),
+  handler: async (ctx, args) => {
+    const user = await requireMember(ctx);
+    assertPlannableDate(args.date);
+    parseTime(args.startTime);
+    parseTime(args.endTime);
+    if (args.startTime === args.endTime) {
+      throw new Error("A shift can't start and end at the same time.");
+    }
+
+    const times = shiftInstants(args.date, args.startTime, args.endTime);
+    const existing = await shiftOnDate(ctx, user._id, args.date);
+    if (existing && existing.startAt === times.startAt && existing.endAt === times.endAt) {
+      return "unchanged";
+    }
+    await assertNoOverlap(ctx, user._id, args.date, times);
+
+    if (existing) {
+      await removeShift(ctx, existing);
+    } else {
+      await assertUnderCap(ctx, user._id);
+    }
+
+    const shiftId = await ctx.db.insert("plannedShifts", {
+      userId: user._id,
+      name: existing?.name ?? ONE_OFF_NAME,
+      colour: existing?.colour ?? ONE_OFF_COLOUR,
+      status: existing?.status ?? "not available",
+      afterStatus: existing?.afterStatus ?? "reset",
+      date: args.date,
+      startAt: times.startAt,
+      endAt: times.endAt,
+      state: "pending",
+    });
+    await scheduleApply(ctx, shiftId, times.startAt);
+    return existing ? "updated" : "added";
   },
 });
 

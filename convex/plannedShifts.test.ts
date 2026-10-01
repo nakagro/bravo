@@ -392,6 +392,81 @@ describe("toggleShiftOnDate", () => {
   });
 });
 
+describe("setShiftTimes", () => {
+  const setTimes = (s: Setup, date: string, startTime: string, endTime: string) =>
+    s.asMember.mutation(api.plannedShifts.setShiftTimes, { date, startTime, endTime });
+
+  it("adds a one-off shift with no type, then updates and leaves it unchanged", async () => {
+    const s = await setup();
+    expect(await setTimes(s, "2026-10-08", "06:45", "15:15")).toBe("added");
+    const added = (await shiftOn(s, "2026-10-08"))!;
+    expect(added).toMatchObject({
+      name: "Shift",
+      colour: -1,
+      status: "not available",
+      afterStatus: "reset",
+      state: "pending",
+      startAt: shiftInstants("2026-10-08", "06:45", "15:15").startAt,
+    });
+    expect(added.shiftTypeId).toBeUndefined();
+
+    expect(await setTimes(s, "2026-10-08", "06:45", "15:15")).toBe("unchanged");
+    expect(await setTimes(s, "2026-10-08", "22:00", "06:00")).toBe("updated");
+    const updated = (await shiftOn(s, "2026-10-08"))!;
+    expect(updated.endAt).toBe(shiftInstants("2026-10-08", "22:00", "06:00").endAt);
+
+    // The first shift's job is stale: its row is gone.
+    vi.setSystemTime(added.startAt);
+    await apply(s, added._id, added.startAt);
+    expect((await user(s))!.currentStatus).toBeUndefined();
+  });
+
+  it("detaches a typed shift whose times are changed, so editing the type leaves it", async () => {
+    const s = await setup();
+    const nightId = await createType(s);
+    await s.asMember.mutation(api.plannedShifts.toggleShiftOnDate, { date: "2026-10-08", shiftTypeId: nightId });
+    expect(await setTimes(s, "2026-10-08", "20:00", "06:00")).toBe("updated");
+
+    const detached = (await shiftOn(s, "2026-10-08"))!;
+    expect(detached.shiftTypeId).toBeUndefined();
+    expect(detached.name).toBe("Night");
+
+    await s.asMember.mutation(api.plannedShifts.updateShiftType, { id: nightId, ...night, startTime: "22:00" });
+    expect((await shiftOn(s, "2026-10-08"))!.startAt).toBe(detached.startAt);
+
+    // Tapping the Night on the calendar swaps the one-off back to the type.
+    expect(
+      await s.asMember.mutation(api.plannedShifts.toggleShiftOnDate, { date: "2026-10-08", shiftTypeId: nightId }),
+    ).toBe("swapped");
+  });
+
+  it("applies the one-off shift at its start like any other", async () => {
+    const s = await setup();
+    await setTimes(s, "2026-10-08", "06:45", "15:15");
+    const shift = (await shiftOn(s, "2026-10-08"))!;
+    vi.setSystemTime(shift.startAt);
+    await apply(s, shift._id, shift.startAt);
+    expect((await user(s))!.currentStatus).toBe("not available");
+    expect((await user(s))!.nextStatus).toBe("reset");
+  });
+
+  it("rejects past dates, bad times and overlaps, and refuses shared accounts", async () => {
+    const s = await setup();
+    await expect(setTimes(s, "2026-10-05", "07:00", "15:00")).rejects.toThrow(/passed/);
+    await expect(setTimes(s, "2026-10-08", "0700", "15:00")).rejects.toThrow(/valid time/);
+    await expect(setTimes(s, "2026-10-08", "07:00", "07:00")).rejects.toThrow(/same time/);
+    await setTimes(s, "2026-10-08", "21:00", "07:30");
+    await expect(setTimes(s, "2026-10-09", "07:00", "15:00")).rejects.toThrow(/overlap/);
+    await expect(
+      s.asShared.mutation(api.plannedShifts.setShiftTimes, {
+        date: "2026-10-08",
+        startTime: "07:00",
+        endTime: "15:00",
+      }),
+    ).rejects.toThrow(/member accounts/);
+  });
+});
+
 describe("updateShiftType", () => {
   it("re-stamps pending shifts and leaves applied ones", async () => {
     const s = await setup();
