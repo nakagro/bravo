@@ -1,9 +1,39 @@
 import { query, mutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
+import { brigadeDateStr } from "./lib/dates";
+import { describeRepeat, repeatProblem, seriesDates } from "./lib/bookingRecurrence";
 import { moduleSettingAllows } from "./modules";
+
+const repeatFrequencyValidator = v.union(
+  v.literal("weekly"),
+  v.literal("fortnightly"),
+  v.literal("monthly")
+);
+
+// The rule a repeating booking was made from, for "Every Tuesday until ..."
+const seriesSummaryValidator = v.object({
+  _id: v.id("bookingSeries"),
+  frequency: repeatFrequencyValidator,
+  startDate: v.string(),
+  untilDate: v.string(),
+  description: v.string(),
+});
+
+async function seriesSummary(ctx: QueryCtx, seriesId: Id<"bookingSeries"> | undefined) {
+  if (!seriesId) return undefined;
+  const series = await ctx.db.get(seriesId);
+  if (!series) return undefined;
+  return {
+    _id: series._id,
+    frequency: series.frequency,
+    startDate: series.startDate,
+    untilDate: series.untilDate,
+    description: describeRepeat(series.startDate, series.frequency),
+  };
+}
 
 /**
  * Whether the user can manage booking resources (bookingsAdmin module or system admin).
@@ -35,33 +65,38 @@ async function requireBookingsAdmin(ctx: QueryCtx | MutationCtx): Promise<Id<"us
   return userId;
 }
 
+type ProposedBooking = {
+  resourceId: Id<"bookingResources">;
+  startDate: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  isAllDay: boolean;
+  excludeBookingId?: Id<"bookings">;
+};
+
+/** The pending and approved bookings a new booking on this resource must not overlap. */
+async function activeBookingsFor(ctx: MutationCtx, resourceId: Id<"bookingResources">) {
+  return (
+    await ctx.db
+      .query("bookings")
+      .withIndex("by_resource", (q) => q.eq("resourceId", resourceId))
+      .collect()
+  ).filter((b) => b.status === "pending" || b.status === "approved");
+}
+
 /**
- * Check a proposed booking against existing pending/approved bookings for the
- * same resource and throw a structured ConvexError if it overlaps.
+ * Why a proposed booking clashes with one of `existingBookings`, or null if it
+ * doesn't.
  *
  * Time semantics: for multi-day timed bookings, startTime applies to the first
  * day, endTime to the last day, and middle days are fully occupied.
  */
-async function assertNoBookingConflict(
-  ctx: MutationCtx,
-  booking: {
-    resourceId: Id<"bookingResources">;
-    startDate: string;
-    endDate?: string;
-    startTime?: string;
-    endTime?: string;
-    isAllDay: boolean;
-    excludeBookingId?: Id<"bookings">;
-  }
-) {
+function findBookingConflict(
+  existingBookings: Doc<"bookings">[],
+  booking: ProposedBooking
+): string | null {
   const effectiveEndDate = booking.endDate || booking.startDate;
-
-  const existingBookings = (
-    await ctx.db
-      .query("bookings")
-      .withIndex("by_resource", (q) => q.eq("resourceId", booking.resourceId))
-      .collect()
-  ).filter((b) => b.status === "pending" || b.status === "approved");
 
   for (const existing of existingBookings) {
     if (booking.excludeBookingId && existing._id === booking.excludeBookingId) {
@@ -85,10 +120,7 @@ async function assertNoBookingConflict(
         existing.endDate && existing.endDate !== existing.startDate
           ? `${existing.startDate} to ${existing.endDate}`
           : existing.startDate;
-      throw new ConvexError({
-        code: "BOOKING_CONFLICT",
-        message: `This resource is already booked${statusLabel} on ${conflictDates}. Please choose different dates.`,
-      });
+      return `This resource is already booked${statusLabel} on ${conflictDates}. Please choose different dates.`;
     }
 
     // Case 2: Both bookings have specific times
@@ -120,12 +152,21 @@ async function assertNoBookingConflict(
       }
 
       if (hasTimeConflict) {
-        throw new ConvexError({
-          code: "BOOKING_CONFLICT",
-          message: `This resource is already booked${statusLabel} from ${existing.startTime} to ${existing.endTime} on ${existing.startDate}${existing.endDate && existing.endDate !== existing.startDate ? ` to ${existing.endDate}` : ""}. Please choose a different time.`,
-        });
+        return `This resource is already booked${statusLabel} from ${existing.startTime} to ${existing.endTime} on ${existing.startDate}${existing.endDate && existing.endDate !== existing.startDate ? ` to ${existing.endDate}` : ""}. Please choose a different time.`;
       }
     }
+  }
+  return null;
+}
+
+/**
+ * Check a proposed booking against existing pending/approved bookings for the
+ * same resource and throw a structured ConvexError if it overlaps.
+ */
+async function assertNoBookingConflict(ctx: MutationCtx, booking: ProposedBooking) {
+  const message = findBookingConflict(await activeBookingsFor(ctx, booking.resourceId), booking);
+  if (message) {
+    throw new ConvexError({ code: "BOOKING_CONFLICT", message });
   }
 }
 
@@ -351,6 +392,7 @@ export const getBookings = query({
       reviewedBy: v.optional(v.id("users")),
       reviewedAt: v.optional(v.number()),
       reviewNotes: v.optional(v.string()),
+      seriesId: v.optional(v.id("bookingSeries")),
       createdAt: v.number(),
       updatedAt: v.number(),
       resource: v.optional(
@@ -461,6 +503,7 @@ export const getBooking = query({
       reviewedBy: v.optional(v.id("users")),
       reviewedAt: v.optional(v.number()),
       reviewNotes: v.optional(v.string()),
+      seriesId: v.optional(v.id("bookingSeries")),
       createdAt: v.number(),
       updatedAt: v.number(),
       resource: v.optional(
@@ -542,6 +585,7 @@ export const getMyBookings = query({
       reviewedBy: v.optional(v.id("users")),
       reviewedAt: v.optional(v.number()),
       reviewNotes: v.optional(v.string()),
+      seriesId: v.optional(v.id("bookingSeries")),
       createdAt: v.number(),
       updatedAt: v.number(),
       resource: v.optional(
@@ -551,6 +595,7 @@ export const getMyBookings = query({
           description: v.optional(v.string()),
         })
       ),
+      series: v.optional(seriesSummaryValidator),
     })
   ),
   handler: async (ctx) => {
@@ -570,6 +615,7 @@ export const getMyBookings = query({
 
         return {
           ...booking,
+          series: await seriesSummary(ctx, booking.seriesId),
           resource: resource
             ? {
                 _id: resource._id,
@@ -612,6 +658,7 @@ export const getPendingApprovalsForMe = query({
       reviewedBy: v.optional(v.id("users")),
       reviewedAt: v.optional(v.number()),
       reviewNotes: v.optional(v.string()),
+      seriesId: v.optional(v.id("bookingSeries")),
       createdAt: v.number(),
       updatedAt: v.number(),
       resource: v.optional(
@@ -629,6 +676,7 @@ export const getPendingApprovalsForMe = query({
           name: v.optional(v.string()),
         })
       ),
+      series: v.optional(seriesSummaryValidator),
     })
   ),
   handler: async (ctx) => {
@@ -666,6 +714,7 @@ export const getPendingApprovalsForMe = query({
 
         return {
           ...booking,
+          series: await seriesSummary(ctx, booking.seriesId),
           resource: resource
             ? {
                 _id: resource._id,
@@ -705,6 +754,17 @@ export const createBooking = mutation({
     notes: v.optional(v.string()),
     onBehalfOf: v.optional(v.id("users")), // Optional: approvers can book on behalf of another user
     isBlocked: v.optional(v.boolean()), // Optional: block resource without a user (e.g., strike team deployment)
+    // Optional: repeat the booking on later dates. Single-day bookings only.
+    repeat: v.optional(
+      v.object({
+        frequency: repeatFrequencyValidator,
+        untilDate: v.string(), // Last date the repeat may land on (YYYY-MM-DD)
+      })
+    ),
+    // Book the dates that are free when some dates of a repeat clash. Without
+    // it a clash refuses the whole series, naming the dates, so the member
+    // decides rather than finding gaps later.
+    skipClashes: v.optional(v.boolean()),
   },
   returns: v.id("bookings"),
   handler: async (ctx, args) => {
@@ -767,25 +827,17 @@ export const createBooking = mutation({
       throw new Error("Start time and end time are required for non-all-day bookings");
     }
 
-    // Check for conflicting bookings (only approved or pending ones)
-    await assertNoBookingConflict(ctx, {
-      resourceId: args.resourceId,
-      startDate: args.startDate,
-      endDate: args.endDate,
-      startTime: args.startTime,
-      endTime: args.endTime,
-      isAllDay: args.isAllDay,
-    });
+    if (args.repeat && args.endDate && args.endDate !== args.startDate) {
+      throw new Error("Only single-day bookings can repeat");
+    }
 
     const now = Date.now();
-
-    const bookingId = await ctx.db.insert("bookings", {
+    const booking = {
       resourceId: args.resourceId,
       requestedBy: requestedBy ?? undefined,
       isBlocked: args.isBlocked || undefined,
-      status: autoApprove ? "approved" : "pending",
-      startDate: args.startDate,
-      endDate: args.endDate,
+      status: autoApprove ? ("approved" as const) : ("pending" as const),
+      endDate: args.repeat ? undefined : args.endDate,
       startTime: args.startTime,
       endTime: args.endTime,
       isAllDay: args.isAllDay,
@@ -794,9 +846,68 @@ export const createBooking = mutation({
       updatedAt: now,
       // If auto-approved, record who approved it
       ...(autoApprove ? { reviewedBy: userId, reviewedAt: now } : {}),
+    };
+
+    if (!args.repeat) {
+      // Check for conflicting bookings (only approved or pending ones)
+      await assertNoBookingConflict(ctx, {
+        resourceId: args.resourceId,
+        startDate: args.startDate,
+        endDate: args.endDate,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        isAllDay: args.isAllDay,
+      });
+      return await ctx.db.insert("bookings", { ...booking, startDate: args.startDate });
+    }
+
+    const problem = repeatProblem(args.startDate, args.repeat.untilDate);
+    if (problem) throw new Error(problem);
+
+    const dates = seriesDates(args.startDate, args.repeat.frequency, args.repeat.untilDate);
+    const existing = await activeBookingsFor(ctx, args.resourceId);
+    const clashDates = dates.filter(
+      (date) =>
+        findBookingConflict(existing, {
+          resourceId: args.resourceId,
+          startDate: date,
+          startTime: args.startTime,
+          endTime: args.endTime,
+          isAllDay: args.isAllDay,
+        }) !== null
+    );
+
+    if (clashDates.length === dates.length) {
+      throw new ConvexError({
+        code: "BOOKING_CONFLICT",
+        message: "This resource is already booked on every one of those dates.",
+      });
+    }
+    if (clashDates.length > 0 && !args.skipClashes) {
+      throw new ConvexError({
+        code: "SERIES_CLASH",
+        message: `${clashDates.length} of the ${dates.length} dates are already booked.`,
+        clashDates,
+        total: dates.length,
+      });
+    }
+
+    const seriesId = await ctx.db.insert("bookingSeries", {
+      resourceId: args.resourceId,
+      frequency: args.repeat.frequency,
+      startDate: args.startDate,
+      untilDate: args.repeat.untilDate,
+      createdBy: userId,
+      createdAt: now,
     });
 
-    return bookingId;
+    const clashes = new Set(clashDates);
+    const ids: Id<"bookings">[] = [];
+    for (const date of dates) {
+      if (clashes.has(date)) continue;
+      ids.push(await ctx.db.insert("bookings", { ...booking, startDate: date, seriesId }));
+    }
+    return ids[0];
   },
 });
 
@@ -977,6 +1088,130 @@ export const cancelBooking = mutation({
 });
 
 /**
+ * The bookings of a repeating series, after checking the caller may approve
+ * for its resource. Shared by approving and rejecting the series in one go.
+ */
+async function seriesForApprover(ctx: MutationCtx, seriesId: Id<"bookingSeries">) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("You must be signed in to review a booking");
+  }
+
+  const series = await ctx.db.get(seriesId);
+  if (!series) {
+    throw new Error("Repeating booking not found");
+  }
+
+  const resource = await ctx.db.get(series.resourceId);
+  if (!resource) {
+    throw new Error("Resource not found");
+  }
+
+  const currentUser = await ctx.db.get(userId);
+  if (!resource.approvers.includes(userId) && currentUser?.isAdmin !== true) {
+    throw new Error("You are not authorized to review this booking");
+  }
+
+  const bookings = await ctx.db
+    .query("bookings")
+    .withIndex("by_seriesId", (q) => q.eq("seriesId", seriesId))
+    .collect();
+
+  return { userId, pending: bookings.filter((b) => b.status === "pending") };
+}
+
+/**
+ * Approve every pending date of a repeating booking. Returns the ids approved,
+ * so the one-tap Undo can put exactly those back to pending.
+ */
+export const approveBookingSeries = mutation({
+  args: {
+    seriesId: v.id("bookingSeries"),
+  },
+  returns: v.array(v.id("bookings")),
+  handler: async (ctx, args) => {
+    const { userId, pending } = await seriesForApprover(ctx, args.seriesId);
+
+    const now = Date.now();
+    for (const booking of pending) {
+      await ctx.db.patch(booking._id, {
+        status: "approved",
+        reviewedBy: userId,
+        reviewedAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return pending.map((booking) => booking._id);
+  },
+});
+
+/**
+ * Reject every pending date of a repeating booking
+ */
+export const rejectBookingSeries = mutation({
+  args: {
+    seriesId: v.id("bookingSeries"),
+    reviewNotes: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId, pending } = await seriesForApprover(ctx, args.seriesId);
+
+    const now = Date.now();
+    for (const booking of pending) {
+      await ctx.db.patch(booking._id, {
+        status: "rejected",
+        reviewedBy: userId,
+        reviewedAt: now,
+        reviewNotes: args.reviewNotes,
+        updatedAt: now,
+      });
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Cancel the requester's own remaining dates of a repeating booking. Dates
+ * already past stay as they are - they happened.
+ */
+export const cancelBookingSeries = mutation({
+  args: {
+    seriesId: v.id("bookingSeries"),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("You must be signed in to cancel a booking");
+    }
+
+    const bookings = await ctx.db
+      .query("bookings")
+      .withIndex("by_seriesId", (q) => q.eq("seriesId", args.seriesId))
+      .collect();
+
+    if (bookings.some((booking) => booking.requestedBy !== userId)) {
+      throw new Error("You can only cancel your own bookings");
+    }
+
+    const today = brigadeDateStr();
+    const now = Date.now();
+    let cancelled = 0;
+    for (const booking of bookings) {
+      if (booking.startDate < today) continue;
+      if (booking.status !== "pending" && booking.status !== "approved") continue;
+      await ctx.db.patch(booking._id, { status: "cancelled", updatedAt: now });
+      cancelled++;
+    }
+
+    return cancelled;
+  },
+});
+
+/**
  * Update a booking (admin only)
  */
 export const updateBooking = mutation({
@@ -1102,6 +1337,7 @@ export const getBookingsForDateRange = query({
       reviewedBy: v.optional(v.id("users")),
       reviewedAt: v.optional(v.number()),
       reviewNotes: v.optional(v.string()),
+      seriesId: v.optional(v.id("bookingSeries")),
       createdAt: v.number(),
       updatedAt: v.number(),
       resource: v.optional(

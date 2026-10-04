@@ -6,7 +6,7 @@ import { BookingsTab } from "../features/bookings/components/BookingsTab";
 import { AdminTab } from "../features/bookings/components/AdminTab";
 import { ScheduleTab } from "../features/bookings/components/ScheduleTab";
 import { PageTabs } from "../components/shared/PageTabs";
-import { BookingTab, bookingTabs } from "../features/bookings/types";
+import { BookingTab, bookingTabs, groupBySeries } from "../features/bookings/types";
 
 export function BookingsPage() {
   const { isAuthenticated } = useConvexAuth();
@@ -20,7 +20,11 @@ export function BookingsPage() {
   const isBookingsAdmin = moduleAccess?.bookingsAdmin ?? false;
 
   const pendingApprovals = useQuery(api.bookings.getPendingApprovalsForMe);
-  const pendingCount = pendingApprovals?.length ?? 0;
+  // A repeating booking waiting on approval is one thing to do, not one per date
+  const pendingCount = useMemo(
+    () => groupBySeries(pendingApprovals ?? []).length,
+    [pendingApprovals]
+  );
 
   const dateFromUrl = searchParams.get("date");
 

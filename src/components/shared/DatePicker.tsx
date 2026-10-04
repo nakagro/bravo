@@ -12,6 +12,8 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   /** Minimum selectable date as YYYY-MM-DD string */
   min?: string;
+  /** Maximum selectable date as YYYY-MM-DD string */
+  max?: string;
   /** Placeholder text when no date selected */
   placeholder?: string;
   /** Additional class names */
@@ -39,6 +41,7 @@ export function DatePicker({
   value,
   onChange,
   min,
+  max,
   placeholder = "Select date",
   className,
   disabled,
@@ -47,6 +50,11 @@ export function DatePicker({
 
   const selectedDate = value ? parseLocalDate(value) : undefined;
   const minDate = min ? parseLocalDate(min) : undefined;
+  const maxDate = max ? parseLocalDate(max) : undefined;
+  const disabledDays = [
+    ...(minDate ? [{ before: minDate }] : []),
+    ...(maxDate ? [{ after: maxDate }] : []),
+  ];
 
   // Bound the year dropdown to a sensible window around now (past events can be
   // recorded a little back; events are planned a few years out).
@@ -98,7 +106,7 @@ export function DatePicker({
               }
               setExpanded(false);
             }}
-            disabled={minDate ? { before: minDate } : undefined}
+            disabled={disabledDays.length > 0 ? disabledDays : undefined}
             defaultMonth={selectedDate || minDate}
           />
         </div>

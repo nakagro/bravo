@@ -1096,6 +1096,18 @@ const applicationTables = {
   })
     .index("by_isActive", ["isActive"]),
 
+  // A repeating booking: the rule its dates were generated from. Kept so the
+  // dates can be described ("Every Tuesday") and acted on together; the dates
+  // themselves are ordinary rows in `bookings`.
+  bookingSeries: defineTable({
+    resourceId: v.id("bookingResources"),
+    frequency: v.union(v.literal("weekly"), v.literal("fortnightly"), v.literal("monthly")),
+    startDate: v.string(), // First date (YYYY-MM-DD), which also fixes the weekday
+    untilDate: v.string(), // Last date the rule may produce (YYYY-MM-DD)
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  }),
+
   // Booking requests
   bookings: defineTable({
     resourceId: v.id("bookingResources"), // The resource being booked
@@ -1117,9 +1129,15 @@ const applicationTables = {
     reviewedBy: v.optional(v.id("users")), // User who approved/rejected
     reviewedAt: v.optional(v.number()), // When the booking was reviewed
     reviewNotes: v.optional(v.string()), // Notes from the reviewer
+    // Set when this booking is one date of a repeating booking. Each date is
+    // still a full booking in its own right - approved, cancelled and edited on
+    // its own - so the schedule and the clash check never need to know about
+    // repeats.
+    seriesId: v.optional(v.id("bookingSeries")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_seriesId", ["seriesId"])
     .index("by_resource", ["resourceId"])
     .index("by_requestedBy", ["requestedBy"])
     .index("by_status", ["status"])

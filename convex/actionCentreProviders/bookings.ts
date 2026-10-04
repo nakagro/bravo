@@ -26,17 +26,20 @@ export const bookingApprovalsProvider: ActionProvider = async (ctx, p) => {
   const mine = allPending.filter((b) => myResourceIds.includes(b.resourceId));
   if (mine.length === 0) return [];
 
+  // A repeating booking is one request to review, however many dates it has
+  const requests = new Set(mine.map((b) => b.seriesId ?? b._id)).size;
+
   return [
     {
       id: "bookings:bookingApprovals",
       moduleId: "bookings",
       kind: "bookingApprovals",
-      title: `${mine.length} booking${mine.length > 1 ? "s" : ""} awaiting approval`,
-      description: `You have ${mine.length} pending booking request${mine.length > 1 ? "s" : ""} to review.`,
+      title: `${requests} booking${requests > 1 ? "s" : ""} awaiting approval`,
+      description: `You have ${requests} pending booking request${requests > 1 ? "s" : ""} to review.`,
       url: "/bookings",
       actionLabel: "Review Bookings",
       priority: "high",
-      count: mine.length,
+      count: requests,
       createdAt: Math.min(...mine.map((b) => b.createdAt)),
     },
   ];

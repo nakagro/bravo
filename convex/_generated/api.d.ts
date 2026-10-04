@@ -62,6 +62,7 @@ import type * as keys from "../keys.js";
 import type * as labsMember from "../labsMember.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_authUser from "../lib/authUser.js";
+import type * as lib_bookingRecurrence from "../lib/bookingRecurrence.js";
 import type * as lib_crewSeats from "../lib/crewSeats.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_dutyCrewRotation from "../lib/dutyCrewRotation.js";
@@ -168,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   labsMember: typeof labsMember;
   "lib/accountType": typeof lib_accountType;
   "lib/authUser": typeof lib_authUser;
+  "lib/bookingRecurrence": typeof lib_bookingRecurrence;
   "lib/crewSeats": typeof lib_crewSeats;
   "lib/dates": typeof lib_dates;
   "lib/dutyCrewRotation": typeof lib_dutyCrewRotation;

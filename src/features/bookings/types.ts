@@ -14,6 +14,66 @@ export function getBookingConflictMessage(error: unknown): string | null {
   return null;
 }
 
+// The dates of a repeating booking that clash with existing bookings, or null
+// if the error is not that refusal
+export function getSeriesClash(
+  error: unknown
+): { clashDates: string[]; total: number } | null {
+  if (error instanceof ConvexError) {
+    const data = error.data as { code?: string; clashDates?: string[]; total?: number };
+    if (data?.code === "SERIES_CLASH" && data.clashDates && data.total) {
+      return { clashDates: data.clashDates, total: data.total };
+    }
+  }
+  return null;
+}
+
+// A booking list with each repeating booking's dates gathered into one entry,
+// in the position of its earliest date. Keeps a year of training nights from
+// burying everything else in a list.
+export type BookingGroup<T> =
+  | { kind: "single"; booking: T }
+  | { kind: "series"; seriesId: string; bookings: T[] };
+
+export function groupBySeries<T extends { _id: string; startDate: string; seriesId?: string }>(
+  bookings: T[]
+): BookingGroup<T>[] {
+  const sorted = [...bookings].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const groups: BookingGroup<T>[] = [];
+  const bySeries = new Map<string, T[]>();
+  for (const booking of sorted) {
+    if (!booking.seriesId) {
+      groups.push({ kind: "single", booking });
+      continue;
+    }
+    const existing = bySeries.get(booking.seriesId);
+    if (existing) {
+      existing.push(booking);
+    } else {
+      const dates = [booking];
+      bySeries.set(booking.seriesId, dates);
+      groups.push({ kind: "series", seriesId: booking.seriesId, bookings: dates });
+    }
+  }
+  // A series of one date left (the rest cancelled or past) reads as a booking
+  return groups.map((group) =>
+    group.kind === "series" && group.bookings.length === 1
+      ? { kind: "single", booking: group.bookings[0] }
+      : group
+  );
+}
+
+// Time of day of a booking: "All day" or "7:00 PM - 9:00 PM"
+export function formatBookingTime(booking: {
+  isAllDay: boolean;
+  startTime?: string;
+  endTime?: string;
+}): string {
+  return booking.isAllDay || !booking.startTime || !booking.endTime
+    ? "All day"
+    : `${formatTime(booking.startTime)} - ${formatTime(booking.endTime)}`;
+}
+
 // Booking status values
 export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
 

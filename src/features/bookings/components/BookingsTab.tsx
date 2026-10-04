@@ -4,7 +4,13 @@ import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { formatTime, formatShortDate, getTodayStr } from "../types";
+import {
+  formatTime,
+  formatShortDate,
+  formatBookingTime,
+  getTodayStr,
+  groupBySeries,
+} from "../types";
 import { BookingRequestForm } from "./BookingRequestForm";
 import { PendingApprovals } from "./PendingApprovals";
 import { DateBadge, StatusBadge, SectionHeader } from "./badges";
@@ -12,7 +18,7 @@ import { ClampedText } from "./ClampedText";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Inbox, ChevronDown } from "lucide-react";
+import { Plus, Inbox, ChevronDown, Repeat } from "lucide-react";
 
 type MyBooking = FunctionReturnType<typeof api.bookings.getMyBookings>[number];
 
@@ -22,6 +28,7 @@ export function BookingsTab() {
 
   const myBookings = useQuery(api.bookings.getMyBookings);
   const cancelBooking = useMutation(api.bookings.cancelBooking);
+  const cancelBookingSeries = useMutation(api.bookings.cancelBookingSeries);
 
   const isLoading = myBookings === undefined;
 
@@ -32,6 +39,18 @@ export function BookingsTab() {
     } catch (error) {
       console.error("Error cancelling booking:", error);
       toast.error("Failed to cancel booking", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  const handleCancelSeries = async (seriesId: Id<"bookingSeries">) => {
+    try {
+      const cancelled = await cancelBookingSeries({ seriesId });
+      toast.success(`${cancelled} booking${cancelled === 1 ? "" : "s"} cancelled`);
+    } catch (error) {
+      console.error("Error cancelling repeating booking:", error);
+      toast.error("Failed to cancel bookings", {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
@@ -156,7 +175,18 @@ export function BookingsTab() {
             />
           </div>
         ) : (
-          upcomingBookings.map((booking) => renderBooking(booking, true))
+          groupBySeries(upcomingBookings).map((group) =>
+            group.kind === "single" ? (
+              renderBooking(group.booking, true)
+            ) : (
+              <SeriesBookingCard
+                key={group.seriesId}
+                bookings={group.bookings}
+                onCancelDate={handleCancelBooking}
+                onCancelAll={() => handleCancelSeries(group.seriesId as Id<"bookingSeries">)}
+              />
+            )
+          )
         )}
       </section>
 
@@ -178,6 +208,102 @@ export function BookingsTab() {
           {showHistory && historyBookings.map((booking) => renderBooking(booking, false))}
         </section>
       )}
+    </div>
+  );
+}
+
+/**
+ * The upcoming dates of one repeating booking, as a single card. The dates
+ * fold away so a weekly booking doesn't fill the page, and each can still be
+ * cancelled on its own for the one week it isn't needed.
+ */
+function SeriesBookingCard({
+  bookings,
+  onCancelDate,
+  onCancelAll,
+}: {
+  bookings: MyBooking[];
+  onCancelDate: (bookingId: Id<"bookings">) => void;
+  onCancelAll: () => void;
+}) {
+  const [showDates, setShowDates] = useState(false);
+  const first = bookings[0];
+  const last = bookings[bookings.length - 1];
+  // Any date still awaiting approval makes the series read as pending
+  const status = bookings.some((b) => b.status === "pending") ? "pending" : "approved";
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:p-4">
+      <div className="flex items-start gap-3">
+        <DateBadge dateStr={first.startDate} />
+
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-foreground">{first.resource?.name}</span>
+            <StatusBadge status={status} />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Repeat className="h-3.5 w-3.5" aria-hidden="true" />
+              {first.series?.description ?? "Repeating"}
+            </span>
+            <span>{formatBookingTime(first)}</span>
+            <span>until {formatShortDate(last.startDate)}</span>
+          </div>
+
+          {first.notes && <ClampedText text={first.notes} className="text-sm text-foreground/80" />}
+
+          <button
+            onClick={() => setShowDates((prev) => !prev)}
+            aria-expanded={showDates}
+            className="flex items-center gap-1 min-h-[44px] text-sm font-medium text-foreground/80"
+          >
+            {bookings.length} upcoming dates
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showDates ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {showDates && (
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {bookings.map((booking) => (
+                <li key={booking._id} className="flex items-center gap-2 pl-3">
+                  <span className="flex-1 text-sm text-foreground">
+                    {formatShortDate(booking.startDate)}
+                  </span>
+                  <StatusBadge status={booking.status} />
+                  <DeleteConfirmDialog
+                    title="Cancel this date"
+                    description={`Cancel "${booking.resource?.name}" on ${formatShortDate(booking.startDate)}? The other dates stay booked.`}
+                    confirmLabel="Cancel Date"
+                    destructive
+                    onConfirm={() => onCancelDate(booking._id)}
+                    trigger={
+                      <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        Cancel
+                      </button>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <DeleteConfirmDialog
+          title="Cancel Repeating Booking"
+          description={`Cancel all ${bookings.length} upcoming dates of "${first.resource?.name}"?`}
+          confirmLabel="Cancel All"
+          destructive
+          onConfirm={onCancelAll}
+          trigger={
+            <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              Cancel all
+            </button>
+          }
+        />
+      </div>
     </div>
   );
 }

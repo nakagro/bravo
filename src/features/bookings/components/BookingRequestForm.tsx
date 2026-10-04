@@ -20,10 +20,24 @@ import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { DatePicker } from "../../../components/shared/DatePicker";
-import { formatUserName, formatSummaryDate, formatTime, getBookingConflictMessage } from "../types";
+import {
+  formatUserName,
+  formatSummaryDate,
+  formatTime,
+  getBookingConflictMessage,
+  getSeriesClash,
+} from "../types";
+import {
+  addDays,
+  describeRepeat,
+  repeatProblem,
+  seriesDates,
+  MAX_SERIES_DAYS,
+  type BookingRepeatFrequency,
+} from "../../../../convex/lib/bookingRecurrence";
 import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Clock, User, CircleX, Lock, Check } from "lucide-react";
+import { Clock, User, CircleX, Lock, Check, Repeat } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 
 const bookingRequestSchema = z
@@ -35,12 +49,23 @@ const bookingRequestSchema = z
     endTime: z.string(),
     isAllDay: z.boolean(),
     isMultiDay: z.boolean(),
+    repeat: z.enum(["none", "weekly", "fortnightly", "monthly"]),
+    repeatUntil: z.string(),
     // Required only for bookings that need approval; enforced in onSubmit
     notes: z.string(),
   })
   .refine((data) => !data.isMultiDay || data.endDate.length > 0, {
     message: "Please select an end date",
     path: ["endDate"],
+  })
+  .refine((data) => data.repeat === "none" || data.repeatUntil.length > 0, {
+    message: "Please choose when the repeat ends",
+    path: ["repeatUntil"],
+  })
+  .superRefine((data, ctx) => {
+    if (data.repeat === "none" || !data.startDate || !data.repeatUntil) return;
+    const problem = repeatProblem(data.startDate, data.repeatUntil);
+    if (problem) ctx.addIssue({ code: "custom", message: problem, path: ["repeatUntil"] });
   })
   .refine((data) => data.isAllDay || (data.startTime.length > 0 && data.endTime.length > 0), {
     message: "Please select start and end times",
@@ -80,6 +105,11 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
     [allUsers, currentUser?._id],
   );
   const [conflictError, setConflictError] = useState<string | null>(null);
+  // Dates of a repeat that are already taken, offered back to the member to
+  // book around rather than failing the whole series
+  const [seriesClash, setSeriesClash] = useState<{ clashDates: string[]; total: number } | null>(
+    null
+  );
 
   const form = useForm<BookingRequestValues>({
     resolver: zodResolver(bookingRequestSchema),
@@ -91,6 +121,8 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
       endTime: "",
       isAllDay: true,
       isMultiDay: false,
+      repeat: "none",
+      repeatUntil: "",
       notes: "",
     },
   });
@@ -104,6 +136,16 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
   const watchIsAllDay = form.watch("isAllDay");
   const watchIsMultiDay = form.watch("isMultiDay");
   const watchEndDate = form.watch("endDate");
+  const watchRepeat = form.watch("repeat");
+  const watchRepeatUntil = form.watch("repeatUntil");
+  const isRepeating = watchRepeat !== "none";
+
+  // Every date the repeat will book, for the preview and the availability panel
+  const repeatDates = useMemo(() => {
+    if (!isRepeating || !watchStartDate || !watchRepeatUntil) return null;
+    if (repeatProblem(watchStartDate, watchRepeatUntil)) return null;
+    return seriesDates(watchStartDate, watchRepeat as BookingRepeatFrequency, watchRepeatUntil);
+  }, [isRepeating, watchStartDate, watchRepeat, watchRepeatUntil]);
 
   // Filter resources based on permissions
   const bookableResources = useMemo(() => {
@@ -141,13 +183,28 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
     watchResourceId && watchStartDate
       ? {
           startDate: watchStartDate,
-          endDate: (watchIsMultiDay && watchEndDate) || watchStartDate,
+          endDate: repeatDates
+            ? repeatDates[repeatDates.length - 1]
+            : (watchIsMultiDay && watchEndDate) || watchStartDate,
           resourceId: watchResourceId as Id<"bookingResources">,
         }
       : "skip";
-  const existingBookingsForDate = useQuery(api.bookings.getBookingsForDateRange, availabilityArgs);
+  const bookingsInRange = useQuery(api.bookings.getBookingsForDateRange, availabilityArgs);
+  // A repeat spans weeks, but only the bookings on its own dates matter
+  const existingBookingsForDate = useMemo(() => {
+    if (!bookingsInRange || !repeatDates) return bookingsInRange;
+    return bookingsInRange.filter((b) => {
+      const end = b.endDate || b.startDate;
+      return repeatDates.some((date) => b.startDate <= date && end >= date);
+    });
+  }, [bookingsInRange, repeatDates]);
 
-  const onSubmit = async (values: BookingRequestValues) => {
+  const clearClashes = () => {
+    setConflictError(null);
+    setSeriesClash(null);
+  };
+
+  const submit = async (values: BookingRequestValues, skipClashes: boolean) => {
     if (!willAutoApprove && !values.notes.trim()) {
       form.setError("notes", { message: "Please provide a reason for booking" });
       return;
@@ -161,6 +218,11 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
         startTime: values.isAllDay ? undefined : values.startTime,
         endTime: values.isAllDay ? undefined : values.endTime,
         isAllDay: values.isAllDay,
+        repeat:
+          values.repeat === "none"
+            ? undefined
+            : { frequency: values.repeat, untilDate: values.repeatUntil },
+        skipClashes: skipClashes || undefined,
         notes: values.notes.trim() || undefined,
         onBehalfOf:
           onBehalfOf && onBehalfOf !== "__blocked__" ? (onBehalfOf as Id<"users">) : undefined,
@@ -169,6 +231,10 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
 
       const isOnBehalf =
         onBehalfOf && onBehalfOf !== "__blocked__" && onBehalfOf !== currentUser?._id;
+      const what =
+        values.repeat === "none"
+          ? null
+          : `${describeRepeat(values.startDate, values.repeat)} until ${formatSummaryDate(values.repeatUntil)}.`;
       toast.success(
         isBlocked
           ? "Resource blocked"
@@ -176,19 +242,27 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
             ? "Booking created"
             : "Booking request submitted",
         {
-          description: isBlocked
-            ? "The resource has been blocked for the selected dates."
-            : isOnBehalf
-              ? "The booking has been created and auto-approved."
-              : "Your booking request has been sent for approval.",
+          description: [
+            isBlocked
+              ? "The resource has been blocked for the selected dates."
+              : isOnBehalf
+                ? "The booking has been created and auto-approved."
+                : "Your booking request has been sent for approval.",
+            what,
+          ]
+            .filter(Boolean)
+            .join(" "),
         }
       );
       guard.release();
       onClose();
     } catch (error) {
       console.error("Error creating booking:", error);
+      const clash = getSeriesClash(error);
       const conflictMessage = getBookingConflictMessage(error);
-      if (conflictMessage) {
+      if (clash) {
+        setSeriesClash(clash);
+      } else if (conflictMessage) {
         setConflictError(conflictMessage);
       } else {
         toast.error("Failed to create booking", {
@@ -197,6 +271,8 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
       }
     }
   };
+
+  const onSubmit = (values: BookingRequestValues) => submit(values, false);
 
   const formContent = (
     <Form {...form}>
@@ -259,7 +335,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                       value={field.value}
                       onChange={(val) => {
                         field.onChange(val);
-                        setConflictError(null);
+                        clearClashes();
                       }}
                       min={format(new Date(), "yyyy-MM-dd")}
                       placeholder="Select date"
@@ -270,27 +346,29 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               )}
             />
 
-            {/* Multi-day checkbox */}
-            <FormField
-              control={form.control}
-              name="isMultiDay"
-              render={({ field }) => (
-                <FormItem>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={(e) => {
-                        field.onChange(e.target.checked);
-                        if (!e.target.checked) form.setValue("endDate", "");
-                      }}
-                      className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Multiple days</span>
-                  </label>
-                </FormItem>
-              )}
-            />
+            {/* Multi-day checkbox - a repeat is single-day only */}
+            {!isRepeating && (
+              <FormField
+                control={form.control}
+                name="isMultiDay"
+                render={({ field }) => (
+                  <FormItem>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => {
+                          field.onChange(e.target.checked);
+                          if (!e.target.checked) form.setValue("endDate", "");
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Multiple days</span>
+                    </label>
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* End Date */}
             {watchIsMultiDay && (
@@ -307,7 +385,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                         value={field.value}
                         onChange={(val) => {
                           field.onChange(val);
-                          setConflictError(null);
+                          clearClashes();
                         }}
                         min={form.getValues("startDate") || format(new Date(), "yyyy-MM-dd")}
                         placeholder="Select end date"
@@ -317,6 +395,91 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* Repeat - single-day bookings only */}
+            {!watchIsMultiDay && (
+              <div className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="repeat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Repeat
+                      </FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          clearClashes();
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12 px-4 text-base rounded-lg">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Doesn&apos;t repeat</SelectItem>
+                          {(["weekly", "fortnightly", "monthly"] as const).map((frequency) => (
+                            <SelectItem key={frequency} value={frequency}>
+                              {watchStartDate
+                                ? describeRepeat(watchStartDate, frequency)
+                                : { weekly: "Weekly", fortnightly: "Fortnightly", monthly: "Monthly" }[
+                                    frequency
+                                  ]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+
+                {isRepeating && (
+                  <FormField
+                    control={form.control}
+                    name="repeatUntil"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Until
+                        </FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={field.value}
+                            onChange={(val) => {
+                              field.onChange(val);
+                              clearClashes();
+                            }}
+                            min={
+                              watchStartDate
+                                ? addDays(watchStartDate, 1)
+                                : format(new Date(), "yyyy-MM-dd")
+                            }
+                            max={watchStartDate ? addDays(watchStartDate, MAX_SERIES_DAYS) : undefined}
+                            placeholder="Select last date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {repeatDates && (
+                  <p className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <Repeat className="h-4 w-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                    <span>
+                      {repeatDates.length} bookings,{" "}
+                      {formatSummaryDate(repeatDates[0])} to{" "}
+                      {formatSummaryDate(repeatDates[repeatDates.length - 1])}.
+                      {!willAutoApprove && " An approver reviews them together."}
+                    </span>
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Existing bookings for the selected date(s) */}
@@ -331,7 +494,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                 {existingBookingsForDate.length === 0 ? (
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 flex-shrink-0" />
-                    <span>No existing bookings, this resource is free on the selected date{watchIsMultiDay ? "s" : ""}.</span>
+                    <span>No existing bookings, this resource is free on the selected date{watchIsMultiDay || repeatDates ? "s" : ""}.</span>
                   </div>
                 ) : (
                   <>
@@ -398,7 +561,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                           {...field}
                           onChange={(e) => {
                             field.onChange(e);
-                            setConflictError(null);
+                            clearClashes();
                           }}
                           type="time"
                           className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -421,7 +584,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
                           {...field}
                           onChange={(e) => {
                             field.onChange(e);
-                            setConflictError(null);
+                            clearClashes();
                           }}
                           type="time"
                           className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -439,6 +602,16 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Start time applies to the first day, end time applies to the last day.
               </p>
+            )}
+
+            {/* Some dates of a repeat are taken - book around them, or change it */}
+            {seriesClash && (
+              <SeriesClashBanner
+                clash={seriesClash}
+                submitting={isSubmitting}
+                onBookTheRest={form.handleSubmit((values) => submit(values, true))}
+                onDismiss={() => setSeriesClash(null)}
+              />
             )}
 
             {/* Conflict Error Display */}
@@ -584,6 +757,47 @@ function ConflictErrorBanner({
       >
         Dismiss
       </button>
+    </div>
+  );
+}
+
+function SeriesClashBanner({
+  clash,
+  submitting,
+  onBookTheRest,
+  onDismiss,
+}: {
+  clash: { clashDates: string[]; total: number };
+  submitting: boolean;
+  onBookTheRest: () => void;
+  onDismiss: () => void;
+}) {
+  const free = clash.total - clash.clashDates.length;
+  return (
+    <div
+      role="alert"
+      className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+    >
+      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+        {clash.clashDates.length} of {clash.total} dates are already booked
+      </p>
+      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+        {clash.clashDates.map(formatSummaryDate).join(", ")}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={submitting}
+          onClick={onBookTheRest}
+          className="bg-red-700 hover:bg-red-800"
+        >
+          Book the other {free} {free === 1 ? "date" : "dates"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onDismiss}>
+          Change it
+        </Button>
+      </div>
     </div>
   );
 }
