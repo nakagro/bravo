@@ -311,6 +311,14 @@ export const syncModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "training",
+        moduleName: "Training Roll",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "events",
         moduleName: "Events",
         isEnabled: true,
@@ -569,6 +577,14 @@ export const initializeModuleSettings = mutation({
         minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
       },
       {
+        moduleId: "training",
+        moduleName: "Training Roll",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "events",
         moduleName: "Events",
         isEnabled: true,
@@ -799,6 +815,7 @@ export const getAllModuleAccess = query({
     equipmentAdmin: v.boolean(),
     baSkills: v.boolean(),
     baSkillsAdmin: v.boolean(),
+    training: v.boolean(),
     bookings: v.boolean(),
     bookingsAdmin: v.boolean(),
     events: v.boolean(),
@@ -832,6 +849,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
+        training: false,
         bookings: false,
         bookingsAdmin: false,
         events: false,
@@ -866,6 +884,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: false,
         baSkills: false,
         baSkillsAdmin: false,
+        training: false,
         bookings: false,
         bookingsAdmin: false,
         events: false,
@@ -900,6 +919,7 @@ export const getAllModuleAccess = query({
         equipmentAdmin: true,
         baSkills: true,
         baSkillsAdmin: true,
+        training: true,
         bookings: true,
         bookingsAdmin: true,
         events: true,
@@ -940,6 +960,9 @@ export const getAllModuleAccess = query({
       equipmentAdmin: checkAccess("equipmentAdmin"),
       baSkills: checkAccess("baSkills"),
       baSkillsAdmin: checkAccess("baSkillsAdmin"),
+      // The current Duty Officer reaches the roll to record apologies, even
+      // without the module; convex/training.ts limits them to that
+      training: checkAccess("training") || (user.isDutyOfficer === true && !user.isDisabled),
       bookings: checkAccess("bookings"),
       bookingsAdmin: checkAccess("bookingsAdmin"),
       events: checkAccess("events"),

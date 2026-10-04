@@ -1101,6 +1101,77 @@ const applicationTables = {
   })
     .index("by_isActive", ["isActive"]),
 
+  // Training roll - who was at training nights and brigade meetings.
+  //
+  // The roll keeps its own member list rather than using `users`, because it
+  // has to call members who have no BRAVO account. A roll member is linked to
+  // an account when there is one (and then takes its name and rank from it);
+  // until then it carries its own. Member accounts with no roll member row yet
+  // are put on the roll automatically, and get a row the first time they're
+  // marked - so nobody has to keep the two lists in step.
+  rollMembers: defineTable({
+    userId: v.optional(v.id("users")),
+    firstName: v.string(),
+    lastName: v.string(),
+    memberNumber: v.optional(v.string()), // CFA ID - how an account is matched later
+    // Only used while there's no linked account
+    rank: v.optional(
+      v.union(
+        v.literal("Brigade Member"),
+        v.literal("Probationary"),
+        v.literal("Firefighter"),
+        v.literal("Lieutenant"),
+        v.literal("Captain")
+      )
+    ),
+    lieutenantNumber: v.optional(v.number()),
+    // Left the brigade: off future rolls, history kept
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_memberNumber", ["memberNumber"]),
+
+  // A roll night that has been touched. Tuesdays exist without a row (every
+  // Tuesday is training, the 2nd is the brigade meeting); a row appears once an
+  // apology or mark is recorded, the night is cancelled, or a one-off is added.
+  rollNights: defineTable({
+    date: v.string(), // YYYY-MM-DD
+    kind: v.union(v.literal("training"), v.literal("meeting"), v.literal("other")),
+    title: v.optional(v.string()), // One-off nights, e.g. "Joint exercise"
+    status: v.union(v.literal("open"), v.literal("closed"), v.literal("cancelled")),
+    closedBy: v.optional(v.id("users")),
+    closedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_date", ["date"]),
+
+  // One member's mark for one night. No row = not marked yet; closing the roll
+  // writes "absent" for everyone still unmarked.
+  rollMarks: defineTable({
+    nightId: v.id("rollNights"),
+    rollMemberId: v.id("rollMembers"),
+    status: v.union(v.literal("present"), v.literal("apology"), v.literal("absent")),
+    recordedBy: v.id("users"), // For an apology, the officer who took it
+    recordedAt: v.number(),
+  })
+    .index("by_nightId", ["nightId"])
+    .index("by_nightId_and_rollMemberId", ["nightId", "rollMemberId"])
+    .index("by_rollMemberId", ["rollMemberId"]),
+
+  // Every change to a mark after it was first made, so an amended roll (an
+  // Absent turned into a late Apology) shows who changed what.
+  rollMarkHistory: defineTable({
+    nightId: v.id("rollNights"),
+    rollMemberId: v.id("rollMembers"),
+    oldStatus: v.optional(v.string()),
+    newStatus: v.optional(v.string()), // Absent when the mark was cleared
+    changedBy: v.id("users"),
+    changedAt: v.number(),
+  }).index("by_nightId", ["nightId"]),
+
   // A repeating booking: the rule its dates were generated from. Kept so the
   // dates can be described ("Every Tuesday") and acted on together; the dates
   // themselves are ordinary rows in `bookings`.

@@ -12,6 +12,13 @@ interface ChecklistProgressHeaderProps {
   title?: React.ReactNode;
   /** Rendered at the right end of the bar - e.g. a mode toggle. */
   trailing?: React.ReactNode;
+  /** Word after the count, "done" by default. */
+  answeredLabel?: string;
+  /**
+   * Replaces the "N need attention" warning, for a module where the attention
+   * state isn't a problem (the training roll's apologies).
+   */
+  attentionLabel?: (count: number) => string;
   className?: string;
 }
 
@@ -75,6 +82,8 @@ export function ChecklistProgressHeader({
   leading,
   title,
   trailing,
+  answeredLabel = "done",
+  attentionLabel,
   className,
 }: ChecklistProgressHeaderProps) {
   const { sentinelRef, stuck } = useIsStuck();
@@ -110,8 +119,13 @@ export function ChecklistProgressHeader({
               <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                 {progress.answered}/{progress.total}
               </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">done</span>
-              {progress.attention > 0 && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">{answeredLabel}</span>
+              {progress.attention > 0 && attentionLabel && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium border border-amber-400 text-amber-700 dark:text-amber-400">
+                  {attentionLabel(progress.attention)}
+                </span>
+              )}
+              {progress.attention > 0 && !attentionLabel && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium border border-amber-400 text-amber-700 dark:text-amber-400">
                   <TriangleAlert className="h-3 w-3" aria-hidden="true" />
                   {progress.attention} need

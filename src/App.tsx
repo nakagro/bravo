@@ -44,6 +44,8 @@ const MemberKitSetPage = lazy(() => import("./pages/MemberKitSetPage"));
 const MemberKitItemPage = lazy(() => import("./pages/MemberKitItemPage"));
 const MemberKitBulkPage = lazy(() => import("./pages/MemberKitBulkPage"));
 const BookingsPage = lazy(() => import("./pages/BookingsPage").then((m) => ({ default: m.BookingsPage })));
+const TrainingPage = lazy(() => import("./pages/TrainingPage").then((m) => ({ default: m.TrainingPage })));
+const TrainingNightPage = lazy(() => import("./pages/TrainingNightPage").then((m) => ({ default: m.TrainingNightPage })));
 const CalendarPage = lazy(() => import("./pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const EventsPage = lazy(() => import("./pages/EventsPage").then((m) => ({ default: m.EventsPage })));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage").then((m) => ({ default: m.EventDetailPage })));
@@ -348,6 +350,16 @@ function AuthenticatedApp() {
           <Route path="/bookings" element={
             <ProtectedRoute moduleId="bookings">
               <BookingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/training" element={
+            <ProtectedRoute moduleId="training">
+              <TrainingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/training/:date" element={
+            <ProtectedRoute moduleId="training">
+              <TrainingNightPage />
             </ProtectedRoute>
           } />
           <Route path="/events" element={

@@ -15,6 +15,7 @@ import {
   CalendarRange,
   BellRing,
   ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
 import { MaskVentilatorIcon } from "@/components/icons/MaskVentilatorIcon";
 
@@ -227,6 +228,19 @@ export const NAV_ITEMS: NavItem[] = [
       bg: "bg-indigo-100 dark:bg-indigo-900/20",
       bgHover: "group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/40",
       fg: "text-indigo-600 dark:text-indigo-400",
+    },
+  },
+  {
+    id: "training",
+    label: "Training Roll",
+    shortLabel: "Roll",
+    path: "/training",
+    icon: ClipboardCheck,
+    group: "brigade",
+    color: {
+      bg: "bg-cyan-100 dark:bg-cyan-900/20",
+      bgHover: "group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/40",
+      fg: "text-cyan-600 dark:text-cyan-400",
     },
   },
   {
