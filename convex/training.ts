@@ -293,7 +293,7 @@ async function nightRow(ctx: QueryCtx | MutationCtx, date: string) {
 async function ensureNight(ctx: MutationCtx, date: string, actorId: Id<"users">) {
   const existing = await nightRow(ctx, date);
   if (existing) return existing;
-  if (!isTuesday(date)) throw new Error("There's no roll night on that date");
+  if (!isTuesday(date)) throw new Error("There's no roll on that date");
   const nightId = await ctx.db.insert("rollNights", {
     date,
     kind: tuesdayKind(date),
@@ -442,7 +442,7 @@ export const setMark = mutation({
   handler: async (ctx, args) => {
     const { userId, access } = await requireAccess(ctx, "apologies");
     const night = await ensureNight(ctx, args.date, userId);
-    if (night.status === "cancelled") throw new Error("This night was cancelled");
+    if (night.status === "cancelled") throw new Error("This roll was cancelled");
 
     const rollMemberId = await resolveRollMember(ctx, args.who, userId);
     const existing = await ctx.db
@@ -550,9 +550,9 @@ export const addNight = mutation({
     const { userId } = await requireAccess(ctx, "manage");
     const title = args.title.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) throw new Error("Choose a date");
-    if (!title) throw new Error("Give the night a name");
+    if (!title) throw new Error("Give the roll a name");
     if (isTuesday(args.date) || (await nightRow(ctx, args.date))) {
-      throw new Error("There's already a roll night on that date");
+      throw new Error("There's already a roll on that date");
     }
     await ctx.db.insert("rollNights", {
       date: args.date,

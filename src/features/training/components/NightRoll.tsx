@@ -165,9 +165,9 @@ export function NightRoll({ date }: { date: string }) {
   const handleCancelToggle = async () => {
     try {
       await setNightCancelled({ date, cancelled: !isCancelled });
-      toast.success(isCancelled ? "Night restored" : "Night cancelled");
+      toast.success(isCancelled ? "Roll restored" : "Roll cancelled");
     } catch (error) {
-      toast.error("Couldn't change the night", {
+      toast.error("Couldn't change the roll", {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
       });
     }
@@ -283,8 +283,8 @@ export function NightRoll({ date }: { date: string }) {
                     size="icon"
                     className="h-11 w-11"
                     onClick={() => void handleCancelToggle()}
-                    aria-label={isCancelled ? "Restore night" : "Cancel night"}
-                    title={isCancelled ? "Restore night" : "Cancel night"}
+                    aria-label={isCancelled ? "Restore roll" : "Cancel roll"}
+                    title={isCancelled ? "Restore roll" : "Cancel roll"}
                   >
                     {isCancelled ? (
                       <RotateCcw className="h-5 w-5" aria-hidden="true" />
@@ -307,7 +307,7 @@ export function NightRoll({ date }: { date: string }) {
       {isCancelled ? (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
-            This night was cancelled.
+            This roll was cancelled.
           </CardContent>
         </Card>
       ) : (

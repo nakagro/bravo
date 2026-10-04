@@ -8,12 +8,12 @@ import { ROLL_NIGHT_LABELS, type RollNightKind } from "../../../convex/lib/rollN
 export type RosterEntry = FunctionReturnType<typeof api.training.getRoster>[number];
 export type MarkStatus = "present" | "apology" | "absent";
 
-export type TrainingTab = "nights" | "members" | "report";
+export type TrainingTab = "roll" | "members" | "attendance";
 
 export const trainingTabs: { key: TrainingTab; label: string; manageOnly: boolean }[] = [
-  { key: "nights", label: "Nights", manageOnly: false },
+  { key: "roll", label: "Roll", manageOnly: false },
   { key: "members", label: "Members", manageOnly: true },
-  { key: "report", label: "Report", manageOnly: true },
+  { key: "attendance", label: "Attendance", manageOnly: true },
 ];
 
 export const MARK_LABELS: Record<MarkStatus, string> = {

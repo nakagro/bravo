@@ -92,7 +92,7 @@ describe("roll nights", () => {
     const { asCaptain } = await setup();
     await expect(
       asCaptain.mutation(api.training.addNight, { date: TRAINING, title: "Exercise" }),
-    ).rejects.toThrow(/already a roll night/);
+    ).rejects.toThrow(/already a roll on that date/);
     await asCaptain.mutation(api.training.addNight, { date: "2026-10-10", title: "Exercise" });
     const nights = await asCaptain.query(api.training.listNights, {
       from: "2026-10-01",

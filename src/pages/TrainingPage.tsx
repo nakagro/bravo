@@ -3,9 +3,9 @@ import { useQuery } from "convex/react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { PageTabs } from "../components/shared/PageTabs";
-import { NightsTab } from "../features/training/components/NightsTab";
+import { RollTab } from "../features/training/components/RollTab";
 import { MembersTab } from "../features/training/components/MembersTab";
-import { ReportTab } from "../features/training/components/ReportTab";
+import { AttendanceTab } from "../features/training/components/AttendanceTab";
 import { trainingTabs, type TrainingTab } from "../features/training/types";
 
 export function TrainingPage() {
@@ -13,7 +13,7 @@ export function TrainingPage() {
   const access = useQuery(api.training.getAccess);
   const canManage = access?.canManage ?? false;
 
-  // The Duty Officer only records apologies, so only sees the nights
+  // The Duty Officer only records apologies, so only sees the Roll tab
   const visibleTabs = useMemo(
     () => trainingTabs.filter((tab) => canManage || !tab.manageOnly),
     [canManage]
@@ -23,10 +23,10 @@ export function TrainingPage() {
   const urlTab = searchParams.get("tab");
   const activeTab: TrainingTab = visibleTabs.some((t) => t.key === urlTab)
     ? (urlTab as TrainingTab)
-    : "nights";
+    : "roll";
 
   const handleTabChange = useCallback(
-    (tab: string) => setSearchParams(tab === "nights" ? {} : { tab }, { replace: true }),
+    (tab: string) => setSearchParams(tab === "roll" ? {} : { tab }, { replace: true }),
     [setSearchParams]
   );
 
@@ -44,9 +44,9 @@ export function TrainingPage() {
       )}
 
       <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
-        {activeTab === "nights" && <NightsTab canManage={canManage} />}
+        {activeTab === "roll" && <RollTab canManage={canManage} />}
         {activeTab === "members" && canManage && <MembersTab />}
-        {activeTab === "report" && canManage && <ReportTab />}
+        {activeTab === "attendance" && canManage && <AttendanceTab />}
       </div>
     </div>
   );

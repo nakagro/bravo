@@ -33,7 +33,7 @@ const KIND_SEGMENTS = [
  * Attendance per member over a date range, from closed rolls only. Opens in
  * roll order (seniority); every column sorts, and the CSV is what's on screen.
  */
-export function ReportTab() {
+export function AttendanceTab() {
   const [to, setTo] = useState(() => todayStr());
   const [from, setFrom] = useState(() => shiftDays(todayStr(), -91));
   const [kind, setKind] = useState<Kind>("all");
@@ -126,13 +126,13 @@ export function ReportTab() {
         <EmptyState
           icon={<BarChart3 className="h-10 w-10 text-red-400" />}
           title="No closed rolls in this range"
-          description="Nights count here once their roll is closed."
+          description="A roll counts here once it has been closed."
         />
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              {report.nights.length} {report.nights.length === 1 ? "night" : "nights"}:{" "}
+              {report.nights.length} {report.nights.length === 1 ? "roll" : "rolls"}:{" "}
               {formatNightDate(report.nights[0].date)} to{" "}
               {formatNightDate(report.nights[report.nights.length - 1].date)}
               {kind === "all" &&

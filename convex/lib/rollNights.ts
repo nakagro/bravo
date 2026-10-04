@@ -34,5 +34,5 @@ export function tuesdaysBetween(from: string, to: string): string[] {
 export const ROLL_NIGHT_LABELS: Record<RollNightKind, string> = {
   training: "Training",
   meeting: "Brigade Meeting",
-  other: "One-off",
+  other: "Extra roll",
 };
