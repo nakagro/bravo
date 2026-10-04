@@ -74,6 +74,10 @@ const extendedAuthTables = {
     nextStatus: v.optional(nextStatusValidator),
     nextStatusAt: v.optional(v.number()), // Timestamp when to transition to next status
     isDutyOfficer: v.optional(v.boolean()),
+    // Which Lieutenant this is - 1st to 5th, by seniority. Only meaningful while
+    // rank is "Lieutenant" (changing rank clears it), and each number is held by
+    // at most one account. Absent means an unnumbered Lieutenant.
+    lieutenantNumber: v.optional(v.number()),
     // Disabled accounts are people who have left the brigade. The row stays so
     // every historical reference to them (checklists, BA records, kit history)
     // still resolves, but they can't sign in, hold module access, or appear in
@@ -86,6 +90,7 @@ const extendedAuthTables = {
     .index("by_memberNumber", ["memberNumber"])
     .index("by_isAdmin", ["isAdmin"])
     .index("by_isDutyOfficer", ["isDutyOfficer"])
+    .index("by_lieutenantNumber", ["lieutenantNumber"])
 };
 
 // A deployment crew seat: a BRAVO member, or a name for crew from another brigade.

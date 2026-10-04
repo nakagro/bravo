@@ -72,6 +72,7 @@ import type * as lib_launches from "../lib/launches.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
 import type * as lib_notifyEvent from "../lib/notifyEvent.js";
+import type * as lib_ranks from "../lib/ranks.js";
 import type * as lib_stationCheckAllocations from "../lib/stationCheckAllocations.js";
 import type * as lib_statusValidators from "../lib/statusValidators.js";
 import type * as lib_tapeColors from "../lib/tapeColors.js";
@@ -179,6 +180,7 @@ declare const fullApi: ApiFromModules<{
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;
   "lib/notifyEvent": typeof lib_notifyEvent;
+  "lib/ranks": typeof lib_ranks;
   "lib/stationCheckAllocations": typeof lib_stationCheckAllocations;
   "lib/statusValidators": typeof lib_statusValidators;
   "lib/tapeColors": typeof lib_tapeColors;

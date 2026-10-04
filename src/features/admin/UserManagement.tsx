@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { LIEUTENANT_NUMBERS, ordinal } from "../../../convex/lib/ranks";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Eye, EyeOff } from "lucide-react";
@@ -89,6 +90,8 @@ function UserManagement() {
   const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRank, setSelectedRank] = useState<string | null>(null);
+  // "none" = an unnumbered Lieutenant
+  const [selectedLieutenantNumber, setSelectedLieutenantNumber] = useState<string>("none");
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>("member");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -138,12 +141,16 @@ function UserManagement() {
   useEffect(() => {
     if (selectedUser) {
       setSelectedRank(selectedUser.rank || null);
+      setSelectedLieutenantNumber(
+        selectedUser.lieutenantNumber ? String(selectedUser.lieutenantNumber) : "none"
+      );
       setSelectedAccountType(selectedUser.accountType === "shared" ? "shared" : "member");
       setSelectedRoles(selectedUser.roles || []);
       setIsAdmin(selectedUser.isAdmin || false);
       setIsDutyOfficer(selectedUser.isDutyOfficer || false);
     } else {
       setSelectedRank(null);
+      setSelectedLieutenantNumber("none");
       setSelectedAccountType("member");
       setSelectedRoles([]);
       setIsAdmin(false);
@@ -185,6 +192,14 @@ function UserManagement() {
     setStatusMessage(null);
     setDialogOpen(userId !== null);
   };
+
+  // Who holds each Lieutenant number now, so the picker can say whose number a
+  // choice takes over
+  const lieutenantHolders = new Map(
+    (users ?? [])
+      .filter((user) => user.lieutenantNumber && user._id !== selectedUserId)
+      .map((user) => [user.lieutenantNumber!, formatUserName(user)])
+  );
 
   // Handle rank selection via shadcn Select
   const handleRankChange = (value: string) => {
@@ -341,8 +356,13 @@ function UserManagement() {
     setStatusMessage(null);
 
     try {
-      // Update rank if changed
-      if (selectedRank !== selectedUser?.rank) {
+      // Update rank (and Lieutenant number) if changed
+      const lieutenantNumber =
+        selectedLieutenantNumber === "none" ? null : Number(selectedLieutenantNumber);
+      const lieutenantNumberChanged =
+        selectedRank === "Lieutenant" &&
+        lieutenantNumber !== (selectedUser?.lieutenantNumber ?? null);
+      if (selectedRank !== selectedUser?.rank || lieutenantNumberChanged) {
         if (selectedRank === null) {
           throw new Error("Please select a rank for this user before updating. Rank cannot be empty.");
         }
@@ -350,6 +370,7 @@ function UserManagement() {
         await updateRank({
           userId: selectedUserId,
           rank: selectedRank as "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain",
+          lieutenantNumber: selectedRank === "Lieutenant" ? lieutenantNumber : undefined,
         });
       }
 
@@ -469,6 +490,45 @@ function UserManagement() {
                   </p>
                 )}
               </div>
+
+              {/* Which Lieutenant - orders officers wherever seniority matters */}
+              {selectedRank === "Lieutenant" && (
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium dark:text-gray-200"
+                    htmlFor="lieutenant-number-select"
+                  >
+                    Lieutenant number
+                  </label>
+                  <Select
+                    value={selectedLieutenantNumber}
+                    onValueChange={setSelectedLieutenantNumber}
+                  >
+                    <SelectTrigger
+                      id="lieutenant-number-select"
+                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not numbered</SelectItem>
+                      {LIEUTENANT_NUMBERS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {ordinal(n)} Lieutenant
+                          {lieutenantHolders.has(n) ? ` (now ${lieutenantHolders.get(n)})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedLieutenantNumber !== "none" &&
+                    lieutenantHolders.has(Number(selectedLieutenantNumber)) && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {lieutenantHolders.get(Number(selectedLieutenantNumber))} will no longer be{" "}
+                        {ordinal(Number(selectedLieutenantNumber))} Lieutenant.
+                      </p>
+                    )}
+                </div>
+              )}
 
               {/* Account type selection */}
               <div className="space-y-2">

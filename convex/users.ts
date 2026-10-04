@@ -5,6 +5,7 @@ import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { deletePlannedShiftsForUser } from "./plannedShifts";
+import { isValidLieutenantNumber } from "./lib/ranks";
 
 /**
  * Shared gate for the account-lifecycle mutations below: only a signed-in admin
@@ -138,9 +139,7 @@ export const getRoles = query({
 /**
  * Mark a login as a member or a shared (non-person) account.
  *
- * Unlike the neighbouring `updateUserRank`/`updateUserRoles`, this checks
- * `isAdmin` server-side (following `convex/serviceAccounts.ts`) - a new mutation
- * shouldn't inherit an existing gap. Rank is deliberately left alone: module
+ * Checks `isAdmin` server-side, like its neighbours. Rank is deliberately left alone: module
  * access is gated on it, so clearing it would lock the account out of modules
  * with a `minimumRank`.
  */
@@ -171,7 +170,27 @@ export const updateUserAccountType = mutation({
 });
 
 /**
- * Update a user's rank
+ * The signed-in admin, or a throw. Rank, roles and admin status decide what
+ * every account can reach, so only an admin may change them.
+ */
+async function requireAdmin(ctx: MutationCtx, verb: string) {
+  const actorId = await getAuthUserId(ctx);
+  if (!actorId) throw new Error("You must be signed in");
+  const actor = await ctx.db.get(actorId);
+  if (!actor || !actor.isAdmin) {
+    throw new Error(`Only administrators can ${verb}`);
+  }
+  return actorId;
+}
+
+/**
+ * Update a user's rank, and for a Lieutenant which one (1st to 5th).
+ *
+ * `lieutenantNumber` is only read when the rank is Lieutenant: a number, null
+ * to clear it, or omitted to leave it alone. Any other rank clears it. A number
+ * already held by someone else moves to this user - that's how a 2nd becomes
+ * the 1st - and the previous holder becomes an unnumbered Lieutenant until
+ * they're given a new one.
  */
 export const updateUserRank = mutation({
   args: {
@@ -183,20 +202,39 @@ export const updateUserRank = mutation({
       v.literal("Lieutenant"),
       v.literal("Captain")
     ),
+    lieutenantNumber: v.optional(v.union(v.number(), v.null())),
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "change a rank");
     const { userId, rank } = args;
-    
+
     // Verify the user exists
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    
-    // Update the user's rank
-    await ctx.db.patch(userId, { rank });
-    
+
+    let lieutenantNumber = rank === "Lieutenant" ? user.lieutenantNumber : undefined;
+    if (rank === "Lieutenant" && args.lieutenantNumber !== undefined) {
+      lieutenantNumber = args.lieutenantNumber ?? undefined;
+    }
+
+    if (lieutenantNumber !== undefined) {
+      if (!isValidLieutenantNumber(lieutenantNumber)) {
+        throw new Error("Lieutenant number must be 1st to 5th");
+      }
+      const holders = await ctx.db
+        .query("users")
+        .withIndex("by_lieutenantNumber", (q) => q.eq("lieutenantNumber", lieutenantNumber))
+        .collect();
+      for (const holder of holders) {
+        if (holder._id !== userId) await ctx.db.patch(holder._id, { lieutenantNumber: undefined });
+      }
+    }
+
+    await ctx.db.patch(userId, { rank, lieutenantNumber });
+
     return userId;
   },
 });
@@ -211,6 +249,7 @@ export const updateUserRoles = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "change roles");
     const { userId, roles } = args;
     
     // Verify the user exists
@@ -236,6 +275,7 @@ export const updateUserAdminStatus = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "change admin status");
     const { userId, isAdmin } = args;
     
     // Verify the user exists

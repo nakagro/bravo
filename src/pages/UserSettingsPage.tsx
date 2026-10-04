@@ -1,5 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { formatRank } from "../../convex/lib/ranks";
 import {
   UserDetailsCard,
   SkillsSelector,
@@ -43,7 +44,7 @@ export function UserSettingsPage() {
             fullName={fullName}
             memberNumber={user.memberNumber}
             email={user.email}
-            rank={user.rank}
+            rank={formatRank(user) || undefined}
           />
         </div>
         

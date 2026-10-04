@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2026.10.04]
+- Admin: Lieutenants can now be numbered 1st to 5th.
 - Bookings: A booking can now repeat weekly, fortnightly or monthly.
 - Events: Members who only offered for a shift no longer show as no-shows when they weren't rostered.
 
