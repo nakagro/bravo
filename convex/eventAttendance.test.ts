@@ -203,6 +203,57 @@ describe("getConfirmedAttendance", () => {
     // Who said yes and didn't show is the organiser's business, not the brigade's
     expect(asMember?.deviation).toBeNull();
   });
+
+  it("on a rostered shift event, expects only the roster - not everyone who offered", async () => {
+    const { asAdmin, asBob, asCarol, eventId, aliceId, bobId, carolId } = await setup();
+
+    await asAdmin.mutation(api.events.updateEvent, {
+      eventId,
+      hasShifts: true,
+      slots: [{ label: "Morning" }],
+    });
+    const [slot] = await asAdmin.query(api.events.getEventSlots, { eventId });
+
+    // Carol offered and was never rostered; Alice was rostered
+    await asCarol.mutation(api.events.toggleSlotResponse, { slotId: slot._id });
+
+    // With no roster yet, an offer is all there is to go on
+    const unrostered = await asAdmin.query(api.events.getAttendanceSheet, { eventId });
+    expect(unrostered?.expectedIds).toEqual([carolId]);
+
+    await asAdmin.mutation(api.events.toggleSlotAllocation, { slotId: slot._id, userId: aliceId });
+    const sheet = await asAdmin.query(api.events.getAttendanceSheet, { eventId });
+    expect(sheet?.expectedIds).toEqual([aliceId]);
+
+    // Nobody came but Bob, who declined
+    await asBob.mutation(api.events.setRsvp, { eventId, status: "notAttending" });
+    await asAdmin.mutation(api.events.setEventAttendance, { eventId, userIds: [bobId] });
+
+    const confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
+    expect(confirmed?.deviation?.noShows.map((m) => m._id)).toEqual([aliceId]);
+    expect(confirmed?.deviation?.unexpected.map((m) => m._id)).toEqual([bobId]);
+  });
+
+  it("doesn't call someone who offered and came an unexpected arrival", async () => {
+    const { asAdmin, asCarol, eventId, aliceId, carolId } = await setup();
+
+    await asAdmin.mutation(api.events.updateEvent, {
+      eventId,
+      hasShifts: true,
+      slots: [{ label: "Morning" }],
+    });
+    const [slot] = await asAdmin.query(api.events.getEventSlots, { eventId });
+    await asCarol.mutation(api.events.toggleSlotResponse, { slotId: slot._id });
+    await asAdmin.mutation(api.events.toggleSlotAllocation, { slotId: slot._id, userId: aliceId });
+
+    await asAdmin.mutation(api.events.setEventAttendance, {
+      eventId,
+      userIds: [aliceId, carolId],
+    });
+
+    const confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
+    expect(confirmed?.deviation).toEqual({ noShows: [], unexpected: [] });
+  });
 });
 
 describe("clearEventAttendance", () => {

@@ -288,6 +288,24 @@ export async function attendanceFor(
 }
 
 /**
+ * Who was *meant* to turn up - the yardstick confirmed attendance is measured
+ * against. Narrower than `going` on a shift event: interest in a shift is an
+ * offer, not a commitment, so once the organiser has rostered anyone only the
+ * roster is expected. Calling an offer that was never taken up a no-show would
+ * put something false on the member's record. A shift event nobody was
+ * rostered on has nothing better than interest, so it falls back to `going`.
+ */
+async function expectedAttendeesFor(
+  ctx: QueryCtx,
+  event: Doc<"events">
+): Promise<{ expected: Set<Id<"users">>; going: Set<Id<"users">> }> {
+  const { going, rostered } = await attendanceFor(ctx, event);
+  if (!event.hasShifts || rostered.size === 0) return { expected: going, going };
+  // Through `going` so a rostered decliner still drops out
+  return { expected: new Set([...rostered].filter((id) => going.has(id))), going };
+}
+
+/**
  * `viewerIsAdmin` is passed in rather than derived per event: it's the same
  * answer for every row in a list, and deriving it costs a user + moduleSettings
  * read each time.
@@ -837,7 +855,7 @@ export const getConfirmedAttendance = query({
       canConfirm: v.boolean(),
       deviation: v.union(
         v.object({
-          // Expected (rostered, or said yes) but not marked present
+          // Expected (see expectedAttendeesFor) but not marked present
           noShows: v.array(userNameValidator),
           // Turned up without being expected
           unexpected: v.array(userNameValidator),
@@ -883,15 +901,19 @@ export const getConfirmedAttendance = query({
     } | null = null;
 
     if (canConfirm && event.attendanceConfirmedAt) {
-      const { going } = await attendanceFor(ctx, event);
+      const { expected, going } = await expectedAttendeesFor(ctx, event);
       const attendedIds = new Set(attendeeDocs.map((user) => user._id));
 
       const noShowDocs = (
-        await Promise.all([...going].filter((id) => !attendedIds.has(id)).map((id) => ctx.db.get(id)))
+        await Promise.all(
+          [...expected].filter((id) => !attendedIds.has(id)).map((id) => ctx.db.get(id))
+        )
       ).filter((user): user is Doc<"users"> => user !== null && isMemberAccount(user));
 
       deviation = {
         noShows: noShowDocs.map(nameOf),
+        // Measured against `going`, not `expected`: someone who offered for a
+        // shift and came did respond, even if they weren't rostered
         unexpected: attendeeDocs.filter((user) => !going.has(user._id)).map(nameOf),
       };
     }
@@ -908,7 +930,7 @@ export const getConfirmedAttendance = query({
 
 /**
  * Everything the confirm-attendance sheet needs: every member, who was
- * *expected* (rostered or said yes - the prefill), and who is currently
+ * *expected* (expectedAttendeesFor - the prefill), and who is currently
  * confirmed. Returns null for anyone who may not run this event.
  */
 /**
@@ -1008,7 +1030,7 @@ export const getAttendanceSheet = query({
       );
     const memberIds = new Set(members.map((member) => member._id));
 
-    const { going } = await attendanceFor(ctx, event);
+    const { expected } = await expectedAttendeesFor(ctx, event);
     const rows = await ctx.db
       .query("eventAttendance")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
@@ -1016,7 +1038,7 @@ export const getAttendanceSheet = query({
 
     return {
       members,
-      expectedIds: [...going].filter((id) => memberIds.has(id)),
+      expectedIds: [...expected].filter((id) => memberIds.has(id)),
       confirmedIds: rows.map((row) => row.userId).filter((id) => memberIds.has(id)),
       confirmedAt: event.attendanceConfirmedAt ?? null,
     };

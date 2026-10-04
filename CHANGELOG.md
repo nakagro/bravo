@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.10.04]
+- Events: Members who only offered for a shift no longer show as no-shows when they weren't rostered.
+
 ## [2026.10.01]
 - Availability: You can now enter your work shifts ahead of time and be marked unavailable automatically.
 - General: Pop-up forms on phones no longer jump around when the keyboard opens.
