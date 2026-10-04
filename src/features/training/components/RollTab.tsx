@@ -31,10 +31,11 @@ export function RollTab({ canManage }: { canManage: boolean }) {
     from: shiftDays(today, -WEEKS_BACK * 7),
     to: shiftDays(today, WEEKS_AHEAD * 7),
   });
+  const firstRollDate = useQuery(api.training.getFirstRollDate);
   const [addOpen, setAddOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
 
-  if (rolls === undefined) {
+  if (rolls === undefined || firstRollDate === undefined) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-36 w-full rounded-lg" />
@@ -47,7 +48,12 @@ export function RollTab({ canManage }: { canManage: boolean }) {
   const upcoming = rolls.filter((roll) => roll.date >= today);
   const next = upcoming.find((roll) => roll.status !== "cancelled") ?? upcoming[0];
   const comingUp = upcoming.filter((roll) => roll !== next);
-  const past = rolls.filter((roll) => roll.date < today).reverse();
+  // Past Tuesdays only exist from the first roll anyone used. Before that the
+  // brigade wasn't using the roll at all, so there's nothing to list - and
+  // nothing that was "never closed"
+  const past = rolls
+    .filter((roll) => roll.date < today && firstRollDate !== null && roll.date >= firstRollDate)
+    .reverse();
   // A past roll still open was never finished - the one thing here that needs doing
   const notClosed = canManage ? past.filter((roll) => roll.status === "open") : [];
   const previous = past.filter((roll) => !notClosed.includes(roll));
@@ -74,7 +80,7 @@ export function RollTab({ canManage }: { canManage: boolean }) {
             Not closed yet
           </h2>
           <p className="text-xs text-amber-800 dark:text-amber-200">
-            These rolls were never closed, so they don&apos;t count in Attendance.
+            These rolls haven&apos;t been closed, so they don&apos;t count in Attendance yet.
           </p>
           {notClosed.map((roll) => (
             <RollRow key={roll.date} roll={roll} />

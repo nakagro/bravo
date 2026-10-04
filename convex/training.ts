@@ -312,6 +312,23 @@ async function marksFor(ctx: QueryCtx | MutationCtx, nightId: Id<"rollNights">) 
 }
 
 /**
+ * The date of the earliest roll anyone has touched, or null if the roll has
+ * never been used. Tuesdays before it predate the roll being used at all, so
+ * the Roll tab doesn't list them - or flag them as never closed.
+ */
+export const getFirstRollDate = query({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    const user = userId ? await ctx.db.get(userId) : null;
+    if (!user || !(await accessFor(ctx, user)).canRecordApologies) return null;
+    const first = await ctx.db.query("rollNights").withIndex("by_date").first();
+    return first?.date ?? null;
+  },
+});
+
+/**
  * Roll nights between two dates: every Tuesday, plus any one-off night. `from`
  * and `to` come from the client so the query never reads the clock.
  */

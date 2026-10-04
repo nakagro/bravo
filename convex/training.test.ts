@@ -106,6 +106,28 @@ describe("roll nights", () => {
   });
 });
 
+describe("first use", () => {
+  it("is the earliest roll anyone touched, whichever date was touched first", async () => {
+    const s = await setup();
+    expect(await s.asCaptain.query(api.training.getFirstRollDate, {})).toBeNull();
+
+    // An apology recorded ahead for the meeting, then the training roll before it taken
+    await s.asDO.mutation(api.training.setMark, {
+      date: MEETING,
+      who: { userId: s.memberId },
+      status: "apology",
+    });
+    expect(await s.asCaptain.query(api.training.getFirstRollDate, {})).toBe(MEETING);
+
+    await s.asCaptain.mutation(api.training.setMark, {
+      date: TRAINING,
+      who: { userId: s.memberId },
+      status: "present",
+    });
+    expect(await s.asCaptain.query(api.training.getFirstRollDate, {})).toBe(TRAINING);
+  });
+});
+
 describe("the roster", () => {
   it("calls Captain, then Lieutenants by number, then everyone else, including people without accounts", async () => {
     const s = await setup();
