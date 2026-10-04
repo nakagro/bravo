@@ -77,7 +77,7 @@ export function ReportTab() {
   const exportCsv = () => {
     if (!report) return;
     downloadCsv(`attendance-${from}-to-${to}.csv`, [
-      ["Name", "Rank", "CFA ID", "Present", "Apology", "Absent", "Attendance %"],
+      ["Name", "Rank", "CFA ID", "Present", "Apology", "Absent (no apology)", "Attendance %"],
       ...rows.map((row) => [
         personName(row.member),
         rankLabel(row.member),
@@ -180,7 +180,8 @@ export function ReportTab() {
             </Table>
           </div>
           <p className="text-xs text-muted-foreground">
-            Attendance is nights present out of nights the member was on the roll.
+            Absent means absent without an apology. Attendance is nights present out of nights
+            the member was on the roll.
           </p>
         </>
       )}

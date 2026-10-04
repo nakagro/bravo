@@ -225,6 +225,38 @@ describe("marks", () => {
     expect(history.some((h) => h.oldStatus === "absent" && h.newStatus === "apology")).toBe(true);
   });
 
+  it("keeps Absent and Apology distinct when marked during the roll", async () => {
+    const s = await setup();
+    await s.asCaptain.mutation(api.training.setMark, {
+      date: TRAINING,
+      who: { userId: s.memberId },
+      status: "absent",
+    });
+    await s.asCaptain.mutation(api.training.setMark, {
+      date: TRAINING,
+      who: { userId: s.doId },
+      status: "apology",
+    });
+    await s.asCaptain.mutation(api.training.closeRoll, { date: TRAINING });
+
+    expect(await markOf(s, TRAINING, "Adams")).toBe("absent");
+    expect(await markOf(s, TRAINING, "Oakes")).toBe("apology");
+
+    const report = await s.asCaptain.query(api.training.getReport, {
+      from: TRAINING,
+      to: TRAINING,
+      kind: "all",
+    });
+    expect(report.rows.find((r) => r.member.lastName === "Adams")).toMatchObject({
+      absent: 1,
+      apology: 0,
+    });
+    expect(report.rows.find((r) => r.member.lastName === "Oakes")).toMatchObject({
+      absent: 0,
+      apology: 1,
+    });
+  });
+
   it("refuses marks on a cancelled night", async () => {
     const s = await setup();
     await s.asCaptain.mutation(api.training.setNightCancelled, { date: TRAINING, cancelled: true });

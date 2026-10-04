@@ -21,11 +21,6 @@ interface ChecklistSectionProps {
    * user needs to see without expanding the section (e.g. who's allocated).
    */
   headerMeta?: ReactNode;
-  /**
-   * How to name rows in the attention state - "2 issues" by default. A module
-   * where amber isn't a problem (the training roll's apologies) names its own.
-   */
-  attentionLabel?: (count: number) => string;
   children: ReactNode;
 }
 
@@ -35,7 +30,7 @@ interface ChecklistSectionProps {
  */
 export const ChecklistSection = forwardRef<HTMLDivElement, ChecklistSectionProps>(
   function ChecklistSection(
-    { value, name, progress, headerAction, headerMeta, attentionLabel, children },
+    { value, name, progress, headerAction, headerMeta, children },
     ref,
   ) {
     const allAnswered = progress.total > 0 && progress.answered === progress.total;
@@ -71,9 +66,8 @@ export const ChecklistSection = forwardRef<HTMLDivElement, ChecklistSectionProps
                           variant="outline"
                           className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-600 dark:text-amber-400"
                         >
-                          {attentionLabel
-                            ? attentionLabel(progress.attention)
-                            : `${progress.attention} issue${progress.attention !== 1 ? "s" : ""}`}
+                          {progress.attention} issue
+                          {progress.attention !== 1 ? "s" : ""}
                         </Badge>
                       )}
                       {allAnswered && progress.attention === 0 && (

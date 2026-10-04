@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
-import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +12,6 @@ import {
   ChecklistActionBar,
   ChecklistProgressHeader,
   ChecklistRow,
-  ChecklistSection,
   type ChecklistItemStatus,
   type ChecklistProgress,
 } from "@/components/shared/checklist";
@@ -32,50 +30,46 @@ import {
 type NightData = NonNullable<FunctionReturnType<typeof api.training.getNight>>;
 type RollRow = NightData["members"][number];
 
-// The roll on the shared checklist kit: Present is a resolved row, an Apology
-// is the amber attention row, and a member not yet called is unanswered.
+// The roll on the shared checklist kit: Present is a resolved (green) row, an
+// Apology the amber attention row. Absent and not-yet-marked both sit on the
+// plain row; the status control underneath says which.
 function checklistStatus(mark: MarkStatus | null): ChecklistItemStatus {
   if (mark === "present") return "resolved";
   if (mark === "apology") return "attention";
   return "unanswered";
 }
 
-// `attentionStatus` is what the amber count means: apologies for the night as a
-// whole, absences within "To call" - so a closed roll with absences never
-// shows the kit's green "All OK"
-function progressOf(rows: RollRow[], attentionStatus: MarkStatus = "apology"): ChecklistProgress {
-  let resolved = 0;
-  let attention = 0;
-  let answered = 0;
-  for (const { mark } of rows) {
-    if (!mark) continue;
-    answered++;
-    if (mark.status === "present") resolved++;
-    if (mark.status === attentionStatus) attention++;
-  }
+// The ring tracks how much of the roll has been marked, whatever the marks are
+function progressOf(rows: RollRow[]): ChecklistProgress {
+  const answered = rows.filter((row) => row.mark).length;
   const total = rows.length;
   return {
-    resolved,
-    attention,
+    resolved: answered,
+    attention: 0,
     answered,
     total,
     percentage: total > 0 ? Math.round((answered / total) * 100) : 0,
   };
 }
 
-const apologiesLabel = (n: number) => `${n} ${n === 1 ? "apology" : "apologies"}`;
-const absentLabel = (n: number) => `${n} absent`;
-
 const whoOf = (row: RollRow) =>
   row.member.rollMemberId
     ? { rollMemberId: row.member.rollMemberId }
     : { userId: row.member.userId! };
 
+// Order of the three choices, and how each looks when chosen
+const STATUS_OPTIONS: { status: MarkStatus; selected: string }[] = [
+  { status: "present", selected: "bg-green-600 text-white border-green-600" },
+  { status: "absent", selected: "bg-red-600 text-white border-red-600" },
+  { status: "apology", selected: "bg-amber-500 text-white border-amber-500" },
+];
+
 /**
- * One night's roll. The Secretary works down "To call" tapping who's here;
- * anyone who sent an apology is already moved out into Apologies, so their
- * names don't get read out. The Duty Officer sees the same screen but can only
- * record apologies.
+ * One night's roll, in roll order. Every member is marked one of three ways -
+ * Present, Absent, or Apology (absent, but sent apologies) - and the difference
+ * between the last two is a recorded stat. Apologies the Duty Officer took
+ * before the night are already marked, so the Secretary can skip those names.
+ * The DO sees the same screen but can only record apologies.
  */
 export function NightRoll({ date }: { date: string }) {
   const navigate = useNavigate();
@@ -85,7 +79,6 @@ export function NightRoll({ date }: { date: string }) {
   const setNightCancelled = useMutation(api.training.setNightCancelled);
 
   const [search, setSearch] = useState("");
-  const [openSections, setOpenSections] = useState(["call", "apologies"]);
   const [confirmClose, setConfirmClose] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -117,9 +110,9 @@ export function NightRoll({ date }: { date: string }) {
   const { night, canManage } = data;
   const isOpen = night.status === "open";
   const isCancelled = night.status === "cancelled";
-  const toCall = filtered.filter((row) => row.mark?.status !== "apology");
-  const apologies = filtered.filter((row) => row.mark?.status === "apology");
-  const unmarked = rows.filter((row) => !row.mark).length;
+
+  const counts = { present: 0, absent: 0, apology: 0, unmarked: 0 };
+  for (const row of rows) counts[row.mark?.status ?? "unmarked"]++;
 
   const mark = async (row: RollRow, status: MarkStatus | null) => {
     try {
@@ -131,20 +124,33 @@ export function NightRoll({ date }: { date: string }) {
     }
   };
 
-  // Tapping a name: here, or not. On a closed roll "not" means Absent.
-  const togglePresent = (row: RollRow) =>
-    mark(row, row.mark?.status === "present" ? null : "present");
+  // What this viewer may pick for a row. The Duty Officer only handles
+  // apologies, and only before the roll is closed.
+  const canChoose = (row: RollRow, status: MarkStatus) => {
+    if (isCancelled) return false;
+    if (canManage) return true;
+    return (
+      isOpen && status === "apology" && (!row.mark || row.mark.status === "apology")
+    );
+  };
 
-  const canToggleApology = (row: RollRow) =>
-    !isCancelled &&
-    (canManage || (isOpen && (!row.mark || row.mark.status === "apology")));
+  const choose = (row: RollRow, status: MarkStatus) => {
+    const current = row.mark?.status ?? null;
+    if (current === status) {
+      // Tapping the chosen option again un-marks - but a closed roll has no
+      // unmarked state, so there it stays as it is
+      if (isOpen) void mark(row, null);
+      return;
+    }
+    void mark(row, status);
+  };
 
   const handleClose = async () => {
     setClosing(true);
     try {
       const absent = await closeRoll({ date });
       toast.success("Roll closed", {
-        description: absent > 0 ? `${absent} marked absent.` : undefined,
+        description: absent > 0 ? `${absent} unmarked recorded as Absent.` : undefined,
       });
     } catch (error) {
       toast.error("Couldn't close the roll", {
@@ -203,27 +209,39 @@ export function NightRoll({ date }: { date: string }) {
             <span className="text-xs text-amber-700 dark:text-amber-300">
               Apology taken by {personName(row.mark.recordedBy)}
             </span>
-          ) : status === "absent" ? (
-            <span className="text-xs font-medium text-red-600 dark:text-red-400">Absent</span>
           ) : undefined
         }
-        onActivate={canManage && !isCancelled ? () => void togglePresent(row) : undefined}
-        control={
-          canToggleApology(row) ? (
-            <button
-              type="button"
-              onClick={() => void mark(row, status === "apology" ? null : "apology")}
-              className={cn(
-                "min-h-[44px] rounded-full px-3 text-xs font-medium transition-colors",
-                status === "apology"
-                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200"
-                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
-              )}
-              aria-pressed={status === "apology"}
-            >
-              Apology
-            </button>
-          ) : undefined
+        footer={
+          <div
+            role="radiogroup"
+            aria-label={`Mark ${personName(row.member)}`}
+            className="grid grid-cols-3 gap-1.5"
+          >
+            {STATUS_OPTIONS.map((option) => {
+              const selected = status === option.status;
+              const enabled = canChoose(row, option.status);
+              return (
+                <button
+                  key={option.status}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={!enabled}
+                  onClick={() => choose(row, option.status)}
+                  className={cn(
+                    "min-h-[44px] rounded-md border text-sm font-medium transition-colors",
+                    selected
+                      ? option.selected
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800",
+                    !enabled && !selected && "opacity-40",
+                    !enabled && "cursor-not-allowed"
+                  )}
+                >
+                  {MARK_LABELS[option.status]}
+                </button>
+              );
+            })}
+          </div>
         }
       />
     );
@@ -280,7 +298,7 @@ export function NightRoll({ date }: { date: string }) {
           </div>
           {!canManage && (
             <p className="mt-2 text-sm text-muted-foreground">
-              As Duty Officer you can record apologies. Tap Apology next to a name.
+              As Duty Officer you can record apologies. Tap Apology under a name.
             </p>
           )}
         </CardContent>
@@ -297,7 +315,18 @@ export function NightRoll({ date }: { date: string }) {
           <ChecklistProgressHeader
             progress={progressOf(rows)}
             answeredLabel="marked"
-            attentionLabel={apologiesLabel}
+            title={
+              <p className="text-xs text-muted-foreground">
+                <span className="text-green-700 dark:text-green-400">{counts.present} present</span>
+                {" · "}
+                <span className="text-red-700 dark:text-red-400">{counts.absent} absent</span>
+                {" · "}
+                <span className="text-amber-700 dark:text-amber-400">
+                  {counts.apology} {counts.apology === 1 ? "apology" : "apologies"}
+                </span>
+                {counts.unmarked > 0 && ` · ${counts.unmarked} to mark`}
+              </p>
+            }
           />
 
           <div className="relative">
@@ -315,35 +344,13 @@ export function NightRoll({ date }: { date: string }) {
             />
           </div>
 
-          <Accordion
-            type="multiple"
-            value={openSections}
-            onValueChange={setOpenSections}
-            className="space-y-3"
-          >
-            <ChecklistSection
-              value="call"
-              name="To call"
-              progress={progressOf(toCall, "absent")}
-              attentionLabel={absentLabel}
-            >
-              {toCall.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nobody matches.</p>
-              ) : (
-                toCall.map(renderRow)
-              )}
-            </ChecklistSection>
-            {apologies.length > 0 && (
-              <ChecklistSection
-                value="apologies"
-                name="Apologies"
-                progress={progressOf(apologies)}
-                attentionLabel={apologiesLabel}
-              >
-                {apologies.map(renderRow)}
-              </ChecklistSection>
+          <div className="space-y-2">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nobody matches.</p>
+            ) : (
+              filtered.map(renderRow)
             )}
-          </Accordion>
+          </div>
 
           {canManage && (
             <ChecklistActionBar
@@ -353,7 +360,7 @@ export function NightRoll({ date }: { date: string }) {
               isSubmitting={closing}
               completedLabel={
                 night.closedBy
-                  ? `Roll closed by ${personName(night.closedBy)}. Tap a name to amend.`
+                  ? `Roll closed by ${personName(night.closedBy)}. Marks can still be changed.`
                   : "Roll closed"
               }
             />
@@ -366,8 +373,8 @@ export function NightRoll({ date }: { date: string }) {
         onOpenChange={setConfirmClose}
         title="Close the roll?"
         description={
-          unmarked > 0
-            ? `${unmarked} ${unmarked === 1 ? "member hasn't" : "members haven't"} been marked and will be recorded as Absent. You can still change any mark afterwards.`
+          counts.unmarked > 0
+            ? `${counts.unmarked} ${counts.unmarked === 1 ? "member hasn't" : "members haven't"} been marked and will be recorded as Absent (no apology). You can still change any mark afterwards.`
             : "Everyone has been marked. You can still change any mark afterwards."
         }
         confirmLabel="Close roll"
