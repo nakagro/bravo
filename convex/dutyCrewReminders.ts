@@ -4,23 +4,11 @@ import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { currentWeekItems, isResolved } from "./stationChecks";
 import { effectiveAssignee, loadAllocationMap } from "./lib/stationCheckAllocations";
-import { brigadeDayOfWeek, brigadeParts } from "./lib/dates";
 
 // The duty week runs Tuesday to Monday (see weekWindow), and Monday night is
 // when a crew catches up on anything the weekend didn't get to. This nudges
 // the outgoing crew on the Monday afternoon, while there's still time.
-export const REMINDER_WEEKDAY = 1; // Monday, 0 = Sunday
-export const REMINDER_HOUR = 16; // 4pm Melbourne
-
-// Crons run on a fixed UTC clock, so crons.ts fires this at both UTC hours
-// that 4pm Melbourne can fall on (AEST and AEDT). Only the run that actually
-// lands at 4pm Melbourne on the Monday sends anything.
-export function isReminderTime(now: number) {
-  return (
-    brigadeDayOfWeek(now) === REMINDER_WEEKDAY &&
-    brigadeParts(now).hour === REMINDER_HOUR
-  );
-}
+// crons.ts holds it to 4pm Melbourne on the Monday.
 
 const recipientValidator = v.object({
   userId: v.id("users"),
@@ -87,8 +75,6 @@ export const sendWeekClosingReminder = internalAction({
   returns: v.number(),
   handler: async (ctx) => {
     const now = Date.now();
-    if (!isReminderTime(now)) return 0;
-
     const target = await ctx.runQuery(internal.dutyCrewReminders.weekClosingRecipients, { now });
     if (!target) return 0;
 

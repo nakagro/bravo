@@ -1,64 +1,66 @@
 import { cronJobs } from "convex/server";
 import { api, internal } from "./_generated/api";
+import { brigadeCron, type BrigadeTime } from "./brigadeCron";
 
 const crons = cronJobs();
 
-// Every hourUTC below is a fixed UTC time, because that is all the Convex cron
-// API accepts - there is no timezone parameter. So the local times named here
-// hold during AEST and land an hour later through AEDT (Oct-Apr): the 04:00 job
-// runs at 05:00, the 10:00 reminder at 11:00.
-//
-// That drift is accepted, deliberately (decided 2026-08-28). Removing it means
-// firing on a shorter interval and gating on Melbourne local time inside the
-// handler, which needs a per-job last-run guard to survive the DST boundaries -
-// local 02:00-03:00 does not exist in October and happens twice in April, so a
-// naive gate silently skips a day one way and double-fires the other. That is a
-// reliability change, and these jobs run while nobody is awake to notice the
-// hour. Code that *computes* in brigade time should use convex/lib/dates.ts.
+// The Convex cron API only takes fixed UTC times. Anything meant for a time of
+// day in Victoria is registered through `at`, which holds that Melbourne time
+// through AEST and AEDT alike - see convex/brigadeCron.ts for how. Don't pin a
+// local-time job to a UTC hour here: it drifts an hour every daylight saving.
+// The interval and hourly jobs further down have no time of day to hold.
+const at = (
+  identifier: string,
+  time: BrigadeTime,
+  fn: Parameters<typeof brigadeCron>[3]
+) => brigadeCron(crons, identifier, time, fn);
 
-// Delete all messages at 4am local (before status reset)
-crons.daily(
-  "delete daily messages", // identifier
-  { hourUTC: 18, minuteUTC: 0 }, // 04:00 AEST / 05:00 AEDT
-  internal.messages.deleteAllMessages,
-  {}
+// Daily auth cleanup: purge expired sessions, expired tokens, and orphaned
+// tokens, before the other daily jobs
+at("auth cleanup", { hour: 3, minute: 0 }, internal.authManagement.scheduledAuthCleanup);
+
+// Clean up expired service account sessions daily
+at(
+  "cleanup expired service account sessions",
+  { hour: 3, minute: 30 },
+  internal.serviceAccounts.cleanupExpiredSessions
 );
 
-crons.daily(
-  "nightly reset statuses", // identifier
-  { hourUTC: 18, minuteUTC: 30 }, // 04:30 AEST / 05:30 AEDT
-  api.availabilityActions.nightlyReset,
-  {}
+// Delete planned shifts that ended over a week ago. memberStatusHistory already
+// records what they did.
+at(
+  "cleanup old planned shifts",
+  { hour: 3, minute: 45 },
+  internal.plannedShifts.cleanupOldPlannedShifts
 );
 
-
-crons.daily(
-  "morning availability reminder", // identifier
-  { hourUTC: 0, minuteUTC: 0 }, // 10:00 AEST / 11:00 AEDT - the one members notice
-  api.availabilityActions.morningReminder,
-  {}
-);
+// Delete all messages at 4am (before status reset)
+at("delete daily messages", { hour: 4, minute: 0 }, internal.messages.deleteAllMessages);
 
 // Close the duty crew week that has just ended and email what was and wasn't
 // done. Daily rather than weekly on purpose: the handler catches up on any
 // week that has ended, so a missed run closes it the next morning instead of
-// leaving it open for good.
-crons.cron(
-  "close elapsed duty crew weeks", // identifier
-  "15 18 * * *", // 04:15 AEST / 05:15 AEDT - Tuesday's run is the one that closes
-  internal.stationChecks.closeElapsedWeeks,
-  {}
+// leaving it open for good. Tuesday's run is the one that closes.
+at(
+  "close elapsed duty crew weeks",
+  { hour: 4, minute: 15 },
+  internal.stationChecks.closeElapsedWeeks
 );
 
-// Nudge the outgoing duty crew on the Monday afternoon, the last day of the
-// Tuesday-to-Monday duty week, if checks are still outstanding. 05:00 and
-// 06:00 UTC Monday are 4pm Melbourne in AEDT and AEST respectively; the
-// handler only sends from whichever run is actually 4pm in Melbourne.
-crons.cron(
-  "duty crew week closing reminder", // identifier
-  "0 5,6 * * 1",
-  internal.dutyCrewReminders.sendWeekClosingReminder,
-  {}
+at("nightly reset statuses", { hour: 4, minute: 30 }, api.availabilityActions.nightlyReset);
+
+at(
+  "morning availability reminder",
+  { hour: 10, minute: 0 },
+  api.availabilityActions.morningReminder
+);
+
+// Nudge the outgoing duty crew at 4pm on the Monday, the last day of the
+// Tuesday-to-Monday duty week, if checks are still outstanding.
+at(
+  "duty crew week closing reminder",
+  { hour: 16, minute: 0, dayOfWeek: 1 },
+  internal.dutyCrewReminders.sendWeekClosingReminder
 );
 
 // Process status transitions every 5 minutes
@@ -79,36 +81,11 @@ crons.interval(
   {}
 );
 
-// Daily auth cleanup: purge expired sessions, expired tokens, and orphaned tokens
-crons.daily(
-  "auth cleanup", // identifier
-  { hourUTC: 17, minuteUTC: 0 }, // 03:00 AEST / 04:00 AEDT, before the other daily jobs
-  internal.authManagement.scheduledAuthCleanup,
-  {}
-);
-
 // Clean up expired notifications every hour
 crons.hourly(
   "cleanup expired notifications", // identifier
   { minuteUTC: 0 }, // Run at the top of every hour
   internal.notificationHistory.cleanupExpiredNotifications,
-  {}
-);
-
-// Clean up expired service account sessions daily
-crons.daily(
-  "cleanup expired service account sessions",
-  { hourUTC: 17, minuteUTC: 30 }, // 03:30 AEST / 04:30 AEDT
-  internal.serviceAccounts.cleanupExpiredSessions,
-  {}
-);
-
-// Delete planned shifts that ended over a week ago. memberStatusHistory already
-// records what they did.
-crons.cron(
-  "cleanup old planned shifts", // identifier
-  "45 17 * * *", // 03:45 AEST / 04:45 AEDT
-  internal.plannedShifts.cleanupOldPlannedShifts,
   {}
 );
 

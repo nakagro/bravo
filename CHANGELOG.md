@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.10.14]
+- General: Reminders and the overnight reset now keep their usual times through daylight saving.
+
 ## [2026.10.05]
 - Training Roll: Officers can take the roll for training nights and brigade meetings, with apologies recorded ahead by the Duty Officer.
 

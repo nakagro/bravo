@@ -3,7 +3,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "./_generated/api";
-import { isReminderTime, weekClosingMessage } from "./dutyCrewReminders";
+import { weekClosingMessage } from "./dutyCrewReminders";
 import { weekWindow } from "./stationChecks";
 import schema from "./schema";
 
@@ -150,20 +150,7 @@ describe("duty crew reminders follow the Tuesday changeover", () => {
   });
 });
 
-describe("week closing push timing", () => {
-  it("fires at 4pm Melbourne on the Monday, whichever UTC run that is", () => {
-    // AEST (UTC+10): 06:00 UTC is 4pm, 05:00 UTC is 3pm
-    expect(isReminderTime(Date.parse("2026-08-03T06:00:00Z"))).toBe(true);
-    expect(isReminderTime(Date.parse("2026-08-03T05:00:00Z"))).toBe(false);
-    // AEDT (UTC+11): 05:00 UTC is 4pm, 06:00 UTC is 5pm
-    expect(isReminderTime(Date.parse("2026-10-12T05:00:00Z"))).toBe(true);
-    expect(isReminderTime(Date.parse("2026-10-12T06:00:00Z"))).toBe(false);
-  });
-
-  it("never fires on a Tuesday, the first day of the new crew's week", () => {
-    expect(isReminderTime(Date.parse("2026-08-04T16:00:00+10:00"))).toBe(false);
-  });
-
+describe("week closing push message", () => {
   it("names the member's own share when they have one", () => {
     expect(weekClosingMessage(3, 1)).toBe(
       "3 station checks still to do, 1 of them allocated to you. The duty week ends at midnight tonight."

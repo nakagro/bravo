@@ -28,6 +28,7 @@ import type * as availabilityActions from "../availabilityActions.js";
 import type * as baCurrency from "../baCurrency.js";
 import type * as baRecords from "../baRecords.js";
 import type * as bookings from "../bookings.js";
+import type * as brigadeCron from "../brigadeCron.js";
 import type * as calendarProxy from "../calendarProxy.js";
 import type * as calendarWrite from "../calendarWrite.js";
 import type * as crons from "../crons.js";
@@ -138,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   baCurrency: typeof baCurrency;
   baRecords: typeof baRecords;
   bookings: typeof bookings;
+  brigadeCron: typeof brigadeCron;
   calendarProxy: typeof calendarProxy;
   calendarWrite: typeof calendarWrite;
   crons: typeof crons;
