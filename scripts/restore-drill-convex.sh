@@ -16,7 +16,7 @@ PROJECT_DIR="/var/www/bravo"
 IMAGE="${IMAGE:-ghcr.io/get-convex/convex-backend:latest}"
 PORT="${PORT:-3910}"
 CONTAINER="bravo-restore-drill"
-export PATH="/root/.nvm/versions/node/v22.22.1/bin:$PATH"
+export PATH="/root/.nvm/versions/node/v24.22.1/bin:$PATH"
 
 cd "$PROJECT_DIR"
 

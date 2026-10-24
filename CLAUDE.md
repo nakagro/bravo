@@ -97,6 +97,7 @@ regenerates). Never hand-edit `docs/README.md`.
 ## Commands
 
 ### Development
+- **Node**: 24.x LTS, pinned in `.nvmrc` (24.22.1) and `package.json#engines`. VPS scripts hardcode the nvm path `/root/.nvm/versions/node/v24.22.1/bin`, so bump them along with `.nvmrc`.
 - `npm run dev:vps:frontend` - **Primary local dev command** — Vite dev server pointed at the VPS backend
 - `npm run dev` / `npm run dev:frontend` / `npm run dev:vps` - Aliases for `dev:vps:frontend`
 - `npm run dev:uat` - Frontend + **UAT** backend (`precious-magpie-647`). ⚠️ Runs `convex dev`, a

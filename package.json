@@ -1,7 +1,7 @@
 {
   "name": "bravo",
   "private": true,
-  "version": "2026.10.14",
+  "version": "2026.10.25",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:vps:frontend",
@@ -137,5 +137,8 @@
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@0.2.4"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

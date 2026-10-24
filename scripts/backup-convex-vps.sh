@@ -7,7 +7,7 @@ set -euo pipefail
 PROJECT_DIR="/var/www/bravo"
 EXPORT_DIR="$PROJECT_DIR/exports/convex/nightly"
 RETAIN_DAYS="${RETAIN_DAYS:-30}"
-export PATH="/root/.nvm/versions/node/v22.22.1/bin:$PATH"
+export PATH="/root/.nvm/versions/node/v24.22.1/bin:$PATH"
 
 cd "$PROJECT_DIR"
 
