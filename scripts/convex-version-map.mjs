@@ -4,7 +4,7 @@
  * Maps the `convex` npm package version onto self-hosted backend Docker images, and
  * reports where our stack sits against the latest of both.
  *
- * `get-convex/convex-backend` is a monorepo: it holds both the Rust backend and the
+ * `convex/convex-backend` is a monorepo: it holds both the Rust backend and the
  * source of the npm package (`npm-packages/convex`). One commit therefore produces one
  * (backend, client) pair, and every published artifact names that same commit:
  *
@@ -32,9 +32,9 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const REPO = "get-convex/convex-backend";
-const BACKEND_IMAGE = "ghcr.io/get-convex/convex-backend";
-const DASHBOARD_IMAGE = "ghcr.io/get-convex/convex-dashboard";
+const REPO = "convex/convex-backend";
+const BACKEND_IMAGE = "ghcr.io/convex/convex-backend";
+const DASHBOARD_IMAGE = "ghcr.io/convex/convex-dashboard";
 const PKG_PATH = "npm-packages/convex/package.json";
 const RELEASE_PAGES = 6; // 100 releases per page; paging stops early at the cutoff date
 const COMMIT_PAGE_SIZE = 30; // larger pages make GitHub time out on the path-filtered query
@@ -139,7 +139,7 @@ async function ghcrToken(repository) {
   return token;
 }
 
-async function ghcrTags(repository = "get-convex/convex-backend") {
+async function ghcrTags(repository = "convex/convex-backend") {
   const token = await ghcrToken(repository);
   const { tags } = await getJson(
     `https://ghcr.io/v2/${repository}/tags/list?n=2000`,
@@ -154,7 +154,7 @@ async function ghcrTags(repository = "get-convex/convex-backend") {
  */
 async function resolveTagToCommit(
   tag,
-  repository = "get-convex/convex-backend",
+  repository = "convex/convex-backend",
 ) {
   const token = await ghcrToken(repository);
   const auth = { Authorization: `Bearer ${token}` };
