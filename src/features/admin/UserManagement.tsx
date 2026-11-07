@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { NotificationPrefsList } from "@/features/userSettings/components/NotificationPrefsList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,18 @@ const getStrengthText = (strength: number) => {
 // The Update button lives in the modal's footer, outside the <form>, so it
 // submits by id rather than by nesting.
 const USER_FORM_ID = "user-settings-form";
+
+function MemberNotificationPrefs({ userId }: { userId: Id<"users"> }) {
+  const rows = useQuery(api.notificationPrefs.getUserNotificationPrefs, { userId });
+  const setPref = useMutation(api.notificationPrefs.setUserNotificationPref);
+  return (
+    <NotificationPrefsList
+      rows={rows}
+      onChange={(category, enabled) => setPref({ userId, category, enabled })}
+      emptyText="This member can't open any module that sends pushes."
+    />
+  );
+}
 
 function UserManagement() {
   // "Brigade Member" is the floor rank (non-operational members); every user has at least this rank.
@@ -721,6 +734,28 @@ function UserManagement() {
               </Accordion>
 
               <Separator />
+
+              {/* Push preferences, so an admin can answer "why am I getting this?" */}
+              {selectedUserId && (
+                <>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="notifications" className="border-none">
+                      <AccordionTrigger className="text-lg font-medium hover:no-underline py-2">
+                        Notifications
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-4">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Pushes this member can receive. Types for modules they can't open are hidden and never sent.
+                          </p>
+                          <MemberNotificationPrefs userId={selectedUserId} />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  <Separator />
+                </>
+              )}
 
               {/* Account lifecycle: for members who have left the brigade. */}
               <Accordion type="single" collapsible className="w-full">

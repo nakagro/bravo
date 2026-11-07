@@ -85,6 +85,16 @@ const extendedAuthTables = {
     isDisabled: v.optional(v.boolean()),
     disabledAt: v.optional(v.number()),
     disabledBy: v.optional(v.id("users")),
+    // Push categories the member has switched off (see lib/notificationPrefs.ts).
+    // Absent, or a key absent, means on.
+    notificationPrefs: v.optional(
+      v.object({
+        availabilityReminders: v.optional(v.boolean()),
+        statusChanges: v.optional(v.boolean()),
+        events: v.optional(v.boolean()),
+        dutyCrew: v.optional(v.boolean()),
+      })
+    ),
   })
     .index("email", ["email"])
     .index("by_memberNumber", ["memberNumber"])

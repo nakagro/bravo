@@ -72,6 +72,7 @@ import type * as lib_hoseId from "../lib/hoseId.js";
 import type * as lib_launches from "../lib/launches.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
+import type * as lib_notificationPrefs from "../lib/notificationPrefs.js";
 import type * as lib_notifyEvent from "../lib/notifyEvent.js";
 import type * as lib_ranks from "../lib/ranks.js";
 import type * as lib_rollNights from "../lib/rollNights.js";
@@ -90,6 +91,7 @@ import type * as migrations_removeBrigadeTasks from "../migrations/removeBrigade
 import type * as modules from "../modules.js";
 import type * as notificationAudit from "../notificationAudit.js";
 import type * as notificationHistory from "../notificationHistory.js";
+import type * as notificationPrefs from "../notificationPrefs.js";
 import type * as notificationSettings from "../notificationSettings.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as plannedShifts from "../plannedShifts.js";
@@ -183,6 +185,7 @@ declare const fullApi: ApiFromModules<{
   "lib/launches": typeof lib_launches;
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;
+  "lib/notificationPrefs": typeof lib_notificationPrefs;
   "lib/notifyEvent": typeof lib_notifyEvent;
   "lib/ranks": typeof lib_ranks;
   "lib/rollNights": typeof lib_rollNights;
@@ -201,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   modules: typeof modules;
   notificationAudit: typeof notificationAudit;
   notificationHistory: typeof notificationHistory;
+  notificationPrefs: typeof notificationPrefs;
   notificationSettings: typeof notificationSettings;
   passwordReset: typeof passwordReset;
   plannedShifts: typeof plannedShifts;

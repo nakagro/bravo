@@ -64,6 +64,33 @@ export const sendNotification = action({
       recipientUserIds,
     });
 
+    // Respect each member's preferences and module access. History above is
+    // still written, so a muted push stays visible in the app.
+    const blocked = new Map(
+      (
+        await ctx.runQuery(internal.notificationPrefs.pushBlockedUsers, {
+          userIds: Array.from(new Set(subs.map((sub: any) => sub.userId))),
+          notificationType: args.notificationType,
+        })
+      ).map((b) => [b.userId, b.reason])
+    );
+    for (const [userId, reason] of blocked) {
+      await ctx.runMutation(api.notificationAudit.logAttempt, {
+        userId,
+        subscriptionId: undefined,
+        endpoint: undefined,
+        notificationType: args.notificationType,
+        source: args.source,
+        title: args.title,
+        body: args.body,
+        success: false,
+        error: reason,
+        sentAt: now,
+      });
+    }
+    const deliverable = subs.filter((sub: any) => !blocked.has(sub.userId));
+    if (blocked.size > 0 && deliverable.length === 0) return null;
+
     if (subs.length === 0) {
       // Audit: no subscriptions found for this user
       await ctx.runMutation(api.notificationAudit.logAttempt, {
@@ -98,7 +125,7 @@ export const sendNotification = action({
       return null;
     }
 
-    for (const sub of subs) {
+    for (const sub of deliverable) {
       try {
         await webpush.sendNotification(sub.subscription, payload);
         // Audit success

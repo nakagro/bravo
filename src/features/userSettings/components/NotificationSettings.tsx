@@ -4,6 +4,7 @@ import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
 import { Button } from '../../../components/ui/button';
 import { toast } from 'sonner';
+import { NotificationPrefsList } from './NotificationPrefsList';
 import { openInstallPrompt, resolveInstallPlatform } from '@/lib/installState';
 import {
   Bell,
@@ -172,6 +173,17 @@ function DeviceList() {
         notifications on that device to re-register it.
       </p>
     </div>
+  );
+}
+
+function NotificationTypePrefs() {
+  const rows = useQuery(api.notificationPrefs.getMyNotificationPrefs);
+  const setPref = useMutation(api.notificationPrefs.setMyNotificationPref);
+  return (
+    <NotificationPrefsList
+      rows={rows}
+      onChange={(category, enabled) => setPref({ category, enabled })}
+    />
   );
 }
 
@@ -345,6 +357,19 @@ export function NotificationSettings() {
           </p>
         </div>
       )}
+
+      {/* Which kinds of push this member wants */}
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <div>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+            What to notify me about
+          </h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Switching one off only stops the push. It still shows in BRAVO and your Action Centre.
+          </p>
+        </div>
+        <NotificationTypePrefs />
+      </div>
 
       {/* Registered devices, testing, and removal */}
       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">

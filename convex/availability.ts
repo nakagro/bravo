@@ -546,6 +546,8 @@ export const processStatusTransitions = mutation({
             title: "Status Updated",
             body: `Your status has been reset from "${previousStatus}" as scheduled.`,
             userId: user._id,
+            notificationType: "statusChange",
+            source: "scheduler:statusTransition",
           });
         } else {
           // Transition to the specified next status
@@ -570,6 +572,8 @@ export const processStatusTransitions = mutation({
             title: "Status Updated",
             body: `Your status has changed from "${previousStatus}" to "${user.nextStatus}" as scheduled.`,
             userId: user._id,
+            notificationType: "statusChange",
+            source: "scheduler:statusTransition",
           });
         }
         

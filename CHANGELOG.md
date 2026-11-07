@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026.11.07]
+- Notifications: Members can choose which kinds of push notification they get in Settings.
+- Notifications: Members without access to Availability no longer get the daily availability reminders.
+- Admin: Admins can see and change a member's notification choices from User Management.
+
 ## [2026.10.14]
 - General: Reminders and the overnight reset now keep their usual times through daylight saving.
 
