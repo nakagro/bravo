@@ -91,7 +91,11 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
                 headcount, or - for whoever can fix it - that nobody has
                 confirmed one yet. */}
             {isPast && !isCancelled && (
-              <AttendanceBadge attendedCount={event.attendedCount} canManage={event.canManage} />
+              <AttendanceBadge
+                attendedCount={event.attendedCount}
+                notNeeded={event.attendanceNotNeeded === true}
+                canManage={event.canManage}
+              />
             )}
             <EventStatusBadge status={event.status} />
           </div>

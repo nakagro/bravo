@@ -167,13 +167,24 @@ export function TeamLeaderBadge({
  */
 export function AttendanceBadge({
   attendedCount,
+  notNeeded = false,
   canManage = false,
   className = "",
 }: {
   attendedCount: number | null;
+  notNeeded?: boolean;
   canManage?: boolean;
   className?: string;
 }) {
+  if (notNeeded) {
+    return (
+      <span
+        className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 ${className}`}
+      >
+        No attendance needed
+      </span>
+    );
+  }
   if (attendedCount === null) {
     if (!canManage) return null;
     return (

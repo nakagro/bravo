@@ -1166,6 +1166,7 @@ const applicationTables = {
     status: v.union(v.literal("present"), v.literal("apology"), v.literal("absent")),
     recordedBy: v.id("users"), // For an apology, the officer who took it
     recordedAt: v.number(),
+    note: v.optional(v.string()), // e.g. "Arrived 20:30" - goes with the mark
   })
     .index("by_nightId", ["nightId"])
     .index("by_nightId_and_rollMemberId", ["nightId", "rollMemberId"])
@@ -1294,6 +1295,9 @@ const applicationTables = {
     // showing on a past event, not just a missing value.
     attendanceConfirmedAt: v.optional(v.number()),
     attendanceConfirmedBy: v.optional(v.id("users")),
+    // Set alongside attendanceConfirmedAt when a manager closes the event off
+    // as needing no attendance record - it then has no eventAttendance rows.
+    attendanceNotNeeded: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

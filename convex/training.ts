@@ -389,6 +389,7 @@ export const getNight = query({
               status: markStatusValidator,
               recordedBy: v.union(nameValidator, v.null()),
               recordedAt: v.number(),
+              note: v.union(v.string(), v.null()),
             })
           ),
         })
@@ -425,6 +426,7 @@ export const getNight = query({
               status: mark.status,
               recordedBy: await nameOf(mark.recordedBy),
               recordedAt: mark.recordedAt,
+              note: mark.note ?? null,
             }
           : null,
       });
@@ -506,6 +508,49 @@ export const setMark = mutation({
       changedBy: userId,
       changedAt: now,
     });
+    return null;
+  },
+});
+
+const MAX_NOTE_LENGTH = 200;
+
+/**
+ * Set or clear the note on a member's mark ("Arrived 20:30"). A note belongs
+ * to a mark, so the member must be marked first, and un-marking drops it.
+ * The Duty Officer may note the apologies they took while the roll is open.
+ */
+export const setMarkNote = mutation({
+  args: {
+    date: v.string(),
+    who: whoValidator,
+    note: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId, access } = await requireAccess(ctx, "apologies");
+    const night = await nightRow(ctx, args.date);
+    if (!night) throw new Error("Mark the member before adding a note");
+    if (night.status === "cancelled") throw new Error("This roll was cancelled");
+
+    const rollMemberId = await resolveRollMember(ctx, args.who, userId);
+    const existing = await ctx.db
+      .query("rollMarks")
+      .withIndex("by_nightId_and_rollMemberId", (q) =>
+        q.eq("nightId", night._id).eq("rollMemberId", rollMemberId)
+      )
+      .first();
+    if (!existing) throw new Error("Mark the member before adding a note");
+
+    if (!access.canManage && !(night.status === "open" && existing.status === "apology")) {
+      throw new Error("The Duty Officer can only add notes to apologies");
+    }
+
+    const note = args.note.trim();
+    if (note.length > MAX_NOTE_LENGTH) {
+      throw new Error(`Notes are limited to ${MAX_NOTE_LENGTH} characters`);
+    }
+    if ((existing.note ?? "") === note) return null;
+    await ctx.db.patch(existing._id, { note: note || undefined });
     return null;
   },
 });

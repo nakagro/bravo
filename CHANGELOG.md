@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.11.10]
+- Training Roll: Officers can add a short note to a member's mark, such as arriving late.
+- Events: A past event can be marked as needing no attendance record so it stops showing as unconfirmed.
+
 ## [2026.11.07]
 - Notifications: Members can choose which kinds of push notification they get in Settings.
 - Notifications: Members without access to Availability no longer get the daily availability reminders.

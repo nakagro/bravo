@@ -116,6 +116,8 @@ export function EventDetailPage() {
   const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
   const deleteEvent = useMutation(api.events.deleteEvent);
+  const markAttendanceNotNeeded = useMutation(api.events.markAttendanceNotNeeded);
+  const clearEventAttendance = useMutation(api.events.clearEventAttendance);
 
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -229,6 +231,19 @@ export function EventDetailPage() {
   const hasStarted = !isCancelled && event.startDate <= getTodayStr();
   const attendanceConfirmed = confirmedAttendance?.confirmedAt != null;
   const attendees = confirmedAttendance?.attendees ?? [];
+  const attendanceNotNeeded = confirmedAttendance?.notNeeded === true;
+
+  const handleNotNeeded = async (notNeeded: boolean) => {
+    try {
+      if (notNeeded) await markAttendanceNotNeeded({ eventId: event._id });
+      else await clearEventAttendance({ eventId: event._id });
+      toast.success(notNeeded ? "Marked as no attendance needed" : "Attendance reopened");
+    } catch (error) {
+      toast.error("Couldn't update attendance", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
 
   const handleCopyAttendees = async () => {
     // What gets typed into the public-facing system afterwards: the event, the
@@ -382,7 +397,7 @@ export function EventDetailPage() {
                       <>
                         <DropdownMenuItem onSelect={() => setShowAttendanceDialog(true)}>
                           <ClipboardCheck className="h-4 w-4" />
-                          {attendanceConfirmed ? "Amend attendance" : "Confirm attendance"}
+                          {attendanceConfirmed && !attendanceNotNeeded ? "Amend attendance" : "Confirm attendance"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                       </>
@@ -491,6 +506,7 @@ export function EventDetailPage() {
                   </span>
                   <AttendanceBadge
                     attendedCount={attendanceConfirmed ? attendees.length : null}
+                    notNeeded={attendanceNotNeeded}
                     canManage={canManageEvents}
                   />
                 </>
@@ -688,11 +704,12 @@ export function EventDetailPage() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
-                    Who attended{attendanceConfirmed ? ` (${attendees.length})` : ""}
+                    Who attended
+                    {attendanceConfirmed && !attendanceNotNeeded ? ` (${attendees.length})` : ""}
                   </h3>
                   {attendanceConfirmed && confirmedAttendance?.confirmedAt && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Confirmed
+                      {attendanceNotNeeded ? "Marked as no attendance needed" : "Confirmed"}
                       {confirmedAttendance.confirmedBy
                         ? ` by ${formatUserName(confirmedAttendance.confirmedBy)}`
                         : ""}{" "}
@@ -705,7 +722,15 @@ export function EventDetailPage() {
                     </p>
                   )}
                 </div>
-                {attendanceConfirmed && (
+                {attendanceNotNeeded && canManageEvents && (
+                  <button
+                    onClick={() => void handleNotNeeded(false)}
+                    className="flex-shrink-0 px-2.5 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Undo
+                  </button>
+                )}
+                {attendanceConfirmed && !attendanceNotNeeded && (
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={handleCopyAttendees}
@@ -732,13 +757,25 @@ export function EventDetailPage() {
               </div>
 
               {!attendanceConfirmed ? (
-                <button
-                  onClick={() => setShowAttendanceDialog(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  <ClipboardCheck className="h-4 w-4" />
-                  Confirm attendance
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => setShowAttendanceDialog(true)}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
+                    Confirm attendance
+                  </button>
+                  <button
+                    onClick={() => void handleNotNeeded(true)}
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    No attendance needed
+                  </button>
+                </div>
+              ) : attendanceNotNeeded ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  This event doesn&apos;t need an attendance record.
+                </p>
               ) : attendees.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Confirmed as nobody attending.

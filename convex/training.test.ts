@@ -334,3 +334,73 @@ describe("report", () => {
     expect(training.nights.map((n) => n.date)).toEqual([TRAINING]);
   });
 });
+
+describe("mark notes", () => {
+  const noteOf = async (s: Awaited<ReturnType<typeof setup>>, lastName: string) => {
+    const night = await s.asCaptain.query(api.training.getNight, { date: TRAINING });
+    return night?.members.find((m) => m.member.lastName === lastName)?.mark?.note ?? null;
+  };
+
+  it("keeps a note with the mark, through a status change, until un-marked", async () => {
+    const s = await setup();
+    const who = { userId: s.memberId };
+
+    await expect(
+      s.asCaptain.mutation(api.training.setMarkNote, { date: TRAINING, who, note: "Late" }),
+    ).rejects.toThrow(/Mark the member/);
+
+    await s.asCaptain.mutation(api.training.setMark, { date: TRAINING, who, status: "present" });
+    await s.asCaptain.mutation(api.training.setMarkNote, {
+      date: TRAINING,
+      who,
+      note: "  Arrived 20:30 ",
+    });
+    expect(await noteOf(s, "Adams")).toBe("Arrived 20:30");
+
+    await s.asCaptain.mutation(api.training.setMark, { date: TRAINING, who, status: "apology" });
+    expect(await noteOf(s, "Adams")).toBe("Arrived 20:30");
+
+    await s.asCaptain.mutation(api.training.setMarkNote, { date: TRAINING, who, note: "" });
+    expect(await noteOf(s, "Adams")).toBeNull();
+
+    await s.asCaptain.mutation(api.training.setMarkNote, { date: TRAINING, who, note: "x" });
+    await s.asCaptain.mutation(api.training.setMark, { date: TRAINING, who, status: null });
+    await s.asCaptain.mutation(api.training.setMark, { date: TRAINING, who, status: "present" });
+    expect(await noteOf(s, "Adams")).toBeNull();
+  });
+
+  it("lets the Duty Officer note an apology, but not any other mark", async () => {
+    const s = await setup();
+    await s.asDO.mutation(api.training.setMark, {
+      date: TRAINING,
+      who: { userId: s.memberId },
+      status: "apology",
+    });
+    await s.asDO.mutation(api.training.setMarkNote, {
+      date: TRAINING,
+      who: { userId: s.memberId },
+      note: "Sick",
+    });
+    expect(await noteOf(s, "Adams")).toBe("Sick");
+
+    await s.asCaptain.mutation(api.training.setMark, {
+      date: TRAINING,
+      who: { userId: s.captainId },
+      status: "present",
+    });
+    await expect(
+      s.asDO.mutation(api.training.setMarkNote, {
+        date: TRAINING,
+        who: { userId: s.captainId },
+        note: "Hi",
+      }),
+    ).rejects.toThrow(/only add notes to apologies/);
+    await expect(
+      s.asMember.mutation(api.training.setMarkNote, {
+        date: TRAINING,
+        who: { userId: s.memberId },
+        note: "Hi",
+      }),
+    ).rejects.toThrow(/Only officers/);
+  });
+});

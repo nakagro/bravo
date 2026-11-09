@@ -65,6 +65,65 @@ const STATUS_OPTIONS: { status: MarkStatus; selected: string }[] = [
 ];
 
 /**
+ * A short free-text note on a mark ("Arrived 20:30"). Collapsed to a link
+ * until opened; saves on blur or Enter, Escape abandons the edit.
+ */
+function MarkNote({
+  note,
+  canEdit,
+  onSave,
+}: {
+  note: string | null;
+  canEdit: boolean;
+  onSave: (note: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note ?? "");
+
+  if (!editing) {
+    if (!canEdit) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setDraft(note ?? "");
+          setEditing(true);
+        }}
+        className="min-h-[44px] text-left text-sm text-muted-foreground underline-offset-2 hover:underline"
+      >
+        {note ? "Edit note" : "Add note"}
+      </button>
+    );
+  }
+
+  const save = () => {
+    setEditing(false);
+    if (draft.trim() !== (note ?? "")) void onSave(draft);
+  };
+
+  return (
+    <input
+      type="text"
+      autoFocus
+      value={draft}
+      maxLength={200}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          setDraft(note ?? "");
+          setEditing(false);
+        }
+      }}
+      placeholder="e.g. Arrived 20:30"
+      aria-label="Note"
+      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+    />
+  );
+}
+
+/**
  * One night's roll, in roll order. Every member is marked one of three ways -
  * Present, Absent, or Apology (absent, but sent apologies) - and the difference
  * between the last two is a recorded stat. Apologies the Duty Officer took
@@ -75,6 +134,7 @@ export function NightRoll({ date }: { date: string }) {
   const navigate = useNavigate();
   const data = useQuery(api.training.getNight, { date });
   const setMark = useMutation(api.training.setMark);
+  const setMarkNote = useMutation(api.training.setMarkNote);
   const closeRoll = useMutation(api.training.closeRoll);
   const setNightCancelled = useMutation(api.training.setNightCancelled);
 
@@ -123,6 +183,22 @@ export function NightRoll({ date }: { date: string }) {
       });
     }
   };
+
+  const saveNote = async (row: RollRow, note: string) => {
+    try {
+      await setMarkNote({ date, who: whoOf(row), note });
+    } catch (error) {
+      toast.error("Couldn't save the note", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
+  // Notes go with a mark; the Duty Officer may only note an apology they can still edit
+  const canNote = (row: RollRow) =>
+    !isCancelled &&
+    row.mark !== null &&
+    (canManage || (isOpen && row.mark.status === "apology"));
 
   // What this viewer may pick for a row. The Duty Officer only handles
   // apologies, and only before the roll is closed.
@@ -175,13 +251,14 @@ export function NightRoll({ date }: { date: string }) {
 
   const exportCsv = () => {
     downloadCsv(`roll-${date}.csv`, [
-      ["Name", "Rank", "CFA ID", "Status", "Recorded by"],
+      ["Name", "Rank", "CFA ID", "Status", "Recorded by", "Note"],
       ...rows.map((row) => [
         personName(row.member),
         rankLabel(row.member),
         row.member.memberNumber ?? "",
         row.mark ? MARK_LABELS[row.mark.status] : "Not marked",
         row.mark?.recordedBy ? personName(row.mark.recordedBy) : "",
+        row.mark?.note ?? "",
       ]),
     ]);
   };
@@ -205,13 +282,21 @@ export function NightRoll({ date }: { date: string }) {
           </>
         }
         meta={
-          status === "apology" && row.mark?.recordedBy ? (
-            <span className="text-xs text-amber-700 dark:text-amber-300">
-              Apology taken by {personName(row.mark.recordedBy)}
+          (status === "apology" && row.mark?.recordedBy) || row.mark?.note ? (
+            <span className="flex flex-col gap-0.5">
+              {status === "apology" && row.mark?.recordedBy && (
+                <span className="text-xs text-amber-700 dark:text-amber-300">
+                  Apology taken by {personName(row.mark.recordedBy)}
+                </span>
+              )}
+              {row.mark?.note && (
+                <span className="text-xs text-foreground">Note: {row.mark.note}</span>
+              )}
             </span>
           ) : undefined
         }
         footer={
+          <div className="space-y-1">
           <div
             role="radiogroup"
             aria-label={`Mark ${personName(row.member)}`}
@@ -241,6 +326,13 @@ export function NightRoll({ date }: { date: string }) {
                 </button>
               );
             })}
+          </div>
+          <MarkNote
+            key={row.mark?.note ?? ""}
+            note={row.mark?.note ?? null}
+            canEdit={canNote(row)}
+            onSave={(note) => saveNote(row, note)}
+          />
           </div>
         }
       />

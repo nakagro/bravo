@@ -142,6 +142,7 @@ const enrichedEventValidator = v.object({
   teamLeaderIds: v.optional(v.array(v.id("users"))),
   attendanceConfirmedAt: v.optional(v.number()),
   attendanceConfirmedBy: v.optional(v.id("users")),
+  attendanceNotNeeded: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
   counts: v.object({
@@ -850,6 +851,8 @@ export const getConfirmedAttendance = query({
     v.object({
       confirmedAt: v.union(v.number(), v.null()),
       confirmedBy: v.union(userNameValidator, v.null()),
+      // Closed off as needing no attendance record (attendees is then empty)
+      notNeeded: v.boolean(),
       attendees: v.array(userNameValidator),
       // Whether the caller may record/amend it (eventsAdmin, organiser, leader)
       canConfirm: v.boolean(),
@@ -900,7 +903,7 @@ export const getConfirmedAttendance = query({
       unexpected: ReturnType<typeof nameOf>[];
     } | null = null;
 
-    if (canConfirm && event.attendanceConfirmedAt) {
+    if (canConfirm && event.attendanceConfirmedAt && !event.attendanceNotNeeded) {
       const { expected, going } = await expectedAttendeesFor(ctx, event);
       const attendedIds = new Set(attendeeDocs.map((user) => user._id));
 
@@ -921,6 +924,7 @@ export const getConfirmedAttendance = query({
     return {
       confirmedAt: event.attendanceConfirmedAt ?? null,
       confirmedBy: confirmedByUser ? nameOf(confirmedByUser) : null,
+      notNeeded: event.attendanceNotNeeded === true,
       attendees,
       canConfirm,
       deviation,
@@ -1094,6 +1098,7 @@ export const setEventAttendance = mutation({
     await ctx.db.patch(args.eventId, {
       attendanceConfirmedAt: now,
       attendanceConfirmedBy: adminId,
+      attendanceNotNeeded: undefined,
       updatedAt: now,
     });
 
@@ -1108,6 +1113,46 @@ export const setEventAttendance = mutation({
       notes: `${requested.size} ${requested.size === 1 ? "member" : "members"} attended`,
     });
 
+    return null;
+  },
+});
+
+/**
+ * Close a past event off as needing no attendance record (a meeting nobody
+ * reports on, a cancelled-in-all-but-name event), so it stops showing as
+ * unconfirmed. Any recorded list is dropped. Undone with clearEventAttendance;
+ * confirming attendance afterwards replaces it.
+ */
+export const markAttendanceNotNeeded = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
+    if (event.attendanceNotNeeded) return null;
+
+    const existing = await ctx.db
+      .query("eventAttendance")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    for (const row of existing) await ctx.db.delete(row._id);
+
+    const now = Date.now();
+    await ctx.db.patch(args.eventId, {
+      attendanceConfirmedAt: now,
+      attendanceConfirmedBy: adminId,
+      attendanceNotNeeded: true,
+      updatedAt: now,
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId: adminId,
+      changeType: "attendance_not_needed",
+      field: "attendance",
+      oldValue: event.attendanceConfirmedAt !== undefined ? existing.length : null,
+      newValue: null,
+      notes: "No attendance record needed",
+    });
     return null;
   },
 });
@@ -1136,6 +1181,7 @@ export const clearEventAttendance = mutation({
     await ctx.db.patch(args.eventId, {
       attendanceConfirmedAt: undefined,
       attendanceConfirmedBy: undefined,
+      attendanceNotNeeded: undefined,
       updatedAt: Date.now(),
     });
 

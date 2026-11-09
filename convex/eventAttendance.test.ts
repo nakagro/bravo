@@ -294,3 +294,33 @@ describe("getAttendanceSheet", () => {
     expect(await asCarol.query(api.events.getAttendanceSheet, { eventId })).toBeNull();
   });
 });
+
+describe("markAttendanceNotNeeded", () => {
+  it("closes the event off with no list, and undo or confirming reopens it", async () => {
+    const { asAdmin, asAlice, eventId, aliceId } = await setup();
+
+    await asAdmin.mutation(api.events.setEventAttendance, { eventId, userIds: [aliceId] });
+    await asAdmin.mutation(api.events.markAttendanceNotNeeded, { eventId });
+
+    let confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
+    expect(confirmed?.notNeeded).toBe(true);
+    expect(confirmed?.confirmedAt).not.toBeNull();
+    expect(confirmed?.attendees).toEqual([]);
+    expect(confirmed?.deviation).toBeNull();
+
+    await asAdmin.mutation(api.events.clearEventAttendance, { eventId });
+    confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
+    expect(confirmed?.notNeeded).toBe(false);
+    expect(confirmed?.confirmedAt).toBeNull();
+
+    await asAdmin.mutation(api.events.markAttendanceNotNeeded, { eventId });
+    await asAdmin.mutation(api.events.setEventAttendance, { eventId, userIds: [aliceId] });
+    confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
+    expect(confirmed?.notNeeded).toBe(false);
+    expect(confirmed?.attendees).toHaveLength(1);
+
+    await expect(
+      asAlice.mutation(api.events.markAttendanceNotNeeded, { eventId }),
+    ).rejects.toThrow();
+  });
+});
