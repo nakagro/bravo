@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
   ChecklistActionBar,
+  ChecklistNotesModal,
   ChecklistProgressHeader,
   ChecklistRow,
   type ChecklistItemStatus,
@@ -65,65 +66,6 @@ const STATUS_OPTIONS: { status: MarkStatus; selected: string }[] = [
 ];
 
 /**
- * A short free-text note on a mark ("Arrived 20:30"). Collapsed to a link
- * until opened; saves on blur or Enter, Escape abandons the edit.
- */
-function MarkNote({
-  note,
-  canEdit,
-  onSave,
-}: {
-  note: string | null;
-  canEdit: boolean;
-  onSave: (note: string) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note ?? "");
-
-  if (!editing) {
-    if (!canEdit) return null;
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setDraft(note ?? "");
-          setEditing(true);
-        }}
-        className="min-h-[44px] text-left text-sm text-muted-foreground underline-offset-2 hover:underline"
-      >
-        {note ? "Edit note" : "Add note"}
-      </button>
-    );
-  }
-
-  const save = () => {
-    setEditing(false);
-    if (draft.trim() !== (note ?? "")) void onSave(draft);
-  };
-
-  return (
-    <input
-      type="text"
-      autoFocus
-      value={draft}
-      maxLength={200}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          setDraft(note ?? "");
-          setEditing(false);
-        }
-      }}
-      placeholder="e.g. Arrived 20:30"
-      aria-label="Note"
-      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-    />
-  );
-}
-
-/**
  * One night's roll, in roll order. Every member is marked one of three ways -
  * Present, Absent, or Apology (absent, but sent apologies) - and the difference
  * between the last two is a recorded stat. Apologies the Duty Officer took
@@ -141,6 +83,9 @@ export function NightRoll({ date }: { date: string }) {
 
   const [search, setSearch] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
+  // The row whose note is being edited, and the draft in the sheet
+  const [noteRow, setNoteRow] = useState<RollRow | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
   const [closing, setClosing] = useState(false);
 
   const rows = useMemo(() => data?.members ?? [], [data]);
@@ -295,21 +240,24 @@ export function NightRoll({ date }: { date: string }) {
           </>
         }
         meta={
-          (status === "apology" && row.mark?.recordedBy) || row.mark?.note ? (
-            <span className="flex flex-col gap-0.5">
-              {status === "apology" && row.mark?.recordedBy && (
-                <span className="text-xs text-amber-700 dark:text-amber-300">
-                  Apology taken by {personName(row.mark.recordedBy)}
-                </span>
-              )}
-              {row.mark?.note && (
-                <span className="text-xs text-foreground">Note: {row.mark.note}</span>
-              )}
+          status === "apology" && row.mark?.recordedBy ? (
+            <span className="text-xs text-amber-700 dark:text-amber-300">
+              Apology taken by {personName(row.mark.recordedBy)}
             </span>
           ) : undefined
         }
+        notes={row.mark?.note ?? undefined}
+        // Only offered once there's a mark to hang it on; the icon stays grey
+        // until a note exists, so the roll still reads as a list of names
+        onOpenNotes={
+          canNote(row)
+            ? () => {
+                setNoteDraft(row.mark?.note ?? "");
+                setNoteRow(row);
+              }
+            : undefined
+        }
         footer={
-          <div className="space-y-1">
           <div
             role="radiogroup"
             aria-label={`Mark ${personName(row.member)}`}
@@ -339,13 +287,6 @@ export function NightRoll({ date }: { date: string }) {
                 </button>
               );
             })}
-          </div>
-          <MarkNote
-            key={row.mark?.note ?? ""}
-            note={row.mark?.note ?? null}
-            canEdit={canNote(row)}
-            onSave={(note) => saveNote(row, note)}
-          />
           </div>
         }
       />
@@ -481,6 +422,21 @@ export function NightRoll({ date }: { date: string }) {
           )}
         </>
       )}
+
+      <ChecklistNotesModal
+        open={noteRow !== null}
+        onClose={() => setNoteRow(null)}
+        title={noteRow ? `Note for ${personName(noteRow.member)}` : "Note"}
+        value={noteDraft}
+        onChange={(value) => setNoteDraft(value.slice(0, 200))}
+        onSave={() => {
+          if (noteRow && noteDraft.trim() !== (noteRow.mark?.note ?? "")) {
+            void saveNote(noteRow, noteDraft);
+          }
+          setNoteRow(null);
+        }}
+        placeholder="e.g. Arrived 20:30"
+      />
 
       <DeleteConfirmDialog
         open={confirmClose}
