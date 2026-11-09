@@ -53,6 +53,8 @@ function progressOf(rows: RollRow[]): ChecklistProgress {
   };
 }
 
+const ROLL_KIND_NAMES = { training: "Training", meeting: "Brigade Meeting" } as const;
+
 const whoOf = (row: RollRow) =>
   row.member.rollMemberId
     ? { rollMemberId: row.member.rollMemberId }
@@ -83,6 +85,8 @@ export function NightRoll({ date }: { date: string }) {
 
   const [search, setSearch] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
+  // Header actions that change the night itself ask first - they're icon-only
+  const [confirmAction, setConfirmAction] = useState<"cancel" | "kind" | null>(null);
   // The row whose note is being edited, and the draft in the sheet
   const [noteRow, setNoteRow] = useState<RollRow | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
@@ -196,6 +200,8 @@ export function NightRoll({ date }: { date: string }) {
   };
 
   const otherKind = night.kind === "meeting" ? "training" : "meeting";
+  const kindLabel = night.kind === "other" ? "this roll" : ROLL_KIND_NAMES[night.kind];
+  const otherKindLabel = ROLL_KIND_NAMES[otherKind];
   const handleKindSwitch = async () => {
     try {
       await setNightKind({ date, kind: otherKind });
@@ -318,9 +324,9 @@ export function NightRoll({ date }: { date: string }) {
                     variant="ghost"
                     size="icon"
                     className="h-11 w-11"
-                    onClick={() => void handleKindSwitch()}
-                    aria-label={`Change to ${otherKind === "meeting" ? "Brigade Meeting" : "Training"}`}
-                    title={`Change to ${otherKind === "meeting" ? "Brigade Meeting" : "Training"}`}
+                    onClick={() => setConfirmAction("kind")}
+                    aria-label={`Change to ${otherKindLabel}`}
+                    title={`Change to ${otherKindLabel}`}
                   >
                     <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
                   </Button>
@@ -340,7 +346,9 @@ export function NightRoll({ date }: { date: string }) {
                     variant="ghost"
                     size="icon"
                     className="h-11 w-11"
-                    onClick={() => void handleCancelToggle()}
+                    onClick={() =>
+                      isCancelled ? void handleCancelToggle() : setConfirmAction("cancel")
+                    }
                     aria-label={isCancelled ? "Restore roll" : "Cancel roll"}
                     title={isCancelled ? "Restore roll" : "Cancel roll"}
                   >
@@ -439,6 +447,32 @@ export function NightRoll({ date }: { date: string }) {
           setNoteRow(null);
         }}
         placeholder="e.g. Arrived 20:30"
+      />
+
+      <DeleteConfirmDialog
+        open={confirmAction === "kind"}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title={`Change to ${otherKindLabel}?`}
+        description={`This night is currently ${kindLabel}. It will be recorded and reported as ${otherKindLabel} instead. Marks are kept, and you can change it back.`}
+        confirmLabel={`Change to ${otherKindLabel}`}
+        destructive={false}
+        onConfirm={() => {
+          setConfirmAction(null);
+          void handleKindSwitch();
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={confirmAction === "cancel"}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title="Cancel this roll?"
+        description={`Use this when ${kindLabel} isn't going ahead. The night won't count towards anyone's attendance. You can restore it afterwards.`}
+        confirmLabel="Cancel roll"
+        cancelLabel="Keep roll"
+        onConfirm={() => {
+          setConfirmAction(null);
+          void handleCancelToggle();
+        }}
       />
 
       <DeleteConfirmDialog
