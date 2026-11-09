@@ -55,6 +55,7 @@ const eventFormSchema = z
     hasShifts: z.boolean(),
     // Social events (the annual dinner): members say how many they're bringing
     allowsGuests: z.boolean(),
+    attendanceNotNeeded: z.boolean(),
     // Blank = no limit, which is the default
     maxGuestsPerMember: z.string(),
     collectsDietary: z.boolean(),
@@ -120,6 +121,7 @@ const blankDefaults: EventFormValues = {
   isMultiDay: false,
   hasShifts: false,
   allowsGuests: false,
+  attendanceNotNeeded: false,
   maxGuestsPerMember: "",
   collectsDietary: false,
   responsesClosed: false,
@@ -245,6 +247,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           !!existingEvent.endDate && existingEvent.endDate !== existingEvent.startDate,
         hasShifts: existingEvent.hasShifts ?? false,
         allowsGuests: existingEvent.allowsGuests ?? false,
+        attendanceNotNeeded: existingEvent.attendanceNotNeeded ?? false,
         maxGuestsPerMember:
           existingEvent.maxGuestsPerMember != null
             ? String(existingEvent.maxGuestsPerMember)
@@ -341,6 +344,11 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           eventTypeId: fields.eventTypeId as "" | Id<"eventTypes">,
           hasShifts: values.hasShifts,
           ...guestFields,
+          // Only sent when changed, so an untouched edit can't drop a confirmed list
+          attendanceNotNeeded:
+            values.attendanceNotNeeded !== (existingEvent?.attendanceNotNeeded ?? false)
+              ? values.attendanceNotNeeded
+              : undefined,
           // "" clears the cap back to unlimited
           maxGuestsPerMember: guestFields.allowsGuests
             ? values.maxGuestsPerMember
@@ -365,6 +373,7 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
           description: fields.description || undefined,
           hasShifts: values.hasShifts,
           ...guestFields,
+          attendanceNotNeeded: values.attendanceNotNeeded || undefined,
           maxGuestsPerMember:
             guestFields.allowsGuests && values.maxGuestsPerMember
               ? Number(values.maxGuestsPerMember)
@@ -913,6 +922,41 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
             )}
           />
         )}
+
+        {/* Off once a list has been confirmed - switching it on would drop the
+            list, and that's a decision for the event page, not a form toggle. */}
+        <FormField
+          control={form.control}
+          name="attendanceNotNeeded"
+          render={({ field }) => {
+            const confirmed = existingEvent?.attendanceConfirmedAt !== undefined;
+            return (
+              <FormItem>
+                <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                  <span>
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      No attendance record needed
+                    </span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      {confirmed
+                        ? "Attendance has already been confirmed for this event."
+                        : "Skips confirming who attended once the event is over."}
+                    </span>
+                  </span>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={confirmed}
+                      aria-label="No attendance record needed"
+                      className="h-7 w-12 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                    />
+                  </FormControl>
+                </label>
+              </FormItem>
+            );
+          }}
+        />
 
         {/* Slots editor */}
         {watchHasShifts && (

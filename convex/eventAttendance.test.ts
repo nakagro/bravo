@@ -295,32 +295,48 @@ describe("getAttendanceSheet", () => {
   });
 });
 
-describe("markAttendanceNotNeeded", () => {
-  it("closes the event off with no list, and undo or confirming reopens it", async () => {
+describe("attendance not needed", () => {
+  it("can be set after the fact, undone, and is lifted by confirming", async () => {
     const { asAdmin, asAlice, eventId, aliceId } = await setup();
 
     await asAdmin.mutation(api.events.setEventAttendance, { eventId, userIds: [aliceId] });
-    await asAdmin.mutation(api.events.markAttendanceNotNeeded, { eventId });
+    await asAdmin.mutation(api.events.setAttendanceNotNeeded, { eventId, notNeeded: true });
 
     let confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
     expect(confirmed?.notNeeded).toBe(true);
-    expect(confirmed?.confirmedAt).not.toBeNull();
+    expect(confirmed?.confirmedAt).toBeNull();
     expect(confirmed?.attendees).toEqual([]);
-    expect(confirmed?.deviation).toBeNull();
 
-    await asAdmin.mutation(api.events.clearEventAttendance, { eventId });
+    await asAdmin.mutation(api.events.setAttendanceNotNeeded, { eventId, notNeeded: false });
     confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
     expect(confirmed?.notNeeded).toBe(false);
-    expect(confirmed?.confirmedAt).toBeNull();
 
-    await asAdmin.mutation(api.events.markAttendanceNotNeeded, { eventId });
+    await asAdmin.mutation(api.events.setAttendanceNotNeeded, { eventId, notNeeded: true });
     await asAdmin.mutation(api.events.setEventAttendance, { eventId, userIds: [aliceId] });
     confirmed = await asAdmin.query(api.events.getConfirmedAttendance, { eventId });
     expect(confirmed?.notNeeded).toBe(false);
     expect(confirmed?.attendees).toHaveLength(1);
 
     await expect(
-      asAlice.mutation(api.events.markAttendanceNotNeeded, { eventId }),
+      asAlice.mutation(api.events.setAttendanceNotNeeded, { eventId, notNeeded: true }),
     ).rejects.toThrow();
+  });
+
+  it("can be set when the event is created and changed by editing it", async () => {
+    const { asAdmin } = await setup();
+    const eventId = await asAdmin.mutation(api.events.createEvent, {
+      title: "Committee catch-up",
+      startDate: EVENT_DATE,
+      isAllDay: true,
+      attendanceNotNeeded: true,
+    });
+    const notNeeded = async () =>
+      (await asAdmin.query(api.events.getConfirmedAttendance, { eventId }))?.notNeeded;
+    expect(await notNeeded()).toBe(true);
+
+    await asAdmin.mutation(api.events.updateEvent, { eventId, attendanceNotNeeded: false });
+    expect(await notNeeded()).toBe(false);
+    await asAdmin.mutation(api.events.updateEvent, { eventId, title: "Renamed" });
+    expect(await notNeeded()).toBe(false);
   });
 });

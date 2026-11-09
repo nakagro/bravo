@@ -1118,41 +1118,54 @@ export const setEventAttendance = mutation({
 });
 
 /**
- * Close a past event off as needing no attendance record (a meeting nobody
- * reports on, a cancelled-in-all-but-name event), so it stops showing as
- * unconfirmed. Any recorded list is dropped. Undone with clearEventAttendance;
- * confirming attendance afterwards replaces it.
+ * Flag an event as needing no attendance record (or lift the flag). Flagged
+ * events never show as unconfirmed. Turning it on drops any recorded list -
+ * the two states don't coexist; confirming attendance later lifts the flag.
  */
-export const markAttendanceNotNeeded = mutation({
-  args: { eventId: v.id("events") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
-    if (event.attendanceNotNeeded) return null;
-
+async function applyAttendanceNotNeeded(
+  ctx: MutationCtx,
+  event: Doc<"events">,
+  actorId: Id<"users">,
+  notNeeded: boolean
+) {
+  if ((event.attendanceNotNeeded === true) === notNeeded) return;
+  const now = Date.now();
+  if (!notNeeded) {
+    await ctx.db.patch(event._id, { attendanceNotNeeded: undefined, updatedAt: now });
+  } else {
     const existing = await ctx.db
       .query("eventAttendance")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
       .collect();
     for (const row of existing) await ctx.db.delete(row._id);
-
-    const now = Date.now();
-    await ctx.db.patch(args.eventId, {
-      attendanceConfirmedAt: now,
-      attendanceConfirmedBy: adminId,
+    await ctx.db.patch(event._id, {
+      attendanceConfirmedAt: undefined,
+      attendanceConfirmedBy: undefined,
       attendanceNotNeeded: true,
       updatedAt: now,
     });
+  }
+  await recordHistory(ctx, {
+    eventId: event._id,
+    userId: actorId,
+    changeType: notNeeded ? "attendance_not_needed" : "attendance_needed",
+    field: "attendance",
+    oldValue: null,
+    newValue: null,
+    notes: notNeeded ? "No attendance record needed" : "Attendance record needed again",
+  });
+}
 
-    await recordHistory(ctx, {
-      eventId: args.eventId,
-      userId: adminId,
-      changeType: "attendance_not_needed",
-      field: "attendance",
-      oldValue: event.attendanceConfirmedAt !== undefined ? existing.length : null,
-      newValue: null,
-      notes: "No attendance record needed",
-    });
+/**
+ * Set whether an event needs an attendance record - from the event page after
+ * the fact; the event form sends the same flag through create/updateEvent.
+ */
+export const setAttendanceNotNeeded = mutation({
+  args: { eventId: v.id("events"), notNeeded: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId, event } = await requireEventManager(ctx, args.eventId);
+    await applyAttendanceNotNeeded(ctx, event, userId, args.notNeeded);
     return null;
   },
 });
@@ -1271,6 +1284,7 @@ export const createEvent = mutation({
     allowsGuests: v.optional(v.boolean()),
     maxGuestsPerMember: v.optional(v.number()),
     collectsDietary: v.optional(v.boolean()),
+    attendanceNotNeeded: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
     // Appliances that need crewing; each becomes an empty eventCrews row
     crewAppliances: v.optional(v.array(v.string())),
@@ -1300,6 +1314,7 @@ export const createEvent = mutation({
       allowsGuests: args.hasShifts ? undefined : args.allowsGuests,
       maxGuestsPerMember: args.hasShifts ? undefined : args.maxGuestsPerMember,
       collectsDietary: args.hasShifts ? undefined : args.collectsDietary,
+      attendanceNotNeeded: args.attendanceNotNeeded || undefined,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
@@ -1351,6 +1366,7 @@ export const updateEvent = mutation({
     // below already follows for optional fields).
     maxGuestsPerMember: v.optional(v.union(v.number(), v.literal(""))),
     collectsDietary: v.optional(v.boolean()),
+    attendanceNotNeeded: v.optional(v.boolean()),
     slots: v.optional(v.array(slotInputValidator)),
     // The full list of appliances needing crew. Sent = reconcile (an empty
     // list removes them all); absent = leave the crews alone.
@@ -1378,6 +1394,10 @@ export const updateEvent = mutation({
       "collectsDietary",
       "isAllDay",
     ] as const;
+
+    if (args.attendanceNotNeeded !== undefined) {
+      await applyAttendanceNotNeeded(ctx, event, userId, args.attendanceNotNeeded);
+    }
 
     const updateData: Record<string, unknown> = {};
 

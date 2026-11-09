@@ -1295,8 +1295,8 @@ const applicationTables = {
     // showing on a past event, not just a missing value.
     attendanceConfirmedAt: v.optional(v.number()),
     attendanceConfirmedBy: v.optional(v.id("users")),
-    // Set alongside attendanceConfirmedAt when a manager closes the event off
-    // as needing no attendance record - it then has no eventAttendance rows.
+    // This event needs no attendance record - set on the event form or from
+    // the event page afterwards. Never set together with attendanceConfirmedAt.
     attendanceNotNeeded: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),

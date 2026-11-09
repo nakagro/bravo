@@ -3,7 +3,7 @@
 ## [2026.11.10]
 - Training Roll: Officers can add a short note to a member's mark, such as arriving late.
 - Training Roll: Officers can switch a Tuesday between Training and the Brigade Meeting when the meeting moves.
-- Events: A past event can be marked as needing no attendance record so it stops showing as unconfirmed.
+- Events: An event can be set as needing no attendance record, when creating it or afterwards.
 
 ## [2026.11.07]
 - Notifications: Members can choose which kinds of push notification they get in Settings.
