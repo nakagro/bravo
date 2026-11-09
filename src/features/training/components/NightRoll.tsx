@@ -137,6 +137,7 @@ export function NightRoll({ date }: { date: string }) {
   const setMarkNote = useMutation(api.training.setMarkNote);
   const closeRoll = useMutation(api.training.closeRoll);
   const setNightCancelled = useMutation(api.training.setNightCancelled);
+  const setNightKind = useMutation(api.training.setNightKind);
 
   const [search, setSearch] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
@@ -249,6 +250,18 @@ export function NightRoll({ date }: { date: string }) {
     }
   };
 
+  const otherKind = night.kind === "meeting" ? "training" : "meeting";
+  const handleKindSwitch = async () => {
+    try {
+      await setNightKind({ date, kind: otherKind });
+      toast.success(otherKind === "meeting" ? "Now a Brigade Meeting" : "Now a Training night");
+    } catch (error) {
+      toast.error("Couldn't change the night", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
   const exportCsv = () => {
     downloadCsv(`roll-${date}.csv`, [
       ["Name", "Rank", "CFA ID", "Status", "Recorded by", "Note"],
@@ -356,6 +369,15 @@ export function NightRoll({ date }: { date: string }) {
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold text-foreground">{nightLabel(night)}</h1>
               <p className="text-sm text-muted-foreground">{formatNightDateLong(night.date)}</p>
+              {canManage && night.kind !== "other" && !isCancelled && (
+                <button
+                  type="button"
+                  onClick={() => void handleKindSwitch()}
+                  className="mt-1 min-h-[44px] text-left text-sm text-red-700 underline-offset-2 hover:underline dark:text-red-400"
+                >
+                  {otherKind === "meeting" ? "Make this a Brigade Meeting" : "Make this a Training night"}
+                </button>
+              )}
             </div>
             {canManage && (
               <div className="flex shrink-0 gap-1">

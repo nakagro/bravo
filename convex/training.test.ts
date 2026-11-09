@@ -404,3 +404,30 @@ describe("mark notes", () => {
     ).rejects.toThrow(/Only officers/);
   });
 });
+
+describe("moving the meeting", () => {
+  it("swaps the meeting to the following week, keeping marks", async () => {
+    const s = await setup();
+    const NEXT = "2026-10-20";
+    await s.asCaptain.mutation(api.training.setMark, {
+      date: MEETING,
+      who: { userId: s.memberId },
+      status: "present",
+    });
+
+    await s.asCaptain.mutation(api.training.setNightKind, { date: MEETING, kind: "training" });
+    await s.asCaptain.mutation(api.training.setNightKind, { date: NEXT, kind: "meeting" });
+
+    expect((await s.asCaptain.query(api.training.getNight, { date: MEETING }))?.night.kind).toBe(
+      "training",
+    );
+    expect((await s.asCaptain.query(api.training.getNight, { date: NEXT }))?.night.kind).toBe(
+      "meeting",
+    );
+    expect(await markOf(s, MEETING, "Adams")).toBe("present");
+
+    await expect(
+      s.asDO.mutation(api.training.setNightKind, { date: NEXT, kind: "training" }),
+    ).rejects.toThrow(/Only officers/);
+  });
+});

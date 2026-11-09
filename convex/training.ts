@@ -604,6 +604,23 @@ export const setNightCancelled = mutation({
   },
 });
 
+/**
+ * Switch a Tuesday between Training and the Brigade Meeting, for when the
+ * meeting moves (a guest speaker on the 2nd Tuesday pushes it a week). Each
+ * night is set on its own, so a swap is two changes. Marks are kept.
+ */
+export const setNightKind = mutation({
+  args: { date: v.string(), kind: v.union(v.literal("training"), v.literal("meeting")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId } = await requireAccess(ctx, "manage");
+    const night = await ensureNight(ctx, args.date, userId);
+    if (night.kind === "other") throw new Error("Only a regular Tuesday can be switched");
+    if (night.kind !== args.kind) await ctx.db.patch(night._id, { kind: args.kind });
+    return null;
+  },
+});
+
 /** Add a one-off roll night on a date that isn't a regular Tuesday. */
 export const addNight = mutation({
   args: { date: v.string(), title: v.string() },
