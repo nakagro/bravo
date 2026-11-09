@@ -17,7 +17,7 @@ import {
   type ChecklistProgress,
 } from "@/components/shared/checklist";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Download, Search, Ban, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Download, Search, Ban, RotateCcw } from "lucide-react";
 import {
   MARK_LABELS,
   downloadCsv,
@@ -310,18 +310,21 @@ export function NightRoll({ date }: { date: string }) {
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold text-foreground">{nightLabel(night)}</h1>
               <p className="text-sm text-muted-foreground">{formatNightDateLong(night.date)}</p>
-              {canManage && night.kind !== "other" && !isCancelled && (
-                <button
-                  type="button"
-                  onClick={() => void handleKindSwitch()}
-                  className="mt-1 min-h-[44px] text-left text-sm text-red-700 underline-offset-2 hover:underline dark:text-red-400"
-                >
-                  {otherKind === "meeting" ? "Make this a Brigade Meeting" : "Make this a Training night"}
-                </button>
-              )}
             </div>
             {canManage && (
               <div className="flex shrink-0 gap-1">
+                {night.kind !== "other" && !isCancelled && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11"
+                    onClick={() => void handleKindSwitch()}
+                    aria-label={`Change to ${otherKind === "meeting" ? "Brigade Meeting" : "Training"}`}
+                    title={`Change to ${otherKind === "meeting" ? "Brigade Meeting" : "Training"}`}
+                  >
+                    <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
