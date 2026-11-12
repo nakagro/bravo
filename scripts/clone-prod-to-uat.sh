@@ -100,6 +100,10 @@ echo "  [3/6] Verifying the snapshot..."
 # here, and --replace-all would wipe the tester devices that do work - forcing
 # the two or three UAT testers to unregister and re-register after every clone.
 # Snapshot them now, restore them after the import.
+#
+# Only allowlisted testers' devices are kept, and never one of production's own
+# endpoints. Without that filter, prod rows left behind by any earlier clone
+# would be saved and restored as "UAT's own" on every clone after it.
 # ---------------------------------------------------------------------------
 echo ""
 echo "  [4/6] Saving UAT's own push subscriptions..."
@@ -110,7 +114,7 @@ preserved_push=""
 if CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex export --path "$uat_snapshot" >/dev/null 2>&1; then
   push_jsonl="${uat_snapshot%.zip}.jsonl"
   set +e
-  ./scripts/extract-push-subscriptions.py "$uat_snapshot" "$push_jsonl" --users-from "$snapshot"
+  ./scripts/extract-push-subscriptions.py "$uat_snapshot" "$push_jsonl" --users-from "$snapshot" --allow-emails "$allowlist"
   extract_status=$?
   set -e
   if [ "$extract_status" -eq 0 ]; then
@@ -157,7 +161,16 @@ if [ -n "$preserved_push" ]; then
     --table pushSubscriptions --replace --yes "$preserved_push"
   rm -f "$preserved_push"
 else
-  echo "        no UAT push subscriptions to restore (cloned production rows remain, and are undeliverable)"
+  # Nothing of UAT's to keep, but the import just brought in every production
+  # row. Empty the table rather than leave devices UAT can never deliver to.
+  echo "        no UAT push subscriptions to keep - clearing the cloned production rows..."
+  empty_push="./exports/convex/uat-push-empty.jsonl"
+  : > "$empty_push"
+  if ! CONVEX_DEPLOYMENT="$UAT_DEPLOYMENT" npx convex import \
+      --table pushSubscriptions --replace --yes "$empty_push"; then
+    echo "  ! Could not clear pushSubscriptions. Production rows remain (undeliverable on UAT)." >&2
+  fi
+  rm -f "$empty_push"
 fi
 
 # ---------------------------------------------------------------------------
