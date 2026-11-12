@@ -4,6 +4,7 @@
 - Events: Organisers can send rostered and crewed members a notification with their shift or seat.
 - Events: Members involved in an event can be told when it's cancelled, moved or back on.
 - Availability: Crewing officers can tell members they've been crewed for a deployment.
+- Events: Organisers can see a running list of the notifications already sent for an event.
 - Admin: Admins can edit the wording of crew, roster and event change notifications.
 - Notifications: Deployment crew notifications have their own switch in Settings.
 

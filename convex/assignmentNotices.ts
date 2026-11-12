@@ -13,6 +13,7 @@ import {
   loadModuleMap,
   loadTemplates,
   loadUsers,
+  logNoticeSend,
   pushStateFor,
   unreachableReason,
   type PushState,
@@ -253,6 +254,15 @@ export const sendAssignmentNotice = mutation({
     }
 
     const n = preview.recipients.length;
+    await logNoticeSend(ctx, {
+      scopeKey: scope.scopeKey,
+      kind: "assignment",
+      title: preview.recipients[0].title,
+      message: args.message?.trim(),
+      recipientCount: n,
+      recipients: preview.recipients.map((r) => ({ userId: r.userId, state: r.state })),
+      sentBy: senderId,
+    });
     await source.recordSend?.(ctx, args.scopeId, senderId, `Crew notice sent to ${n} member${n === 1 ? "" : "s"}`);
 
     await ctx.scheduler.runAfter(0, internal.pushNotificationAction.deliverToUsers, {
@@ -289,5 +299,56 @@ export const deploymentDaysWithReceiptsOnly = query({
       if (receipts.some((r) => !r.removed)) days.push(day);
     }
     return days;
+  },
+});
+
+/**
+ * The running sheet: every targeted send for an event or deployment day,
+ * newest first, one row per send. Visible to whoever may send for it.
+ */
+export const listNotificationSends = query({
+  args: { source: assignmentSourceValidator, scopeId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.array(
+      v.object({
+        _id: v.id("notificationSends"),
+        kind: v.string(),
+        title: v.string(),
+        message: v.optional(v.string()),
+        recipientCount: v.number(),
+        recipients: v.array(v.object({ name: v.string(), state: v.optional(v.string()) })),
+        sentAt: v.number(),
+        sentByName: v.string(),
+      }),
+    ),
+  ),
+  handler: async (ctx, args) => {
+    if (!(await ASSIGNMENT_SOURCES[args.source].senderId(ctx, args.scopeId))) return null;
+    const scopeKey =
+      args.source === "event"
+        ? `event:${args.scopeId}`
+        : `deployment:${args.scopeId}`;
+    const sends = await ctx.db
+      .query("notificationSends")
+      .withIndex("by_scope_sentAt", (q) => q.eq("scopeKey", scopeKey))
+      .order("desc")
+      .take(50);
+    const users = await loadUsers(ctx, [
+      ...sends.map((s) => s.sentBy),
+      ...sends.flatMap((s) => s.recipients.map((r) => r.userId)),
+    ]);
+    return sends.map((s) => ({
+      _id: s._id,
+      kind: s.kind,
+      title: s.title,
+      message: s.message,
+      recipientCount: s.recipientCount,
+      recipients: s.recipients
+        .map((r) => ({ name: displayName(users.get(r.userId)), state: r.state }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      sentAt: s.sentAt,
+      sentByName: displayName(users.get(s.sentBy)),
+    }));
   },
 });

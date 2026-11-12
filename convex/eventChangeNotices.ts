@@ -67,7 +67,7 @@ export const sendEventChangeNotice = mutation({
       throw new Error("The event or message changed, check it again");
     }
     if (preview.recipients.length === 0) throw new Error("There's nobody to send to");
-    await applyChangeNotice(ctx, event, userId, args.kind, preview);
+    await applyChangeNotice(ctx, event, userId, args.kind, preview, args.message?.trim());
     return preview.recipients.length;
   },
 });

@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NotificationCard } from "./NotificationCard";
+import { NotificationLog } from "./NotificationLog";
 
 export type AssignmentSourceKey = "event" | "deploymentDay";
 type Audience = "changes" | "everyone";
@@ -178,6 +179,8 @@ export function SendAssignmentsSheet({
             </fieldset>
 
             <NoteField value={message} onChange={setMessage} />
+
+            <NotificationLog source={source} scopeId={scopeId} limit={3} title="Already sent" bare />
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={close} className="flex-1">

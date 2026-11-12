@@ -358,3 +358,41 @@ describe("event change notices", () => {
     expect(await c.t.run((ctx) => ctx.db.query("actionNotices").collect())).toHaveLength(0);
   });
 });
+
+describe("notification log", () => {
+  it("keeps one row per send, for senders only, and goes with the event", async () => {
+    const c = await setup();
+    await seat(c, { driver: c.aliceId, crew: [c.bobId] });
+    await send(c, "changes", "Bring hi-vis.");
+    await seat(c, { crew: [c.aliceId] });
+    await send(c);
+
+    const log = (await c.asAdmin.query(api.assignmentNotices.listNotificationSends, {
+      source: "event",
+      scopeId: c.eventId,
+    }))!;
+    expect(log).toHaveLength(2);
+    expect(log[0]).toMatchObject({ kind: "assignment", recipientCount: 2, sentByName: "Admin Test" });
+    expect(log[0].recipients.map((r) => r.state).sort()).toEqual(["changed", "removed"]);
+    expect(log[1]).toMatchObject({ recipientCount: 2, message: "Bring hi-vis." });
+
+    expect(
+      await c.asBob.query(api.assignmentNotices.listNotificationSends, { source: "event", scopeId: c.eventId }),
+    ).toBeNull();
+
+    const cancel = (await c.asAdmin.query(api.eventChangeNotices.previewEventChangeNotice, {
+      eventId: c.eventId,
+      kind: "cancelled",
+      message: "Rain",
+    }))!;
+    await c.asAdmin.mutation(api.events.cancelEvent, { eventId: c.eventId, reason: "Rain", notifyFingerprint: cancel.fingerprint });
+    const after = (await c.asAdmin.query(api.assignmentNotices.listNotificationSends, {
+      source: "event",
+      scopeId: c.eventId,
+    }))!;
+    expect(after[0]).toMatchObject({ kind: "cancelled", message: "Rain", recipientCount: 1 });
+
+    await c.asAdmin.mutation(api.events.deleteEvent, { eventId: c.eventId });
+    expect(await c.t.run((ctx) => ctx.db.query("notificationSends").take(10))).toHaveLength(0);
+  });
+});

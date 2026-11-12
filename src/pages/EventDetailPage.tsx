@@ -41,6 +41,7 @@ import { NotifyMembersDialog } from "../features/events/components/NotifyMembers
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
 import { EventChangeNoticeSheet, RestoreEventDialog } from "../features/events/components/EventChangeNotice";
 import { SendAssignmentsButton } from "@/components/shared/assignments/SendAssignmentsSheet";
+import { NotificationLog } from "@/components/shared/assignments/NotificationLog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
@@ -940,6 +941,9 @@ export function EventDetailPage() {
             adding={addingCrew}
             onAddingChange={setAddingCrew}
           />
+
+          {/* What has already gone out, so a second organiser doesn't re-send */}
+          {canManageEvents && <NotificationLog source="event" scopeId={event._id} />}
         </div>
 
         {/* Responses panel - admin-only drill-down of every response state. */}

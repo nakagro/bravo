@@ -104,6 +104,8 @@ export const notifyEventMembers = action({
       eventId: args.eventId,
       userId,
       notes: args.message?.trim() || "Broadcast to all members",
+      title: event.title,
+      message: args.message?.trim() || undefined,
     });
 
     return null;

@@ -58,3 +58,23 @@ export async function loadUsers(ctx: QueryCtx, ids: Iterable<Id<"users">>) {
   await Promise.all([...new Set(ids)].map(async (id) => users.set(id, await ctx.db.get(id))));
   return users;
 }
+
+/** One row on a scope's running sheet of sends. */
+export async function logNoticeSend(
+  ctx: import("../_generated/server").MutationCtx,
+  entry: {
+    scopeKey: string;
+    kind: string;
+    title: string;
+    message?: string;
+    recipientCount: number;
+    recipients: { userId: Id<"users">; state?: string }[];
+    sentBy: Id<"users">;
+  },
+) {
+  await ctx.db.insert("notificationSends", {
+    ...entry,
+    message: entry.message || undefined,
+    sentAt: Date.now(),
+  });
+}

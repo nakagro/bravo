@@ -5,7 +5,7 @@ import { attendanceFor } from "../events";
 import { displayName, seatLines } from "./crewSeats";
 import { MAX_APPLIANCES_PER_EVENT } from "./eventCrews";
 import { eventIsOver, eventValues } from "./assignments/eventSource";
-import { loadModuleMap, loadTemplates, loadUsers, unreachableReason } from "./notificationDelivery";
+import { loadModuleMap, loadTemplates, loadUsers, logNoticeSend, unreachableReason } from "./notificationDelivery";
 import { fingerprintOf, renderTemplate } from "./notificationTemplates";
 import { upsertNotice } from "./notifyEvent";
 
@@ -171,6 +171,7 @@ export async function applyChangeNotice(
   senderId: Id<"users">,
   kind: ChangeKind,
   preview: ChangePreview,
+  message?: string,
 ) {
   const now = Date.now();
   const url = `/events/${event._id}`;
@@ -191,6 +192,15 @@ export async function applyChangeNotice(
   });
 
   const n = recipientUserIds.length;
+  await logNoticeSend(ctx, {
+    scopeKey: `event:${event._id}`,
+    kind,
+    title: preview.title,
+    message,
+    recipientCount: n,
+    recipients: recipientUserIds.map((userId) => ({ userId })),
+    sentBy: senderId,
+  });
   await ctx.db.insert("eventHistory", {
     eventId: event._id,
     timestamp: now,

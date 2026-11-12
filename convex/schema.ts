@@ -1657,6 +1657,22 @@ const applicationTables = {
     .index("by_scope_user", ["scopeKey", "userId"])
     .index("by_user_sentAt", ["userId", "sentAt"]),
 
+  // Running sheet of targeted sends, one row per send (not per recipient), so
+  // an organiser can see what has already gone out. Written by assignment
+  // notices, event change notices and the event "Notify" broadcast.
+  notificationSends: defineTable({
+    scopeKey: v.string(), // "event:<id>" | "deployment:<dateMs>"
+    kind: v.string(), // assignment | cancelled | detailsChanged | restored | broadcast
+    title: v.string(), // the first recipient's title, as a sample
+    message: v.optional(v.string()), // the sender's note, if any
+    recipientCount: v.number(),
+    // Names are resolved at read time; state is new/changed/removed/unchanged
+    // for assignment notices, absent otherwise. Empty for a broadcast.
+    recipients: v.array(v.object({ userId: v.id("users"), state: v.optional(v.string()) })),
+    sentBy: v.id("users"),
+    sentAt: v.number(),
+  }).index("by_scope_sentAt", ["scopeKey", "sentAt"]),
+
   // Admin-edited message text, one row per edited key. No row = the default
   // in lib/notificationTemplates.ts (NOTIFICATION_TEMPLATES) applies.
   notificationTemplates: defineTable({

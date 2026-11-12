@@ -8,6 +8,7 @@ import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib
 import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
 import { applyChangeNotice, buildChangePreview, changeNoticeRow } from "./lib/eventChangeNotice";
+import { logNoticeSend } from "./lib/notificationDelivery";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1637,7 +1638,7 @@ export const cancelEvent = mutation({
 
     if (preview && preview.recipients.length > 0) {
       const cancelled = (await ctx.db.get(args.eventId))!;
-      await applyChangeNotice(ctx, cancelled, userId, "cancelled", preview);
+      await applyChangeNotice(ctx, cancelled, userId, "cancelled", preview, args.reason?.trim());
     }
 
     return null;
@@ -1747,6 +1748,10 @@ export const deleteEvent = mutation({
       .query("assignmentReceipts")
       .withIndex("by_scope_user", (q) => q.eq("scopeKey", `event:${args.eventId}`))
       .collect();
+    const sends = await ctx.db
+      .query("notificationSends")
+      .withIndex("by_scope_sentAt", (q) => q.eq("scopeKey", `event:${args.eventId}`))
+      .collect();
     const changeNotice = await changeNoticeRow(ctx, args.eventId);
     if (changeNotice) await ctx.db.delete(changeNotice._id);
 
@@ -1758,6 +1763,7 @@ export const deleteEvent = mutation({
       ...history,
       ...attendance,
       ...receipts,
+      ...sends,
     ]) {
       await ctx.db.delete(row._id);
     }
@@ -2461,9 +2467,21 @@ export const recordNotificationSent = internalMutation({
     eventId: v.id("events"),
     userId: v.id("users"),
     notes: v.optional(v.string()),
+    // The broadcast's title and note, for the event's running sheet of sends
+    title: v.optional(v.string()),
+    message: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await logNoticeSend(ctx, {
+      scopeKey: `event:${args.eventId}`,
+      kind: "broadcast",
+      title: args.title ?? "Notify",
+      message: args.message,
+      recipientCount: 0, // everyone with a device; not counted
+      recipients: [],
+      sentBy: args.userId,
+    });
     await recordHistory(ctx, {
       eventId: args.eventId,
       userId: args.userId,
