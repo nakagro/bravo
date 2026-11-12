@@ -8,7 +8,7 @@
 // Muting only stops the push. The notification history entry and any Action
 // Centre item are still created, so nothing is lost by switching a push off.
 
-export type NotificationCategory = "availabilityReminders" | "statusChanges" | "events" | "dutyCrew";
+export type NotificationCategory = "availabilityReminders" | "statusChanges" | "events" | "dutyCrew" | "deployments";
 
 export type NotificationCategoryInfo = {
   key: NotificationCategory;
@@ -36,9 +36,9 @@ export const NOTIFICATION_CATEGORIES: NotificationCategoryInfo[] = [
   {
     key: "events",
     label: "Events",
-    description: "Event invitations, changes and reminders.",
+    description: "Event invitations, changes, reminders, and when you're rostered or crewed.",
     moduleId: "events",
-    types: ["eventNotification"],
+    types: ["eventNotification", "eventAssignment", "eventChange"],
   },
   {
     key: "dutyCrew",
@@ -46,6 +46,13 @@ export const NOTIFICATION_CATEGORIES: NotificationCategoryInfo[] = [
     description: "The reminder on the last day of your duty week.",
     moduleId: "dutyCrew",
     types: ["dutyCrewWeekClosing"],
+  },
+  {
+    key: "deployments",
+    label: "Deployments",
+    description: "When you're crewed on an appliance for a deployment.",
+    moduleId: "availability",
+    types: ["deploymentAssignment"],
   },
 ];
 

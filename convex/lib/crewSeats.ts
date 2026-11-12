@@ -135,3 +135,22 @@ export async function seatResolver(ctx: QueryCtx, crews: CrewSeats[], extraUserI
       : { name: seat.name, external: true };
   return { resolve, userName: (id: Id<"users">) => displayName(users.get(id)) };
 }
+
+/**
+ * The member seats on a crew as assignment lines ("Driver · Tanker 1"), for
+ * the assignment notice adapters. Typed names come back separately: they're
+ * never notified.
+ */
+export function seatLines(crew: CrewSeats & { applianceName: string }) {
+  const members: { userId: Id<"users">; line: string }[] = [];
+  const external: string[] = [];
+  const add = (seat: Seat | undefined, label: string) => {
+    if (!seat) return;
+    if ("userId" in seat) members.push({ userId: seat.userId, line: `${label} · ${crew.applianceName}` });
+    else external.push(seat.name);
+  };
+  add(crew.crewLeader, "Crew Leader");
+  add(crew.driver, "Driver");
+  for (const seat of crew.crewMembers) add(seat, "Crew");
+  return { members, external };
+}

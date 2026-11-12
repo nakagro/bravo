@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.11.12]
+- Events: Organisers can send rostered and crewed members a notification with their shift or seat.
+- Events: Members involved in an event can be told when it's cancelled, moved or back on.
+- Availability: Crewing officers can tell members they've been crewed for a deployment.
+- Admin: Admins can edit the wording of crew, roster and event change notifications.
+- Notifications: Deployment crew notifications have their own switch in Settings.
+
 ## [2026.11.10]
 - Training Roll: Officers can add a short note to a member's mark, such as arriving late.
 - Training Roll: Officers can switch a Tuesday between Training and the Brigade Meeting when the meeting moves.

@@ -93,6 +93,7 @@ const extendedAuthTables = {
         statusChanges: v.optional(v.boolean()),
         events: v.optional(v.boolean()),
         dutyCrew: v.optional(v.boolean()),
+        deployments: v.optional(v.boolean()),
       })
     ),
   })
@@ -1627,11 +1628,44 @@ const applicationTables = {
     // Identifies the thing the notice is about, so a repeat event (a reopened
     // and resubmitted station check) updates the notice instead of stacking.
     sourceEntityId: v.optional(v.string()),
+    // Set only by event change notices ("cancelled" | "detailsChanged" |
+    // "restored"): answers "was this cancellation announced, and to whom?"
+    kind: v.optional(v.string()),
     createdAt: v.number(),
     createdBy: v.optional(v.id("users")),
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_source", ["conditionKey", "sourceEntityId"]),
+
+  // What each member was last told about their assignment in a scope (an
+  // event's crews + roster, or one deployment day). One row per member per
+  // scope, replaced on each send. `lines` is what the next preview diffs
+  // against; title/body are the notice as sent and double as the member's
+  // Action Centre item (assignmentsProvider). See convex/assignmentNotices.ts.
+  assignmentReceipts: defineTable({
+    scopeKey: v.string(), // "event:<id>" | "deployment:<dateMs>"
+    userId: v.id("users"),
+    lines: v.array(v.string()),
+    removed: v.optional(v.boolean()),
+    title: v.string(),
+    body: v.string(),
+    url: v.string(),
+    moduleId: v.string(),
+    sentAt: v.number(),
+    sentBy: v.id("users"),
+  })
+    .index("by_scope_user", ["scopeKey", "userId"])
+    .index("by_user_sentAt", ["userId", "sentAt"]),
+
+  // Admin-edited message text, one row per edited key. No row = the default
+  // in lib/notificationTemplates.ts (NOTIFICATION_TEMPLATES) applies.
+  notificationTemplates: defineTable({
+    templateKey: v.string(),
+    title: v.string(),
+    body: v.string(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_templateKey", ["templateKey"]),
 
   // Per-user "I've seen this, stop showing me" record, keyed by the action's
   // stable id string. Works for stored notices and derived actions alike.

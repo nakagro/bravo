@@ -140,9 +140,14 @@ interface EventFormProps {
   /** When set, edits an existing event; otherwise creates a new one */
   eventId: Id<"events"> | null;
   onClose: () => void;
+  /**
+   * Called after an edit that changed the date, time or location of an active
+   * event, so the page can offer the "Changed: …" notice. Saving never notifies.
+   */
+  onDetailsChanged?: (eventId: Id<"events">) => void;
 }
 
-export function EventForm({ eventId, onClose }: EventFormProps) {
+export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps) {
   const isMobile = useIsMobile();
   const existingEvent = useQuery(
     api.events.getEvent,
@@ -360,6 +365,14 @@ export function EventForm({ eventId, onClose }: EventFormProps) {
         });
         guard.release();
         toast.success("Event updated");
+        if (existingEvent && existingEvent.status === "active" && onDetailsChanged) {
+          const was = existingEvent as Record<string, unknown>;
+          const now = fields as Record<string, unknown>;
+          const moved = (["startDate", "endDate", "startTime", "endTime", "location", "address"] as const).some(
+            (key) => ((now[key] as string) || undefined) !== ((was[key] as string) || undefined)
+          );
+          if (moved || fields.isAllDay !== existingEvent.isAllDay) onDetailsChanged(eventId);
+        }
       } else {
         const newEventId = await createEvent({
           ...fields,

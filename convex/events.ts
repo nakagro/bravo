@@ -7,6 +7,7 @@ import { isMemberAccount } from "./lib/accountType";
 import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib/eventCrews";
 import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
+import { applyChangeNotice, buildChangePreview, changeNoticeRow } from "./lib/eventChangeNotice";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1346,6 +1347,10 @@ export const createEvent = mutation({
  * Update an event with a per-field audit trail. If startDate changes, the
  * reminder guard is cleared so rescheduled events get a fresh reminder.
  */
+/**
+ * Never notifies anyone. When the date, time or location changes, the event
+ * form offers a separate "Changed: …" send afterwards (sendEventChangeNotice).
+ */
 export const updateEvent = mutation({
   args: {
     eventId: v.id("events"),
@@ -1586,18 +1591,29 @@ export const changeOrganiser = mutation({
 
 /**
  * Cancel an event. Stays visible with a badge (no hard delete - preserves the
- * audit trail). Does not auto-notify; the organiser uses the Notify action.
+ * audit trail). Tells nobody unless `notifyFingerprint` is passed: then the
+ * cancellation notice goes to everyone involved in the same transaction, so
+ * the event can't end up cancelled with the notice lost. A stale fingerprint
+ * fails the whole call and the event stays active.
  */
 export const cancelEvent = mutation({
   args: {
     eventId: v.id("events"),
     reason: v.optional(v.string()),
+    notifyFingerprint: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const { userId, event } = await requireEventManager(ctx, args.eventId);
     if (event.status === "cancelled") {
       throw new Error("This event is already cancelled");
+    }
+
+    const preview = args.notifyFingerprint
+      ? await buildChangePreview(ctx, event, userId, "cancelled", args.reason?.trim() ?? "", true)
+      : null;
+    if (args.notifyFingerprint && preview?.fingerprint !== args.notifyFingerprint) {
+      throw new Error("Who's involved or the message changed, check it again");
     }
 
     const now = Date.now();
@@ -1619,20 +1635,36 @@ export const cancelEvent = mutation({
       notes: args.reason,
     });
 
+    if (preview && preview.recipients.length > 0) {
+      const cancelled = (await ctx.db.get(args.eventId))!;
+      await applyChangeNotice(ctx, cancelled, userId, "cancelled", preview);
+    }
+
     return null;
   },
 });
 
 /**
- * Restore a cancelled event back to active. Powers the cancel→undo toast.
+ * Restore a cancelled event back to active (also the cancel→undo toast, which
+ * only offers Undo when no notice went out). Tells nobody unless
+ * `notifyFingerprint` is passed, and that's only offered when the cancellation
+ * was announced: the "back on" notice then goes to the same members, in the
+ * same transaction.
  */
 export const restoreEvent = mutation({
-  args: { eventId: v.id("events") },
+  args: { eventId: v.id("events"), notifyFingerprint: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const { userId, event } = await requireEventManager(ctx, args.eventId);
     if (event.status !== "cancelled") {
       throw new Error("Only cancelled events can be restored");
+    }
+
+    const preview = args.notifyFingerprint
+      ? await buildChangePreview(ctx, event, userId, "restored", "", true)
+      : null;
+    if (args.notifyFingerprint && preview?.fingerprint !== args.notifyFingerprint) {
+      throw new Error("Who's involved changed, check it again");
     }
 
     await ctx.db.patch(args.eventId, {
@@ -1651,6 +1683,11 @@ export const restoreEvent = mutation({
       oldValue: "cancelled",
       newValue: "active",
     });
+
+    if (preview && preview.recipients.length > 0) {
+      const restored = (await ctx.db.get(args.eventId))!;
+      await applyChangeNotice(ctx, restored, userId, "restored", preview);
+    }
 
     return null;
   },
@@ -1704,6 +1741,15 @@ export const deleteEvent = mutation({
 
     await deleteEventCrews(ctx, args.eventId);
 
+    // Assignment receipts double as Action Centre items, and the change notice
+    // row's "View" would lead to a deleted event.
+    const receipts = await ctx.db
+      .query("assignmentReceipts")
+      .withIndex("by_scope_user", (q) => q.eq("scopeKey", `event:${args.eventId}`))
+      .collect();
+    const changeNotice = await changeNoticeRow(ctx, args.eventId);
+    if (changeNotice) await ctx.db.delete(changeNotice._id);
+
     for (const row of [
       ...rsvps,
       ...slotResponses,
@@ -1711,6 +1757,7 @@ export const deleteEvent = mutation({
       ...slots,
       ...history,
       ...attendance,
+      ...receipts,
     ]) {
       await ctx.db.delete(row._id);
     }
@@ -2046,6 +2093,8 @@ export const declineSlotEvent = mutation({
  * running the event. Allocation is independent of interest - anyone can be
  * placed. Returns the new state.
  */
+// Saving does not notify anyone. Members are told only when the sender
+// confirms a send from SendAssignmentsSheet (convex/assignmentNotices.ts).
 export const toggleSlotAllocation = mutation({
   args: {
     slotId: v.id("eventSlots"),

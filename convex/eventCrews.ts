@@ -80,6 +80,8 @@ export const getCrewPickerStatus = query({
   },
 });
 
+// Saving does not notify anyone. Members are told only when the sender
+// confirms a send from SendAssignmentsSheet (convex/assignmentNotices.ts).
 export const saveEventCrew = mutation({
   args: {
     eventId: v.id("events"),

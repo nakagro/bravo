@@ -11,6 +11,7 @@ import { eventRsvpProvider } from "./actionCentreProviders/events";
 import { baSkillsLmsProvider } from "./actionCentreProviders/baSkills";
 import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
 import { noticesProvider } from "./actionCentreProviders/notices";
+import { assignmentsProvider } from "./actionCentreProviders/assignments";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
@@ -29,6 +30,8 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   // Notices are addressed to named recipients, so they're never a broadcast a
   // shared account could stumble into - no membersOnly gate needed.
   { run: noticesProvider },
+  // Receipts of assignment notices, addressed to the member by name.
+  { run: assignmentsProvider },
 ];
 
 // ─── Validators ───────────────────────────────────────────────────────────────

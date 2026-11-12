@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Bell, BellOff, Clock, Moon, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { MessageTemplates } from "./MessageTemplates";
 
 interface NotificationSettingsProps {
   showTitle?: boolean;
@@ -182,6 +183,7 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
           </Card>
         </div>
       )}
+      <MessageTemplates />
     </div>
   );
 }

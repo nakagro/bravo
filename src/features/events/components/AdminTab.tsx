@@ -16,6 +16,7 @@ import { EventForm } from "./EventForm";
 import { EventTypesManager } from "./EventTypesManager";
 import { CancelEventDialog } from "./CancelEventDialog";
 import { NotifyMembersDialog } from "./NotifyMembersDialog";
+import { RestoreEventDialog } from "./EventChangeNotice";
 import { DeleteEventDialog } from "./DeleteEventDialog";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { EventListSkeleton } from "./UpcomingTab";
@@ -37,6 +38,7 @@ export function AdminTab() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEventId, setEditingEventId] = useState<Id<"events"> | null>(null);
   const [cancellingEvent, setCancellingEvent] = useState<EnrichedEvent | null>(null);
+  const [restoringEvent, setRestoringEvent] = useState<EnrichedEvent | null>(null);
   const [notifyingEvent, setNotifyingEvent] = useState<EnrichedEvent | null>(null);
   const [deletingEvent, setDeletingEvent] = useState<EnrichedEvent | null>(null);
   const [showTypesManager, setShowTypesManager] = useState(false);
@@ -61,7 +63,6 @@ export function AdminTab() {
     { initialNumItems: 20 }
   );
 
-  const cancelEvent = useMutation(api.events.cancelEvent);
   const restoreEvent = useMutation(api.events.restoreEvent);
   const deleteEvent = useMutation(api.events.deleteEvent);
 
@@ -106,48 +107,29 @@ export function AdminTab() {
     setEditingEventId(null);
   };
 
-  const handleCancelConfirm = async (reason: string | undefined) => {
-    if (!cancellingEvent) return;
-    const eventId = cancellingEvent._id;
-    try {
-      await cancelEvent({ eventId, reason });
-      // One-tap cancel gets an undo instead of a second confirm
-      toast.success("Event cancelled", {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            restoreEvent({ eventId })
-              .then(() => toast.info("Event restored"))
-              .catch((error) => {
-                console.error("Error restoring event:", error);
-                toast.error("Failed to restore event", {
-                  description:
-                    error instanceof Error ? error.message : "An unexpected error occurred.",
-                });
+  const handleCancelled = (eventId: Id<"events">, notified: boolean) => {
+    // Once members have been told, putting it back is a Restore, which offers
+    // the "back on" notice, so the quick Undo is only for a silent cancel.
+    if (notified) {
+      toast.success("Event cancelled and members told");
+      return;
+    }
+    toast.success("Event cancelled", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          restoreEvent({ eventId })
+            .then(() => toast.info("Event restored"))
+            .catch((error) => {
+              console.error("Error restoring event:", error);
+              toast.error("Failed to restore event", {
+                description:
+                  error instanceof Error ? error.message : "An unexpected error occurred.",
               });
-          },
+            });
         },
-      });
-    } catch (error) {
-      console.error("Error cancelling event:", error);
-      toast.error("Failed to cancel event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-      });
-    } finally {
-      setCancellingEvent(null);
-    }
-  };
-
-  const handleRestore = async (eventId: Id<"events">) => {
-    try {
-      await restoreEvent({ eventId });
-      toast.success("Event restored");
-    } catch (error) {
-      console.error("Error restoring event:", error);
-      toast.error("Failed to restore event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-      });
-    }
+      },
+    });
   };
 
   const handleDeleteConfirm = async () => {
@@ -251,7 +233,7 @@ export function AdminTab() {
                   </>
                 ) : (
                   <>
-                    <DropdownMenuItem onSelect={() => handleRestore(event._id)}>
+                    <DropdownMenuItem onSelect={() => setRestoringEvent(event)}>
                       <Undo2 className="h-4 w-4" />
                       Restore
                     </DropdownMenuItem>
@@ -284,9 +266,19 @@ export function AdminTab() {
         onOpenChange={(open) => {
           if (!open) setCancellingEvent(null);
         }}
+        eventId={cancellingEvent?._id ?? null}
         eventTitle={cancellingEvent?.title}
-        onConfirm={handleCancelConfirm}
+        onCancelled={handleCancelled}
       />
+
+      {restoringEvent && (
+        <RestoreEventDialog
+          open
+          onOpenChange={(open) => !open && setRestoringEvent(null)}
+          eventId={restoringEvent._id}
+          eventTitle={restoringEvent.title}
+        />
+      )}
 
       <NotifyMembersDialog
         open={notifyingEvent !== null}

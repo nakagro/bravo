@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import {
   Sheet,
   SheetContent,
@@ -7,36 +11,83 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { ChangeNoticePreview, useChangePreview } from "./EventChangeNotice";
+
+// Matches NOTE_MAX on the server: the reason is the notice's {message}.
+const REASON_MAX = 140;
 
 interface CancelEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  eventId: Id<"events"> | null;
   eventTitle?: string;
-  onConfirm: (reason: string | undefined) => void;
+  /** After a successful cancel. `notified` = a notice went out, so no Undo. */
+  onCancelled?: (eventId: Id<"events">, notified: boolean) => void;
 }
 
-export function CancelEventDialog({
+/**
+ * Cancels the event and, unless the box is unticked, tells everyone involved
+ * in the same transaction. Ticked by default: a cancellation people don't
+ * hear about is the costly mistake.
+ */
+export function CancelEventDialog({ open, onOpenChange, eventId, eventTitle, onCancelled }: CancelEventDialogProps) {
+  if (!eventId) return null;
+  return (
+    <CancelEventSheet
+      key={eventId}
+      open={open}
+      onOpenChange={onOpenChange}
+      eventId={eventId}
+      eventTitle={eventTitle}
+      onCancelled={onCancelled}
+    />
+  );
+}
+
+function CancelEventSheet({
   open,
   onOpenChange,
+  eventId,
   eventTitle,
-  onConfirm,
-}: CancelEventDialogProps) {
+  onCancelled,
+}: CancelEventDialogProps & { eventId: Id<"events"> }) {
   const [reason, setReason] = useState("");
+  const [tell, setTell] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const cancelEvent = useMutation(api.events.cancelEvent);
+  const { preview, current } = useChangePreview(eventId, "cancelled", reason, open);
+  const n = preview?.recipients.length ?? 0;
+  const notify = tell && n > 0;
 
-  const handleConfirm = () => {
-    onConfirm(reason.trim() || undefined);
+  const close = () => {
     setReason("");
+    setTell(true);
     onOpenChange(false);
   };
 
-  const handleCancel = () => {
-    setReason("");
-    onOpenChange(false);
+  const handleConfirm = async () => {
+    setBusy(true);
+    try {
+      await cancelEvent({
+        eventId,
+        reason: reason.trim() || undefined,
+        notifyFingerprint: notify ? preview?.fingerprint : undefined,
+      });
+      close();
+      onCancelled?.(eventId, notify);
+    } catch (error) {
+      console.error("Error cancelling event:", error);
+      toast.error("Failed to cancel event", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl">
+    <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto">
         <SheetHeader className="text-left">
           <SheetTitle>Cancel Event</SheetTitle>
           <SheetDescription>
@@ -51,26 +102,37 @@ export function CancelEventDialog({
               htmlFor="cancellation-reason"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Reason for cancellation (optional)
+              Reason (optional)
             </label>
             <textarea
               id="cancellation-reason"
               value={reason}
+              maxLength={REASON_MAX}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Provide a reason so members understand..."
-              rows={3}
+              rows={2}
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
+          {n > 0 && preview && (
+            <>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
+                <input type="checkbox" checked={tell} onChange={(e) => setTell(e.target.checked)} />
+                Tell the {n} {n === 1 ? "member" : "members"} involved
+              </label>
+              {tell && <ChangeNoticePreview preview={preview} />}
+            </>
+          )}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={handleCancel} className="flex-1">
+            <Button variant="outline" onClick={close} className="flex-1">
               Keep Event
             </Button>
             <Button
               onClick={handleConfirm}
+              disabled={busy || preview === undefined || (notify && !current)}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white"
             >
-              Cancel Event
+              {notify ? `Cancel event and tell ${n}` : "Cancel Event"}
             </Button>
           </div>
         </div>

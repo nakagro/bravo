@@ -3,7 +3,7 @@ import { Switch } from '../../../components/ui/switch';
 import { toast } from 'sonner';
 
 export type NotificationPrefRow = {
-  key: 'availabilityReminders' | 'statusChanges' | 'events' | 'dutyCrew';
+  key: 'availabilityReminders' | 'statusChanges' | 'events' | 'dutyCrew' | 'deployments';
   label: string;
   description: string;
   enabled: boolean;

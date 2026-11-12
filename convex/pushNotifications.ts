@@ -57,6 +57,25 @@ export const register = mutation({
 
 // sendNotification moved to pushNotificationAction.ts
 
+// Internal-only: raw subscriptions for named members, for the targeted
+// deliverToUsers path (assignment and event change notices).
+export const getSubscriptionsForUsers = internalQuery({
+  args: { userIds: v.array(v.id("users")) },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const out = [];
+    for (const userId of new Set(args.userIds)) {
+      out.push(
+        ...(await ctx.db
+          .query("pushSubscriptions")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect())
+      );
+    }
+    return out;
+  },
+});
+
 export const getSubscriptions = query({
   args: {
     userId: v.optional(v.id("users")),

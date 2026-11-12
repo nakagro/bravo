@@ -63,6 +63,8 @@ export const listCrews = query({
   },
 });
 
+// Saving does not notify anyone. Members are told only when the sender
+// confirms a send from SendAssignmentsSheet (convex/assignmentNotices.ts).
 export const createCrew = mutation({
   args: crewFields,
   returns: v.id("deploymentCrews"),

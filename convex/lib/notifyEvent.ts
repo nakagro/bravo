@@ -112,18 +112,7 @@ export async function notifyEvent(
   let noticeId: Id<"actionNotices"> | null = null;
 
   if (notifyInApp) {
-    // A repeat of the same event replaces the earlier notice, and clears the
-    // dismissals against it - the subject changed, so it's worth another look.
-    const existing = args.sourceEntityId
-      ? await ctx.db
-          .query("actionNotices")
-          .withIndex("by_source", (q) =>
-            q.eq("conditionKey", args.conditionKey).eq("sourceEntityId", args.sourceEntityId)
-          )
-          .first()
-      : null;
-
-    const fields = {
+    noticeId = await upsertNotice(ctx, {
       moduleId: args.moduleId,
       conditionKey: args.conditionKey,
       title: args.title,
@@ -134,19 +123,7 @@ export async function notifyEvent(
       sourceEntityId: args.sourceEntityId,
       createdAt: now,
       createdBy: args.actorUserId,
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-      const stale = await ctx.db
-        .query("actionDismissals")
-        .withIndex("by_action", (q) => q.eq("actionId", noticeActionId(existing._id)))
-        .collect();
-      for (const row of stale) await ctx.db.delete(row._id);
-      noticeId = existing._id;
-    } else {
-      noticeId = await ctx.db.insert("actionNotices", fields);
-    }
+    });
   }
 
   if (notifyEmail) {
@@ -176,4 +153,31 @@ export async function notifyEvent(
 /** The Action Centre id for a stored notice - also its dismissal key. */
 export function noticeActionId(noticeId: Id<"actionNotices">): string {
   return `notice:${noticeId}`;
+}
+
+type NoticeFields = Omit<Doc<"actionNotices">, "_id" | "_creationTime">;
+
+/**
+ * Write a notice. A repeat for the same subject (conditionKey + sourceEntityId)
+ * replaces the earlier row and clears the dismissals against it: the subject
+ * changed, so it's worth another look.
+ */
+export async function upsertNotice(ctx: MutationCtx, fields: NoticeFields): Promise<Id<"actionNotices">> {
+  const existing = fields.sourceEntityId
+    ? await ctx.db
+        .query("actionNotices")
+        .withIndex("by_source", (q) =>
+          q.eq("conditionKey", fields.conditionKey).eq("sourceEntityId", fields.sourceEntityId)
+        )
+        .first()
+    : null;
+  if (!existing) return await ctx.db.insert("actionNotices", fields);
+
+  await ctx.db.replace(existing._id, fields);
+  const stale = await ctx.db
+    .query("actionDismissals")
+    .withIndex("by_action", (q) => q.eq("actionId", noticeActionId(existing._id)))
+    .collect();
+  for (const row of stale) await ctx.db.delete(row._id);
+  return existing._id;
 }

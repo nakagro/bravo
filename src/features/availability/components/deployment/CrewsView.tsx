@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import CrewDialog, { type CrewDraft } from './CrewDialog';
 import { CrewSeatRow } from "@/components/shared/crew/CrewSeatRow";
 import { emptySeats, toSeatsDraft } from "@/components/shared/crew/crewSeats";
+import { SendAssignmentsButton } from "@/components/shared/assignments/SendAssignmentsSheet";
 
 interface CrewsViewProps {
   deploymentDates: Date[];
@@ -31,6 +32,12 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canManage = moduleAccess?.availabilityAdmin === true;
   const deleteCrew = useMutation(api.deploymentCrews.deleteCrew);
+  // Days whose crews are gone but whose members were told: they still need
+  // the "no longer crewed" send, so they keep a heading with just the button.
+  const removalOnlyDays = useQuery(
+    api.assignmentNotices.deploymentDaysWithReceiptsOnly,
+    canManage && startDate && endDate ? { startDate, endDate } : "skip"
+  );
 
   const [editing, setEditing] = useState<CrewDraft | null>(null);
   const [deleting, setDeleting] = useState<Crew | null>(null);
@@ -97,14 +104,29 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
 
       {deploymentDates.map((date) => {
         const dayCrews = crewsByDate.get(date.getTime());
-        if (!dayCrews) return null;
+        const removalsOnly = !dayCrews && removalOnlyDays?.includes(date.getTime());
+        if (!dayCrews && !removalsOnly) return null;
         return (
           <section key={date.getTime()}>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 px-1">
-              {formatDayHeading(date.getTime())}
-            </h3>
+            <div className="flex items-center justify-between gap-2 mb-2 px-1">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                {formatDayHeading(date.getTime())}
+              </h3>
+              {canManage && (
+                <SendAssignmentsButton
+                  source="deploymentDay"
+                  scopeId={String(date.getTime())}
+                  heading={`Deployment crews, ${formatDayHeading(date.getTime())}`}
+                />
+              )}
+            </div>
+            {removalsOnly && (
+              <p className="px-1 text-sm text-gray-600 dark:text-gray-400">
+                No crews any more. Members told earlier haven't heard yet.
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
-              {dayCrews.map((crew) => (
+              {(dayCrews ?? []).map((crew) => (
                 <article key={crew._id} className="bg-white dark:bg-gray-800 shadow-sm rounded border border-gray-200 dark:border-gray-700">
                   <header className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
                     <h4 className="font-bold truncate min-w-0">{crew.applianceName}</h4>

@@ -39,6 +39,8 @@ import {
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
+import { EventChangeNoticeSheet, RestoreEventDialog } from "../features/events/components/EventChangeNotice";
+import { SendAssignmentsButton } from "@/components/shared/assignments/SendAssignmentsSheet";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
@@ -94,6 +96,8 @@ export function EventDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showResponsesDialog, setShowResponsesDialog] = useState(false);
   const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [changeNotice, setChangeNotice] = useState<"detailsChanged" | "cancelled" | null>(null);
   const [copied, setCopied] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
@@ -113,7 +117,13 @@ export function EventDetailPage() {
   // their own per-shift turnout (with its own "you" marking) in the ShiftBoard.
   const myUserId = useQuery(api.messages.getCurrentUserId);
 
-  const cancelEvent = useMutation(api.events.cancelEvent);
+  // A cancellation nobody was told about can still be announced from the menu.
+  const lateCancelNotice = useQuery(
+    api.eventChangeNotices.previewEventChangeNotice,
+    typedEventId && event?.status === "cancelled" && event.canManage
+      ? { eventId: typedEventId, kind: "cancelled" }
+      : "skip"
+  );
   const restoreEvent = useMutation(api.events.restoreEvent);
   const deleteEvent = useMutation(api.events.deleteEvent);
   const setAttendanceNotNeeded = useMutation(api.events.setAttendanceNotNeeded);
@@ -121,47 +131,29 @@ export function EventDetailPage() {
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleCancelConfirm = async (reason: string | undefined) => {
-    if (!typedEventId) return;
-    try {
-      await cancelEvent({ eventId: typedEventId, reason });
-      toast.success("Event cancelled", {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            restoreEvent({ eventId: typedEventId })
-              .then(() => toast.info("Event restored"))
-              .catch((error) => {
-                console.error("Error restoring event:", error);
-                toast.error("Failed to restore event", {
-                  description:
-                    error instanceof Error ? error.message : "An unexpected error occurred.",
-                });
+  const handleCancelled = (cancelledId: Id<"events">, notified: boolean) => {
+    // Once members have been told, putting it back is a Restore, which offers
+    // the "back on" notice, so the quick Undo is only for a silent cancel.
+    if (notified) {
+      toast.success("Event cancelled and members told");
+      return;
+    }
+    toast.success("Event cancelled", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          restoreEvent({ eventId: cancelledId })
+            .then(() => toast.info("Event restored"))
+            .catch((error) => {
+              console.error("Error restoring event:", error);
+              toast.error("Failed to restore event", {
+                description:
+                  error instanceof Error ? error.message : "An unexpected error occurred.",
               });
-          },
+            });
         },
-      });
-    } catch (error) {
-      console.error("Error cancelling event:", error);
-      toast.error("Failed to cancel event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-      });
-    } finally {
-      setShowCancelDialog(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    if (!typedEventId) return;
-    try {
-      await restoreEvent({ eventId: typedEventId });
-      toast.success("Event restored");
-    } catch (error) {
-      console.error("Error restoring event:", error);
-      toast.error("Failed to restore event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
-      });
-    }
+      },
+    });
   };
 
   const handleDelete = async () => {
@@ -315,14 +307,35 @@ export function EventDetailPage() {
   return (
     <div className="space-y-4 max-w-5xl" data-component="EventDetailPage">
       {showEditForm && typedEventId && (
-        <EventForm eventId={typedEventId} onClose={() => setShowEditForm(false)} />
+        <EventForm
+          eventId={typedEventId}
+          onClose={() => setShowEditForm(false)}
+          onDetailsChanged={() => setChangeNotice("detailsChanged")}
+        />
       )}
       <CancelEventDialog
         open={showCancelDialog}
         onOpenChange={setShowCancelDialog}
+        eventId={typedEventId ?? null}
         eventTitle={event.title}
-        onConfirm={handleCancelConfirm}
+        onCancelled={handleCancelled}
       />
+      {typedEventId && (
+        <RestoreEventDialog
+          open={showRestoreDialog}
+          onOpenChange={setShowRestoreDialog}
+          eventId={typedEventId}
+          eventTitle={event.title}
+        />
+      )}
+      {typedEventId && changeNotice && (
+        <EventChangeNoticeSheet
+          open
+          onOpenChange={(open) => !open && setChangeNotice(null)}
+          eventId={typedEventId}
+          kind={changeNotice}
+        />
+      )}
       <NotifyMembersDialog
         open={showNotifyDialog}
         onOpenChange={setShowNotifyDialog}
@@ -371,6 +384,15 @@ export function EventDetailPage() {
             matters most. */}
         {canManageEvents && (
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Hidden by itself once cancelled or over, or with nobody to tell */}
+            {typedEventId && event.status === "active" && !isPast && (
+              <SendAssignmentsButton
+                source="event"
+                scopeId={typedEventId}
+                heading={event.title}
+                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors inline-flex items-center gap-1.5"
+              />
+            )}
             <button
               onClick={() => setShowEditForm(true)}
               className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
@@ -431,7 +453,13 @@ export function EventDetailPage() {
                   </>
                 ) : (
                   <>
-                    <DropdownMenuItem onSelect={handleRestore}>
+                    {lateCancelNotice && lateCancelNotice.recipients.length > 0 && (
+                      <DropdownMenuItem onSelect={() => setChangeNotice("cancelled")}>
+                        <BellRing className="h-4 w-4" />
+                        Tell members it's cancelled
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={() => setShowRestoreDialog(true)}>
                       <Undo2 className="h-4 w-4" />
                       Restore
                     </DropdownMenuItem>

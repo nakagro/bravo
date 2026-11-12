@@ -15,6 +15,7 @@ const categoryValidator = v.union(
   v.literal("statusChanges"),
   v.literal("events"),
   v.literal("dutyCrew"),
+  v.literal("deployments"),
 );
 
 const prefRowValidator = v.object({
