@@ -13,7 +13,7 @@ async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
     const officerId = await ctx.db.insert("users", {
-      name: "Alex Carter", firstName: "Max", lastName: "Carter", rank: "Lieutenant" as const,
+      name: "Alex Carter", firstName: "Alex", lastName: "Carter", rank: "Lieutenant" as const,
     });
     const memberId = await ctx.db.insert("users", {
       name: "Jo Adams", firstName: "Jo", lastName: "Adams", rank: "Firefighter" as const,

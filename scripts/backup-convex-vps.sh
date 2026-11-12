@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Nightly snapshot of the self-hosted Convex DB (VPS) into ./exports/convex.
 # Equivalent to `npm run export:vps`, plus locking, verification and retention.
-# Scheduled from root's crontab; see docs/CONVEX-BACKUP.md.
+# Scheduled from root's crontab; see docs/runbooks/convex-backup.md.
 set -euo pipefail
 
 PROJECT_DIR="/var/www/bravo"

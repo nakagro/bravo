@@ -19,7 +19,7 @@ async function setup() {
 
   const { adminId, activeId, lapsedId } = await t.run(async (ctx) => {
     const adminId = await ctx.db.insert("users", {
-      firstName: "Max",
+      firstName: "Alex",
       lastName: "Carter",
       isAdmin: true,
     });

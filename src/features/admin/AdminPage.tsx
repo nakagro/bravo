@@ -8,6 +8,7 @@ import NotificationSettings from "./NotificationSettings";
 import EmailSettings from "./EmailSettings";
 import AdminTasks from "./AdminTasks";
 import LinksManager from "./LinksManager";
+import ContactBookSettings from "./ContactBookSettings";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Shield } from "lucide-react";
@@ -76,6 +77,15 @@ export default function AdminPage() {
           </AccordionTrigger>
           <AccordionContent>
             <LinksManager showTitle={false} />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="contactBook">
+          <AccordionTrigger className="text-xl font-semibold text-gray-900 dark:text-white">
+            Contact Book
+          </AccordionTrigger>
+          <AccordionContent>
+            <ContactBookSettings showTitle={false} />
           </AccordionContent>
         </AccordionItem>
 

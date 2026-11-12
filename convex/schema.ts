@@ -788,6 +788,19 @@ const applicationTables = {
     .index("by_isActive", ["isActive"])
     .index("by_order", ["order"]),
 
+  // The District contact book (names, phones, emails of CFA staff and other
+  // brigades). Kept in file storage behind auth rather than in public/, so it
+  // is never served to anonymous visitors or committed to the repo. At most
+  // one row: uploading a new book replaces it. See convex/contactDirectory.ts.
+  contactDirectoryFiles: defineTable({
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    title: v.optional(v.string()),
+    sizeBytes: v.number(),
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+  }),
+
   linkCategories: defineTable({
     name: v.string(),
     order: v.number(),

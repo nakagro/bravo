@@ -8,6 +8,10 @@
  *
  * Exits non-zero on a validation error so this can be dropped into CI as-is.
  * Warnings (drift, dead links) report but do not fail.
+ *
+ * docs/ is a separate private repository cloned into the working copy (and
+ * gitignored here), so it is absent from public clones: the script then skips.
+ * When docs/ is its own repo, history comes from `git -C docs`.
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
@@ -16,6 +20,13 @@ import { execSync } from "node:child_process";
 const DOCS = "docs";
 const SKIP_DIRS = new Set(["archive-pre-2026"]);
 const OUT = join(DOCS, "README.md");
+
+if (!existsSync(DOCS)) {
+  console.log("docs/ is not present (it is a private repo, cloned separately). Nothing to index.");
+  process.exit(0);
+}
+// docs/ is its own git repo once split out; before that it lives in this repo.
+const DOCS_IS_REPO = existsSync(join(DOCS, ".git"));
 
 const KINDS = ["plan", "reference", "runbook", "audit"];
 const STATUS_BY_KIND = {
@@ -75,23 +86,27 @@ function walk(dir) {
 // Bulk docs-maintenance commits to ignore when deciding whether frontmatter is
 // stale. `updated:` means "when this document's substance last changed", so a
 // commit that only reorganised, renamed or re-stamped every file must not make
-// all 43 docs look out of date. Add a SHA here when doing another bulk pass.
+// all 43 docs look out of date. Matched on "date subject" rather than SHA, so
+// the list survives history rewrites. Add an entry when doing another bulk pass.
 const MAINTENANCE_COMMITS = new Set([
-  "4963190", // 2026-08-23 docs/ restructure: renames + frontmatter added to every doc
+  // 2026-08-23 docs/ restructure: one commit renamed every doc, the next added frontmatter
+  "2026-08-23 Add comprehensive documentation for dev environment setup, inventory quantity feature, linting policy, logging utility, performance optimization, backup procedures, and DNS migration checklist",
+  "2026-08-23 overhaul pt2",
 ]);
 
 function lastCommitDate(file) {
   try {
     // --follow so a renamed file keeps its history; walk back past any
     // maintenance commit to the last one that actually changed the content.
+    const [cwd, path] = DOCS_IS_REPO ? [DOCS, relative(DOCS, file)] : [".", file];
     const log = execSync(
-      `git log --follow --format=%h:%ad --date=short -- "${file}"`,
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+      `git log --follow --format=%ad%x09%s --date=short -- "${path}"`,
+      { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
     ).trim();
     if (!log) return "";
     for (const line of log.split("\n")) {
-      const [sha, date] = line.split(":");
-      if (!MAINTENANCE_COMMITS.has(sha)) return date;
+      const [date, subject] = line.split("\t");
+      if (!MAINTENANCE_COMMITS.has(`${date} ${subject}`)) return date;
     }
     return ""; // only ever touched by maintenance commits
   } catch {

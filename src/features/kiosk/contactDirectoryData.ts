@@ -97,9 +97,10 @@ export interface ContactDirectoryIndex {
     parentById: Map<string, string | null>;
 }
 
-const CONTACT_BOOK_URL = '/data/d14_contact_book.json';
-
-let contactDirectoryPromise: Promise<ContactDirectoryIndex> | null = null;
+// The book itself lives in Convex file storage behind auth (convex/contactDirectory.ts),
+// not in public/: it holds named people's contact details. Callers get the URL from
+// `api.contactDirectory.getDirectoryFile` (see useContactDirectory) and pass it here.
+let contactDirectoryCache: { url: string; promise: Promise<ContactDirectoryIndex> } | null = null;
 
 export function buildContactDirectoryIndex(contactBook: ContactBookData): ContactDirectoryIndex {
     const nodeById = new Map<string, ContactNode>();
@@ -138,9 +139,9 @@ export function buildContactDirectoryIndex(contactBook: ContactBookData): Contac
     };
 }
 
-export async function loadContactDirectory() {
-    if (!contactDirectoryPromise) {
-        contactDirectoryPromise = fetch(CONTACT_BOOK_URL, { cache: 'force-cache' })
+export async function loadContactDirectory(url: string) {
+    if (contactDirectoryCache?.url !== url) {
+        const promise = fetch(url, { cache: 'force-cache' })
             .then(async (response) => {
                 if (!response.ok) {
                     throw new Error(`Unable to load contact directory (${response.status})`);
@@ -150,12 +151,29 @@ export async function loadContactDirectory() {
                 return buildContactDirectoryIndex(contactBook);
             })
             .catch((error) => {
-                contactDirectoryPromise = null;
+                if (contactDirectoryCache?.promise === promise) {
+                    contactDirectoryCache = null;
+                }
                 throw error;
             });
+        contactDirectoryCache = { url, promise };
     }
 
-    return contactDirectoryPromise;
+    return contactDirectoryCache.promise;
+}
+
+/**
+ * Cheap structural check run before an admin uploads a new book, so a wrong
+ * file is rejected in the browser instead of breaking the directory for everyone.
+ */
+export function isContactBookData(value: unknown): value is ContactBookData {
+    if (!value || typeof value !== 'object') return false;
+    const book = value as Record<string, unknown>;
+    return (
+        Array.isArray(book.sections) &&
+        Array.isArray(book.top_level_menu) &&
+        Array.isArray(book.search_index)
+    );
 }
 
 export function formatPageRange(pageRange?: number[]) {

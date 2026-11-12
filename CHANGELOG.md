@@ -1,5 +1,8 @@
 # Changelog
 
+## [2026.11.13]
+- Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.
+
 ## [2026.11.12]
 - General: The app's code history has been cleaned up ahead of opening it to the public.
 - Events: Members can now be notified when they're rostered or crewed, and when an event is cancelled, moved or back on.

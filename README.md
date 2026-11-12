@@ -25,7 +25,7 @@ This README serves as a guide for developers, contributors, and AI assistants to
 
 ## Development and Deployment
 
-For detailed instructions on developing and deploying with both local Docker-based Convex and Convex Cloud, see [docs/reference/convex-setup.md](./docs/reference/convex-setup.md).
+See [Running your own copy](#running-your-own-copy) below.
 
 ## Project Structure
 
@@ -82,8 +82,6 @@ For detailed instructions on developing and deploying with both local Docker-bas
 │   ├── App.tsx             # Root component with routing
 │   ├── main.tsx            # Application entry point
 │   └── index.css           # Global styles and Tailwind setup
-├── docs/                   # Documentation
-├── rules/                  # AI assistant rules and guidelines
 ├── scripts/                # Utility scripts
 ├── .env.local              # Local environment variables
 ├── components.json         # shadcn/ui configuration
@@ -186,7 +184,7 @@ BRAVO is built with a modular, feature-based architecture and comprehensive perm
 #### **Additional Modules**
 
 Added since the detailed sections above were written. Descriptions are deliberately brief — read
-the feature directory and `docs/README.md` rather than trusting a summary here.
+the feature directory rather than trusting a summary here.
 
 *   **Action Centre** (`actionCentre`) — personal work queue aggregating outstanding obligations across modules (availability, RSVPs, tasks, duty crew, notices)
 *   **Events** (`events`) — one-off brigade events with RSVPs, shifts/slots, team leaders and post-event attendance confirmation
@@ -311,168 +309,96 @@ Generate once with `npx web-push generate-vapid-keys` and set:
 *   `.env.local`  `VITE_VAPID_PUBLIC_KEY` ( for the browser)
 *   Convex env      `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (in the Convex dashboard)
 
-## Deployment
+## Running your own copy
 
-### Production Architecture
-
-This project uses a split deployment model:
-
-| Layer | Where | How |
-|---|---|---|
-| **Frontend** | [Vercel](https://vercel.com) | Auto-deploys on merge to `main` via GitHub integration — environment variables are managed in the **Vercel dashboard**, not in this repo |
-| **Backend** | Self-hosted VPS (BinaryLane) | Convex running in a Docker container, deployed via `npm run deploy:convex:vps` |
-
-> **Important for contributors/AI assistants**: Frontend environment variables (e.g. `VITE_CONVEX_URL`, `VITE_VAPID_PUBLIC_KEY`) live in Vercel's dashboard, not in `.env` files in this repo. If the frontend isn't picking up a change, check Vercel environment variables first.
-
-### Deploy Backend to VPS
-
-```bash
-npm run deploy:convex:vps
-```
-
-This pushes all Convex functions and schema changes to the self-hosted Convex instance on the VPS. **This targets the live production instance.** Verify on the UAT tier first — see `docs/runbooks/uat-environment.md`.
-
-### Deploy Frontend to Vercel
-
-Frontend deploys are triggered automatically — Vercel is connected to the private GitHub repository and builds on every merge to `main`. There is no manual deploy step for the frontend.
-
-Vercel bakes `VITE_*` environment variables into the build at build time. After changing a Vercel env var you must trigger a redeploy for it to take effect.
-
-See [docs/reference/convex-setup.md](./docs/reference/convex-setup.md) for detailed VPS/Docker setup instructions.
-
-## Getting Started
+BRAVO is built for one brigade per deployment: a Convex backend plus a static frontend.
 
 ### Prerequisites
 
-*   [Node.js](https://nodejs.org/) (LTS version recommended)
-*   [npm](https://www.npmjs.com/) (comes with Node.js)
-*   [Convex CLI](https://docs.convex.dev/getting-started/installation#install-the-convex-cli): `npm install -g convex` (used for schema/function pushes)
+*   [Node.js](https://nodejs.org/) 24 LTS (pinned in `.nvmrc`) and npm
+*   A [Convex](https://convex.dev/) deployment: Convex Cloud, or [self-hosted](https://github.com/get-convex/convex-backend/tree/main/self-hosted) in Docker
+*   Somewhere to host a static site (Vercel, Netlify, any web server)
 
-Docker is **not** required for development. Running Convex locally in Docker was retired — see
-[docs/reference/convex-setup.md](./docs/reference/convex-setup.md). Docker is only relevant on the
-VPS itself, and for `npm run backup:drill`, which spins up a throwaway container to verify backups.
+### 1. Install
 
-### Installation
-
-1.  Clone the repository:
-    ```bash
-    git clone <repository-url>
-    cd bravo
-    ```
-
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-
-3.  Obtain the environment files. Backend targets are selected by **env file + Vite mode**, and the
-    files are gitignored — you need copies from the maintainer:
-
-    | File | Selects | Used by |
-    |---|---|---|
-    | `.env.vps` | **live production** (self-hosted VPS) | `dev:vps:frontend`, `deploy:convex:vps`, `export:vps` |
-    | `.env.cloud` | UAT (`precious-magpie-647`) | `dev:uat`, `build:cloud` |
-    | `.env.local` | local overrides (lowest priority) | all modes |
-
-    Only `.env` is committed. **[docs/reference/environments.md](./docs/reference/environments.md)
-    explains what belongs in each file** — in particular that variables live in three distinct
-    places (frontend build-time `VITE_*`, Convex CLI target selection, and deployment runtime set
-    via `npx convex env set`), and that several entries in `.env.vps` are CLI-local leftovers the
-    backend never reads.
-
-    Running Convex locally in Docker is **retired, not impossible** — the `*:docker` scripts were
-    removed to cut maintenance, but nothing in the app requires a remote backend. That doc has what
-    you'd need to revive it.
-
-4.  Generate VAPID keys for push notifications (only when standing up a **new** deployment —
-    existing deployments already have them):
-    ```bash
-    npm run keys:generate     # or: npx web-push generate-vapid-keys
-    ```
-
-### Running Locally
-
-**Frontend only (most common):**
 ```bash
-npm run dev:frontend
+git clone https://github.com/nakagro/bravo.git
+cd bravo
+npm install
 ```
-Starts the Vite dev server pointing at the production VPS backend (`https://boss-convex.grayhux.io`). This is the standard way to develop and test frontend changes locally.
 
-**Backend changes:**
+### 2. Create and configure the backend
+
 ```bash
-npm run deploy:convex:vps
+npx convex dev --once            # creates/links a deployment and pushes the schema and functions
+npx @convex-dev/auth             # sets the auth keys (JWT_PRIVATE_KEY, JWKS, SITE_URL)
+npx web-push generate-vapid-keys # keys for push notifications
 ```
-Deploys Convex functions and schema to the VPS (live production). Promote via the UAT tier rather than deploying straight from a feature branch — see `docs/runbooks/uat-environment.md`.
 
-### Development Workflow
+Set the backend's environment variables with `npx convex env set NAME value`:
 
-*   **Frontend changes**: Run `npm run dev:frontend` — Vite HMR gives instant hot reloads, connected to the live VPS backend
-*   **Backend changes**: Edit Convex functions then run `npm run deploy:convex:vps` to push to VPS
-*   **Schema changes**: Deployed along with backend via `deploy:convex:vps`
-*   **Type safety**: Full TypeScript support — run `npx tsc --noEmit` to check before deploying
-*   **Vercel env vars**: If frontend behaviour looks wrong in production but fine locally, check Vercel dashboard environment variables — they are not stored in this repo
+| Variable | Needed for |
+|---|---|
+| `FRONTEND_URL` | Links in emails (your site's URL) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Push notifications |
+| `RESEND_API_KEY` | Sign-up, password-reset and notification emails (optional) |
+| `POSTHOG_API_KEY`, `POSTHOG_HOST` | Notification analytics (optional) |
+| `CALDAV_URL`, `CALDAV_USERNAME`, `CALDAV_PASSWORD` | Calendar sync (optional) |
+| `EMAIL_ALLOWLIST` | Test deployments only: drops mail to anyone not listed. Never set it in production |
 
-### Linting and Type Checking
+### 3. Configure and build the frontend
 
-The toolchain is **Vite+** (`vp` CLI wrapping Vite 8 / Vitest / Oxlint), not plain Vite. Lint rules
-live in the `lint` block of `vite.config.ts` — not `.oxlintrc.json` or ESLint (removed). Formatting
-is Prettier; there is no `npm run format` script.
+Frontend settings are `VITE_*` variables. **They are built into the JavaScript every visitor
+downloads, so never put a secret in one.** Put them in `.env.vps` for local use (gitignored), and in
+your host's dashboard for production builds.
+
+| Variable | Needed for |
+|---|---|
+| `VITE_CONVEX_URL` | Your Convex deployment URL (required) |
+| `VITE_VAPID_PUBLIC_KEY` | Push notifications (the public half only) |
+| `VITE_HCAPTCHA_SITE_KEY` | Sign-in captcha; set your own, or `VITE_DISABLE_CAPTCHA=true` |
+| `VITE_PUBLIC_POSTHOG_KEY`, `VITE_PUBLIC_POSTHOG_HOST` | Analytics (optional) |
+| `VITE_GATE_API_BASE`, `VITE_GATE_MOCK` | Station door control on the kiosk (optional, station-specific) |
+
+```bash
+npm run dev:vps:frontend   # local dev server against the backend in .env.vps
+npm run build              # production build into dist/
+```
+
+### 4. First sign-in
+
+Sign up through the app, then make that account an admin by setting `isAdmin: true` on your user in
+the Convex dashboard's Data view. From **Admin Settings** you can then set up ranks and roles,
+module access, service accounts for shared station tablets, links and the contact book.
+
+### Notes
+
+*   Push-notification reset times and the duty week are set for Melbourne time; see
+    `convex/lib/dates.ts` and `convex/crons.ts`.
+*   Contact lists and other personal data belong in your Convex deployment behind sign-in (for
+    example **Admin Settings → Contact Book**), never in `public/` or the repository.
+
+## Development
 
 ```bash
 npm run lint        # full gate: oxlint + typecheck + tests + Convex codegen + production build
 npm run lint:code   # oxlint only (also runs in the husky pre-commit)
-npm run typecheck   # TypeScript only, across convex/ + app + node configs
+npm run typecheck   # TypeScript only
 npm run test        # Vitest (frontend utils + convex-test backend tests)
 ```
 
-`vp lint` must stay at **zero warnings** — warnings don't fail CI, so the baseline is convention.
-See [docs/reference/linting.md](./docs/reference/linting.md).
+The toolchain is **Vite+** (`vp` CLI wrapping Vite 8, Vitest and Oxlint). Lint rules live in the
+`lint` block of `vite.config.ts`, and `vp lint` must stay at zero warnings. The pre-commit hook syncs
+the date-based version in `package.json` and, if [gitleaks](https://github.com/gitleaks/gitleaks) is
+installed, scans staged changes for secrets and personal data (`.gitleaks.toml`). CI runs the same
+scan.
 
-### Version Management
-
-```bash
-# Sync version to today's build date (YYYY.MM.DD)
-npm run version:sync
-
-# The local pre-commit hook also syncs and stages package.json automatically
-git commit -m "Your change"
-```
-
-## Documentation
-
-**[docs/README.md](./docs/README.md) is a generated index of all documentation**, grouped by status.
-Start there — it is the authority on what is implemented and what is only planned. Status lives in
-each doc's YAML frontmatter, not in its prose. After adding or editing a doc, run `npm run docs:index`
-to validate and regenerate; never hand-edit `docs/README.md`.
-
-Docs are organised by kind: `docs/plans/` (proposed, in-flight, completed work) ·
-`docs/reference/` (how things work today) · `docs/runbooks/` (operational procedures) ·
-`docs/audits/` (point-in-time assessments) · `docs/archive-pre-2026/` (historical, unindexed).
-
-### Start here
-*   **[docs/reference/environments.md](./docs/reference/environments.md)**: which backend each command talks to — **read before running anything that touches a backend**
-*   **[docs/reference/convex-setup.md](./docs/reference/convex-setup.md)**: Detailed Convex deployment guide
-*   **[docs/reference/creating-new-modules.md](./docs/reference/creating-new-modules.md)**: Guide for adding new features
-*   **[docs/reference/performance-optimization.md](./docs/reference/performance-optimization.md)**: Performance best practices
-*   **[docs/archive-pre-2026/ADD_MODULE_TO_PERMISSIONS.md](./docs/archive-pre-2026/ADD_MODULE_TO_PERMISSIONS.md)**: Permission system integration
-
-### Analytics & Monitoring
-*   **[docs/archive-pre-2026/POSTHOG_NOTIFICATION_ANALYTICS.md](./docs/archive-pre-2026/POSTHOG_NOTIFICATION_ANALYTICS.md)**: PostHog analytics setup and usage
-*   **[docs/archive-pre-2026/sentrysetup.md](./docs/archive-pre-2026/sentrysetup.md)**: Sentry error tracking configuration
-
-### Multi-Brigade Architecture (Future)
-*   **[docs/archive-pre-2026/MULTI_BRIGADE_SUMMARY.md](./docs/archive-pre-2026/MULTI_BRIGADE_SUMMARY.md)**: Executive summary of multi-brigade support
-*   **[docs/archive-pre-2026/MULTI_BRIGADE_MIGRATION.md](./docs/archive-pre-2026/MULTI_BRIGADE_MIGRATION.md)**: Complete migration guide
-*   **[docs/archive-pre-2026/multi-brigade/](./docs/archive-pre-2026/multi-brigade/)**: Detailed phase-by-phase implementation guides
-
-> **Note**: BRAVO currently supports a single brigade (Wyndham Vale Fire Brigade). The multi-brigade documentation outlines the architecture and effort required to support multiple brigades in the future.
-
-## Support and Maintenance
-
-This system is designed for the Wyndham Vale Fire Brigade and CFA volunteer operations. For issues, feature requests, or contributions, please contact the development team.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request, and
+[SECURITY.md](./SECURITY.md) to report a vulnerability.
 
 ## License
 
-(Add license information as appropriate)
-
----
+BRAVO is free software, licensed under the [GNU Affero General Public License v3.0](./LICENSE)
+(AGPL-3.0-only). You may use, modify and host it, including for other brigades. If you run a
+modified version for other people, you must make your modified source available to them under the
+same licence.

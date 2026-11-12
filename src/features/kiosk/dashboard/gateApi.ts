@@ -1,6 +1,6 @@
 // Station (wvfb-api) access layer for the kiosk dashboard.
 //
-// This talks to the LOCAL node API (`wvfb-api` at 192.0.2.10:3000, proxied as
+// This talks to the LOCAL node API (`wvfb-api` on the station LAN, proxied as
 // /gate-api), NOT Convex - door/area control must stay on the local network for
 // security. Single source of truth for door + area state interpretation and the
 // control/scene endpoints, shared by every dashboard widget and modal.
@@ -14,7 +14,7 @@ import * as mock from './mockStation';
 // ── Config ────────────────────────────────────────────────────────────────────
 
 // When proxied through the BRAVO server: set VITE_GATE_API_BASE=/gate-api (key
-// injected by nginx). Direct local access: VITE_GATE_API_BASE=http://192.0.2.10:3000
+// injected by nginx). Direct local access: VITE_GATE_API_BASE=http://<station-host>:3000
 export const GATE_API_BASE = import.meta.env.VITE_GATE_API_BASE ?? '/gate-api';
 export const API_KEY       = import.meta.env.VITE_GATE_API_KEY ?? '';
 export const POLL_INTERVAL_MS = 5000;

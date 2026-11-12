@@ -36,7 +36,7 @@ async function setup() {
     });
     const adminId = await ctx.db.insert("users", {
       name: "Alex Carter",
-      firstName: "Max",
+      firstName: "Alex",
       lastName: "Carter",
       isAdmin: true,
     });

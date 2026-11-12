@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useId, useState, type ReactNode } from 'react';
+import { startTransition, useDeferredValue, useId, useState, type ReactNode } from 'react';
 import {
     ArrowLeft,
     ChevronRight,
@@ -12,10 +12,9 @@ import {
     getNodeSummary,
     getNodeTrail,
     getSearchResults,
-    loadContactDirectory,
-    type ContactDirectoryIndex,
     type ContactNode,
 } from './contactDirectoryData';
+import { useContactDirectory } from './useContactDirectory';
 
 interface KioskContactDirectoryProps {
     onBack: () => void;
@@ -67,36 +66,10 @@ function DetailList({ lines }: { lines: string[] }) {
 
 function KioskContactDirectory({ onBack }: KioskContactDirectoryProps) {
     const searchInputId = useId();
-    const [directory, setDirectory] = useState<ContactDirectoryIndex | null>(null);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const { directory, loadError } = useContactDirectory();
     const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-
-    useEffect(() => {
-        let cancelled = false;
-
-        loadContactDirectory()
-            .then((loadedDirectory) => {
-                if (cancelled) {
-                    return;
-                }
-
-                setDirectory(loadedDirectory);
-                setLoadError(null);
-            })
-            .catch((error) => {
-                if (cancelled) {
-                    return;
-                }
-
-                setLoadError(error instanceof Error ? error.message : 'Unable to load contact directory.');
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
 
     const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLowerCase());
     const currentNode = currentNodeId && directory ? directory.nodeById.get(currentNodeId) ?? null : null;

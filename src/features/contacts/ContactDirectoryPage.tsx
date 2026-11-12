@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import {
     ArrowLeft,
     ChevronRight,
@@ -15,13 +15,12 @@ import {
     getNodeSummary,
     getNodeTrail,
     getSearchResults,
-    loadContactDirectory,
     type ContactCard,
-    type ContactDirectoryIndex,
     type ContactMethods,
     type ContactRecord,
     type VehicleRecord,
 } from "@/features/kiosk/contactDirectoryData";
+import { useContactDirectory } from "@/features/kiosk/useContactDirectory";
 
 /**
  * Mobile-friendly D14 Contact List.
@@ -175,31 +174,9 @@ function VehicleItem({ vehicle }: { vehicle: VehicleRecord }) {
 }
 
 export default function ContactDirectoryPage() {
-    const [directory, setDirectory] = useState<ContactDirectoryIndex | null>(null);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const { directory, loadError } = useContactDirectory();
     const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-
-    useEffect(() => {
-        let cancelled = false;
-
-        loadContactDirectory()
-            .then((loaded) => {
-                if (cancelled) return;
-                setDirectory(loaded);
-                setLoadError(null);
-            })
-            .catch((error) => {
-                if (cancelled) return;
-                setLoadError(
-                    error instanceof Error ? error.message : "Unable to load contact directory.",
-                );
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
 
     const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLowerCase());
 

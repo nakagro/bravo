@@ -2,73 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Environments
+**Maintainers:** if `docs/AGENT_PRIVATE.md` exists (the private docs repo cloned into `docs/`), it is
+loaded through the gitignored `CLAUDE.local.md` and its rules override this file.
 
-**`npm run dev` points at live production.** There is no local backend — a frontend on your laptop
-reads and writes the same database members use. Three deployments exist:
+## Safety rules
 
-| | Prod (VPS, self-hosted) | UAT (Convex SaaS) | Cloud prod |
-|---|---|---|---|
-| | `boss-convex.grayhux.io` | `precious-magpie-647` | `veracious-squirrel-546` |
-| | live, real members | prod-data clone, testing | unwired, empty — ignore |
-
-`--env-file .env.vps` targets **prod**; `CONVEX_DEPLOYMENT=precious-magpie-647` targets **UAT**.
-Note `npm run dev:uat` runs a *watch loop* that continuously pushes to UAT.
-
-### Production is human-only
-
-**Deploy to cloud/UAT; hand production to Shaun.** Two actions are reserved for a human and blocked
-from non-interactive shells:
-
-| Action | Guard |
-|---|---|
-| `npm run deploy:convex:vps` | `scripts/guard-prod.sh` — needs a TTY + typed phrase |
-| `git push origin main` (triggers Vercel prod) | `.husky/pre-push` |
-
-`npm run import:vps` (wipes prod data) is guarded too. If you hit a refusal, **stop and hand it
-back** — don't route around it, don't set `BRAVO_ALLOW_PROD`, don't call
-`convex deploy --env-file .env.vps` directly.
-
-Unrestricted for agents: `npm run refresh:uat` (guards + clone + deploy in one),
-`npm run deploy:convex:uat`, `npm run clone:uat`, `npm run snapshot:prod` (read-only),
-`npm run env:parity`, `npm run lint` (its codegen targets UAT, not prod), and read-only prod
-inspection via `npx convex function-spec --env-file .env.vps`.
-
-`npm run release:prod` (snapshot + prod deploy) is **human-only** - it chains the TTY-gated deploy.
-
-⚠️ A bare `convex` command with no explicit target reads `CONVEX_DEPLOYMENT` from `.env.local`,
-which points at **UAT** — safe, but not obvious. Always be explicit about the target.
-
-**Read `docs/reference/environments.md` before running anything that touches a backend** — it
-covers which command hits which deployment, the `import --replace-all` footguns, and how to check
-what is actually live with `npx convex function-spec --env-file .env.vps` (read-only).
-
-### Branching: `uat` is upstream of `main`
-
-The direction is **`feature -> uat -> main`**. Branch new work from `uat`, not `main`.
-
-**Decision rule — does the change touch `convex/`?**
-
-- **Yes** (schema, new/renamed function, migration): it **must** go through UAT. No exceptions.
-  Schema validation against real cloned data is the check nothing else provides.
-- **No** (docs, CI, README, trivial frontend): may go direct to `main`.
-
-**If anything lands directly on `main`, `uat` must be re-synced in the same breath:**
-
-```bash
-git push origin main
-npm run sync:uat                       # never skip this
-```
-
-`sync:uat` refuses rather than force-pushing if `uat` holds commits `main` does
-not - that case needs a merge, not a force.
-
-Leaving `uat` behind fails silently — the next branch cut from `uat` is missing commits, and the
-later merge conflicts in ways that look unrelated. Do not force-update `uat` if it holds work that
-is *not* in `main`; merge and find out why it diverged.
-
-Agents cannot push `main` (`.husky/pre-push` blocks non-TTY shells), so in practice: commit, then
-hand the push **and** the `uat` re-sync back to Shaun as a pair — not just the push.
+- **Know which backend you are talking to.** `npm run dev` and every `:vps` script target whatever
+  deployment `.env.vps` names. For the maintainers that is a live brigade's production data. Never
+  run `deploy:convex:vps`, `import:vps`, `release:prod` or `convex deploy` against a deployment you
+  don't own. Production deploys and pushes to `main` are human-only and guarded
+  (`scripts/guard-prod.sh`, `.husky/pre-push`); if a guard refuses, stop and hand the step back.
+  Don't route around it and don't set `BRAVO_ALLOW_PROD`.
+- **`VITE_*` is public.** Every `VITE_*` value is built into the JavaScript any visitor downloads.
+  Never put a secret, password or API key in one.
+- **No personal data in the repo.** No real member names, phone numbers, emails or contact lists in
+  code, tests, fixtures, `public/` or screenshots. Use invented names (e.g. "Alex Carter"). Data that
+  holds people's details belongs in Convex behind auth. `.gitleaks.toml` checks this in the
+  pre-commit hook and CI.
 
 ## Changelog
 
@@ -84,39 +34,38 @@ catch it up.
 
 ## Documentation
 
-`docs/README.md` is a **generated index** of every doc, grouped by status. Read it before assuming a
-plan is or isn't implemented — status lives in each doc's frontmatter, not in its prose.
+Public docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`. The maintainers' working docs (plans,
+runbooks, references) live in a **private** repo cloned into `docs/`, which is gitignored here, so
+`docs/` is absent in public clones. Code comments that point at `docs/...` are maintainer
+references.
 
-- `docs/plans/` — proposed, in-flight and completed work (`status:` planned | in-progress | partial | implemented | superseded)
-- `docs/reference/` — how things work today · `docs/runbooks/` — operational procedures · `docs/audits/` — point-in-time assessments
-- `docs/archive-pre-2026/` — historical, excluded from the index
-
-After adding or changing a doc, update its frontmatter and run `npm run docs:index` (validates and
-regenerates). Never hand-edit `docs/README.md`.
+When `docs/` is present: `docs/README.md` is a **generated index** grouped by status, which lives in
+each doc's frontmatter. Read it before assuming a plan is or isn't implemented. After changing a doc,
+update its frontmatter and run `npm run docs:index`; never hand-edit `docs/README.md`. Search `docs/`
+by passing the path explicitly (ripgrep skips gitignored directories from the repo root), and commit
+docs changes inside that repo (`git -C docs ...`).
 
 ## Commands
 
 ### Development
-- **Node**: 24.x LTS, pinned in `.nvmrc` (24.22.1) and `package.json#engines`. VPS scripts hardcode the nvm path `/root/.nvm/versions/node/v24.22.1/bin`, so bump them along with `.nvmrc`.
-- `npm run dev:vps:frontend` - **Primary local dev command** — Vite dev server pointed at the VPS backend
-- `npm run dev` / `npm run dev:frontend` / `npm run dev:vps` - Aliases for `dev:vps:frontend`
-- `npm run dev:uat` - Frontend + **UAT** backend (`precious-magpie-647`). ⚠️ Runs `convex dev`, a
-  watch loop that continuously pushes your working copy to UAT — see `docs/reference/environments.md`
+- **Node**: 24.x LTS, pinned in `.nvmrc` and `package.json#engines`. Some backup scripts hardcode the nvm path, so bump them along with `.nvmrc`.
+- `npm run dev` / `npm run dev:vps:frontend` - Vite dev server pointed at the backend in `.env.vps`
+- `npm run dev:uat` - Frontend + the UAT backend. ⚠️ Runs `convex dev`, a watch loop that continuously pushes your working copy to that deployment
 
 ### Build and Deployment
-- `npm run deploy:convex:vps` - **Deploy backend** — pushes Convex functions/schema to VPS (live production)
-- `npm run deploy:vps` - Deploy backend to VPS (frontend deploys automatically via GitHub → Vercel on merge to main)
-- `npm run build:vps` - Build frontend for VPS backend URL
+- `npm run deploy:convex:vps` - Deploy the backend to production (human-only, guarded)
+- `npm run deploy:convex:uat` - Deploy the backend to UAT
+- `npm run build:vps` - Build the frontend
 - `npm run lint` - Full gate: Oxlint + typecheck + tests + Convex codegen + production build
 - `npm run lint:code` - Oxlint only (`vp lint`, config in the `lint` block of `vite.config.ts`; also runs in the husky pre-commit)
 - `npm run test` / `npm run test:watch` - Vitest via `vp test` (frontend utils + `convex-test` backend tests)
 
-The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/audits/vite-plus-evaluation.md`). The `vite` package is aliased to `@voidzero-dev/vite-plus-core` via an npm override. Formatting stays on Prettier — but there is no Prettier config and no format script, so it runs on defaults and is unenforced. Match surrounding style; do not bulk-reformat.
+The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint). The `vite` package is aliased to `@voidzero-dev/vite-plus-core` via an npm override. Formatting stays on Prettier, but there is no Prettier config and no format script, so it runs on defaults and is unenforced. Match surrounding style; do not bulk-reformat.
 
-**Lint policy**: `vp lint` must stay at **zero warnings** (baseline established 2026-07-17). Warnings don't fail CI, so the baseline is enforced by convention — see `docs/reference/linting.md` for how to resolve new warnings (underscore-prefix required signatures, `ignoreRestSiblings` covers destructure-to-omit, verify dead code with grep before deleting, flag unfinished-feature removals in the PR).
+**Lint policy**: `vp lint` must stay at **zero warnings**. Warnings don't fail CI, so the baseline is enforced by convention: underscore-prefix required-but-unused signatures, `ignoreRestSiblings` covers destructure-to-omit, verify dead code with grep before deleting, and flag unfinished-feature removals in the PR.
 
 ### Preview
-- `npm run preview:vps` - Build and preview VPS frontend locally
+- `npm run preview:vps` - Build and preview the frontend locally
 
 ## Architecture
 
@@ -129,9 +78,8 @@ The toolchain is **Vite+** (`vp` CLI wrapping Vite 8/Vitest/Oxlint; see `docs/au
 - **PWA**: Vite PWA plugin with service worker and push notifications
 
 ### Deployment Architecture
-- **Frontend**: Hosted on Vercel, built on every merge to `main`. **No env file in this repo configures it.** Vercel runs `npm run build` → `vp build --mode vps`, but `.env.vps` is gitignored and absent there, so every `VITE_*` comes from the **Vercel dashboard**. A new `VITE_*` therefore needs adding in *two* places — the env file (for local dev) and the dashboard (for production) — or it works locally and is `undefined` in prod with no build error. Vercel bakes `VITE_*` at build time, so a dashboard change needs a redeploy. Build command, Ignored Build Step and Node version are dashboard state too, invisible to `git`. If prod differs from local on identical code, check Vercel first.
-- **Backend**: Self-hosted Convex running in Docker on a VPS (`https://boss-convex.grayhux.io`). Deployed via `npm run deploy:convex:vps`.
-- **UAT tier (built 2026-08-24)**: `precious-magpie-647` holds a full unscrubbed clone of prod data, guarded by `EMAIL_ALLOWLIST`, a separate VAPID pair and a mocked kiosk gate. Verify there before promoting: `npm run clone:uat -- --yes` → `npm run deploy:convex:uat` → merge `uat` → `main`. **Read `docs/runbooks/uat-environment.md`** for the full ritual and the guard list. `npm run dev` still points a local frontend at **live prod**.
+- **Frontend**: a static build, hosted on Vercel and built on every merge to `main`. Vercel runs `npm run build` → `vp build --mode vps`; `.env.vps` is gitignored and absent there, so every `VITE_*` comes from the **Vercel dashboard**. A new `VITE_*` therefore needs adding in *two* places (the env file for local dev, the dashboard for production) or it is `undefined` in prod with no build error. Vercel bakes `VITE_*` at build time, so a dashboard change needs a redeploy. Build command and Node version are dashboard state too; the Ignored Build Step is `vercel.json` → `scripts/vercel-ignore-build.sh` (production branches only, previews skipped).
+- **Backend**: Convex, self-hosted (Docker) or Convex Cloud. A UAT deployment is used to verify changes before production.
 
 ### Feature-Driven Architecture
 

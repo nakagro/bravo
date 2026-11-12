@@ -12,7 +12,7 @@
  *   GitHub release ->  precompiled-<date>-<first 7 of that SHA>
  *   npm version    ->  npm-packages/convex/package.json at that commit
  *
- * See docs/CONVEX-SELF-HOST-VERSIONS.md for the long-form explanation.
+ * See docs/reference/convex-self-host-versions.md for the long-form explanation.
  *
  * Usage:
  *   node scripts/convex-version-map.mjs                 # full stack status + upgrade path
@@ -65,7 +65,7 @@ async function getJson(url, { headers = {}, label, attempts = 3 } = {}) {
         throw new Failure(
           "GitHub API rate limit reached (60/hour unauthenticated). " +
             "Set GITHUB_TOKEN and retry, or use the manual curl recipes in " +
-            "docs/CONVEX-SELF-HOST-VERSIONS.md",
+            "docs/reference/convex-self-host-versions.md",
         );
       }
     }
@@ -666,7 +666,7 @@ async function statusMode(runningOverride) {
       );
     }
     steps.forEach((step, index) => console.log(`    ${index + 1}. ${step}`));
-    console.log("\n    Upgrade mechanics: docs/CONVEX-SELF-HOST-VERSIONS.md");
+    console.log("\n    Upgrade mechanics: docs/reference/convex-self-host-versions.md");
   }
   console.log("");
   return result;
@@ -701,7 +701,7 @@ try {
         `The running backend commit is read from ${REV_ENV_VAR} in .env.vps when --running is`,
         "omitted; self-hosted backends do not report their own build.",
         "",
-        "Background: docs/CONVEX-SELF-HOST-VERSIONS.md",
+        "Background: docs/reference/convex-self-host-versions.md",
       ].join("\n"),
     );
     process.exit(0);

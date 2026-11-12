@@ -33,3 +33,19 @@ temp
 .agents/
 .claude/
 .codex
+
+# Private or personal data: never commit (see SECURITY.md / CONTRIBUTING.md)
+public/data/
+*.pdf
+*.csv
+*.tsv
+*.xlsx
+*.xls
+/*.png
+/*.jpg
+__pycache__/
+
+# Private working docs live in a separate private repo cloned into docs/
+docs/
+# Personal agent instructions (imports docs/AGENT_PRIVATE.md)
+CLAUDE.local.md

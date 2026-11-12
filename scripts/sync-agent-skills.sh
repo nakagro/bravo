@@ -2,7 +2,7 @@
 # Update every agent skill in this repo, then drop the Claude Code copies that
 # duplicate the user-level `convex@claude-plugins-official` plugin.
 # Run after `npx convex ai-files install/update` too - both re-create the copies.
-# See docs/AGENT_SKILLS.md.
+# See docs/reference/agent-skills.md.
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

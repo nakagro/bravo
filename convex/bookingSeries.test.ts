@@ -18,7 +18,7 @@ async function setup() {
   const { memberId, otherId, approverId, resourceId } = await t.run(async (ctx) => {
     const memberId = await ctx.db.insert("users", { name: "Sam Nurse", firstName: "Sam" });
     const otherId = await ctx.db.insert("users", { name: "Jo Adams", firstName: "Jo" });
-    const approverId = await ctx.db.insert("users", { name: "Alex Carter", firstName: "Max" });
+    const approverId = await ctx.db.insert("users", { name: "Alex Carter", firstName: "Alex" });
     const resourceId = await ctx.db.insert("bookingResources", {
       name: "Meeting room",
       isActive: true,

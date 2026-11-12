@@ -18,7 +18,7 @@ async function setup(options: { rank?: string; admin?: boolean } = {}) {
   const { officerId, memberId, otherMemberId } = await t.run(async (ctx) => {
     const officerId = await ctx.db.insert("users", {
       name: "Alex Carter",
-      firstName: "Max",
+      firstName: "Alex",
       lastName: "Carter",
       rank: (options.rank ?? "Lieutenant") as "Lieutenant",
       isAdmin: options.admin ?? false,
@@ -996,7 +996,7 @@ describe("access gates", () => {
         updatedAt,
       });
       const officerId = await ctx.db.insert("users", {
-        name: "Max",
+        name: "Alex",
         rank: "Lieutenant" as const,
       });
       const memberId = await ctx.db.insert("users", { name: "Jo", rank: "Firefighter" as const });

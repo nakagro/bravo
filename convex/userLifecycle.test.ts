@@ -18,7 +18,7 @@ async function setup() {
   const { adminId, memberId } = await t.run(async (ctx) => {
     const adminId = await ctx.db.insert("users", {
       name: "Alex Carter",
-      firstName: "Max",
+      firstName: "Alex",
       lastName: "Carter",
       rank: "Captain" as const,
       isAdmin: true,

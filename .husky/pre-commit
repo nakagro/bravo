@@ -6,3 +6,12 @@ git add package.json
 
 # Lint (Oxlint via Vite+) — fast enough to run on every commit
 npx vp lint || exit 1
+
+# Secrets and personal data (phone numbers, emails in data files, LAN IPs).
+# Config: .gitleaks.toml. CI runs the same scan on every push and PR, so a
+# missing local install only skips the early warning, never the check.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml || exit 1
+else
+  echo "pre-commit: gitleaks not installed - skipping local secret/PII scan (CI still runs it)."
+fi
