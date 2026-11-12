@@ -450,3 +450,62 @@ describe("event messages", () => {
     expect(log[0]).toMatchObject({ kind: "message", recipientCount: 4, message: "Bring water" });
   });
 });
+
+describe("backing out", () => {
+  const backoutRow = (c: Ctx) =>
+    c.t.run((ctx) =>
+      ctx.db
+        .query("actionNotices")
+        .withIndex("by_source", (q) => q.eq("conditionKey", "events:backouts").eq("sourceEntityId", c.eventId))
+        .first(),
+    );
+  const pushes = (c: Ctx) =>
+    c.t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter((s) => s.name.includes("deliverToUsers")).length,
+    );
+
+  it("pushes the organiser when someone crewed backs out, lists a plain yes without a push, and clears on undo", async () => {
+    const c = await setup();
+    await c.asAdmin.mutation(api.events.setTeamLeaders, { eventId: c.eventId, userIds: [c.bobId] });
+    await seat(c, { driver: c.aliceId });
+
+    await c.asAlice.mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+    let row = (await backoutRow(c))!;
+    expect(row.title).toBe("Can't make it: Open day");
+    expect(row.description).toBe("Alice Test (crewed)");
+    expect(row.recipientUserIds.sort()).toEqual([c.adminId, c.bobId].sort());
+    expect(await pushes(c)).toBe(1);
+
+    // A plain yes → no: listed, no push.
+    const daveId = await c.t.run((ctx) =>
+      ctx.db.insert("users", { name: "Dave Test", firstName: "Dave", lastName: "Test", rank: "Firefighter" as const }),
+    );
+    const asDave = c.asDave(daveId);
+    await asDave.mutation(api.events.setRsvp, { eventId: c.eventId, status: "attending" });
+    await asDave.mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+    row = (await backoutRow(c))!;
+    expect(row.description).toBe("Alice Test (crewed), Dave Test (was a yes)");
+    expect(await pushes(c)).toBe(1);
+
+    // No response → no isn't news.
+    const eveId = await c.t.run((ctx) =>
+      ctx.db.insert("users", { name: "Eve Test", firstName: "Eve", lastName: "Test", rank: "Firefighter" as const }),
+    );
+    await c.asDave(eveId).mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+    expect((await backoutRow(c))!.entries).toHaveLength(2);
+
+    // Changing back takes them off; empty list removes the item.
+    await asDave.mutation(api.events.setRsvp, { eventId: c.eventId, status: "attending" });
+    await c.asAlice.mutation(api.events.setRsvp, { eventId: c.eventId, status: "attending" });
+    expect(await backoutRow(c)).toBeNull();
+  });
+
+  it("throttles pushes to one per event per 15 minutes", async () => {
+    const c = await setup();
+    await seat(c, { driver: c.aliceId, crew: [c.bobId] });
+    await c.asAlice.mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+    await c.asBob.mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+    expect(await pushes(c)).toBe(1);
+    expect((await backoutRow(c))!.entries).toHaveLength(2);
+  });
+});

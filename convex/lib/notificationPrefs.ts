@@ -36,9 +36,9 @@ export const NOTIFICATION_CATEGORIES: NotificationCategoryInfo[] = [
   {
     key: "events",
     label: "Events",
-    description: "Event invitations, changes, reminders, and when you're rostered or crewed.",
+    description: "Event invitations, changes, reminders, when you're rostered or crewed, and when your crew backs out.",
     moduleId: "events",
-    types: ["eventNotification", "eventAssignment", "eventChange"],
+    types: ["eventNotification", "eventAssignment", "eventChange", "eventBackout"],
   },
   {
     key: "dutyCrew",

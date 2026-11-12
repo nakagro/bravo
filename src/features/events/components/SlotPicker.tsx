@@ -198,7 +198,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
         }`}
       >
         <X className="h-5 w-5" />
-        {declined ? "You can't make it (tap to undo)" : "Can't make it"}
+        {declined ? "You can't make it" : "Can't make it"}
       </button>
     </div>
   );

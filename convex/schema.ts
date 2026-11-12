@@ -1631,6 +1631,11 @@ const applicationTables = {
     // Set only by event change notices ("cancelled" | "detailsChanged" |
     // "restored"): answers "was this cancellation announced, and to whom?"
     kind: v.optional(v.string()),
+    // The members a running notice is about, e.g. who backed out of an event
+    // and what they'd held ("rostered", "was a yes"). Rebuilt on each change.
+    entries: v.optional(v.array(v.object({ userId: v.id("users"), label: v.string() }))),
+    // When this notice last pushed, so a running notice can throttle its pushes.
+    lastPushAt: v.optional(v.number()),
     createdAt: v.number(),
     createdBy: v.optional(v.id("users")),
   })

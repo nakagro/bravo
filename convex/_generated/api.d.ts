@@ -74,6 +74,7 @@ import type * as lib_bookingRecurrence from "../lib/bookingRecurrence.js";
 import type * as lib_crewSeats from "../lib/crewSeats.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_dutyCrewRotation from "../lib/dutyCrewRotation.js";
+import type * as lib_eventBackouts from "../lib/eventBackouts.js";
 import type * as lib_eventChangeNotice from "../lib/eventChangeNotice.js";
 import type * as lib_eventCrews from "../lib/eventCrews.js";
 import type * as lib_hoseId from "../lib/hoseId.js";
@@ -198,6 +199,7 @@ declare const fullApi: ApiFromModules<{
   "lib/crewSeats": typeof lib_crewSeats;
   "lib/dates": typeof lib_dates;
   "lib/dutyCrewRotation": typeof lib_dutyCrewRotation;
+  "lib/eventBackouts": typeof lib_eventBackouts;
   "lib/eventChangeNotice": typeof lib_eventChangeNotice;
   "lib/eventCrews": typeof lib_eventCrews;
   "lib/hoseId": typeof lib_hoseId;

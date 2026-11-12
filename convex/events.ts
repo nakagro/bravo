@@ -9,6 +9,7 @@ import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
 import { applyChangeNotice, buildChangePreview, changeNoticeRow, MESSAGE_NOTICE_KEY } from "./lib/eventChangeNotice";
 import { logNoticeSend } from "./lib/notificationDelivery";
+import { BACKOUT_NOTICE_KEY, clearBackout, recordBackout } from "./lib/eventBackouts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1759,6 +1760,11 @@ export const deleteEvent = mutation({
       .withIndex("by_source", (q) => q.eq("conditionKey", MESSAGE_NOTICE_KEY).eq("sourceEntityId", args.eventId))
       .first();
     if (messageNotice) await ctx.db.delete(messageNotice._id);
+    const backouts = await ctx.db
+      .query("actionNotices")
+      .withIndex("by_source", (q) => q.eq("conditionKey", BACKOUT_NOTICE_KEY).eq("sourceEntityId", args.eventId))
+      .first();
+    if (backouts) await ctx.db.delete(backouts._id);
 
     for (const row of [
       ...rsvps,
@@ -1905,6 +1911,15 @@ export const setRsvp = mutation({
       });
     }
 
+    // Tell the organiser and team leaders when someone they were counting on
+    // backs out (see lib/eventBackouts.ts for the anti-spam rules).
+    const was = existing?.status;
+    if (args.status === "notAttending" && was !== "notAttending") {
+      await recordBackout(ctx, event, userId, { rsvp: was === "attending" || was === "maybe" ? was : null });
+    } else if (was === "notAttending" && args.status !== "notAttending") {
+      await clearBackout(ctx, event, userId);
+    }
+
     return null;
   },
 });
@@ -2033,7 +2048,7 @@ export const declineSlotEvent = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const userId = await requireSignedIn(ctx);
-    await requireOpenEvent(ctx, args.eventId);
+    const event = await requireOpenEvent(ctx, args.eventId);
 
     const existing = await ctx.db
       .query("eventRsvps")
@@ -2050,6 +2065,7 @@ export const declineSlotEvent = mutation({
         newValue: null,
       });
       await ctx.db.delete(existing._id);
+      await clearBackout(ctx, event, userId);
       return false;
     }
 
@@ -2094,6 +2110,11 @@ export const declineSlotEvent = mutation({
         updatedAt: now,
       });
     }
+
+    await recordBackout(ctx, event, userId, {
+      rsvp: existing?.status === "attending" || existing?.status === "maybe" ? existing.status : null,
+      offeredShift: myResponses.length > 0,
+    });
 
     return true;
   },
