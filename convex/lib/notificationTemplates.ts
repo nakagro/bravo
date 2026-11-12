@@ -151,6 +151,15 @@ export const NOTIFICATION_TEMPLATES = {
     body: "Now {date} {time} · {location}\n{message}",
     sample: { ...EVENT_SAMPLE, date: "Sun 15 Dec", message: "" },
   },
+  "event.message": {
+    label: "Message about an event",
+    description: "A message the organiser sends from the event page, to the people involved or all members.",
+    group: "Event changes",
+    placeholders: EVENT_CHANGE,
+    title: "{eventTitle}",
+    body: "{message}\n{date} {time} · {location}",
+    sample: { ...EVENT_SAMPLE, message: "Meet at the front gate, bring water." },
+  },
   "event.restored": {
     label: "Event back on",
     description: "Sent to the members told of a cancellation when the event is restored.",

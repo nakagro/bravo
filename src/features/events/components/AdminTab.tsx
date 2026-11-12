@@ -220,7 +220,7 @@ export function AdminTab() {
                   <>
                     <DropdownMenuItem onSelect={() => setNotifyingEvent(event)}>
                       <BellRing className="h-4 w-4" />
-                      Notify
+                      Message members
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

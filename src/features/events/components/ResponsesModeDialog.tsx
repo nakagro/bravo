@@ -81,7 +81,7 @@ export function ResponsesModeDialog({
       } else {
         toast.success("Responses open", {
           description: "Members can put their hand up again. Your roster is unchanged.",
-          ...(onNotify ? { action: { label: "Notify", onClick: onNotify } } : {}),
+          ...(onNotify ? { action: { label: "Message", onClick: onNotify } } : {}),
         });
       }
     } catch (error) {

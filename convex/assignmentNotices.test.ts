@@ -53,6 +53,7 @@ async function setup() {
     asAdmin,
     asAlice: t.withIdentity({ subject: ids.aliceId }),
     asBob: t.withIdentity({ subject: ids.bobId }),
+    asDave: (id: Id<"users">) => t.withIdentity({ subject: id }),
   };
 }
 
@@ -394,5 +395,54 @@ describe("notification log", () => {
 
     await c.asAdmin.mutation(api.events.deleteEvent, { eventId: c.eventId });
     expect(await c.t.run((ctx) => ctx.db.query("notificationSends").take(10))).toHaveLength(0);
+  });
+});
+
+describe("event messages", () => {
+  it("goes to the involved (not no / no response) or to all members, with a preview", async () => {
+    const c = await setup();
+    const daveId = await c.t.run((ctx) =>
+      ctx.db.insert("users", { name: "Dave Test", firstName: "Dave", lastName: "Test", rank: "Firefighter" as const }),
+    );
+    await c.asAlice.mutation(api.events.setRsvp, { eventId: c.eventId, status: "maybe" });
+    await c.t.withIdentity({ subject: daveId }).mutation(api.events.setRsvp, { eventId: c.eventId, status: "notAttending" });
+
+    const q = (audience: "involved" | "everyone", message = "Bring water") =>
+      c.asAdmin.query(api.eventChangeNotices.previewEventChangeNotice, { eventId: c.eventId, kind: "message", message, audience });
+
+    const involved = (await q("involved"))!;
+    expect(involved.recipients.map((r) => r.userId)).toEqual([c.aliceId]);
+    expect(involved.title).toBe("Open day");
+    expect(involved.body).toBe("Bring water\nMon 1 Jun 9:00 AM · Main Station");
+
+    // Everyone: Alice, Bob, Dave. Not the sender, not disabled Carol.
+    const everyone = (await q("everyone"))!;
+    expect(everyone.recipients.map((r) => r.userId).sort()).toEqual([c.aliceId, c.bobId, daveId].sort());
+    expect(everyone.cantNotify).toBe(0); // disabled accounts aren't members at all
+
+    await expect(
+      c.asAdmin.mutation(api.eventChangeNotices.sendEventChangeNotice, {
+        eventId: c.eventId,
+        kind: "message",
+        audience: "involved",
+        fingerprint: (await q("involved", ""))!.fingerprint,
+      }),
+    ).rejects.toThrow("Write a message");
+
+    await c.asAdmin.mutation(api.eventChangeNotices.sendEventChangeNotice, {
+      eventId: c.eventId,
+      kind: "message",
+      audience: "everyone",
+      message: "Bring water",
+      fingerprint: everyone.fingerprint,
+    });
+    expect((await c.asDave(daveId).query(api.actionCentre.getMyActions, {})).some((a) => a.title === "Open day")).toBe(true);
+
+    // A message isn't a change notice: cancelling can still be announced.
+    expect(
+      await c.asAdmin.query(api.eventChangeNotices.previewEventChangeNotice, { eventId: c.eventId, kind: "cancelled" }),
+    ).not.toBeNull();
+    const log = (await c.asAdmin.query(api.assignmentNotices.listNotificationSends, { source: "event", scopeId: c.eventId }))!;
+    expect(log[0]).toMatchObject({ kind: "message", recipientCount: 3, message: "Bring water" });
   });
 });

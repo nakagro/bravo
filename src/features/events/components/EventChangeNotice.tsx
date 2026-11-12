@@ -10,7 +10,8 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NotificationCard } from "@/components/shared/assignments/NotificationCard";
 import { NoteField } from "@/components/shared/assignments/SendAssignmentsSheet";
 
-export type ChangeKind = "cancelled" | "detailsChanged" | "restored";
+export type ChangeKind = "cancelled" | "detailsChanged" | "restored" | "message";
+export type MessageAudience = "involved" | "everyone";
 
 const REASON_LABEL = {
   rostered: "rostered or crewed",
@@ -18,17 +19,24 @@ const REASON_LABEL = {
   maybe: "maybe",
   offered: "offered for a shift",
   told: "told it was cancelled",
+  member: "members",
 } as const;
 
 /**
  * The live preview of an event change notice. Keeps the last result on screen
  * while a new note is debounced, and reports whether what's shown is current.
  */
-export function useChangePreview(eventId: Id<"events">, kind: ChangeKind, message: string, enabled: boolean) {
+export function useChangePreview(
+  eventId: Id<"events">,
+  kind: ChangeKind,
+  message: string,
+  enabled: boolean,
+  audience?: MessageAudience
+) {
   const debounced = useDebouncedValue(message.trim());
   const live = useQuery(
     api.eventChangeNotices.previewEventChangeNotice,
-    enabled ? { eventId, kind, message: debounced || undefined } : "skip"
+    enabled ? { eventId, kind, message: debounced || undefined, audience } : "skip"
   );
   const [shown, setShown] = useState<typeof live>(undefined);
   if (live !== undefined && live !== shown) setShown(live);

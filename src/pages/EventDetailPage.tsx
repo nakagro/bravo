@@ -441,7 +441,7 @@ export function EventDetailPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowNotifyDialog(true)}>
                       <BellRing className="h-4 w-4" />
-                      Notify
+                      Message members
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

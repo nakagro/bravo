@@ -55,6 +55,8 @@ function formatTime(timeStr: string): string {
  * optional custom message. Gated to whoever runs the event - eventsAdmin, the
  * organiser, or a named team leader (`canManage` carries that rule).
  */
+// DEPRECATED: the event page now uses eventChangeNotices "message" (previewed,
+// targeted). Kept until the prod frontend has moved off it, then delete.
 export const notifyEventMembers = action({
   args: {
     eventId: v.id("events"),

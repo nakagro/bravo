@@ -8,6 +8,7 @@ import { eventIsOver, eventValues } from "./assignments/eventSource";
 import { loadModuleMap, loadTemplates, loadUsers, logNoticeSend, unreachableReason } from "./notificationDelivery";
 import { fingerprintOf, renderTemplate } from "./notificationTemplates";
 import { upsertNotice } from "./notifyEvent";
+import { isMemberAccount } from "./accountType";
 
 // Event change notices: "Cancelled: Open day", "Changed: …", "Back on: …".
 // One text for everyone involved, sent only when the person making the change
@@ -15,10 +16,15 @@ import { upsertNotice } from "./notifyEvent";
 // delivery and fingerprint check; not on the assignment adapter, since there's
 // no per-member diff here.
 
-export type ChangeKind = "cancelled" | "detailsChanged" | "restored";
+export type ChangeKind = "cancelled" | "detailsChanged" | "restored" | "message";
+/** Who a free-form "message" goes to. Change notices always go to the involved. */
+export type MessageAudience = "involved" | "everyone";
 export type InvolvedReason = "rostered" | "going" | "maybe" | "offered";
 
 export const CHANGE_NOTICE_KEY = "events:changeNotice";
+// Messages keep their own Action Centre row, so a message never replaces (and
+// un-announces) a cancellation.
+export const MESSAGE_NOTICE_KEY = "events:message";
 
 /**
  * Who is involved in an event, and why. Wider than the roster on purpose:
@@ -91,7 +97,7 @@ function kindApplies(
   pending: boolean,
 ): boolean {
   if (eventIsOver(event)) return false;
-  if (kind === "detailsChanged") return event.status === "active";
+  if (kind === "detailsChanged" || kind === "message") return event.status === "active";
   if (kind === "cancelled") {
     return pending ? event.status === "active" : event.status === "cancelled" && !cancellationAnnounced(event, row);
   }
@@ -101,8 +107,8 @@ function kindApplies(
 export type ChangePreview = {
   title: string;
   body: string;
-  recipients: { userId: Id<"users">; name: string; reason: InvolvedReason | "told" }[];
-  counts: Record<InvolvedReason | "told", number>;
+  recipients: { userId: Id<"users">; name: string; reason: InvolvedReason | "told" | "member" }[];
+  counts: Record<InvolvedReason | "told" | "member", number>;
   cantNotify: number;
   fingerprint: string;
 };
@@ -114,22 +120,30 @@ export async function buildChangePreview(
   kind: ChangeKind,
   message: string,
   pending: boolean,
+  messageAudience: MessageAudience = "involved",
 ): Promise<ChangePreview | null> {
   const row = await changeNoticeRow(ctx, event._id);
   if (!kindApplies(event, row, kind, pending)) return null;
 
   // "Back on" goes to whoever was told it was off, even if the roster changed since.
-  const audience: Map<Id<"users">, InvolvedReason | "told"> =
-    kind === "restored"
-      ? new Map(row!.recipientUserIds.map((id) => [id, "told" as const]))
-      : await involvedMembers(ctx, event);
+  let audience: Map<Id<"users">, InvolvedReason | "told" | "member">;
+  if (kind === "restored") {
+    audience = new Map(row!.recipientUserIds.map((id) => [id, "told" as const]));
+  } else if (kind === "message" && messageAudience === "everyone") {
+    // Every member account; the reachability check below drops anyone who
+    // can't open Events. Capped well above brigade size.
+    const all = await ctx.db.query("users").take(1000);
+    audience = new Map(all.filter(isMemberAccount).map((u) => [u._id, "member" as const]));
+  } else {
+    audience = await involvedMembers(ctx, event);
+  }
   // The sender made the change, so isn't told about it.
   audience.delete(senderId);
 
   const users = await loadUsers(ctx, [senderId, ...audience.keys()]);
   const moduleMap = await loadModuleMap(ctx);
   const recipients: ChangePreview["recipients"] = [];
-  const counts = { rostered: 0, going: 0, maybe: 0, offered: 0, told: 0 };
+  const counts = { rostered: 0, going: 0, maybe: 0, offered: 0, told: 0, member: 0 };
   let cantNotify = 0;
   for (const [userId, reason] of audience) {
     const user = users.get(userId) ?? null;
@@ -151,6 +165,7 @@ export async function buildChangePreview(
 
   const fingerprint = fingerprintOf([
     kind,
+    messageAudience,
     rendered.title,
     rendered.body,
     ...recipients.map((r) => r.userId).sort(),
@@ -162,6 +177,7 @@ const SUMMARY: Record<ChangeKind, string> = {
   cancelled: "Cancellation",
   detailsChanged: "Change notice",
   restored: "Back-on notice",
+  message: "Message",
 };
 
 /** Write the Action Centre row, the audit entry, and schedule the push. */
@@ -179,14 +195,14 @@ export async function applyChangeNotice(
   // One row per event: "Back on" replaces "Cancelled" rather than stacking.
   await upsertNotice(ctx, {
     moduleId: "events",
-    conditionKey: CHANGE_NOTICE_KEY,
+    conditionKey: kind === "message" ? MESSAGE_NOTICE_KEY : CHANGE_NOTICE_KEY,
     title: preview.title,
     description: preview.body,
     url,
     priority: kind === "cancelled" ? "high" : "medium",
     recipientUserIds,
     sourceEntityId: event._id,
-    kind,
+    kind: kind === "message" ? undefined : kind,
     createdAt: now,
     createdBy: senderId,
   });

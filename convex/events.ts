@@ -7,7 +7,7 @@ import { isMemberAccount } from "./lib/accountType";
 import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib/eventCrews";
 import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
-import { applyChangeNotice, buildChangePreview, changeNoticeRow } from "./lib/eventChangeNotice";
+import { applyChangeNotice, buildChangePreview, changeNoticeRow, MESSAGE_NOTICE_KEY } from "./lib/eventChangeNotice";
 import { logNoticeSend } from "./lib/notificationDelivery";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -1754,6 +1754,11 @@ export const deleteEvent = mutation({
       .collect();
     const changeNotice = await changeNoticeRow(ctx, args.eventId);
     if (changeNotice) await ctx.db.delete(changeNotice._id);
+    const messageNotice = await ctx.db
+      .query("actionNotices")
+      .withIndex("by_source", (q) => q.eq("conditionKey", MESSAGE_NOTICE_KEY).eq("sourceEntityId", args.eventId))
+      .first();
+    if (messageNotice) await ctx.db.delete(messageNotice._id);
 
     for (const row of [
       ...rsvps,

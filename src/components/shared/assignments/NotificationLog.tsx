@@ -9,6 +9,7 @@ const KIND_LABEL: Record<string, string> = {
   cancelled: "Cancellation",
   detailsChanged: "Change of details",
   restored: "Back on",
+  message: "Message",
   broadcast: "Notify all members",
 };
 

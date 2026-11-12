@@ -9,17 +9,29 @@ import { applyChangeNotice, buildChangePreview } from "./lib/eventChangeNotice";
 // covers the preview those dialogs show, the "date changed, tell them?" send
 // after an edit, and announcing a cancellation that wasn't announced at the time.
 
-const kindValidator = v.union(v.literal("cancelled"), v.literal("detailsChanged"), v.literal("restored"));
+const kindValidator = v.union(
+  v.literal("cancelled"),
+  v.literal("detailsChanged"),
+  v.literal("restored"),
+  v.literal("message"),
+);
+const audienceValidator = v.optional(v.union(v.literal("involved"), v.literal("everyone")));
 const reasonValidator = v.union(
   v.literal("rostered"),
   v.literal("going"),
   v.literal("maybe"),
   v.literal("offered"),
   v.literal("told"),
+  v.literal("member"),
 );
 
 export const previewEventChangeNotice = query({
-  args: { eventId: v.id("events"), kind: kindValidator, message: v.optional(v.string()) },
+  args: {
+    eventId: v.id("events"),
+    kind: kindValidator,
+    message: v.optional(v.string()),
+    audience: audienceValidator,
+  },
   returns: v.union(
     v.null(),
     v.object({
@@ -32,6 +44,7 @@ export const previewEventChangeNotice = query({
         maybe: v.number(),
         offered: v.number(),
         told: v.number(),
+        member: v.number(),
       }),
       cantNotify: v.number(),
       fingerprint: v.string(),
@@ -46,22 +59,37 @@ export const previewEventChangeNotice = query({
     const pending =
       (args.kind === "cancelled" && event.status === "active") ||
       (args.kind === "restored" && event.status === "cancelled");
-    return await buildChangePreview(ctx, event, senderId, args.kind, cleanNote(args.message), pending);
+    return await buildChangePreview(
+      ctx,
+      event,
+      senderId,
+      args.kind,
+      cleanNote(args.message),
+      pending,
+      args.audience,
+    );
   },
 });
 
-/** "Changed: …" after an edit, or a cancellation announced after the fact. */
+/**
+ * "Changed: …" after an edit, a cancellation announced after the fact, or a
+ * free-form message to the people involved (or all members). Replaces the old
+ * unpreviewed Notify broadcast.
+ */
 export const sendEventChangeNotice = mutation({
   args: {
     eventId: v.id("events"),
-    kind: v.union(v.literal("cancelled"), v.literal("detailsChanged")),
+    kind: v.union(v.literal("cancelled"), v.literal("detailsChanged"), v.literal("message")),
     message: v.optional(v.string()),
+    audience: audienceValidator,
     fingerprint: v.string(),
   },
   returns: v.number(),
   handler: async (ctx, args) => {
     const { userId, event } = await requireEventManager(ctx, args.eventId);
-    const preview = await buildChangePreview(ctx, event, userId, args.kind, cleanNote(args.message), false);
+    const note = cleanNote(args.message);
+    if (args.kind === "message" && !note) throw new Error("Write a message to send");
+    const preview = await buildChangePreview(ctx, event, userId, args.kind, note, false, args.audience);
     if (!preview) throw new Error("This notice can't be sent for this event now");
     if (preview.fingerprint !== args.fingerprint) {
       throw new Error("The event or message changed, check it again");

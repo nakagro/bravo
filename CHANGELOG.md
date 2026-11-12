@@ -5,6 +5,7 @@
 - Events: Members involved in an event can be told when it's cancelled, moved or back on.
 - Availability: Crewing officers can tell members they've been crewed for a deployment.
 - Events: Organisers can see a running list of the notifications already sent for an event.
+- Events: Notify is now Message members, with a preview and a choice of the people involved or everyone.
 - Admin: Admins can edit the wording of crew, roster and event change notifications.
 - Notifications: Deployment crew notifications have their own switch in Settings.
 
