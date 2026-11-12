@@ -7,6 +7,12 @@ import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import {
   ChecklistActionBar,
@@ -17,7 +23,15 @@ import {
   type ChecklistProgress,
 } from "@/components/shared/checklist";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowLeftRight, Download, Search, Ban, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowLeftRight,
+  Ban,
+  Download,
+  MoreVertical,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 import {
   MARK_LABELS,
   downloadCsv,
@@ -88,7 +102,7 @@ export function NightRoll({ date }: { date: string }) {
 
   const [search, setSearch] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
-  // Header actions that change the night itself ask first - they're icon-only
+  // Menu actions that change the night itself ask first
   const [confirmAction, setConfirmAction] = useState<"cancel" | "kind" | null>(null);
   // The row whose note is being edited, and the draft in the sheet
   const [noteRow, setNoteRow] = useState<RollRow | null>(null);
@@ -321,48 +335,48 @@ export function NightRoll({ date }: { date: string }) {
               <p className="text-sm text-muted-foreground">{formatNightDateLong(night.date)}</p>
             </div>
             {canManage && (
-              <div className="flex shrink-0 gap-1">
-                {night.kind !== "other" && !isCancelled && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-11 w-11"
-                    onClick={() => setConfirmAction("kind")}
-                    aria-label={`Change to ${otherKindLabel}`}
-                    title={`Change to ${otherKindLabel}`}
+                    className="h-11 w-11 flex-shrink-0"
+                    aria-label="Roll options"
                   >
-                    <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
+                    <MoreVertical className="h-5 w-5" aria-hidden="true" />
                   </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-11 w-11"
-                  onClick={exportCsv}
-                  aria-label="Export CSV"
-                  title="Export CSV"
-                >
-                  <Download className="h-5 w-5" aria-hidden="true" />
-                </Button>
-                {night.status !== "closed" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-11 w-11"
-                    onClick={() =>
-                      isCancelled ? void handleCancelToggle() : setConfirmAction("cancel")
-                    }
-                    aria-label={isCancelled ? "Restore roll" : "Cancel roll"}
-                    title={isCancelled ? "Restore roll" : "Cancel roll"}
-                  >
-                    {isCancelled ? (
-                      <RotateCcw className="h-5 w-5" aria-hidden="true" />
-                    ) : (
-                      <Ban className="h-5 w-5" aria-hidden="true" />
-                    )}
-                  </Button>
-                )}
-              </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {night.kind !== "other" && !isCancelled && (
+                    <DropdownMenuItem
+                      className="min-h-[44px]"
+                      onClick={() => setConfirmAction("kind")}
+                    >
+                      <ArrowLeftRight aria-hidden="true" />
+                      Change to {otherKindLabel}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="min-h-[44px]" onClick={exportCsv}>
+                    <Download aria-hidden="true" />
+                    Export CSV
+                  </DropdownMenuItem>
+                  {night.status !== "closed" && (
+                    <DropdownMenuItem
+                      className="min-h-[44px]"
+                      onClick={() =>
+                        isCancelled ? void handleCancelToggle() : setConfirmAction("cancel")
+                      }
+                    >
+                      {isCancelled ? (
+                        <RotateCcw aria-hidden="true" />
+                      ) : (
+                        <Ban aria-hidden="true" />
+                      )}
+                      {isCancelled ? "Restore roll" : "Cancel roll"}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           {!canManage && (
@@ -412,6 +426,18 @@ export function NightRoll({ date }: { date: string }) {
               className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-9 pr-4 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
+
+          {search.trim() && (
+            // Close roll acts on everyone, so say when the list is a slice of it
+            <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+              <span aria-live="polite">
+                Showing {filtered.length} of {rows.length}
+              </span>
+              <Button variant="ghost" className="min-h-[44px]" onClick={() => setSearch("")}>
+                Show everyone
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-2">
             {filtered.length === 0 ? (

@@ -325,6 +325,12 @@ describe("report", () => {
       apology: 1,
       absent: 0,
     });
+    // The marks behind the totals, oldest night first
+    const adams = all.rows.find((r) => r.member.lastName === "Adams")!;
+    expect(adams.marks.map((m) => m.status)).toHaveLength(2);
+    expect(adams.marks.map((m) => m.date)).toEqual([...adams.marks.map((m) => m.date)].sort());
+    expect(adams.marks.find((m) => m.date === TRAINING)?.status).toBe("present");
+    expect(adams.marks.find((m) => m.date === MEETING)?.status).toBe("apology");
 
     const training = await s.asCaptain.query(api.training.getReport, {
       from: "2026-10-01",

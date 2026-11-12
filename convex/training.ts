@@ -792,7 +792,8 @@ export const linkRollMember = mutation({
 
 /**
  * Attendance per member across the closed rolls in a date range. Only closed
- * rolls count - an open one is still being taken.
+ * rolls count - an open one is still being taken. Each row carries the marks
+ * behind its totals, oldest first, so a member's nights can be listed.
  */
 export const getReport = query({
   args: {
@@ -808,6 +809,13 @@ export const getReport = query({
         present: v.number(),
         apology: v.number(),
         absent: v.number(),
+        marks: v.array(
+          v.object({
+            date: v.string(),
+            status: markStatusValidator,
+            note: v.union(v.string(), v.null()),
+          })
+        ),
       })
     ),
   }),
@@ -827,20 +835,29 @@ export const getReport = query({
         (args.kind === "all" || night.kind === args.kind)
     );
 
-    const tally = new Map<Id<"rollMembers">, Record<MarkStatus, number>>();
+    type MemberTally = Record<MarkStatus, number> & {
+      marks: { date: string; status: MarkStatus; note: string | null }[];
+    };
+    const tally = new Map<Id<"rollMembers">, MemberTally>();
     for (const night of nights) {
       for (const mark of await marksFor(ctx, night._id)) {
-        const counts = tally.get(mark.rollMemberId) ?? { present: 0, apology: 0, absent: 0 };
-        counts[mark.status]++;
-        tally.set(mark.rollMemberId, counts);
+        const member: MemberTally = tally.get(mark.rollMemberId) ?? {
+          present: 0,
+          apology: 0,
+          absent: 0,
+          marks: [],
+        };
+        member[mark.status]++;
+        member.marks.push({ date: night.date, status: mark.status, note: mark.note ?? null });
+        tally.set(mark.rollMemberId, member);
       }
     }
 
     const rows = [];
     for (const entry of await rollRoster(ctx)) {
-      const counts = entry.rollMemberId ? tally.get(entry.rollMemberId) : undefined;
-      if (!counts) continue;
-      rows.push({ member: entry, ...counts });
+      const member = entry.rollMemberId ? tally.get(entry.rollMemberId) : undefined;
+      if (!member) continue;
+      rows.push({ member: entry, ...member });
     }
 
     return {
