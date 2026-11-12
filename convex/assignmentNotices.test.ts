@@ -98,7 +98,7 @@ describe("assignment notices", () => {
       userId: c.aliceId,
       state: "new",
       title: "You're rostered: Open day",
-      body: "Driver · Tanker 1 · Mon 1 Jun 9:00 AM · Main Station\nBring hi-vis.",
+      body: "Driver on Tanker 1\nMon 1 Jun 9:00 AM · Main Station\nBring hi-vis.",
       push: "noDevice",
     });
     expect(p.notNotified).toEqual([{ name: "Visitor Vic", reason: "Not a BRAVO member" }]);
@@ -258,7 +258,7 @@ describe("deployment crew notices", () => {
     expect(await c.asAlice.query(api.assignmentNotices.previewAssignmentNotice, args)).toBeNull();
 
     const p = (await c.asAdmin.query(api.assignmentNotices.previewAssignmentNotice, args))!;
-    expect(p.recipients[0]).toMatchObject({ title: "Deployment crew: Mon 1 Jun", body: "Driver · Tanker 1. Tap to see the full crew." });
+    expect(p.recipients[0]).toMatchObject({ title: "Deployment crew: Mon 1 Jun", body: "Driver on Tanker 1\nTap to see the full crew." });
     await c.asAdmin.mutation(api.assignmentNotices.sendAssignmentNotice, { ...args, fingerprint: p.fingerprint });
 
     await c.asAdmin.mutation(api.deploymentCrews.deleteCrew, { crewId });

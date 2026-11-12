@@ -9,7 +9,8 @@ import type { Assignment, AssignmentSource } from "./types";
 // Deployment → Crews for one day (scopeId = the UTC-midnight date as a
 // string). Fills {date} and, per member, {assignment}. Default text:
 //   Deployment crew: Sat 14 Dec
-//   Driver · Tanker 1. Tap to see the full crew.
+//   Driver on Tanker 1
+//   Tap to see the full crew.
 // Sent only by availabilityAdmin, the people who set the crews.
 
 const CREWING_MODULE = "availabilityAdmin";

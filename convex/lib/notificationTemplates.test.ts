@@ -14,26 +14,26 @@ describe("renderTemplate", () => {
   it("fills placeholders", () => {
     const out = renderTemplate(assigned, {
       eventTitle: "Open day",
-      assignment: "Driver · Tanker 1",
+      assignment: "Driver on Tanker 1",
       date: "Sat 14 Dec",
       time: "9:00 AM",
       location: "Main Station",
       message: "Bring hi-vis.",
     });
     expect(out.title).toBe("You're rostered: Open day");
-    expect(out.body).toBe("Driver · Tanker 1 · Sat 14 Dec 9:00 AM · Main Station\nBring hi-vis.");
+    expect(out.body).toBe("Driver on Tanker 1\nSat 14 Dec 9:00 AM · Main Station\nBring hi-vis.");
   });
 
   it("tidies up after empty values and drops blank lines", () => {
     const out = renderTemplate(assigned, {
       eventTitle: "Open day",
-      assignment: "Driver · Tanker 1",
+      assignment: "Driver on Tanker 1",
       date: "Sat 14 Dec",
       time: "",
       location: "",
       message: "",
     });
-    expect(out.body).toBe("Driver · Tanker 1 · Sat 14 Dec");
+    expect(out.body).toBe("Driver on Tanker 1\nSat 14 Dec");
   });
 
   it("drops a separator between two empty values", () => {
@@ -82,8 +82,15 @@ describe("formatting", () => {
     expect(formatDateRange("2026-12-12", "2026-12-13")).toBe("Sat 12 – Sun 13 Dec");
     expect(formatDateRange("2026-11-30", "2026-12-01")).toBe("Mon 30 Nov – Tue 1 Dec");
   });
-  it("joins assignments with and", () => {
-    expect(joinAssignment(["A"])).toBe("A");
-    expect(joinAssignment(["A", "B", "C"])).toBe("A, B and C");
+  it("puts seats on their own lines and groups shifts", () => {
+    expect(
+      joinAssignment([
+        "Crew Leader · Wyndham Vale Pumper",
+        "Morning (09:00–11:00)",
+        "Afternoon (11:00–14:00)",
+      ]),
+    ).toBe("Crew Leader on Wyndham Vale Pumper\nShifts: Morning (09:00–11:00), Afternoon (11:00–14:00)");
+    expect(joinAssignment(["Morning (09:00–11:00)"])).toBe("Shift: Morning (09:00–11:00)");
+    expect(joinAssignment(["Crew · Tanker 1", "Whole event"])).toBe("Crew on Tanker 1\nRostered for the whole event");
   });
 });

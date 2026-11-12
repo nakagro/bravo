@@ -25,7 +25,7 @@ export type Placeholder =
 
 export const PLACEHOLDER_HELP: Record<Placeholder, string> = {
   firstName: "Member's first name",
-  assignment: "Everything they hold, e.g. Driver · Tanker 1",
+  assignment: "Everything they hold, one line each: seats, then their shifts",
   date: "The date, e.g. Sat 14 Dec",
   message: "The sender's optional note",
   sender: "Who sent it",
@@ -62,7 +62,7 @@ export type TemplateDef = {
 
 const EVENT_SAMPLE = {
   firstName: "Jane",
-  assignment: "Driver · Tanker 1",
+  assignment: "Driver on Tanker 1\nShifts: Morning (09:00–11:00), Afternoon (11:00–14:00)",
   date: "Sat 14 Dec",
   message: "Bring hi-vis.",
   sender: "Shaun Gordon",
@@ -72,7 +72,7 @@ const EVENT_SAMPLE = {
 };
 const DEPLOYMENT_SAMPLE = {
   firstName: "Jane",
-  assignment: "Driver · Tanker 1",
+  assignment: "Driver on Tanker 1",
   date: "Sat 14 Dec",
   message: "Meet at the station 0600.",
   sender: "Shaun Gordon",
@@ -85,7 +85,7 @@ export const NOTIFICATION_TEMPLATES = {
     group: "Events",
     placeholders: EVENT_ASSIGNMENT,
     title: "You're rostered: {eventTitle}",
-    body: "{assignment} · {date} {time} · {location}\n{message}",
+    body: "{assignment}\n{date} {time} · {location}\n{message}",
     sample: EVENT_SAMPLE,
   },
   "event.updated": {
@@ -94,7 +94,7 @@ export const NOTIFICATION_TEMPLATES = {
     group: "Events",
     placeholders: EVENT_ASSIGNMENT,
     title: "Roster changed: {eventTitle}",
-    body: "Now: {assignment} · {date} · {location}\n{message}",
+    body: "{assignment}\n{date} {time} · {location}\n{message}",
     sample: EVENT_SAMPLE,
   },
   "event.removed": {
@@ -112,7 +112,7 @@ export const NOTIFICATION_TEMPLATES = {
     group: "Deployment crews",
     placeholders: DEPLOYMENT_ASSIGNMENT,
     title: "Deployment crew: {date}",
-    body: "{assignment}. Tap to see the full crew.\n{message}",
+    body: "{assignment}\nTap to see the full crew.\n{message}",
     sample: DEPLOYMENT_SAMPLE,
   },
   "deployment.updated": {
@@ -121,7 +121,7 @@ export const NOTIFICATION_TEMPLATES = {
     group: "Deployment crews",
     placeholders: DEPLOYMENT_ASSIGNMENT,
     title: "Deployment crew changed: {date}",
-    body: "Now: {assignment}. Tap to see the full crew.\n{message}",
+    body: "{assignment}\nTap to see the full crew.\n{message}",
     sample: DEPLOYMENT_SAMPLE,
   },
   "deployment.removed": {
@@ -305,11 +305,34 @@ export function formatTime12(hhmm: string): string {
   return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
 }
 
-/** Joins what a member holds: "Driver · Tanker 1 and Shift 2 (10:00–12:00)". */
-export function joinAssignment(lines: string[]): string {
-  if (lines.length <= 1) return lines[0] ?? "";
-  return `${lines.slice(0, -1).join(", ")} and ${lines[lines.length - 1]}`;
+const SEAT_LINE = /^(Crew Leader|Driver|Crew) · (.+)$/;
+export const WHOLE_EVENT_LINE = "Whole event";
+
+/**
+ * What a member holds, for {assignment}: one line per seat ("Crew Leader on
+ * Wyndham Vale Pumper"), then their shifts together on one line ("Shifts:
+ * Morning (09:00–11:00), Afternoon (11:00–14:00)"). The stored lines
+ * ("Crew Leader · Wyndham Vale Pumper") are what the diff compares; this is
+ * only how they read in a notification.
+ */
+export function formatAssignment(lines: string[]): string {
+  const seats: string[] = [];
+  const shifts: string[] = [];
+  let whole = false;
+  for (const line of lines) {
+    const seat = SEAT_LINE.exec(line);
+    if (seat) seats.push(`${seat[1]} on ${seat[2]}`);
+    else if (line === WHOLE_EVENT_LINE) whole = true;
+    else shifts.push(line);
+  }
+  const out = [...seats];
+  if (whole) out.push("Rostered for the whole event");
+  if (shifts.length) out.push(`${shifts.length === 1 ? "Shift" : "Shifts"}: ${shifts.join(", ")}`);
+  return out.join("\n");
 }
+
+/** Back-compat name; the adapters' lines go through formatAssignment. */
+export const joinAssignment = formatAssignment;
 
 /** Order-insensitive equality of two assignment line lists. */
 export function sameLines(a: string[], b: string[]): boolean {

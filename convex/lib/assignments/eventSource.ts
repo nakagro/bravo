@@ -4,16 +4,18 @@ import { eventManagerId } from "../../events";
 import { seatLines } from "../crewSeats";
 import { brigadeDateStr } from "../dates";
 import { MAX_APPLIANCES_PER_EVENT } from "../eventCrews";
-import { formatDateRange, formatDay, formatTime12 } from "../notificationTemplates";
+import { WHOLE_EVENT_LINE, formatDateRange, formatDay, formatTime12 } from "../notificationTemplates";
 import type { AssignmentSource } from "./types";
 
 // Event assignment notices: the event's appliance crews plus its roster
 // (eventSlotAllocations). Fills {eventTitle}, {date}, {time}, {location} and,
 // per member, {assignment}. With the default template a crewed member gets:
 //   You're rostered: Open day
-//   Driver · Tanker 1 · Sat 14 Dec 9:00 AM · Main Station
+//   Driver on Tanker 1
+//   Shift: Morning (09:00–11:00)
+//   Sat 14 Dec · Main Station
 
-export const WHOLE_EVENT_LINE = "Whole event";
+export { WHOLE_EVENT_LINE };
 
 export function eventIsOver(event: Doc<"events">): boolean {
   return (event.endDate ?? event.startDate) < brigadeDateStr();
