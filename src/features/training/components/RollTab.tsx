@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,20 +9,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { DatePicker } from "@/components/shared/DatePicker";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { cn } from "@/lib/utils";
-import { CalendarPlus, ChevronDown, ChevronRight, ClipboardCheck, TriangleAlert } from "lucide-react";
-import { formatNightDate, formatNightDateLong, nightLabel, shiftDays, todayStr } from "../types";
+import { CalendarPlus, ClipboardCheck, TriangleAlert } from "lucide-react";
+import { formatNightDateLong, nightLabel, shiftDays, todayStr } from "../types";
+import { RollRow, rollSummary, type Roll } from "./RollRow";
 
-type Roll = FunctionReturnType<typeof api.training.listNights>[number];
-
-// How far either side of today the tab reaches. Anything older is in Attendance.
+// How far back the tab looks for a roll nobody closed, and how far ahead it lists
 const WEEKS_BACK = 8;
 const WEEKS_AHEAD = 6;
 
 /**
  * The Roll tab, arranged around what an officer is about to do: the next roll
  * first, then any past roll nobody closed, then what's coming (where the DO
- * records apologies ahead), with the history folded away at the bottom.
+ * records apologies ahead). Finished rolls live on the Previous tab.
  */
 export function RollTab({ canManage }: { canManage: boolean }) {
   const today = useMemo(() => todayStr(), []);
@@ -33,7 +30,6 @@ export function RollTab({ canManage }: { canManage: boolean }) {
   });
   const firstRollDate = useQuery(api.training.getFirstRollDate);
   const [addOpen, setAddOpen] = useState(false);
-  const [showPrevious, setShowPrevious] = useState(false);
 
   if (rolls === undefined || firstRollDate === undefined) {
     return (
@@ -48,15 +44,20 @@ export function RollTab({ canManage }: { canManage: boolean }) {
   const upcoming = rolls.filter((roll) => roll.date >= today);
   const next = upcoming.find((roll) => roll.status !== "cancelled") ?? upcoming[0];
   const comingUp = upcoming.filter((roll) => roll !== next);
-  // Past Tuesdays only exist from the first roll anyone used. Before that the
-  // brigade wasn't using the roll at all, so there's nothing to list - and
-  // nothing that was "never closed"
-  const past = rolls
-    .filter((roll) => roll.date < today && firstRollDate !== null && roll.date >= firstRollDate)
-    .reverse();
-  // A past roll still open was never finished - the one thing here that needs doing
-  const notClosed = canManage ? past.filter((roll) => roll.status === "open") : [];
-  const previous = past.filter((roll) => !notClosed.includes(roll));
+  // A past roll still open was never finished - the one thing here that needs
+  // doing. Tuesdays before the first roll anyone used don't count: the brigade
+  // wasn't using the roll yet, so nothing then was "never closed"
+  const notClosed = canManage
+    ? rolls
+        .filter(
+          (roll) =>
+            roll.date < today &&
+            roll.status === "open" &&
+            firstRollDate !== null &&
+            roll.date >= firstRollDate
+        )
+        .reverse()
+    : [];
 
   return (
     <div className="space-y-6">
@@ -104,27 +105,6 @@ export function RollTab({ canManage }: { canManage: boolean }) {
         </Button>
       )}
 
-      {previous.length > 0 && (
-        <section className="space-y-2" aria-label="Previous rolls">
-          <button
-            onClick={() => setShowPrevious((prev) => !prev)}
-            aria-expanded={showPrevious}
-            className="flex w-full items-center gap-2 text-left min-h-[44px]"
-          >
-            <span className="text-sm font-semibold text-foreground">Previous rolls</span>
-            <span className="text-xs text-muted-foreground">{previous.length}</span>
-            <span className="h-px flex-1 bg-border" aria-hidden="true" />
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                showPrevious && "rotate-180"
-              )}
-            />
-          </button>
-          {showPrevious && previous.map((roll) => <RollRow key={roll.date} roll={roll} />)}
-        </section>
-      )}
-
       {addOpen && <AddRollModal onClose={() => setAddOpen(false)} />}
     </div>
   );
@@ -168,58 +148,6 @@ function NextRollCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function RollRow({ roll }: { roll: Roll }) {
-  const navigate = useNavigate();
-  return (
-    <button
-      onClick={() => navigate(`/training/${roll.date}`)}
-      className={cn(
-        "w-full flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/50 min-h-[44px]",
-        roll.status === "cancelled" && "opacity-60"
-      )}
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2">
-          <span className="font-semibold text-foreground">{formatNightDate(roll.date)}</span>
-          <span className="text-sm text-muted-foreground">{nightLabel(roll)}</span>
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">{rollSummary(roll)}</p>
-      </div>
-      <StatusChip status={roll.status} />
-      <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-    </button>
-  );
-}
-
-function rollSummary(roll: Roll): string {
-  if (roll.status === "cancelled") return "Cancelled";
-  const apologies = `${roll.apology} ${roll.apology === 1 ? "apology" : "apologies"}`;
-  if (roll.status === "closed") {
-    return `${roll.present} present · ${roll.absent} absent · ${apologies}`;
-  }
-  const parts = [];
-  if (roll.present > 0) parts.push(`${roll.present} present`);
-  if (roll.absent > 0) parts.push(`${roll.absent} absent`);
-  if (roll.apology > 0) parts.push(apologies);
-  return parts.length > 0 ? `${parts.join(" · ")} so far` : "No apologies yet";
-}
-
-function StatusChip({ status }: { status: Roll["status"] }) {
-  if (status === "open") return null;
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-        status === "closed"
-          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200"
-          : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-      )}
-    >
-      {status === "closed" ? "Closed" : "Cancelled"}
-    </span>
   );
 }
 

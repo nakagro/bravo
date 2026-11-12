@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { PageTabs } from "../components/shared/PageTabs";
+import { PreviousTab } from "../features/training/components/PreviousTab";
 import { RollTab } from "../features/training/components/RollTab";
 import { MembersTab } from "../features/training/components/MembersTab";
 import { AttendanceTab } from "../features/training/components/AttendanceTab";
@@ -13,7 +14,7 @@ export function TrainingPage() {
   const access = useQuery(api.training.getAccess);
   const canManage = access?.canManage ?? false;
 
-  // The Duty Officer only records apologies, so only sees the Roll tab
+  // The Duty Officer only records apologies ahead, so only sees the Roll tab
   const visibleTabs = useMemo(
     () => trainingTabs.filter((tab) => canManage || !tab.manageOnly),
     [canManage]
@@ -45,8 +46,9 @@ export function TrainingPage() {
 
       <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
         {activeTab === "roll" && <RollTab canManage={canManage} />}
-        {activeTab === "members" && canManage && <MembersTab />}
+        {activeTab === "previous" && canManage && <PreviousTab />}
         {activeTab === "attendance" && canManage && <AttendanceTab />}
+        {activeTab === "members" && canManage && <MembersTab />}
       </div>
     </div>
   );

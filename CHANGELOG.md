@@ -3,6 +3,7 @@
 ## [2026.11.12]
 - Events: Members can now be notified when they're rostered or crewed, and when an event is cancelled, moved or back on.
 - Availability: Crewing officers can notify members they've been crewed for a deployment.
+- Training Roll: Past rolls now have their own Previous tab, grouped by month.
 
 ## [2026.11.10]
 - Training Roll: Officers can add a short note to a member's mark, such as arriving late.

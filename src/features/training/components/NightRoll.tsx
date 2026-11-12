@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
@@ -76,6 +76,9 @@ const STATUS_OPTIONS: { status: MarkStatus; selected: string }[] = [
  */
 export function NightRoll({ date }: { date: string }) {
   const navigate = useNavigate();
+  // The list that opened this night says where Back returns; a direct link
+  // lands on the Roll tab
+  const backTo = (useLocation().state as { backTo?: string } | null)?.backTo ?? "/training";
   const data = useQuery(api.training.getNight, { date });
   const setMark = useMutation(api.training.setMark);
   const setMarkNote = useMutation(api.training.setMarkNote);
@@ -307,7 +310,7 @@ export function NightRoll({ date }: { date: string }) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/training")}
+              onClick={() => navigate(backTo)}
               className="h-11 w-11 flex-shrink-0"
               aria-label="Back"
             >

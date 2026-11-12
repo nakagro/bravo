@@ -8,12 +8,15 @@ import { ROLL_NIGHT_LABELS, type RollNightKind } from "../../../convex/lib/rollN
 export type RosterEntry = FunctionReturnType<typeof api.training.getRoster>[number];
 export type MarkStatus = "present" | "apology" | "absent";
 
-export type TrainingTab = "roll" | "members" | "attendance";
+export type TrainingTab = "roll" | "previous" | "attendance" | "members";
 
+// In the order an officer reaches for them: tonight, what's been, the totals,
+// then the list of who gets called (set up once, rarely touched)
 export const trainingTabs: { key: TrainingTab; label: string; manageOnly: boolean }[] = [
   { key: "roll", label: "Roll", manageOnly: false },
-  { key: "members", label: "Members", manageOnly: true },
+  { key: "previous", label: "Previous", manageOnly: true },
   { key: "attendance", label: "Attendance", manageOnly: true },
+  { key: "members", label: "Members", manageOnly: true },
 ];
 
 export const MARK_LABELS: Record<MarkStatus, string> = {
@@ -48,6 +51,11 @@ export function formatNightDate(date: string): string {
 /** "Tuesday 6 October 2026" */
 export function formatNightDateLong(date: string): string {
   return format(parseDate(date), "EEEE d MMMM yyyy", { locale: enAU });
+}
+
+/** "October 2026", from "2026-10" */
+export function formatNightMonth(month: string): string {
+  return format(parse(month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: enAU });
 }
 
 export function todayStr(): string {
