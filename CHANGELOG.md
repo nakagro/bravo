@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2026.11.12]
+- General: The app's code history has been cleaned up ahead of opening it to the public.
 - Events: Members can now be notified when they're rostered or crewed, and when an event is cancelled, moved or back on.
 - Availability: Crewing officers can notify members they've been crewed for a deployment.
 - Training Roll: Past rolls now have their own Previous tab, grouped by month.
