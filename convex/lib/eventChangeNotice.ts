@@ -11,7 +11,7 @@ import { upsertNotice } from "./notifyEvent";
 import { isMemberAccount } from "./accountType";
 
 // Event change notices: "Cancelled: Open day", "Changed: …", "Back on: …".
-// One text for everyone involved, sent only when the person making the change
+// One text for everyone involved (the sender included, if they are), sent only when the person making the change
 // leaves the box ticked or taps Send. Built on the shared templates, renderer,
 // delivery and fingerprint check; not on the assignment adapter, since there's
 // no per-member diff here.
@@ -137,8 +137,9 @@ export async function buildChangePreview(
   } else {
     audience = await involvedMembers(ctx, event);
   }
-  // The sender made the change, so isn't told about it.
-  audience.delete(senderId);
+  // The sender is told too when they're involved (rostered, crewed, yes or
+  // maybe): it's their confirmation that the notice actually went out. Being
+  // the organiser or a team leader alone doesn't make them involved.
 
   const users = await loadUsers(ctx, [senderId, ...audience.keys()]);
   const moduleMap = await loadModuleMap(ctx);

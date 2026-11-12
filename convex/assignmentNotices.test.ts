@@ -288,13 +288,17 @@ describe("event change notices", () => {
   const changePreview = (c: Ctx, kind: "cancelled" | "detailsChanged" | "restored", message?: string) =>
     c.asAdmin.query(api.eventChangeNotices.previewEventChangeNotice, { eventId: c.eventId, kind, message });
 
-  it("counts rostered and going, not decliners or the sender", async () => {
+  it("counts rostered and going, not decliners; the sender only when involved", async () => {
     const c = await involvedSetup();
     const p = (await changePreview(c, "cancelled", "Hall double-booked"))!;
     expect(p.recipients.map((r) => r.userId).sort()).toEqual([c.aliceId, c.bobId].sort());
     expect(p.counts).toMatchObject({ rostered: 1, going: 1 });
     expect(p.title).toBe("Cancelled: Open day");
     expect(p.body).toBe("Mon 1 Jun 9:00 AM · Main Station\nHall double-booked");
+
+    // A sender who said yes is told too
+    await c.asAdmin.mutation(api.events.setRsvp, { eventId: c.eventId, status: "attending" });
+    expect((await changePreview(c, "cancelled"))!.recipients.map((r) => r.userId)).toContain(c.adminId);
 
     await c.asAdmin.mutation(api.events.setMemberResponses, { eventId: c.eventId, mode: "closed" });
     expect((await changePreview(c, "cancelled"))!.recipients.map((r) => r.userId)).toEqual([c.aliceId]);
@@ -415,9 +419,9 @@ describe("event messages", () => {
     expect(involved.title).toBe("Open day");
     expect(involved.body).toBe("Bring water\nMon 1 Jun 9:00 AM · Main Station");
 
-    // Everyone: Alice, Bob, Dave. Not the sender, not disabled Carol.
+    // Everyone: the sender too (they're a member), never disabled Carol.
     const everyone = (await q("everyone"))!;
-    expect(everyone.recipients.map((r) => r.userId).sort()).toEqual([c.aliceId, c.bobId, daveId].sort());
+    expect(everyone.recipients.map((r) => r.userId).sort()).toEqual([c.adminId, c.aliceId, c.bobId, daveId].sort());
     expect(everyone.cantNotify).toBe(0); // disabled accounts aren't members at all
 
     await expect(
@@ -443,6 +447,6 @@ describe("event messages", () => {
       await c.asAdmin.query(api.eventChangeNotices.previewEventChangeNotice, { eventId: c.eventId, kind: "cancelled" }),
     ).not.toBeNull();
     const log = (await c.asAdmin.query(api.assignmentNotices.listNotificationSends, { source: "event", scopeId: c.eventId }))!;
-    expect(log[0]).toMatchObject({ kind: "message", recipientCount: 3, message: "Bring water" });
+    expect(log[0]).toMatchObject({ kind: "message", recipientCount: 4, message: "Bring water" });
   });
 });
