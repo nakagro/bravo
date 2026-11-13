@@ -13,10 +13,9 @@ import * as mock from './mockStation';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-// When proxied through the BRAVO server: set VITE_GATE_API_BASE=/gate-api (key
-// injected by nginx). Direct local access: VITE_GATE_API_BASE=http://<station-host>:3000
+// Direct local access: VITE_GATE_API_BASE=http://<station-host>:3000. No key is
+// sent: VITE_* is public, so wvfb-api authorises the kiosks by IP allowlist instead.
 export const GATE_API_BASE = import.meta.env.VITE_GATE_API_BASE ?? '/gate-api';
-export const API_KEY       = import.meta.env.VITE_GATE_API_KEY ?? '';
 export const POLL_INTERVAL_MS = 5000;
 
 // Dev mock: the real endpoints are unreachable off the station LAN, so the dev
@@ -91,12 +90,8 @@ export const SEVERITY_RING: Record<Severity, string> = {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-function authHeaders(extra?: Record<string, string>): HeadersInit {
-  return { 'X-API-Key': API_KEY, ...extra };
-}
-
 async function fetchState(path: string): Promise<number> {
-  const res = await fetch(`${GATE_API_BASE}/${path}`, { headers: authHeaders() });
+  const res = await fetch(`${GATE_API_BASE}/${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   const s = data.state ?? data.State;
@@ -110,7 +105,7 @@ export const fetchAreaState = USE_MOCK ? mock.fetchAreaState : (areaId: string) 
 async function postJson(url: string, body: unknown): Promise<unknown> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -151,7 +146,7 @@ export interface SceneToggles {
 }
 
 async function realFetchSceneToggles(): Promise<SceneToggles> {
-  const res = await fetch(`${GATE_API_BASE}/scenes/state`, { headers: authHeaders() });
+  const res = await fetch(`${GATE_API_BASE}/scenes/state`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return {
