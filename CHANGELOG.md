@@ -10,6 +10,7 @@
 - General: Forms across Keys, Hoses, Vehicle Faults, Equipment, Availability, Events and Bookings now open and handle the keyboard the same way.
 - General: Forms no longer bring up the keyboard by themselves when they open on a phone.
 - General: Phones no longer zoom in when you tap a small text field.
+- General: Scrolling a form on a phone no longer opens the field your finger lands on.
 
 ## [2026.11.13]
 - Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.

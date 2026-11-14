@@ -82,6 +82,20 @@ function isTextEntry(el: EventTarget | null): el is HTMLElement {
   return el instanceof HTMLTextAreaElement || el.isContentEditable
 }
 
+// A finger moving further than this between down and up is a swipe, not a tap.
+const TAP_SLOP_PX = 10
+
+// Scroll offset of the nearest scrolling box around an element.
+function scrollTopWithin(target: EventTarget | null) {
+  let box = target instanceof HTMLElement ? target.parentElement : null
+  while (box) {
+    const { overflowY } = getComputedStyle(box)
+    if (overflowY === "auto" || overflowY === "scroll") return box.scrollTop
+    box = box.parentElement
+  }
+  return 0
+}
+
 function hideFromIOSScroll(el: HTMLElement, then: () => void) {
   el.style.transform = "translateY(-2000px)"
   requestAnimationFrame(() => {
@@ -131,6 +145,7 @@ const BLUR_GRACE_MS = 700
 function KeyboardAwareContent({
   style,
   ref,
+  onTouchStart,
   onTouchEnd,
   onFocusCapture,
   onBlurCapture,
@@ -143,6 +158,9 @@ function KeyboardAwareContent({
   const keyboardUp = React.useRef(false)
   keyboardUp.current = inset !== null
   const lastFieldBlur = React.useRef(0)
+  // Where the finger went down, and the sheet's scroll at that moment, so a
+  // swipe that happens to end on a field isn't mistaken for a tap on it.
+  const touchStart = React.useRef<{ x: number; y: number; scroll: number } | null>(null)
   usePagePinnedWhileOpen()
 
   // A field that grabs focus as the drawer opens (autoFocus) would raise the
@@ -203,10 +221,28 @@ function KeyboardAwareContent({
           : style
       }
       // A tap: the transform has to be on before focus lands, so focus it here
+      onTouchStart={(e) => {
+        onTouchStart?.(e)
+        const t = e.touches[0]
+        touchStart.current = t ? { x: t.clientX, y: t.clientY, scroll: scrollTopWithin(e.target) } : null
+      }}
       onTouchEnd={(e) => {
         onTouchEnd?.(e)
         const field = e.target
         if (!isIOS || !isTextEntry(field) || field === document.activeElement) return
+        // Only a tap focuses. After a swipe, leave it alone: the browser won't
+        // focus either, and forcing it raised the keyboard or date picker
+        // mid-scroll.
+        const start = touchStart.current
+        const end = e.changedTouches[0]
+        if (
+          !start ||
+          !end ||
+          Math.hypot(end.clientX - start.x, end.clientY - start.y) > TAP_SLOP_PX ||
+          scrollTopWithin(field) !== start.scroll
+        ) {
+          return
+        }
         e.preventDefault()
         field.style.transform = "translateY(-2000px)"
         field.focus({ preventScroll: true })
