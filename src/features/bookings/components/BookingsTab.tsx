@@ -16,7 +16,7 @@ import { PendingApprovals } from "./PendingApprovals";
 import { DateBadge, StatusBadge, SectionHeader } from "./badges";
 import { ClampedText } from "./ClampedText";
 import { EmptyState } from "../../../components/shared/EmptyState";
-import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Inbox, ChevronDown, Repeat } from "lucide-react";
 
@@ -114,11 +114,11 @@ export function BookingsTab() {
         </div>
 
         {allowCancel && (booking.status === "pending" || booking.status === "approved") && (
-          <DeleteConfirmDialog
+          <ConfirmDialog
+            tone="destructive"
             title="Cancel Booking"
             description={`Are you sure you want to cancel your booking for "${booking.resource?.name}"?`}
             confirmLabel="Cancel Booking"
-            destructive
             onConfirm={() => handleCancelBooking(booking._id)}
             trigger={
               <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -273,11 +273,11 @@ function SeriesBookingCard({
                     {formatShortDate(booking.startDate)}
                   </span>
                   <StatusBadge status={booking.status} />
-                  <DeleteConfirmDialog
+                  <ConfirmDialog
+                    tone="destructive"
                     title="Cancel this date"
                     description={`Cancel "${booking.resource?.name}" on ${formatShortDate(booking.startDate)}? The other dates stay booked.`}
                     confirmLabel="Cancel Date"
-                    destructive
                     onConfirm={() => onCancelDate(booking._id)}
                     trigger={
                       <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -291,11 +291,11 @@ function SeriesBookingCard({
           )}
         </div>
 
-        <DeleteConfirmDialog
+        <ConfirmDialog
+          tone="destructive"
           title="Cancel Repeating Booking"
           description={`Cancel all ${bookings.length} upcoming dates of "${first.resource?.name}"?`}
           confirmLabel="Cancel All"
-          destructive
           onConfirm={onCancelAll}
           trigger={
             <button className="shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">

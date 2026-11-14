@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import { AccessDenied } from './AccessDenied';
+import { Spinner } from "@/components/ui/spinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -30,7 +31,7 @@ export function ProtectedRoute({
   if (moduleAccess === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 dark:border-white"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

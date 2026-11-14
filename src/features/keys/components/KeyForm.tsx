@@ -9,17 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Trash2 } from "lucide-react";
 
 export function KeyForm({
@@ -241,8 +231,8 @@ export function KeyForm({
           <div className="space-y-3 pt-4 border-t">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Danger Zone</h3>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+            <ConfirmDialog
+              trigger={
                 <Button
                   type="button"
                   variant="outline"
@@ -251,33 +241,21 @@ export function KeyForm({
                   <Trash2 className="h-5 w-5 mr-3" />
                   Delete Key
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this key?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete &ldquo;{existingKey?.siteName}&rdquo; and all associated key items and comments. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                  <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={async () => {
-                      try {
-                        await removeKey({ id: keyId });
-                        toast.success("Key deleted successfully");
-                        onClose();
-                      } catch (error: any) {
-                        toast.error(error.message || "Failed to delete key");
-                      }
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              }
+              title="Delete this key?"
+              description={<>This will permanently delete &ldquo;{existingKey?.siteName}&rdquo; and all associated key items and comments. This cannot be undone.</>}
+              confirmLabel="Delete"
+              tone="destructive"
+              onConfirm={async () => {
+                try {
+                  await removeKey({ id: keyId });
+                  toast.success("Key deleted successfully");
+                  onClose();
+                } catch (error: any) {
+                  toast.error(error.message || "Failed to delete key");
+                }
+              }}
+            />
           </div>
         )}
       </form>

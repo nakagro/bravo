@@ -154,6 +154,14 @@ so pages get it by default. Don't rebuild it per page.
 - **Text fields never render under 16px on touch screens** (a global rule in `src/index.css`), so
   iOS doesn't zoom on focus.
 - `autoFocus` is fine for a field that appears because the member tapped something (e.g. Edit).
+- **Yes/no prompts use `ConfirmDialog`** (`src/components/shared/`), never a hand-built `AlertDialog`.
+  `tone="destructive"` for deletes and cancellations. Pass an async `onConfirm`: the button spins
+  and the prompt stays up until it resolves, and stays open if it rejects (report the error, then
+  rethrow).
+- **Busy buttons use `<Button loading>`**: it disables the button and swaps the label's icon for
+  the spinner. Keep the label as it is; don't swap it for "Saving...". Other loading indicators use
+  `ui/spinner.tsx` (shadcn's), e.g. `<Spinner className="size-8 text-muted-foreground" />` for a
+  section.
 
 ### Styling Patterns
 - **Tailwind CSS**: Utility-first with CSS variables for theming

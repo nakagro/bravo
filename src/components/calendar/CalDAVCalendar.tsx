@@ -13,6 +13,7 @@ import {
   selectUpcomingItems,
   type CalendarItem,
 } from "@/features/calendar/lib/calendarItems";
+import { Spinner } from "@/components/ui/spinner";
 
 interface CalDAVCalendarProps {
   maxEvents?: number;
@@ -70,7 +71,7 @@ export function CalDAVCalendar({ maxEvents = 5 }: CalDAVCalendarProps) {
           </h2>
         </div>
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 dark:border-purple-400"></div>
+          <Spinner className="size-6 text-muted-foreground" />
           <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
             Loading...
           </span>

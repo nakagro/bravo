@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Inbox, LoaderCircle, Trash2 } from "lucide-react";
+import { Inbox, Trash2 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SegmentedTabs } from "@/components/shared/SegmentedTabs";
 import { cn } from "@/lib/utils";
 import { runUserName, type AdminRunSummary } from "./inventoryAdminShared";
+import { Spinner } from "@/components/ui/spinner";
 
 const PAGE_SIZE = 20;
 
@@ -86,7 +87,7 @@ export function InventoryAdminRecords() {
 
       {status === "LoadingFirstPage" ? (
         <div className="flex justify-center py-8">
-          <LoaderCircle className="h-6 w-6 animate-spin text-gray-400" />
+          <Spinner className="size-6 text-muted-foreground" />
         </div>
       ) : records.length === 0 ? (
         <EmptyState
@@ -172,23 +173,19 @@ export function InventoryAdminRecords() {
 
       {status !== "LoadingFirstPage" && status !== "Exhausted" && (
         <Button
+          loading={status === "LoadingMore"}
           variant="outline"
           className="w-full min-h-[44px]"
           disabled={status === "LoadingMore"}
           onClick={() => loadMore(PAGE_SIZE)}
         >
-          {status === "LoadingMore" ? (
-            <span className="flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Loading...
-            </span>
-          ) : (
-            "Show earlier"
-          )}
+          Show earlier
         </Button>
       )}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         open={pendingDelete !== null}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowDown, ArrowUp, Settings, Package } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 type TransactionType = "take" | "replenish" | "adjustment" | "initial";
 
@@ -44,7 +45,7 @@ export function EquipmentRecentActivity() {
   if (!transactions) {
     return (
       <div className="flex items-center justify-center py-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        <Spinner className="size-6 text-muted-foreground" />
       </div>
     );
   }

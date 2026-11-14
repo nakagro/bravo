@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Minus, Plus, X, TriangleAlert, Package, ChevronRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ItemVariant {
   _id: Id<"equipmentItems">;
@@ -192,7 +193,7 @@ export function EquipmentTakeTab() {
   if (!items) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

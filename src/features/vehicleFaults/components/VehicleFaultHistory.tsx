@@ -3,6 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { formatDistanceToNow } from "date-fns";
 import { statusConfig, priorityConfig, fieldNameMap } from "../types";
+import { Spinner } from "@/components/ui/spinner";
 
 interface VehicleFaultHistoryProps {
   faultId: Id<"vehicleFaults">;
@@ -14,7 +15,7 @@ export function VehicleFaultHistory({ faultId }: VehicleFaultHistoryProps) {
   if (history === undefined) {
     return (
       <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700 dark:border-red-500" />
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }

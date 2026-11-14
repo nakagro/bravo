@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, ChevronDown, LoaderCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BARecordCard } from "./BARecordCard";
+import { Spinner } from "@/components/ui/spinner";
 
 const ENTERED_PREVIEW_COUNT = 10;
 
@@ -96,7 +97,7 @@ export function BASkillsLMSTab() {
     return (
       <div data-component="BASkillsLMSTab">
         <div className="flex items-center justify-center p-8">
-          <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner className="size-6 text-muted-foreground" />
         </div>
       </div>
     );
@@ -128,14 +129,10 @@ export function BASkillsLMSTab() {
                 <Button
                   type="button"
                   className="h-11 w-full"
-                  disabled={isBulkUpdating}
+                  loading={isBulkUpdating}
                   onClick={handleBulkMarkEntered}
                 >
-                  {isBulkUpdating ? (
-                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                  )}
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Mark {selectedPending.length} entered
                 </Button>
               </div>

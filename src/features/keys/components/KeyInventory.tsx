@@ -13,6 +13,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { cn } from "../../../lib/utils";
 import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, KeyRound, X, Phone, User } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 type ViewMode = 'cards' | 'table';
 type SortField = 'pegNumber' | 'siteName' | 'address' | 'itemCount';
@@ -134,7 +135,7 @@ export function KeyInventory() {
   if (keys === undefined) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

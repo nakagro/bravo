@@ -8,16 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Select,
   SelectContent,
@@ -33,6 +24,7 @@ import {
 } from "@/components/ui/accordion";
 import { Pencil, Trash2, Package, FolderPlus, Copy, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 export function EquipmentManageTab() {
   const categories = useQuery(api.equipment.getAllCategories);
@@ -214,7 +206,7 @@ export function EquipmentManageTab() {
   if (!categories || !items) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }
@@ -392,47 +384,26 @@ export function EquipmentManageTab() {
       )}
 
       {/* Delete Category Confirmation */}
-      <AlertDialog open={!!deleteCategoryId} onOpenChange={(open) => { if (!open) setDeleteCategoryId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteCategoryName}"? This cannot be undone.
-              Categories with items cannot be deleted. Move or delete items first.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteCategory}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-            >
-              Delete Category
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteCategoryId}
+        onOpenChange={(open) => { if (!open) setDeleteCategoryId(null); }}
+        title="Delete Category?"
+        description={<>Are you sure you want to delete "{deleteCategoryName}"? This cannot be undone. Categories with items cannot be deleted. Move or delete items first.</>}
+        confirmLabel="Delete Category"
+        tone="destructive"
+        onConfirm={handleDeleteCategory}
+      />
 
       {/* Delete Item Confirmation */}
-      <AlertDialog open={!!deleteItemId} onOpenChange={(open) => { if (!open) setDeleteItemId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Item?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteItemName}"? All transaction history for this item will be permanently lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteItem}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-            >
-              Delete Item
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteItemId}
+        onOpenChange={(open) => { if (!open) setDeleteItemId(null); }}
+        title="Delete Item?"
+        description={<>Are you sure you want to delete "{deleteItemName}"? All transaction history for this item will be permanently lost.</>}
+        confirmLabel="Delete Item"
+        tone="destructive"
+        onConfirm={handleDeleteItem}
+      />
 
       {/* Category Dialog */}
       <ResponsiveModal

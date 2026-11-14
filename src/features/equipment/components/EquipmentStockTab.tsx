@@ -16,6 +16,7 @@ import {
 import { TriangleAlert, Package, Search, X, ChevronRight, Plus } from "lucide-react";
 import { EquipmentItemHistory } from "./EquipmentItemHistory";
 import { StepperInput } from "@/components/common/StepperInput";
+import { Spinner } from "@/components/ui/spinner";
 
 interface SelectedItem {
   _id: Id<"equipmentItems">;
@@ -85,7 +86,7 @@ export function EquipmentStockTab() {
   if (!itemsByCategory) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

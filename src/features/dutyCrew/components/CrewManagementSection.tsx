@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Plus,
   Pencil,
@@ -278,7 +278,9 @@ export function CrewManagementSection() {
       />
 
       {/* Delete confirmation */}
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         title={deletingCrew ? `Delete ${deletingCrew.name}?` : "Delete crew?"}
         description="This permanently removes the crew and its member assignments. Crews used in schedule overrides cannot be deleted."
         open={!!deletingCrew}

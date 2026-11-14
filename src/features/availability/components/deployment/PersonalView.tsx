@@ -3,9 +3,10 @@ import { Button } from "../../../../components/ui/button";
 import { Toggle } from "../../../../components/ui/toggle";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { XIcon, HomeIcon, MapPinIcon, GlobeIcon, Zap, Check, Loader2, AlertCircle } from 'lucide-react';
+import { XIcon, HomeIcon, MapPinIcon, GlobeIcon, Zap, Check, AlertCircle } from "lucide-react";
 import { cn } from "../../../../lib/utils";
 import MessagePresetManager from "../MessagePresetManager";
+import { Spinner } from "@/components/ui/spinner";
 
 interface PersonalViewProps {
   deploymentDates: Date[];
@@ -325,7 +326,7 @@ function SaveStatus({ id, state }: { id: string; state: SaveState }) {
     <p id={id} role="status" aria-live="polite" className="mt-1 min-h-4 text-xs flex items-center gap-1">
       {state === "saving" && (
         <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-          <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none" />
+          <Spinner aria-hidden="true" className="size-3" />
           Saving…
         </span>
       )}

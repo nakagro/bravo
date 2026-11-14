@@ -15,6 +15,7 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Id } from "../../convex/_generated/dataModel";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function AuthManagementPage() {
     const navigate = useNavigate();
@@ -408,7 +409,7 @@ export default function AuthManagementPage() {
                     <CardContent>
                         {!authInfo ? (
                             <div className="text-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                <Spinner className="size-8 mx-auto text-muted-foreground" />
                                 <p className="text-sm text-muted-foreground mt-3">Loading auth data...</p>
                             </div>
                         ) : (

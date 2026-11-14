@@ -5,7 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { CrewSeatRow } from "@/components/shared/crew/CrewSeatRow";
 import { emptySeats, toSeatsDraft } from "@/components/shared/crew/crewSeats";
 import { EventCrewDialog, type EventCrewDraft } from "./EventCrewDialog";
@@ -166,7 +166,8 @@ export function EventCrewsSection({
 
       {dialog}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={removing !== null}
         onOpenChange={(open) => {
           if (!open) setRemoving(null);

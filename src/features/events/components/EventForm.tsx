@@ -22,7 +22,7 @@ import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { eventTypeColors } from "../types";
 import { CrewAppliancesField } from "./CrewAppliancesField";
 
@@ -1233,7 +1233,8 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
         {formContent}
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

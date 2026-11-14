@@ -23,7 +23,7 @@ import {
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageTabs } from "@/components/shared/PageTabs";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 type TemplateStatus = "active" | "inactive" | "archived";
 
@@ -522,7 +522,8 @@ export function InventoryTemplateList() {
       {/* Permanent delete. Separate from Archive deliberately: the server
           refuses this once any run references the template, and the admin
           needs to understand it isn't the same button. */}
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
         title={`Delete "${pendingDelete?.name}" permanently?`}

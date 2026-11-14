@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../features/memberRecords/types";
@@ -206,7 +206,8 @@ function MemberKitBulkPage() {
         </div>
       </div>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

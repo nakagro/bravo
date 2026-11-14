@@ -1,13 +1,4 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface DeleteEventDialogProps {
   open: boolean;
@@ -28,26 +19,15 @@ export function DeleteEventDialog({
   onConfirm,
 }: DeleteEventDialogProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this event?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {eventTitle ? `"${eventTitle}" ` : "This event "}
-            and all of its RSVPs, shifts and history will be permanently deleted. This can&apos;t be
-            undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Keep event</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-          >
-            Delete permanently
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Delete this event?"
+      description={<>{eventTitle ? `"${eventTitle}" ` : "This event "} and all of its RSVPs, shifts and history will be permanently deleted. This can&apos;t be undone.</>}
+      confirmLabel="Delete permanently"
+      cancelLabel="Keep event"
+      tone="destructive"
+      onConfirm={onConfirm}
+    />
   );
 }

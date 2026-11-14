@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { Spinner } from "@/components/ui/spinner";
 
 export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
   const history = useQuery(api.hoses.getHistory, { hoseId });
@@ -78,7 +79,7 @@ export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
           )
         ) : (
           <div className="flex justify-center py-8">
-            <div className="animate-spin h-8 w-8 border-2 border-red-700 rounded-full border-t-transparent"></div>
+            <Spinner className="size-8 text-muted-foreground" />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { LoaderCircle, PartyPopper } from "lucide-react";
+import { PartyPopper } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { CurrencyStatus } from "../lib/currency";
 import {
@@ -17,6 +17,7 @@ import { BACurrencyToolbar } from "./BACurrencyToolbar";
 import { BACurrencyGroup } from "./BACurrencyGroup";
 import { BACurrencyRow } from "./BACurrencyRow";
 import { MemberOption } from "@/components/shared/MemberCombobox";
+import { Spinner } from "@/components/ui/spinner";
 
 interface BASkillsCurrencyTabProps {
   onViewMemberHistory?: (userId: Id<"users">) => void;
@@ -130,7 +131,7 @@ export function BASkillsCurrencyTab({ onViewMemberHistory }: BASkillsCurrencyTab
       <div data-component="BASkillsCurrencyTab">
         <div className="mb-4 bg-white dark:bg-gray-800 shadow-sm rounded overflow-hidden">
           <div className="px-3 py-8 flex items-center justify-center">
-            <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Spinner className="size-6 text-muted-foreground" />
           </div>
         </div>
       </div>

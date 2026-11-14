@@ -6,18 +6,9 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Trash2, MessageSquare } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export function KeyComments({ keyId }: { keyId: Id<"keys"> }) {
   const comments = useQuery(api.keyComments.list, { keyId });
@@ -59,7 +50,7 @@ export function KeyComments({ keyId }: { keyId: Id<"keys"> }) {
   if (comments === undefined) {
     return (
       <div className="flex justify-center items-center h-16">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700"></div>
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }
@@ -115,33 +106,21 @@ export function KeyComments({ keyId }: { keyId: Id<"keys"> }) {
                   </div>
                 </div>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <ConfirmDialog
+                  trigger={
                     <button
                       className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                       title="Delete comment"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This comment by {comment.user.name} will be permanently removed.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => handleDeleteComment(comment._id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  }
+                  title="Delete this comment?"
+                  description={<>This comment by {comment.user.name} will be permanently removed.</>}
+                  confirmLabel="Delete"
+                  tone="destructive"
+                  onConfirm={() => handleDeleteComment(comment._id)}
+                />
               </div>
             </div>
           ))}

@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getVersionString } from "@/utils/version";
+import { Spinner } from "@/components/ui/spinner";
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -101,7 +102,7 @@ export function ResetPasswordPage() {
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-200 dark:border-gray-700 max-w-md w-full">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <Spinner className="size-8 mx-auto mb-4 text-muted-foreground" />
             <p className="text-gray-600 dark:text-gray-400">Verifying reset link...</p>
           </div>
         </div>
@@ -228,7 +229,7 @@ export function ResetPasswordPage() {
           >
             {submitting ? (
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                <Spinner className="size-5 text-white mr-2" />
                 Resetting password...
               </div>
             ) : (

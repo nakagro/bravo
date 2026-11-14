@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getVersionString } from "@/utils/version";
 import { getEnvironmentBadge } from "@/utils/environment";
 import { Delete, LogIn } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 10;
@@ -170,7 +171,7 @@ export default function ServiceLoginPage() {
         >
           {submitting ? (
             <>
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <Spinner className="size-5 text-white" />
               Verifying...
             </>
           ) : (

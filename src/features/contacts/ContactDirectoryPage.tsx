@@ -21,6 +21,7 @@ import {
     type VehicleRecord,
 } from "@/features/kiosk/contactDirectoryData";
 import { useContactDirectory } from "@/features/kiosk/useContactDirectory";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * Mobile-friendly D14 Contact List.
@@ -299,7 +300,7 @@ export default function ContactDirectoryPage() {
             {/* Body */}
             {!directory && !loadError ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                    <Spinner className="text-muted-foreground" />
                     <span>Loading contact list…</span>
                 </div>
             ) : loadError ? (

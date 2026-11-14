@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Copy, RefreshCw, Trash2, ArrowLeft, Zap, Play, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+import { Spinner } from "@/components/ui/spinner";
 
 // Helper to build properly URL-encoded webhook URLs
 function buildWebhookUrl(
@@ -139,7 +140,7 @@ export default function ShortcutsPage() {
                 <div className="p-5">
                     {token === undefined ? (
                         <div className="flex justify-center p-4">
-                            <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+                            <Spinner className="size-6 text-muted-foreground" />
                         </div>
                     ) : token ? (
                         <div className="space-y-4">

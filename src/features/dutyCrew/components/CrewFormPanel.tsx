@@ -13,9 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
-import { LoaderCircle } from "lucide-react";
+
 import { toast } from "sonner";
 import { ordinalSuffix } from "../types";
 
@@ -91,18 +91,10 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
         footer={
           <Button
             onClick={handleSave}
-            disabled={!name.trim() || isSaving}
+            disabled={!name.trim()}
+            loading={isSaving}
           >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : isEditing ? (
-              "Save"
-            ) : (
-              "Create"
-            )}
+            {isEditing ? "Save" : "Create"}
           </Button>
         }
       >
@@ -141,7 +133,8 @@ export function CrewFormPanel({ value, onClose }: CrewFormPanelProps) {
         </div>
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

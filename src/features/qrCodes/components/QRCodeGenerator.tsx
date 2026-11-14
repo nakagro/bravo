@@ -299,18 +299,11 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
               </Button>
             )}
 
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-1.5" />
-                  Saving...
-                </>
-              ) : (
-                <>
+            <Button loading={isSaving} size="sm" onClick={handleSave} disabled={isSaving}>
+              <>
                   <Save className="w-4 h-4 mr-1.5" />
                   Save to Library
                 </>
-              )}
             </Button>
           </div>
         )}

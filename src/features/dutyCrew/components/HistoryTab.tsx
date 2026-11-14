@@ -29,7 +29,6 @@ import {
   CircleX,
   ChevronRight,
   ClipboardCheck,
-  LoaderCircle,
 } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
 import {
@@ -384,19 +383,13 @@ export function HistoryTab() {
 
           {status !== "Exhausted" && (
             <Button
+              loading={status === "LoadingMore"}
               variant="outline"
               className="w-full min-h-[44px]"
               disabled={status === "LoadingMore"}
               onClick={() => loadMore(PAGE_SIZE)}
             >
-              {status === "LoadingMore" ? (
-                <span className="flex items-center gap-2">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                  Loading...
-                </span>
-              ) : (
-                "Show earlier"
-              )}
+              Show earlier
             </Button>
           )}
         </>

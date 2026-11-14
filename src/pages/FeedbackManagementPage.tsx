@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Id } from "../../convex/_generated/dataModel";
+import { Spinner } from "@/components/ui/spinner";
 
 type FeedbackStatus = "pending" | "implemented" | "wont_implement" | "under_review";
 
@@ -138,7 +139,7 @@ export default function FeedbackManagementPage() {
             <div className="space-y-3">
                 {!feedbackItems ? (
                     <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <Spinner className="size-8 mx-auto text-muted-foreground" />
                         <p className="text-sm text-muted-foreground mt-3">Loading...</p>
                     </div>
                 ) : feedbackItems.length === 0 ? (

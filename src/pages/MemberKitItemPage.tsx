@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { KIT_TRACKS, KitSizeChart, KitTracks, generateSizeRange } from "../features/memberRecords/types";
@@ -277,7 +277,9 @@ function MemberKitItemPage() {
               Delete item
             </Button>
           </div>
-          <DeleteConfirmDialog
+          <ConfirmDialog
+            confirmLabel="Delete"
+            tone="destructive"
             open={confirmDelete}
             onOpenChange={setConfirmDelete}
             title={`Delete ${item!.name}?`}
@@ -487,7 +489,9 @@ function SizeChartsSection({
         />
       )}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
         title={`Delete ${pendingDelete?.name ?? "chart"}?`}

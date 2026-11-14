@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mail, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface EmailSettingsProps {
   showTitle?: boolean;
@@ -47,7 +48,7 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
   if (!emailSettings) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }
@@ -74,21 +75,15 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
           </CardHeader>
           <CardContent>
             <Button
+              loading={isInitializing}
               onClick={handleInitialize}
               disabled={isInitializing}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isInitializing ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Initializing...
-                </>
-              ) : (
-                <>
+              <>
                   <Mail className="mr-2 h-4 w-4" />
                   Initialize Email Settings
                 </>
-              )}
             </Button>
           </CardContent>
         </Card>
@@ -155,22 +150,16 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
             </CardHeader>
             <CardContent>
               <Button
+                loading={isInitializing}
                 onClick={handleInitialize}
                 disabled={isInitializing}
                 variant="outline"
                 className="w-full sm:w-auto"
               >
-                {isInitializing ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Reinitializing...
-                  </>
-                ) : (
-                  <>
+                <>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reinitialize Settings
                   </>
-                )}
               </Button>
             </CardContent>
           </Card>

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../types";
@@ -150,7 +150,8 @@ export function KitSetEditor({ userId, setId, itemId, onClose }: KitSetEditorPro
         )}
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

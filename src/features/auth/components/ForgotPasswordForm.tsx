@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ForgotPasswordFormProps {
   onBack: () => void;
@@ -137,7 +138,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
         >
           {submitting ? (
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              <Spinner className="size-5 text-white mr-2" />
               Sending reset link...
             </div>
           ) : (

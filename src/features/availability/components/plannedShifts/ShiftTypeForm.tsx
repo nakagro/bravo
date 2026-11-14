@@ -8,16 +8,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import {
   AFTER_STATUS_OPTIONS,
@@ -229,23 +220,15 @@ export function ShiftTypeForm({ initial, onDone, onSavingChange }: ShiftTypeForm
           >
             Delete shift type
           </button>
-          <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete {initial.name}?</AlertDialogTitle>
-                <AlertDialogDescription>Shifts already on the calendar stay.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-red-600 text-white hover:bg-red-700"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <ConfirmDialog
+            open={confirmDelete}
+            onOpenChange={setConfirmDelete}
+            title={<>Delete {initial.name}?</>}
+            description="Shifts already on the calendar stay."
+            confirmLabel="Delete"
+            tone="destructive"
+            onConfirm={handleDelete}
+          />
         </>
       )}
     </form>

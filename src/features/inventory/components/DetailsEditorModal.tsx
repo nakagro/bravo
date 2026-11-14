@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { compressImage, validateImageFile } from "@/lib/imageCompression";
-import { Image as ImageIcon, LoaderCircle, X } from "lucide-react";
+import { Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface DetailsEditorModalProps {
@@ -126,17 +126,11 @@ export function DetailsEditorModal({
       title={title}
       footer={
         <Button
+          loading={uploading}
           onClick={() => void handleSave()}
           disabled={uploading}
         >
-          {uploading ? (
-            <span className="flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Saving...
-            </span>
-          ) : (
-            "Save Details"
-          )}
+          Save Details
         </Button>
       }
     >

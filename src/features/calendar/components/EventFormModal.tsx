@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import type { CalendarEvent } from "../lib/parseIcs";
 
@@ -279,7 +279,8 @@ export function EventFormModal({
         </div>
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

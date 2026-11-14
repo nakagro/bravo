@@ -6,16 +6,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Accordion } from "../../../components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../../../components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   ChecklistActionBar,
   ChecklistProgressHeader,
@@ -32,6 +23,7 @@ import {
   isInventoryItemAnswered,
 } from "../utils/inventoryStatus";
 import type { RunItemDoc, GroupedSection } from "../types/inventory.types";
+import { Spinner } from "@/components/ui/spinner";
 
 const sectionKey = (order: number) => `section-${order}`;
 
@@ -190,7 +182,7 @@ export function InventoryChecksTab() {
       <Card>
         <CardContent className="p-6">
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-700 dark:border-red-500"></div>
+            <Spinner className="size-8 text-muted-foreground" />
           </div>
         </CardContent>
       </Card>
@@ -255,30 +247,18 @@ export function InventoryChecksTab() {
         }
       />
 
-      <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Complete this check anyway?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {completeConfirmDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">
-              Keep Checking
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setShowCompleteConfirm(false);
-                void runComplete();
-              }}
-            >
-              Complete anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={showCompleteConfirm}
+        onOpenChange={setShowCompleteConfirm}
+        title="Complete this check anyway?"
+        description={completeConfirmDescription}
+        confirmLabel="Complete anyway"
+        cancelLabel="Keep Checking"
+        onConfirm={() => {
+          setShowCompleteConfirm(false);
+          void runComplete();
+        }}
+      />
     </div>
   );
 }

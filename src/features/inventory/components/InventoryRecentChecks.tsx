@@ -5,8 +5,9 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CircleCheckBig, CircleX, Clock, User, History, LoaderCircle } from "lucide-react";
+import { CircleCheckBig, CircleX, Clock, User, History } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Spinner } from "@/components/ui/spinner";
 
 interface RunSummary {
   run: {
@@ -128,7 +129,7 @@ export function InventoryRecentChecks() {
       <div className="space-y-3">
         {status === "LoadingFirstPage" && (
           <div className="flex justify-center py-8">
-            <LoaderCircle className="h-6 w-6 animate-spin text-gray-400" />
+            <Spinner className="size-6 text-muted-foreground" />
           </div>
         )}
 
@@ -248,19 +249,13 @@ export function InventoryRecentChecks() {
 
         {status !== "LoadingFirstPage" && status !== "Exhausted" && (
           <Button
+            loading={status === "LoadingMore"}
             variant="outline"
             className="w-full min-h-[44px]"
             disabled={status === "LoadingMore"}
             onClick={() => loadMore(PAGE_SIZE)}
           >
-            {status === "LoadingMore" ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Loading...
-              </span>
-            ) : (
-              "Show earlier"
-            )}
+            Show earlier
           </Button>
         )}
       </div>

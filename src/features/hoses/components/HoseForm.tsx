@@ -10,7 +10,7 @@ import { RefreshCw, Trash2, CircleCheckBig, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Status, Size, Type, Location } from "../types";
 
@@ -400,22 +400,21 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
         <div className="space-y-3 pt-4 border-t">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Actions</h3>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          <ConfirmDialog
+            trigger={
               <Button type="button" variant="outline" className="w-full h-12 text-base justify-start">
                 <RefreshCw className="h-5 w-5 mr-3" />
                 Mark as Replaced
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mark Hose as Replaced</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Record that hose {hose?.hoseId} has been replaced.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Label htmlFor="replacement-notes">Replacement notes (optional)</Label>
-              <Textarea
+            }
+            title="Mark Hose as Replaced"
+            description={<>Record that hose {hose?.hoseId} has been replaced.</>}
+            confirmLabel="Confirm"
+            onConfirm={handleMarkAsReplaced}
+            onOpenChange={(open) => { if (!open) setReplacementNotes(''); }}
+          >
+            <Label htmlFor="replacement-notes">Replacement notes (optional)</Label>
+            <Textarea
                 id="replacement-notes"
                 name="replacementNotes"
                 value={replacementNotes}
@@ -423,15 +422,10 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 placeholder="Notes (optional)"
                 className="min-h-[100px]"
               />
-              <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setReplacementNotes('')}>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="w-full sm:w-auto" onClick={handleMarkAsReplaced}>Confirm</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          </ConfirmDialog>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          <ConfirmDialog
+            trigger={
               <Button
                 type="button"
                 variant="outline"
@@ -440,16 +434,16 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 <Trash2 className="h-5 w-5 mr-3" />
                 Delete Hose
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this hose?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete {hose?.hoseId} and all history. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Label htmlFor="deletion-reason">Reason for deletion (optional)</Label>
-              <Textarea
+            }
+            title="Delete this hose?"
+            description={<>This will permanently delete {hose?.hoseId} and all history. This cannot be undone.</>}
+            confirmLabel="Delete"
+            tone="destructive"
+            onConfirm={handleDeleteHose}
+            onOpenChange={(open) => { if (!open) setDeletionReason(''); }}
+          >
+            <Label htmlFor="deletion-reason">Reason for deletion (optional)</Label>
+            <Textarea
                 id="deletion-reason"
                 name="deletionReason"
                 value={deletionReason}
@@ -457,14 +451,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
                 placeholder="Reason for deletion (optional)"
                 className="min-h-[100px]"
               />
-              <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setDeletionReason('')}>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteHose}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          </ConfirmDialog>
         </div>
       )}
     </form>
@@ -480,9 +467,8 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" form="hose-form" disabled={isSubmitting || hoseIdInvalid} className="bg-red-700 hover:bg-red-800">
-            {isSubmitting && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
-            {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
+          <Button type="submit" form="hose-form" disabled={hoseIdInvalid} loading={isSubmitting} className="bg-red-700 hover:bg-red-800">
+            {hoseId ? "Update" : "Add"} hose
           </Button>
         </>
       }

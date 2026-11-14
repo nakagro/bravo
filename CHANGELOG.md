@@ -12,6 +12,8 @@
 - General: Phones no longer zoom in when you tap a small text field.
 - General: Scrolling a form on a phone no longer opens the field your finger lands on.
 - Admin: Equipment, inventory, QR code, feedback and service account forms now work like the others on phones.
+- General: Confirm prompts look the same everywhere and show progress until the action finishes.
+- General: Buttons show the same spinner while they save.
 
 ## [2026.11.13]
 - Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.

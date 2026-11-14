@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { ArrowDown, ArrowUp, RotateCcw, Package } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface EquipmentItemHistoryProps {
   itemId: Id<"equipmentItems">;
@@ -20,7 +21,7 @@ export function EquipmentItemHistory({ itemId }: EquipmentItemHistoryProps) {
   if (!transactions) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        <Spinner className="size-6 text-muted-foreground" />
       </div>
     );
   }

@@ -14,8 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { RotateCcw, LoaderCircle } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "../types";
 
@@ -97,7 +97,8 @@ export function ScheduleOverridePanel({
       footer={
         <>
           {assignment.scheduleId && (
-            <DeleteConfirmDialog
+            <ConfirmDialog
+              tone="destructive"
               title="Reset to default rotation?"
               description="This removes the manual override for this Sunday. The crew will revert to the normal rotation (1st Sunday = Crew 1, and so on)."
               confirmLabel="Reset"
@@ -110,15 +111,8 @@ export function ScheduleOverridePanel({
               onConfirm={handleReset}
             />
           )}
-          <Button onClick={handleSave} disabled={!selectedCrewId || isSaving}>
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : (
-              "Save"
-            )}
+          <Button loading={isSaving} onClick={handleSave} disabled={!selectedCrewId || isSaving}>
+            Save
           </Button>
         </>
       }

@@ -6,16 +6,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Play, ClipboardList, CircleCheckBig, Clock, Lock } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../../../components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { weekBoundaries } from "@/lib/dutyWeek";
@@ -286,28 +277,17 @@ export function InventoryTemplateSelector() {
       })}
 
       {/* Confirmation dialog for re-doing a completed check */}
-      <AlertDialog open={!!confirmTemplate} onOpenChange={(open) => { if (!open) setConfirmTemplate(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Already completed this week</AlertDialogTitle>
-            <AlertDialogDescription>
-              The {confirmTemplate?.name} inventory has already been completed this week. Are you sure you want to start another check?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full sm:w-auto"
-              onClick={() => {
-                if (confirmTemplate) doStartCheck(confirmTemplate);
-                setConfirmTemplate(null);
-              }}
-            >
-              Start Anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!confirmTemplate}
+        onOpenChange={(open) => { if (!open) setConfirmTemplate(null); }}
+        title="Already completed this week"
+        description={<>The {confirmTemplate?.name} inventory has already been completed this week. Are you sure you want to start another check?</>}
+        confirmLabel="Start Anyway"
+        onConfirm={() => {
+          if (confirmTemplate) doStartCheck(confirmTemplate);
+          setConfirmTemplate(null);
+        }}
+      />
     </div>
   );
 }

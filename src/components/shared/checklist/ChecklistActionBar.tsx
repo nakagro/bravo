@@ -1,4 +1,4 @@
-import { Check, LoaderCircle } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ChecklistActionBarProps {
@@ -38,22 +38,16 @@ export function ChecklistActionBar({
         </div>
       ) : (
         <Button
+          loading={isSubmitting}
           onClick={onPrimary}
           disabled={isSubmitting}
           size="lg"
           className="w-full text-base font-medium bg-green-600 hover:bg-green-700 text-white shadow-sm"
         >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Submitting...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
+          <>
               <Check className="h-5 w-5" aria-hidden="true" />
               {primaryLabel}
-            </span>
-          )}
+            </>
         </Button>
       )}
     </div>

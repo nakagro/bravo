@@ -8,16 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ResponsiveModal } from '@/components/shared/ResponsiveModal';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { Spinner } from "@/components/ui/spinner";
 
 type QRCodeEntry = {
   _id: Id<'qrCodes'>;
@@ -229,29 +221,19 @@ function QRDetailDialog({ qrCode, onClose, onDelete, onEdit }: QRDetailDialogPro
       </Dialog>
 
       {qrCode && (
-        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete QR Code</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{qrCode.name ?? 'Unnamed'}&quot;? This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive hover:bg-destructive/90"
-                onClick={() => {
-                  onDelete(qrCode._id);
-                  setShowDeleteConfirm(false);
-                  onClose();
-                }}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title="Delete QR Code"
+          description={<>Are you sure you want to delete &quot;{qrCode.name ?? 'Unnamed'}&quot;? This cannot be undone.</>}
+          confirmLabel="Delete"
+          tone="destructive"
+          onConfirm={() => {
+            onDelete(qrCode._id);
+            setShowDeleteConfirm(false);
+            onClose();
+          }}
+        />
       )}
     </>
   );
@@ -332,20 +314,14 @@ function QREditDialog({ qrCode, onClose, onSaved }: QREditDialogProps) {
             Cancel
           </Button>
           <Button
+            loading={isSaving}
             onClick={handleSave}
             disabled={isSaving || !editSvg || !editUrlValid}
           >
-            {isSaving ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-1.5" />
-                Saving...
-              </>
-            ) : (
-              <>
+            <>
                 <Check className="w-4 h-4 mr-1.5" />
                 Save Changes
               </>
-            )}
           </Button>
         </>
       }
@@ -507,25 +483,15 @@ function QRCard({ qrCode, onView, onEdit, onDelete }: QRCardProps) {
         </div>
       </div>
 
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete QR Code</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{qrCode.name ?? 'Unnamed'}&quot;? This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={() => { onDelete(qrCode._id); setConfirmDelete(false); }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete QR Code"
+        description={<>Are you sure you want to delete &quot;{qrCode.name ?? 'Unnamed'}&quot;? This cannot be undone.</>}
+        confirmLabel="Delete"
+        tone="destructive"
+        onConfirm={() => { onDelete(qrCode._id); setConfirmDelete(false); }}
+      />
     </>
   );
 }
@@ -551,7 +517,7 @@ export function QRCodeList() {
   if (qrCodes === undefined) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        <Spinner className="text-muted-foreground" />
         <span>Loading...</span>
       </div>
     );

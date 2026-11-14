@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { Spinner } from "@/components/ui/spinner"
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -42,16 +43,34 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  /**
+   * Shows a spinner in place of the label's icon and disables the button
+   * while an action runs. Keep the label as-is (e.g. "Save"); don't swap it
+   * for "Saving...". Ignored with asChild.
+   */
+  loading?: boolean
 }
 
-function Button({ className, variant, size, asChild = false, ref, ...props }: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
-  const Comp = asChild ? Slot : "button"
+function Button({ className, variant, size, asChild = false, loading = false, disabled, children, ref, ...props }: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
+  if (asChild) {
+    return (
+      <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} {...{ disabled }}>
+        {children}
+      </Slot>
+    )
+  }
   return (
-    <Comp
-      className={cn(buttonVariants({ variant, size, className }))}
+    <button
+      // While loading, the spinner stands in for the label's own icon.
+      className={cn(buttonVariants({ variant, size, className }), loading && "[&>svg:not(:first-child)]:hidden")}
       ref={ref}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading && <Spinner aria-hidden="true" />}
+      {children}
+    </button>
   )
 }
 

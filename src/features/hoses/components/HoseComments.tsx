@@ -6,8 +6,9 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Trash2, MessageSquare } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
   const [newComment, setNewComment] = useState("");
@@ -44,7 +45,7 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
   if (comments === undefined) {
     return (
       <div className="flex justify-center items-center h-16">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700 dark:border-red-500"></div>
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }
@@ -110,7 +111,9 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
                   </div>
                 </div>
 
-                <DeleteConfirmDialog
+                <ConfirmDialog
+                  confirmLabel="Delete"
+                  tone="destructive"
                   title="Delete this comment?"
                   description={`This comment by ${comment.user.name} will be permanently removed.`}
                   onConfirm={() => handleDeleteComment(comment._id)}

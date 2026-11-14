@@ -246,7 +246,7 @@ import { InventorySearch } from "@/components/shared/InventorySearch";
 import { ViewModeToggle } from "@/components/shared/ViewModeToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SortableTableHeader } from "@/components/shared/SortableTableHeader";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // UI components
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

@@ -14,11 +14,10 @@ import {
   Smartphone,
   Tablet,
   Monitor,
-  LoaderCircle,
   Trash2,
   Send,
   Download,
-} from 'lucide-react';
+} from "lucide-react";
 
 const DEVICE_ICONS = {
   mobile: Smartphone,
@@ -99,14 +98,11 @@ function DeviceList() {
           <Button
             onClick={() => handleTest(undefined)}
             disabled={testingId !== null}
+            loading={testingId === "all"}
             variant="outline"
             size="sm"
           >
-            {testingId === "all" ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
+            <Send className="mr-2 h-4 w-4" />
             Test All Devices
           </Button>
         )}
@@ -138,28 +134,22 @@ function DeviceList() {
                 <Button
                   onClick={() => handleTest(sub._id)}
                   disabled={testingId !== null}
+                  loading={testingId === sub._id}
                   variant="outline"
                   size="sm"
                 >
-                  {testingId === sub._id ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  <Send className="h-4 w-4" />
                   <span className="hidden sm:inline ml-2">Test</span>
                 </Button>
                 <Button
                   onClick={() => handleRemove(sub._id)}
                   disabled={removingId !== null}
+                  loading={removingId === sub._id}
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700 dark:text-red-400"
                 >
-                  {removingId === sub._id ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <Trash2 className="h-4 w-4" />
                   <span className="hidden sm:inline ml-2">Remove</span>
                 </Button>
               </div>

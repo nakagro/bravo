@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Pencil, Plus, Trash2, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import CrewDialog, { type CrewDraft } from './CrewDialog';
@@ -170,13 +170,13 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
         />
       )}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={deleting !== null}
         onOpenChange={(open) => { if (!open) setDeleting(null); }}
         title="Remove this crew?"
         description={deleting ? `${deleting.applianceName} on ${formatDayHeading(deleting.date)} will be removed for everyone.` : ''}
         confirmLabel="Remove"
-        destructive
         onConfirm={handleDelete}
       />
     </div>

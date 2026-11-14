@@ -29,16 +29,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // Format user display name
 const formatUserName = (user: {
@@ -840,36 +831,15 @@ function UserManagement() {
         </>
       </ResponsiveModal>
 
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {selectedUser ? formatUserName(selectedUser) : "this account"}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes the account and its login. Anything they
-              recorded stays in the system but will no longer show their name, and
-              this can't be undone. Disable the account instead if you may need
-              their history.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeleting}
-              onClick={(e) => {
-                // Keep the dialog up while the mutation runs, so a failure can
-                // be reported instead of vanishing with the dialog.
-                e.preventDefault();
-                void handleDelete();
-              }}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-            >
-              {isDeleting ? "Deleting..." : "Delete permanently"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title={<>Delete {selectedUser ? formatUserName(selectedUser) : "this account"}?</>}
+        description={<>This permanently removes the account and its login. Anything they recorded stays in the system but will no longer show their name, and this can't be undone. Disable the account instead if you may need their history.</>}
+        confirmLabel="Delete permanently"
+        tone="destructive"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

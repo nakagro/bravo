@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -174,7 +174,9 @@ export function KitRegisterEditor() {
         )}
       </section>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
         title={`Delete ${pendingDelete?.name ?? "kit set"}?`}
@@ -349,7 +351,9 @@ export function KitItemRows({
         </ResponsiveModal>
       )}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
         title={`Delete ${pendingDelete?.name ?? "item"}?`}

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, BellOff, Clock, Moon, RefreshCw } from "lucide-react";
+import { Bell, BellOff, Clock, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { MessageTemplates } from "./MessageTemplates";
+import { Spinner } from "@/components/ui/spinner";
 
 interface NotificationSettingsProps {
   showTitle?: boolean;
@@ -83,7 +84,7 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
   if (settings === undefined) {
     return (
       <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+        <Spinner className="size-6 text-muted-foreground" />
         <span className="ml-2 text-gray-500">Loading notification settings...</span>
       </div>
     );
@@ -111,22 +112,16 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button 
+            <Button
+              loading={isInitializing}
               onClick={handleInitialize} 
               disabled={isInitializing}
               className="w-full"
             >
-              {isInitializing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Initializing...
-                </>
-              ) : (
-                <>
+              <>
                   <Bell className="h-4 w-4 mr-2" />
                   Initialize Notification Settings
                 </>
-              )}
             </Button>
           </CardContent>
         </Card>

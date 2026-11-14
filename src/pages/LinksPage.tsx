@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ExternalLink, Link2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export function LinksPage() {
   const links = useQuery(api.links.getActiveLinks);
@@ -16,7 +17,7 @@ export function LinksPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Links</h1>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <Spinner className="text-muted-foreground" />
           <span>Loading links…</span>
         </div>
       </div>

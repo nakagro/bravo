@@ -28,6 +28,7 @@ import {
 } from "./features/serviceAccounts/ServiceAccountContext";
 import { ConvexDebugObserver } from "./components/debug/ConvexDebugObserver";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Spinner } from "@/components/ui/spinner";
 
 const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
 const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
@@ -86,7 +87,7 @@ function RouteLoading() {
   return (
     <div className="flex items-center justify-center min-h-[40vh]">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
+        <Spinner className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Loading page...</p>
       </div>
     </div>
@@ -130,7 +131,7 @@ function ServiceAccountGate() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
+          <Spinner className="size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -149,7 +150,7 @@ function ServiceAccountGate() {
         <TimingMarker label="AuthLoading phase" />
         <div className="flex items-center justify-center min-h-screen bg-background">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-red-600" />
+            <Spinner className="size-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Loading...</p>
           </div>
         </div>

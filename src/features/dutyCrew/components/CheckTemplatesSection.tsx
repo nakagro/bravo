@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Plus,
   Pencil,
@@ -290,7 +290,9 @@ export function CheckTemplatesSection() {
       />
 
       {/* Delete confirmation */}
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        confirmLabel="Delete"
+        tone="destructive"
         title={deletingCheck ? `Delete "${deletingCheck.name}"?` : "Delete check?"}
         description="Past submission history will not be affected. Completed checks keep a snapshot of this item."
         open={!!deletingCheck}

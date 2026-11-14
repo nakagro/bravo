@@ -38,6 +38,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 // Type icon mapping
 function getItemTypeIcon(type: string) {
@@ -188,7 +189,7 @@ export function KeyDetailPanel({
 
           {keyItems === undefined ? (
             <div className="flex justify-center py-4">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700 dark:border-red-500"></div>
+              <Spinner className="size-5 text-muted-foreground" />
             </div>
           ) : keyItems.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500 italic pl-5">
@@ -259,7 +260,7 @@ export function KeyDetailPanel({
             <div className="pl-5 space-y-2">
               {history === undefined ? (
                 <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-700 dark:border-red-500"></div>
+                  <Spinner className="size-5 text-muted-foreground" />
                 </div>
               ) : history.length === 0 ? (
                 <p className="text-sm text-gray-400 dark:text-gray-500 italic">No changes recorded</p>

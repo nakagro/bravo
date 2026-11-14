@@ -4,7 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { VehicleFaultComments } from "./VehicleFaultComments";
 import { VehicleFaultHistory } from "./VehicleFaultHistory";
 import { VehicleFaultAttachments } from "./VehicleFaultAttachments";
@@ -267,7 +267,9 @@ export function VehicleFaultDetailPanel({
             Edit Fault
           </Button>
           {isAdmin && (
-            <DeleteConfirmDialog
+            <ConfirmDialog
+              confirmLabel="Delete"
+              tone="destructive"
               title="Delete fault?"
               description="This action cannot be undone. This will permanently delete this vehicle fault and all its attachments."
               trigger={

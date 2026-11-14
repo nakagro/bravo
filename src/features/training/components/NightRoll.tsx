@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   ChecklistActionBar,
   ChecklistNotesModal,
@@ -478,20 +478,20 @@ export function NightRoll({ date }: { date: string }) {
         placeholder="e.g. Arrived 20:30"
       />
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
         open={confirmAction === "kind"}
         onOpenChange={(open) => !open && setConfirmAction(null)}
         title={`Change to ${otherKindLabel}?`}
         description={`This night is currently ${kindLabel}. It will be recorded and reported as ${otherKindLabel} instead. Marks are kept, and you can change it back.`}
         confirmLabel={`Change to ${otherKindLabel}`}
-        destructive={false}
         onConfirm={() => {
           setConfirmAction(null);
           void handleKindSwitch();
         }}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={confirmAction === "cancel"}
         onOpenChange={(open) => !open && setConfirmAction(null)}
         title="Cancel this roll?"
@@ -504,7 +504,7 @@ export function NightRoll({ date }: { date: string }) {
         }}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
         open={confirmClose}
         onOpenChange={setConfirmClose}
         title="Close the roll?"
@@ -514,7 +514,6 @@ export function NightRoll({ date }: { date: string }) {
             : "Everyone has been marked. You can still change any mark afterwards."
         }
         confirmLabel="Close roll"
-        destructive={false}
         onConfirm={() => void handleClose()}
       />
     </div>

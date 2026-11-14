@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bell, LoaderCircle, Mail, Send } from "lucide-react";
+import { Bell, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * Reusable "who gets told when this happens" editor.
@@ -89,7 +90,7 @@ export function NotificationRecipientsSection({
   if (config == null || members === undefined || roles === undefined) {
     return (
       <div className="flex justify-center py-8">
-        <LoaderCircle className="h-5 w-5 animate-spin text-gray-400" />
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }
@@ -310,22 +311,16 @@ export function NotificationRecipientsSection({
           {isEnabled ? (
             <div className="min-w-0">
               <Button
+                loading={isTesting}
                 variant="outline"
                 onClick={handleSendTest}
                 disabled={isTesting || isSaving || hasUnsavedChanges}
                 className="w-full sm:w-auto"
               >
-                {isTesting ? (
-                  <span className="flex items-center gap-2">
-                    <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    Sending...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
+                <>
                     <Send className="h-4 w-4" aria-hidden="true" />
                     Send test to me
-                  </span>
-                )}
+                  </>
               </Button>
               <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                 {hasUnsavedChanges
@@ -336,15 +331,8 @@ export function NotificationRecipientsSection({
           ) : (
             <span />
           )}
-          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : (
-              "Save"
-            )}
+          <Button loading={isSaving} onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+            Save
           </Button>
         </div>
       </div>

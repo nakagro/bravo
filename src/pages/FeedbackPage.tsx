@@ -223,22 +223,16 @@ export function FeedbackPage() {
         </div>
 
         {/* Submit Button */}
-        <Button 
+        <Button
+          loading={isSubmitting}
           type="submit" 
           disabled={isSubmitting || !subject.trim() || !message.trim()}
           className="w-full"
         >
-          {isSubmitting ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Submitting...
-            </>
-          ) : (
-            <>
+          <>
               <Send className="mr-2 h-4 w-4" />
               Submit Feedback
             </>
-          )}
         </Button>
       </form>
     </div>

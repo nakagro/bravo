@@ -11,6 +11,7 @@ import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import { useSearchParams } from "react-router-dom";
 import { usePostHog } from "posthog-js/react";
+import { Spinner } from "@/components/ui/spinner";
 
 const signUpSchema = z.object({
   firstName: z.string().min(1, "First name is required").trim(),
@@ -410,7 +411,7 @@ export function SignInForm() {
           >
             {submitting ? (
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                <Spinner className="size-5 text-white mr-2" />
                 Creating account...
               </div>
             ) : (
@@ -480,7 +481,7 @@ export function SignInForm() {
             >
               {submitting ? (
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <Spinner className="size-5 text-white mr-2" />
                   Verifying...
                 </div>
               ) : (
@@ -528,7 +529,7 @@ export function SignInForm() {
             >
               {submitting ? (
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <Spinner className="size-5 text-white mr-2" />
                   Sending code...
                 </div>
               ) : (
@@ -640,7 +641,7 @@ export function SignInForm() {
           >
             {submitting ? (
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                <Spinner className="size-5 text-white mr-2" />
                 Signing in...
               </div>
             ) : (

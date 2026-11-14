@@ -4,6 +4,7 @@ import { Info, RefreshCw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FDR_LEVELS, fdrAppearance, fdrLabel } from "@/components/dashboard/fdrLevels";
 import { FdrAboutSheet } from "@/components/dashboard/FdrAboutSheet";
+import { Spinner } from "@/components/ui/spinner";
 
 interface RegionForecast {
   description: string;
@@ -164,7 +165,7 @@ export function FDRPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Fire Danger Ratings</h1>
         </div>
         <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <Spinner className="text-muted-foreground" />
           <span>Loading fire danger ratings…</span>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Slot } from "@radix-ui/react-slot";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Plus, Pencil, Trash2, Info, Image, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { DetailsEditorModal } from "./DetailsEditorModal";
@@ -30,6 +30,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Spinner } from "@/components/ui/spinner";
 
 interface TemplateEditorProps {
   templateId: Id<"applianceTemplates">;
@@ -504,31 +505,19 @@ function SortableItem({ item, onRename, onDelete, onUpdateDetails, onUpdateQuant
             </Button>
           }
         />
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+        <ConfirmDialog
+          trigger={
             <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
               <Trash2 className="h-5 w-5" />
               <span className="sr-only">Delete item</span>
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Item</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{item.name}"? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={onDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-              >
-                Delete Item
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          }
+          title="Delete Item"
+          description={<>Are you sure you want to delete "{item.name}"? This action cannot be undone.</>}
+          confirmLabel="Delete Item"
+          tone="destructive"
+          onConfirm={onDelete}
+        />
       </div>
     </div>
   );
@@ -691,7 +680,7 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <Spinner className="size-8 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">Loading template...</p>
         </div>
       </div>
@@ -719,28 +708,17 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
             <div className="flex flex-col gap-3">
               <TemplateMetaEditor template={template} onSave={handleSaveTemplate} />
               {template.hasUnpublishedChanges && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <ConfirmDialog
+                  trigger={
                     <Button variant="default" size="default" className="w-full min-h-[48px] text-base">
                       Publish Changes
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Publish Template Changes</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will create a new version of the template and make all changes available for use in new inventory checks.
-                        Existing in-progress checks will continue to use the previous version.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handlePublishTemplate} className="w-full sm:w-auto">
-                        Publish Version {template.version + 1}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  }
+                  title="Publish Template Changes"
+                  description={<>This will create a new version of the template and make all changes available for use in new inventory checks. Existing in-progress checks will continue to use the previous version.</>}
+                  confirmLabel={<>Publish Version {template.version + 1}</>}
+                  onConfirm={handlePublishTemplate}
+                />
               )}
             </div>
           </div>
@@ -795,31 +773,19 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
                           </Button>
                         }
                       />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                      <ConfirmDialog
+                        trigger={
                           <Button variant="ghost" size="default" className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] p-0">
                             <Trash2 className="h-5 w-5" />
                             <span className="sr-only">Delete section</span>
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Section</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{section.name}" and all its items? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteSection(section._id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-                            >
-                              Delete Section
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        }
+                        title="Delete Section"
+                        description={<>Are you sure you want to delete "{section.name}" and all its items? This action cannot be undone.</>}
+                        confirmLabel="Delete Section"
+                        tone="destructive"
+                        onConfirm={() => handleDeleteSection(section._id)}
+                      />
                     </div>
                   </div>
                 </CardHeader>

@@ -11,7 +11,7 @@ import { ClampedText } from "./ClampedText";
 import { ResourceForm } from "./ResourceForm";
 import { PendingApprovals } from "./PendingApprovals";
 import { EmptyState } from "../../../components/shared/EmptyState";
-import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { Plus, Inbox, Archive, SquarePen, Trash2, Users, Lock, LockOpen, ExternalLink } from "lucide-react";
 
 export function AdminTab() {
@@ -141,11 +141,11 @@ export function AdminTab() {
                     <SquarePen className="h-4 w-4 mr-1" />
                     Edit
                   </button>
-                  <DeleteConfirmDialog
+                  <ConfirmDialog
+                    tone="destructive"
                     title="Delete Resource"
                     description={`Are you sure you want to delete "${resource.name}"? This action cannot be undone.`}
                     confirmLabel="Delete"
-                    destructive
                     onConfirm={() => handleDeleteResource(resource._id)}
                     trigger={
                       <button className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
@@ -166,11 +166,11 @@ export function AdminTab() {
                   <SquarePen className="h-4 w-4 mr-1" />
                   Edit
                 </button>
-                <DeleteConfirmDialog
+                <ConfirmDialog
+                  tone="destructive"
                   title="Delete Resource"
                   description={`Are you sure you want to delete "${resource.name}"? This action cannot be undone.`}
                   confirmLabel="Delete"
-                  destructive
                   onConfirm={() => handleDeleteResource(resource._id)}
                   trigger={
                     <button className="flex-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center">

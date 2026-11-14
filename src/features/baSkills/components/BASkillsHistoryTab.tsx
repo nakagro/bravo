@@ -4,11 +4,12 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
-import { Download, LoaderCircle } from "lucide-react";
+import { Download } from "lucide-react";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { BARecordCard } from "./BARecordCard";
 import { buildRecordsCsv, downloadCsv } from "../lib/csv";
 import { isWithinBARecordDeleteWindow, useBARecordDeleteWindowNow } from "../lib/deletePermissions";
+import { Spinner } from "@/components/ui/spinner";
 
 type UsageType = "firecall" | "drill";
 type DateRange = "all" | "month" | "90d";
@@ -180,7 +181,7 @@ export function BASkillsHistoryTab({
 
       {records === undefined ? (
         <div className="flex items-center justify-center p-8">
-          <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner className="size-6 text-muted-foreground" />
         </div>
       ) : visible.length === 0 ? (
         <div className="rounded border border-dashed border-gray-300 dark:border-gray-600 p-6 text-center text-sm text-gray-500 dark:text-gray-400">

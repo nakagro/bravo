@@ -22,6 +22,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Pencil, Trash2, Package, FolderPlus } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 export function EquipmentAdminPanel() {
   const categories = useQuery(api.equipment.getAllCategories);
@@ -183,7 +184,7 @@ export function EquipmentAdminPanel() {
   if (!categories || !items) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

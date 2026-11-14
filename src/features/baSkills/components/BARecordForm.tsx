@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
 import {
-  LoaderCircle,
   Save,
   User,
   Users,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { RANK_ORDER, isBARecordMemberOption } from "../memberEligibility";
+import { Spinner } from "@/components/ui/spinner";
 
 interface BARecordFormProps {
   onSuccess?: () => void;
@@ -130,7 +130,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
   if (!currentUser || !allMembers) {
     return (
       <div className="flex items-center justify-center p-8">
-        <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner className="size-6 text-muted-foreground" />
       </div>
     );
   }
@@ -322,18 +322,11 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         )}
       </div>
 
-      <Button type="submit" size="lg" className="w-full h-12 text-base" disabled={isSubmitting}>
-        {isSubmitting ? (
-          <>
-            <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
-            Submitting...
-          </>
-        ) : (
-          <>
+      <Button loading={isSubmitting} type="submit" size="lg" className="w-full h-12 text-base" disabled={isSubmitting}>
+        <>
             <Save className="mr-2 h-5 w-5" />
             Submit BA Record
           </>
-        )}
       </Button>
     </form>
   );

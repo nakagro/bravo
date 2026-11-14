@@ -17,12 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { cn } from "@/lib/utils";
 import {
-  LoaderCircle,
   Palette,
   Pencil,
   Plus,
@@ -366,7 +365,8 @@ export function HoseTapeColors() {
                     <Pencil data-icon="inline-start" />
                     Edit
                   </Button>
-                  <DeleteConfirmDialog
+                  <ConfirmDialog
+                    tone="destructive"
                     title={`Remove ${mapping.year} Tape Colour?`}
                     description="Hoses tested in this year will no longer display a tape colour."
                     confirmLabel="Remove Tape Colour"
@@ -418,15 +418,9 @@ export function HoseTapeColors() {
               <Button
                 type="submit"
                 form="tape-colour-form"
-                disabled={isSaving}
+                loading={isSaving}
               >
-                {isSaving ? (
-                  <LoaderCircle
-                    data-icon="inline-start"
-                    className="animate-spin motion-reduce:animate-none"
-                  />
-                ) : null}
-                {isSaving ? "Saving…" : "Save Tape Colour"}
+                Save Tape Colour
               </Button>
             </>
           }
@@ -446,7 +440,8 @@ export function HoseTapeColors() {
         </ResponsiveModal>
       ) : null}
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

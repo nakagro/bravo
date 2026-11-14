@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import {
@@ -714,7 +714,8 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
         {formContent}
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard this request?"

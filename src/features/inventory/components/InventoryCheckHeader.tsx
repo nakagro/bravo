@@ -2,17 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardHeader } from "../../../components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../../../components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ArrowLeft, Ban, FileDown } from "lucide-react";
 
 interface InventoryCheckHeaderProps {
@@ -86,8 +76,8 @@ export function InventoryCheckHeader({
               </Button>
             )}
             {!isReadOnly && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <ConfirmDialog
+                trigger={
                   <Button
                     variant="outline"
                     size="sm"
@@ -97,28 +87,14 @@ export function InventoryCheckHeader({
                     <Ban className="w-4 h-4 mr-1.5" aria-hidden="true" />
                     {cancelling ? "Cancelling..." : "Cancel"}
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Inventory Check?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to cancel this inventory check? All
-                      progress will be lost and this action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                    <AlertDialogCancel className="w-full sm:w-auto">
-                      Keep Checking
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={onCancel}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
-                    >
-                      Yes, Cancel Check
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                }
+                title="Cancel Inventory Check?"
+                description={<>Are you sure you want to cancel this inventory check? All progress will be lost and this action cannot be undone.</>}
+                confirmLabel="Yes, Cancel Check"
+                cancelLabel="Keep Checking"
+                tone="destructive"
+                onConfirm={onCancel}
+              />
             )}
           </div>
         </div>

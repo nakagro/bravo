@@ -1,9 +1,10 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { LoaderCircle } from "lucide-react";
+
 import { BARecordCard } from "./BARecordCard";
 import { BAMyCurrencyCard } from "./BAMyCurrencyCard";
 import { isWithinBARecordDeleteWindow, useBARecordDeleteWindowNow } from "../lib/deletePermissions";
+import { Spinner } from "@/components/ui/spinner";
 
 const MY_RECORDS_LIMIT = 200;
 
@@ -22,7 +23,7 @@ export function BASkillsMyRecordsTab({ canManageRecords = false }: BASkillsMyRec
 
       {records === undefined || me === undefined ? (
         <div className="flex items-center justify-center p-6">
-          <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner className="size-6 text-muted-foreground" />
         </div>
       ) : records.length === 0 ? (
         <div className="rounded border border-dashed border-gray-300 dark:border-gray-600 p-6 text-center text-sm text-gray-500 dark:text-gray-400">

@@ -2,17 +2,18 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, ClipboardList, LoaderCircle } from "lucide-react";
+import { ChevronRight, ClipboardList } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
 import { formatDayTime } from "@/lib/dateFormat";
 import { weekBoundaries } from "@/lib/dutyWeek";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { runUserName, type AdminRunSummary } from "./inventoryAdminShared";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ApplianceOverview {
   templateId: Id<"applianceTemplates">;
@@ -65,7 +66,7 @@ export function InventoryAdminOverview() {
   if (overview === undefined) {
     return (
       <div className="flex justify-center py-8">
-        <LoaderCircle className="h-6 w-6 animate-spin text-gray-400" />
+        <Spinner className="size-6 text-muted-foreground" />
       </div>
     );
   }
@@ -259,7 +260,8 @@ export function InventoryAdminOverview() {
         })}
       </ul>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={pendingCancel !== null}
         onOpenChange={(open) => {
           if (!open) setPendingCancel(null);

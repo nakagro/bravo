@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { formatUserName } from "../types";
 import { Users, Check, Lock, LockOpen } from "lucide-react";
@@ -343,7 +343,8 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
         {formContent}
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

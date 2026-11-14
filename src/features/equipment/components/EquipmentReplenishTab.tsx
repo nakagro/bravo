@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, X, Search, TriangleAlert, Package, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ReplenishVariant {
   _id: Id<"equipmentItems">;
@@ -169,7 +170,7 @@ export function EquipmentReplenishTab() {
   if (!items) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Spinner className="size-8 text-muted-foreground" />
       </div>
     );
   }

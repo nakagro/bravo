@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "../../../components/ui/button";
-import { Mail, LoaderCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 import { toast } from "sonner";
 
 interface TestEmailButtonProps {
@@ -47,22 +47,16 @@ export function TestEmailButton({ userEmail, userName }: TestEmailButtonProps) {
       </div>
       
       <Button
+        loading={isSending}
         onClick={handleSendTestEmail}
         disabled={isSending}
         variant="outline"
         className="w-full sm:w-auto"
       >
-        {isSending ? (
-          <>
-            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            Sending...
-          </>
-        ) : (
-          <>
+        <>
             <Mail className="mr-2 h-4 w-4" />
             Send Test Email
           </>
-        )}
       </Button>
       
       <p className="text-xs text-gray-500 dark:text-gray-400">

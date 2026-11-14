@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
-import { DeleteConfirmDialog } from "../../../components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, getBookingConflictMessage } from "../types";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -381,11 +381,11 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
 
         {/* Cancel Booking */}
         {watchStatus !== "cancelled" && (
-          <DeleteConfirmDialog
+          <ConfirmDialog
+            tone="destructive"
             title="Cancel this booking?"
             description={`This will cancel the booking for ${existingBooking.resource?.name}. This action cannot be undone.`}
             confirmLabel="Cancel Booking"
-            destructive
             onConfirm={handleDelete}
             trigger={
               <button
@@ -437,7 +437,8 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
         {formContent}
       </ResponsiveModal>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={guard.promptOpen}
         onOpenChange={guard.setPromptOpen}
         title="Discard unsaved changes?"

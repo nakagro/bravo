@@ -5,17 +5,7 @@ import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, Clock3, RefreshCw, TriangleAlert } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,29 +71,18 @@ export function HoseStatusSync() {
         </div>
 
         {count > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          <ConfirmDialog
+            trigger={
               <Button className="min-h-11 w-full touch-manipulation sm:w-auto">
                 <RefreshCw data-icon="inline-start" aria-hidden="true" />
                 Sync {count} {count === 1 ? "hose" : "hoses"}
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Apply {count} status {count === 1 ? "change" : "changes"}?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This updates each listed hose to the suggested status based on its test date.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isSyncing}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleSyncAll} disabled={isSyncing}>
-                  {isSyncing && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
-                  {isSyncing ? "Syncing…" : "Apply changes"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            }
+            title={<>Apply {count} status {count === 1 ? "change" : "changes"}?</>}
+            description="This updates each listed hose to the suggested status based on its test date."
+            confirmLabel="Apply changes"
+            onConfirm={handleSyncAll}
+          />
         )}
       </CardHeader>
 

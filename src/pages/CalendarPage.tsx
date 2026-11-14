@@ -16,16 +16,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useCalendarEvents } from "@/features/calendar/hooks/useCalendarEvents";
 import type { CalendarEvent } from "@/features/calendar/lib/parseIcs";
 import {
@@ -40,6 +31,7 @@ import { MonthGrid } from "@/features/calendar/components/MonthGrid";
 import { DayAgenda } from "@/features/calendar/components/DayAgenda";
 import { ItemDetailSheet } from "@/features/calendar/components/ItemDetailSheet";
 import { EventFormModal } from "@/features/calendar/components/EventFormModal";
+import { Spinner } from "@/components/ui/spinner";
 
 function parseDateParam(value: string | null): Date | null {
   if (!value) return null;
@@ -64,7 +56,6 @@ export function CalendarPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // The Events and Bookings modules overlay onto the calendar for members
   // who can access them
@@ -116,7 +107,6 @@ export function CalendarPage() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setDeleting(true);
     try {
       await deleteEvent({ uid: deleteTarget.uid });
       toast.success("Event deleted");
@@ -127,8 +117,8 @@ export function CalendarPage() {
       toast.error(
         err instanceof Error ? err.message : "Failed to delete the event",
       );
-    } finally {
-      setDeleting(false);
+      // Keeps the confirm prompt up so the member can retry.
+      throw err;
     }
   };
 
@@ -206,7 +196,7 @@ export function CalendarPage() {
 
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <Spinner className="text-muted-foreground" />
           <span>Loading events…</span>
         </div>
       )}
@@ -267,35 +257,17 @@ export function CalendarPage() {
         onSaved={refresh}
       />
 
-      <AlertDialog
+      <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this event?</AlertDialogTitle>
-            <AlertDialogDescription>
-              “{deleteTarget?.summary}” will be removed from the brigade
-              calendar for everyone, including external calendar apps.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDelete();
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "Deleting…" : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Delete this event?"
+        description={<>“{deleteTarget?.summary}” will be removed from the brigade calendar for everyone, including external calendar apps.</>}
+        confirmLabel="Delete"
+        tone="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

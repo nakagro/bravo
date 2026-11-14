@@ -6,18 +6,9 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
-import { CheckCircle2, ChevronRight, Clock, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { USAGE_TYPE_LABEL } from "../lib/currency";
 
@@ -66,7 +57,6 @@ export function BARecordCard({
   const deleteRecord = useMutation(api.baRecords.deleteRecord);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const lmsMode = onSetEntered !== undefined;
   const isEntered = record.lmsEnteredAt !== undefined;
@@ -85,7 +75,6 @@ export function BARecordCard({
   const tileSizeClasses = lmsMode && isEntered ? "h-10 w-10" : "h-12 w-12";
 
   const handleDelete = async () => {
-    setIsDeleting(true);
     try {
       await deleteRecord({ recordId: record._id });
       toast.success("Record deleted");
@@ -94,8 +83,8 @@ export function BARecordCard({
     } catch (err) {
       console.error("Failed to delete record:", err);
       toast.error(err instanceof Error ? err.message : "Failed to delete record");
-    } finally {
-      setIsDeleting(false);
+      // Keeps the confirm prompt up so the member can retry.
+      throw err;
     }
   };
 
@@ -259,12 +248,10 @@ export function BARecordCard({
                   type="button"
                   variant={isEntered ? "outline" : "default"}
                   className="w-full"
-                  disabled={isUpdating}
+                  loading={isUpdating}
                   onClick={handleToggleEntered}
                 >
-                  {isUpdating ? (
-                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                  ) : isEntered ? (
+                  {isEntered ? (
                     <RotateCcw className="mr-2 h-4 w-4" />
                   ) : (
                     <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -288,33 +275,15 @@ export function BARecordCard({
         </div>
       </ResponsiveModal>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete BA record?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes the record. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete BA record?"
+        description="This permanently deletes the record. This action cannot be undone."
+        confirmLabel="Delete"
+        tone="destructive"
+        onConfirm={handleDelete}
+      />
     </>
   );
 }

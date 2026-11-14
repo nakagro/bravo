@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { Spinner } from "@/components/ui/spinner";
 
 export function KeyHistory({ keyId }: { keyId: Id<"keys"> }) {
   const history = useQuery(api.keys.getHistory, { keyId });
@@ -73,7 +74,7 @@ export function KeyHistory({ keyId }: { keyId: Id<"keys"> }) {
           )
         ) : (
           <div className="flex justify-center py-8">
-            <div className="animate-spin h-8 w-8 border-2 border-red-700 dark:border-red-500 rounded-full border-t-transparent"></div>
+            <Spinner className="size-8 text-muted-foreground" />
           </div>
         )}
       </div>

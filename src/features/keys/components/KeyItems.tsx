@@ -5,18 +5,9 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { KeyItemModal } from "./KeyItemModal";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Plus, Pencil, Trash2, KeyRound, CreditCard, Hash, FileText } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 function getTypeIcon(type: string) {
   switch (type) {
@@ -48,7 +39,7 @@ export function KeyItems({ keyId }: { keyId: Id<"keys"> }) {
   if (keyItems === undefined) {
     return (
       <div className="flex justify-center items-center h-32">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-700"></div>
+        <Spinner className="size-6 text-muted-foreground" />
       </div>
     );
   }
@@ -108,8 +99,8 @@ export function KeyItems({ keyId }: { keyId: Id<"keys"> }) {
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                <ConfirmDialog
+                  trigger={
                     <Button
                       type="button"
                       variant="ghost"
@@ -119,25 +110,13 @@ export function KeyItems({ keyId }: { keyId: Id<"keys"> }) {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this item?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently remove the {item.type.toLowerCase()} &ldquo;{item.description}&rdquo; from this key.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => handleDelete(item._id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  }
+                  title="Delete this item?"
+                  description={<>This will permanently remove the {item.type.toLowerCase()} &ldquo;{item.description}&rdquo; from this key.</>}
+                  confirmLabel="Delete"
+                  tone="destructive"
+                  onConfirm={() => handleDelete(item._id)}
+                />
               </div>
             </div>
           ))}

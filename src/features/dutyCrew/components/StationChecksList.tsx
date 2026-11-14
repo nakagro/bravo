@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   ChecklistNotesModal,
   ChecklistProgressHeader,
@@ -735,7 +735,8 @@ export function StationChecksList({
           : "No need to submit. The week closes on its own early Tuesday morning, and the duty crew officer gets a summary of what was and wasn't done."}
       </p>
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={confirmDeleteName !== null}
         onOpenChange={(open) => {
           if (!open) setConfirmDeleteName(null);
@@ -749,7 +750,8 @@ export function StationChecksList({
         }}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmDialog
+        tone="destructive"
         open={showClearAllConfirm}
         onOpenChange={setShowClearAllConfirm}
         title="Clear all allocations?"
