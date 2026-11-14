@@ -1,8 +1,15 @@
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { MemberCombobox, type MemberOption } from "@/components/shared/MemberCombobox";
-import { CREW_SEATS, type CrewSeatsDraft, type SeatDraft } from "./crewSeats";
-
-type SeatKey = "crewLeader" | "driver" | number;
+import {
+  SEAT_KEYS,
+  clearSeat,
+  getSeat,
+  placeMember,
+  seatHeldBy,
+  seatLabel,
+  setSeat,
+  type CrewSeatsDraft,
+  type SeatKey,
+} from "./crewSeats";
 
 interface CrewSeatPickersProps {
   /** Members to offer, already in the order they should be listed */
@@ -11,50 +18,37 @@ interface CrewSeatPickersProps {
   onChange: (seats: CrewSeatsDraft) => void;
 }
 
-/** Crew Leader, Driver and Crew 1-3: each a member, or a typed outside name. */
+/**
+ * Crew Leader, Driver and Crew 1-3: each a member, or a typed outside name.
+ * The X empties a seat. Members already on the truck stay in every list,
+ * tagged with their seat, and picking one moves them (see placeMember).
+ */
 export function CrewSeatPickers({ options, seats, onChange }: CrewSeatPickersProps) {
-  const getSeat = (key: SeatKey) => (typeof key === "number" ? seats.crewMembers[key] : seats[key]);
-
-  const updateSeat = (key: SeatKey, change: Partial<SeatDraft>) => {
-    if (typeof key === "number") {
-      const crewMembers = [...seats.crewMembers];
-      crewMembers[key] = { ...crewMembers[key], ...change };
-      onChange({ ...seats, crewMembers });
-      return;
-    }
-    onChange({ ...seats, [key]: { ...seats[key], ...change } });
-  };
-
-  // Hide members already seated elsewhere on this truck from each picker.
-  const optionsFor = (current: Id<"users"> | null) => {
-    const taken = new Set(
-      [seats.driver, seats.crewLeader, ...seats.crewMembers]
-        .filter((s) => s.userId !== null && s.userId !== current)
-        .map((s) => s.userId)
-    );
-    return options.filter((o) => !taken.has(o._id));
-  };
-
-  const renderSeat = (key: SeatKey, label: string) => {
-    const seat = getSeat(key);
-    return (
-      <MemberCombobox
-        key={label}
-        label={label}
-        options={optionsFor(seat.userId)}
-        value={seat.userId}
-        onChange={(v) => updateSeat(key, { userId: v })}
-        externalName={seat.name}
-        onExternalChange={(name) => updateSeat(key, { name })}
-      />
-    );
-  };
+  const optionsFor = (key: SeatKey) =>
+    options.map((o) => {
+      const at = seatHeldBy(seats, o._id);
+      if (at === undefined || at === key) return o;
+      const where = `${seatLabel(at)} now`;
+      return { ...o, rank: o.rank ? `${where} · ${o.rank}` : where };
+    });
 
   return (
     <>
-      {renderSeat("crewLeader", "Crew Leader")}
-      {renderSeat("driver", "Driver")}
-      {Array.from({ length: CREW_SEATS }, (_, i) => renderSeat(i, `Crew ${i + 1}`))}
+      {SEAT_KEYS.map((key) => {
+        const seat = getSeat(seats, key);
+        return (
+          <MemberCombobox
+            key={seatLabel(key)}
+            label={seatLabel(key)}
+            options={optionsFor(key)}
+            value={seat.userId}
+            onChange={(v) => onChange(v ? placeMember(seats, key, v) : clearSeat(seats, key))}
+            externalName={seat.name}
+            onExternalChange={(name) => onChange(setSeat(seats, key, { userId: null, name }))}
+            showClearButton
+          />
+        );
+      })}
     </>
   );
 }

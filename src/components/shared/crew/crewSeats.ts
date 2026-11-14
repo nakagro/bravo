@@ -71,3 +71,44 @@ export const seatsPayload = (seats: CrewSeatsDraft) => ({
 /** Convex error text without the "Uncaught Error:" wrapper and stack. */
 export const saveErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : "";
+
+/** A seat on the truck: Crew Leader, Driver, or a Crew position by index. */
+export type SeatKey = "crewLeader" | "driver" | number;
+
+export const SEAT_KEYS: SeatKey[] = [
+  "crewLeader",
+  "driver",
+  ...Array.from({ length: CREW_SEATS }, (_, i) => i),
+];
+
+export const seatLabel = (key: SeatKey) =>
+  key === "crewLeader" ? "Crew Leader" : key === "driver" ? "Driver" : `Crew ${key + 1}`;
+
+export const getSeat = (seats: CrewSeatsDraft, key: SeatKey) =>
+  typeof key === "number" ? seats.crewMembers[key] : seats[key];
+
+export function setSeat(seats: CrewSeatsDraft, key: SeatKey, seat: SeatDraft): CrewSeatsDraft {
+  if (typeof key === "number") {
+    const crewMembers = [...seats.crewMembers];
+    crewMembers[key] = seat;
+    return { ...seats, crewMembers };
+  }
+  return { ...seats, [key]: seat };
+}
+
+/** Which seat a member holds on this truck, if any. */
+export const seatHeldBy = (seats: CrewSeatsDraft, userId: Id<"users">) =>
+  SEAT_KEYS.find((key) => getSeat(seats, key).userId === userId);
+
+/**
+ * Put a member in a seat. Someone already on the truck moves rather than
+ * appearing twice, and whoever held the seat they move into takes their old
+ * one (or it empties, if the seat was empty).
+ */
+export function placeMember(seats: CrewSeatsDraft, key: SeatKey, userId: Id<"users">): CrewSeatsDraft {
+  const from = seatHeldBy(seats, userId);
+  const next = setSeat(seats, key, { userId, name: "" });
+  return from === undefined || from === key ? next : setSeat(next, from, getSeat(seats, key));
+}
+
+export const clearSeat = (seats: CrewSeatsDraft, key: SeatKey) => setSeat(seats, key, emptySeat());

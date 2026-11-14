@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026.11.14]
+- Events: Crew seats have an X to remove someone, and picking someone already on the truck swaps them over.
+- Availability: Deployment crew seats work the same way, with an X and swapping.
+- General: Tapping a filled member picker selects the name, so you can type over it.
+
 ## [2026.11.13]
 - Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.
 

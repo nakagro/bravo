@@ -17,6 +17,8 @@ interface MemberComboboxProps {
   required?: boolean;
   /** Deleting the name and leaving the field clears it. Defaults to !required. */
   clearable?: boolean;
+  /** While someone is chosen, show an X that clears the field. */
+  showClearButton?: boolean;
   emptyText?: string;
   error?: string;
   helperText?: string;
@@ -39,6 +41,7 @@ export function MemberCombobox({
   placeholder = "Search for a member",
   required,
   clearable = !required,
+  showClearButton,
   emptyText = "No members found.",
   error,
   helperText,
@@ -77,6 +80,7 @@ export function MemberCombobox({
         placeholder={placeholder}
         emptyText={emptyText}
         clearable={clearable}
+        showClearButton={showClearButton}
         aria-invalid={!!error}
       />
       {error ? (

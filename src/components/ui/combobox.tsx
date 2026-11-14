@@ -219,6 +219,13 @@ export function Combobox({
           disabled={disabled}
           aria-invalid={ariaInvalid}
           value={text}
+          // A filled field selects its name on tap, so typing replaces it
+          // instead of needing every letter backspaced first. Deferred so
+          // mobile Safari doesn't drop the selection when it places the caret.
+          onFocus={(e) => {
+            const input = e.currentTarget
+            if (selectedOption) setTimeout(() => input.select(), 0)
+          }}
           onValueChange={(v) => {
             setText(v)
             setQuery(v)
@@ -226,26 +233,30 @@ export function Combobox({
           }}
           placeholder={placeholder}
           className={cn(
-            "w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white",
+            "w-full rounded-md border border-gray-300 bg-white py-2 pl-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white",
+            showClearButton && selectedOption ? "pr-20" : "pr-10",
             ariaInvalid && "border-red-500 dark:border-red-500"
           )}
         />
-        {showClearButton && selectedOption ? (
-          <button
-            type="button"
-            onClick={() => {
-              onValueChange(null)
-              setOpen(false)
-              setQuery("")
-              setText("")
-            }}
-            disabled={disabled}
-            className="absolute inset-y-0 right-0 flex items-center pr-2"
-            aria-label="Clear selection"
-          >
-            <CircleX className="h-5 w-5 text-gray-400 hover:text-gray-600" aria-hidden="true" />
-          </button>
-        ) : (
+        <div className="absolute inset-y-0 right-0 flex">
+          {showClearButton && selectedOption && (
+            // Full-height, thumb-sized: this is how a name is removed on a phone.
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onValueChange(null)
+                setOpen(false)
+                setQuery("")
+                setText("")
+              }}
+              disabled={disabled}
+              className="flex w-10 items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              aria-label="Clear selection"
+            >
+              <CircleX className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             tabIndex={-1}
@@ -261,12 +272,12 @@ export function Combobox({
                 inputRef.current?.focus()
               }
             }}
-            className="absolute inset-y-0 right-0 flex items-center pr-2"
+            className="flex w-10 items-center justify-center"
             aria-label={open ? "Close list" : "Show all"}
           >
             <ChevronsUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
           </button>
-        )}
+        </div>
       </div>
       {open && (
         <CommandPrimitive.List
