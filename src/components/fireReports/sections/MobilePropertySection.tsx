@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
 import { Plus } from "lucide-react";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export interface Vehicle {
   registration: string;
@@ -80,26 +80,26 @@ export function MobilePropertySection({ vehicles, onChange }: MobilePropertySect
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-registration-${index}`}>Registration</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`vehicle-registration-${index}`}>Registration</FieldLabel>
                     <Input
                       id={`vehicle-registration-${index}`}
                       value={vehicle.registration}
                       onChange={(e) => updateAt(index, "registration", e.target.value)}
                       placeholder="ABC123"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-state-${index}`}>State</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`vehicle-state-${index}`}>State</FieldLabel>
                     <Input
                       id={`vehicle-state-${index}`}
                       value={vehicle.state}
                       onChange={(e) => updateAt(index, "state", e.target.value)}
                       placeholder="VIC"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-year-${index}`}>Year</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`vehicle-year-${index}`}>Year</FieldLabel>
                     <Input
                       id={`vehicle-year-${index}`}
                       type="number"
@@ -109,32 +109,32 @@ export function MobilePropertySection({ vehicles, onChange }: MobilePropertySect
                       onChange={(e) => updateAt(index, "year", parseInt(e.target.value) || 0)}
                       placeholder="2020"
                     />
-                  </div>
+                  </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-make-${index}`}>Make</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`vehicle-make-${index}`}>Make</FieldLabel>
                     <Input
                       id={`vehicle-make-${index}`}
                       value={vehicle.make}
                       onChange={(e) => updateAt(index, "make", e.target.value)}
                       placeholder="Toyota"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-model-${index}`}>Model</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`vehicle-model-${index}`}>Model</FieldLabel>
                     <Input
                       id={`vehicle-model-${index}`}
                       value={vehicle.model}
                       onChange={(e) => updateAt(index, "model", e.target.value)}
                       placeholder="Camry"
                     />
-                  </div>
+                  </Field>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`vehicle-details-${index}`}>Vehicle Details</Label>
+                <Field>
+                  <FieldLabel htmlFor={`vehicle-details-${index}`}>Vehicle Details</FieldLabel>
                   <Textarea
                     id={`vehicle-details-${index}`}
                     value={vehicle.details}
@@ -142,7 +142,7 @@ export function MobilePropertySection({ vehicles, onChange }: MobilePropertySect
                     placeholder="Additional vehicle details"
                     rows={2}
                   />
-                </div>
+                </Field>
               </CardContent>
             </Card>
           ))

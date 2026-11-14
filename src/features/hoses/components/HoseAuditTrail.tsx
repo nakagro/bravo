@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -94,8 +95,8 @@ export function HoseAuditTrail() {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="audit-action-filter">Change type</Label>
+        <Field>
+          <FieldLabel htmlFor="audit-action-filter">Change type</FieldLabel>
           <Select value={actionFilter} onValueChange={setActionFilter}>
             <SelectTrigger id="audit-action-filter" className="min-h-11 bg-background">
               <SelectValue placeholder="All changes" />
@@ -109,7 +110,7 @@ export function HoseAuditTrail() {
               </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
+        </Field>
       </div>
 
       {recentChanges === undefined ? (

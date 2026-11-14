@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, TriangleAlert, X } from "lucide-react";
 import { formatSlotWhen, slotCoverageLabel, RsvpStatus } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 interface SlotPickerProps {
   eventId: Id<"events">;
@@ -34,7 +35,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
       await toggleSlot({ slotId });
     } catch (error) {
       toast.error("Couldn't update your shift", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -44,7 +45,7 @@ export function SlotPicker({ eventId, myRsvp }: SlotPickerProps) {
       await declineEvent({ eventId });
     } catch (error) {
       toast.error("Couldn't update your response", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

@@ -14,6 +14,7 @@ import {
 } from "../types";
 import { RejectBookingDialog } from "./RejectBookingDialog";
 import { Clock, Check, X, CalendarDays, Repeat } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 type PendingBooking = FunctionReturnType<typeof api.bookings.getPendingApprovalsForMe>[number];
 
@@ -50,7 +51,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
               console.error("Error undoing approval:", error);
               toast.error("Failed to undo approval", {
                 description:
-                  error instanceof Error ? error.message : "An unexpected error occurred.",
+                  errorMessage(error, "An unexpected error occurred."),
               });
             });
         },
@@ -65,7 +66,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
     } catch (error) {
       console.error("Error approving booking:", error);
       toast.error("Failed to approve booking", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -77,7 +78,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
     } catch (error) {
       console.error("Error approving repeating booking:", error);
       toast.error("Failed to approve bookings", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -95,7 +96,7 @@ export function PendingApprovals({ title = "Pending Your Approval" }: PendingApp
     } catch (error) {
       console.error("Error rejecting booking:", error);
       toast.error("Failed to reject booking", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setRejecting(null);

@@ -23,6 +23,7 @@ import { DatePicker } from "../../../components/shared/DatePicker";
 import { formatUserName, getBookingConflictMessage } from "../types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Trash2, User } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 const bookingEditSchema = z
   .object({
@@ -125,7 +126,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
       toast.error(conflictMessage ? "Booking conflict" : "Failed to update booking", {
         description:
           conflictMessage ??
-          (error instanceof Error ? error.message : "An unexpected error occurred."),
+          (errorMessage(error, "An unexpected error occurred.")),
       });
     }
   };
@@ -139,7 +140,7 @@ export function BookingEditForm({ bookingId, onClose }: BookingEditFormProps) {
     } catch (error) {
       console.error("Error cancelling booking:", error);
       toast.error("Failed to cancel booking", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

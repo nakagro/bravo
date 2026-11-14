@@ -18,6 +18,7 @@ import {
   Send,
   Download,
 } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 const DEVICE_ICONS = {
   mobile: Smartphone,
@@ -51,7 +52,7 @@ function DeviceList() {
       }
     } catch (error) {
       toast.error("Failed to send test notification", {
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description: errorMessage(error, "Unknown error occurred"),
       });
     } finally {
       setTestingId(null);
@@ -65,7 +66,7 @@ function DeviceList() {
       toast.success("Device removed");
     } catch (error) {
       toast.error("Failed to remove device", {
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description: errorMessage(error, "Unknown error occurred"),
       });
     } finally {
       setRemovingId(null);

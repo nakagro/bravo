@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { errorMessage } from "@/lib/errors";
 
 interface GuestControlsProps {
   eventId: Id<"events">;
@@ -76,7 +77,7 @@ export function GuestControls({
       pending.current = null;
       setCount(guestCount);
       toast.error("Couldn't save how many you're bringing", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   }, [eventId, guestCount, setRsvp]);
@@ -110,7 +111,7 @@ export function GuestControls({
       console.error("Error saving dietary notes:", error);
       setNotes(dietaryNotes ?? "");
       toast.error("Couldn't save your dietary requirements", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

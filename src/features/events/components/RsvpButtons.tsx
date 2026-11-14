@@ -5,6 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { RsvpStatus } from "../types";
 import { Check, Clock, CircleHelp, X } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 interface RsvpButtonsProps {
   eventId: Id<"events">;
@@ -54,7 +55,7 @@ export function RsvpButtons({ eventId, myRsvp, disabled = false, size = "md" }: 
     } catch (error) {
       console.error("Error setting RSVP:", error);
       toast.error("Failed to save your RSVP", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -119,7 +120,7 @@ export function DeclineButton({
     } catch (error) {
       console.error("Error declining event:", error);
       toast.error("Failed to save your response", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -186,7 +187,7 @@ export function ShiftRsvpButtons({
     } catch (error) {
       console.error("Error declining event:", error);
       toast.error("Failed to save your response", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

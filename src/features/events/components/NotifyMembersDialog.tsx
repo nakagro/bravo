@@ -7,6 +7,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { NoteField } from "@/components/shared/assignments/SendAssignmentsSheet";
 import { ChangeNoticePreview, useChangePreview, type MessageAudience } from "./EventChangeNotice";
+import { errorMessage } from "@/lib/errors";
 
 interface NotifyMembersDialogProps {
   open: boolean;
@@ -61,7 +62,7 @@ function MessageSheet({ open, onOpenChange, eventId, eventTitle }: NotifyMembers
       close();
     } catch (error) {
       toast.error("Not sent", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSending(false);

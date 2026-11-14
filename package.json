@@ -2,7 +2,7 @@
   "name": "bravo",
   "private": true,
   "license": "AGPL-3.0-only",
-  "version": "2026.11.14",
+  "version": "2026.11.15",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:vps:frontend",

@@ -24,6 +24,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageTabs } from "@/components/shared/PageTabs";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { errorMessage } from "@/lib/errors";
 
 type TemplateStatus = "active" | "inactive" | "archived";
 
@@ -101,7 +102,7 @@ export function InventoryTemplateList() {
       toast.success(`"${tpl.name}" deleted permanently`);
     } catch (error) {
       toast.error("Couldn't delete this template", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setPendingDelete(null);
@@ -121,7 +122,7 @@ export function InventoryTemplateList() {
       setStatusTab(status);
     } catch (error) {
       toast.error("Couldn't change this template's status", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -144,7 +145,7 @@ export function InventoryTemplateList() {
       navigate(`/inventory/templates/${newId}` as string);
     } catch (error) {
       toast.error("Failed to clone template", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setIsCloning(false);
@@ -166,7 +167,7 @@ export function InventoryTemplateList() {
       toast.success("Template exported");
     } catch (error) {
       toast.error("Failed to export template", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -208,7 +209,7 @@ export function InventoryTemplateList() {
       navigate(`/inventory/templates/${newId}` as string);
     } catch (error) {
       toast.error("Failed to import template", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setIsImporting(false);

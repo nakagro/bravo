@@ -20,6 +20,7 @@ import type { ActionItem } from "../types";
 import { isUpdate, priorityColors } from "../types";
 import { MAIN_STATUS_OPTIONS } from "@/constants/statusOptions";
 import { formatDayTime } from "@/lib/dateFormat";
+import { toastError } from "@/lib/errors";
 
 const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   availability: CalendarDays,
@@ -61,7 +62,7 @@ export function ActionCard({ action }: ActionCardProps) {
       await dismissAction({ actionId: action.id });
     } catch (err) {
       setDismissed(false);
-      toast.error(err instanceof Error ? err.message : "Failed to dismiss");
+      toastError(err, "Failed to dismiss");
     }
   };
 
@@ -82,7 +83,7 @@ export function ActionCard({ action }: ActionCardProps) {
             : "You're not attending",
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update RSVP");
+      toastError(err, "Failed to update RSVP");
     } finally {
       setSubmitting(null);
     }
@@ -95,7 +96,7 @@ export function ActionCard({ action }: ActionCardProps) {
       await declineSlotEvent({ eventId });
       toast.success("Marked as can't make it");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update response");
+      toastError(err, "Failed to update response");
     } finally {
       setSubmitting(null);
     }
@@ -237,7 +238,7 @@ function AvailabilityQuickSet() {
       await updateStatus({ status: option.value });
       toast.success(`Status set to ${option.shortLabel}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toastError(err, "Failed to update status");
     } finally {
       setPending(null);
     }

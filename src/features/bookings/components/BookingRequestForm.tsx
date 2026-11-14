@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Clock, User, CircleX, Lock, Check, Repeat } from "lucide-react";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { errorMessage } from "@/lib/errors";
 
 const bookingRequestSchema = z
   .object({
@@ -266,7 +267,7 @@ export function BookingRequestForm({ onClose, initialDate, initialResourceId }: 
         setConflictError(conflictMessage);
       } else {
         toast.error("Failed to create booking", {
-          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+          description: errorMessage(error, "An unexpected error occurred."),
         });
       }
     }

@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { isContactBookData } from "@/features/kiosk/contactDirectoryData";
+import { toastError } from "@/lib/errors";
 
 interface ContactBookSettingsProps {
   showTitle?: boolean;
@@ -56,7 +57,7 @@ export default function ContactBookSettings({ showTitle = true }: ContactBookSet
       await setDirectoryFile({ storageId, fileName: file.name, title });
       toast.success("Contact book updated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      toastError(error, "Upload failed");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

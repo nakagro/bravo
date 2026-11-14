@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
 import { ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { KitItemRows } from "../features/memberRecords/components/KitRegisterEditor";
+import { toastError, errorMessage } from "@/lib/errors";
 
 interface MemberKitSetPageProps {
   /** The `/kit/new` and `/kit/:setId/edit` name-and-description form. */
@@ -80,7 +80,7 @@ function MemberKitSetPage({ mode = "view" }: MemberKitSetPageProps) {
           navigate(`/member-records/kit/${setId}`, { replace: true });
         }
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Could not save");
+        setError(errorMessage(caught, "Could not save"));
       } finally {
         setSaving(false);
       }
@@ -192,7 +192,7 @@ function MemberKitSetPage({ mode = "view" }: MemberKitSetPageProps) {
               setId: set._id,
               itemIds: ids as Id<"memberKitItems">[],
             }).catch((caught: unknown) =>
-              toast.error(caught instanceof Error ? caught.message : "Could not reorder"),
+              toastError(caught, "Could not reorder"),
             )
           }
           onNavigate={navigate}

@@ -12,6 +12,7 @@ import { SegmentedTabs } from "@/components/shared/SegmentedTabs";
 import { cn } from "@/lib/utils";
 import { runUserName, type AdminRunSummary } from "./inventoryAdminShared";
 import { Spinner } from "@/components/ui/spinner";
+import { errorMessage } from "@/lib/errors";
 
 const PAGE_SIZE = 20;
 
@@ -71,7 +72,7 @@ export function InventoryAdminRecords() {
       toast.success("Inventory check deleted");
     } catch (error) {
       toast.error("Failed to delete inventory check", {
-        description: error instanceof Error ? error.message : undefined,
+        description: errorMessage(error),
       });
     }
   };

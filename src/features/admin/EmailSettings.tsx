@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Mail, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 interface EmailSettingsProps {
   showTitle?: boolean;
@@ -28,7 +29,7 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
       toast.success(`Email setting updated successfully`);
     } catch (error) {
       console.error("Failed to update email setting:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to update email setting");
+      toastError(error, "Failed to update email setting");
     }
   };
 
@@ -39,7 +40,7 @@ export default function EmailSettings({ showTitle = true }: EmailSettingsProps) 
       toast.success("Email settings initialized successfully");
     } catch (error) {
       console.error("Failed to initialize email settings:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to initialize email settings");
+      toastError(error, "Failed to initialize email settings");
     } finally {
       setIsInitializing(false);
     }

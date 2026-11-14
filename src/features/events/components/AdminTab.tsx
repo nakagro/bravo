@@ -30,6 +30,7 @@ import {
 import { Plus, CalendarDays, SquarePen, CircleX, Undo2, BellRing, Users, Tag, Trash2, EllipsisVertical, Search, Archive } from "lucide-react";
 
 import { FunctionReturnType } from "convex/server";
+import { errorMessage } from "@/lib/errors";
 
 type EnrichedEvent = FunctionReturnType<typeof api.events.getUpcomingEvents>[number];
 
@@ -124,7 +125,7 @@ export function AdminTab() {
               console.error("Error restoring event:", error);
               toast.error("Failed to restore event", {
                 description:
-                  error instanceof Error ? error.message : "An unexpected error occurred.",
+                  errorMessage(error, "An unexpected error occurred."),
               });
             });
         },
@@ -142,7 +143,7 @@ export function AdminTab() {
     } catch (error) {
       console.error("Error deleting event:", error);
       toast.error("Failed to delete event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

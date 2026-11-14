@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BARecordCard } from "./BARecordCard";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 const ENTERED_PREVIEW_COUNT = 10;
 
@@ -65,7 +66,7 @@ export function BASkillsLMSTab() {
       });
     } catch (err) {
       console.error("Failed to update LMS status:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to update LMS status");
+      toastError(err, "Failed to update LMS status");
     } finally {
       setUpdatingRecordId(null);
     }

@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { formatUserName } from "../types";
 import { Users, Check, Lock, LockOpen } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 const resourceSchema = z.object({
   name: z.string().min(1, "Resource name is required"),
@@ -102,7 +103,7 @@ export function ResourceForm({ resourceId, onClose }: ResourceFormProps) {
     } catch (error) {
       console.error("Error saving resource:", error);
       toast.error("Failed to save resource", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

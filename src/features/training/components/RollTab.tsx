@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { CalendarPlus, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { formatNightDateLong, nightLabel, shiftDays, todayStr } from "../types";
 import { RollRow, rollSummary, type Roll } from "./RollRow";
+import { errorMessage } from "@/lib/errors";
 
 // How far back the tab looks for a roll nobody closed, and how far ahead it lists
 const WEEKS_BACK = 8;
@@ -165,7 +166,7 @@ function AddRollModal({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (error) {
       toast.error("Couldn't add the roll", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);

@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 // Seats on a crewed appliance, shared by Availability → Deployment → Crews and
@@ -69,8 +70,7 @@ export const seatsPayload = (seats: CrewSeatsDraft) => ({
 });
 
 /** Convex error text without the "Uncaught Error:" wrapper and stack. */
-export const saveErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : "";
+export const saveErrorMessage = (error: unknown) => errorMessage(error, "");
 
 /** A seat on the truck: Crew Leader, Driver, or a Crew position by index. */
 export type SeatKey = "crewLeader" | "driver" | number;

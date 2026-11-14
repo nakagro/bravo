@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -426,17 +427,17 @@ export function EquipmentManageTab() {
             <p className="text-sm text-muted-foreground">
               Categories help organize equipment items.
             </p>
-            <div className="space-y-2">
-              <Label htmlFor="categoryName">Name *</Label>
+            <Field>
+              <FieldLabel htmlFor="categoryName">Name *</FieldLabel>
               <Input
                 id="categoryName"
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
                 placeholder="e.g., PPE, Batteries, Tools"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="categoryDescription">Description</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="categoryDescription">Description</FieldLabel>
               <Textarea
                 id="categoryDescription"
                 value={categoryDescription}
@@ -444,7 +445,7 @@ export function EquipmentManageTab() {
                 placeholder="Optional description"
                 rows={2}
               />
-            </div>
+            </Field>
             <div className="flex items-center gap-3 pt-2">
               <input
                 type="checkbox"
@@ -486,18 +487,18 @@ export function EquipmentManageTab() {
             <p className="text-sm text-muted-foreground">
               {editingItem ? "Update this equipment item." : "Add equipment items to track. Use Clone to quickly create size variants."}
             </p>
-            <div className="space-y-2">
-              <Label htmlFor="itemName">Name *</Label>
+            <Field>
+              <FieldLabel htmlFor="itemName">Name *</FieldLabel>
               <Input
                 id="itemName"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
                 placeholder="e.g., Gloves, AA Batteries"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="itemCategory">Category *</Label>
+            <Field>
+              <FieldLabel htmlFor="itemCategory">Category *</FieldLabel>
               <Select
                 value={itemCategoryId}
                 onValueChange={(value) => setItemCategoryId(value as Id<"equipmentCategories">)}
@@ -513,21 +514,21 @@ export function EquipmentManageTab() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="itemSize">Size (optional)</Label>
+            <Field>
+              <FieldLabel htmlFor="itemSize">Size (optional)</FieldLabel>
               <Input
                 id="itemSize"
                 value={itemSize}
                 onChange={(e) => setItemSize(e.target.value)}
                 placeholder="e.g., XL, Medium, 9V"
               />
-            </div>
+            </Field>
 
             {!editingItem && (
-              <div className="space-y-2">
-                <Label htmlFor="itemInitialStock">Initial Stock</Label>
+              <Field>
+                <FieldLabel htmlFor="itemInitialStock">Initial Stock</FieldLabel>
                 <Input
                   id="itemInitialStock"
                   type="number"
@@ -535,11 +536,11 @@ export function EquipmentManageTab() {
                   onChange={(e) => setItemInitialStock(parseInt(e.target.value) || 0)}
                   min={0}
                 />
-              </div>
+              </Field>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="itemMinimumStock">Minimum Stock (optional)</Label>
+            <Field>
+              <FieldLabel htmlFor="itemMinimumStock">Minimum Stock (optional)</FieldLabel>
               <Input
                 id="itemMinimumStock"
                 type="number"
@@ -548,20 +549,20 @@ export function EquipmentManageTab() {
                 placeholder="Alert when stock falls below"
                 min={0}
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="itemUnit">Unit (optional)</Label>
+            <Field>
+              <FieldLabel htmlFor="itemUnit">Unit (optional)</FieldLabel>
               <Input
                 id="itemUnit"
                 value={itemUnit}
                 onChange={(e) => setItemUnit(e.target.value)}
                 placeholder="e.g., pairs, units, boxes"
               />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="itemDescription">Description (optional)</Label>
+            <Field>
+              <FieldLabel htmlFor="itemDescription">Description (optional)</FieldLabel>
               <Textarea
                 id="itemDescription"
                 value={itemDescription}
@@ -569,7 +570,7 @@ export function EquipmentManageTab() {
                 placeholder="Additional details"
                 rows={2}
               />
-            </div>
+            </Field>
           </div>
       </ResponsiveModal>
     </div>

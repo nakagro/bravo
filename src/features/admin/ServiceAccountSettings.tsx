@@ -6,6 +6,7 @@ import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, Ban, CircleCheckBig } 
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { errorMessage } from "@/lib/errors";
 
 interface ServiceAccountSettingsProps {
   showTitle?: boolean;
@@ -76,7 +77,7 @@ function ServiceAccountSettings({
       setIsCreateOpen(false);
       resetForm();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to create service account");
+      alert(errorMessage(error, "Failed to create service account"));
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +104,7 @@ function ServiceAccountSettings({
       setIsEditOpen(false);
       resetForm();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to update service account");
+      alert(errorMessage(error, "Failed to update service account"));
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +129,7 @@ function ServiceAccountSettings({
         isActive: !currentlyActive,
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : `Failed to ${action} service account`);
+      alert(errorMessage(error, `Failed to ${action} service account`));
     }
   };
 
@@ -149,7 +150,7 @@ function ServiceAccountSettings({
       setRegeneratingId(null);
       setIsPinOpen(true);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to set new PIN");
+      alert(errorMessage(error, "Failed to set new PIN"));
     } finally {
       setIsSubmitting(false);
     }
@@ -166,7 +167,7 @@ function ServiceAccountSettings({
     try {
       await deleteAccount({ serviceAccountId: accountId });
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to delete service account");
+      alert(errorMessage(error, "Failed to delete service account"));
     }
   };
 
@@ -178,7 +179,7 @@ function ServiceAccountSettings({
       const count = await revokeAllSessions({ serviceAccountId: accountId });
       alert(`${count} session(s) revoked.`);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to revoke sessions");
+      alert(errorMessage(error, "Failed to revoke sessions"));
     }
   };
 

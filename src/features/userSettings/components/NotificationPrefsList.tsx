@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Switch } from '../../../components/ui/switch';
 import { toast } from 'sonner';
+import { errorMessage } from "@/lib/errors";
 
 export type NotificationPrefRow = {
   key: 'availabilityReminders' | 'statusChanges' | 'events' | 'dutyCrew' | 'deployments';
@@ -39,7 +40,7 @@ export function NotificationPrefsList({
       await onChange(key, enabled);
     } catch (error) {
       toast.error('Failed to save notification setting', {
-        description: error instanceof Error ? error.message : undefined,
+        description: errorMessage(error),
       });
     } finally {
       setSaving(null);

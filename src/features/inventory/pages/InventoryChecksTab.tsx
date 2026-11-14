@@ -24,6 +24,7 @@ import {
 } from "../utils/inventoryStatus";
 import type { RunItemDoc, GroupedSection } from "../types/inventory.types";
 import { Spinner } from "@/components/ui/spinner";
+import { errorMessage } from "@/lib/errors";
 
 const sectionKey = (order: number) => `section-${order}`;
 
@@ -115,7 +116,7 @@ export function InventoryChecksTab() {
       console.error("Error completing inventory check:", error);
       toast.error("Failed to complete inventory check", {
         description:
-          error instanceof Error ? error.message : "An unexpected error occurred.",
+          errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setCompleting(false);
@@ -144,7 +145,7 @@ export function InventoryChecksTab() {
       console.error("Error cancelling inventory check:", error);
       toast.error("Failed to cancel inventory check", {
         description:
-          error instanceof Error ? error.message : "An unexpected error occurred.",
+          errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setCancelling(false);

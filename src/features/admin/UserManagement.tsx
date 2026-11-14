@@ -6,6 +6,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Eye, EyeOff } from "lucide-react";
 import { isSharedAccount, isDisabledAccount, type AccountType } from "@/lib/accountType";
+import { errorMessage } from "@/lib/errors";
 
 // --- shadcn ui imports ---
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
@@ -296,7 +297,7 @@ function UserManagement() {
     } catch (error) {
       setStatusMessage({
         type: "error",
-        message: `Error resetting password: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Error resetting password: ${errorMessage(error)}`,
       });
     } finally {
       setIsResettingPassword(false);
@@ -320,7 +321,7 @@ function UserManagement() {
     } catch (error) {
       setStatusMessage({
         type: "error",
-        message: `Error updating account: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Error updating account: ${errorMessage(error)}`,
       });
     } finally {
       setIsChangingDisabled(false);
@@ -342,7 +343,7 @@ function UserManagement() {
     } catch (error) {
       setStatusMessage({
         type: "error",
-        message: `Error deleting user: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Error deleting user: ${errorMessage(error)}`,
       });
       setDeleteConfirmOpen(false);
     } finally {
@@ -403,13 +404,13 @@ function UserManagement() {
         message: "User updated successfully",
       });
     } catch (error) {
-      let errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("ArgumentValidationError") && errorMessage.includes(".rank")) {
-        errorMessage = "Please select a valid rank for this user. Rank cannot be empty.";
+      let message = error instanceof Error ? error.message : String(error);
+      if (message.includes("ArgumentValidationError") && message.includes(".rank")) {
+        message = "Please select a valid rank for this user. Rank cannot be empty.";
       }
       setStatusMessage({
         type: "error",
-        message: `Error updating user: ${errorMessage}`,
+        message: `Error updating user: ${message}`,
       });
     } finally {
       setIsSubmitting(false);

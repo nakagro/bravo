@@ -4,6 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Button } from "../../../components/ui/button";
 import { Mail } from "lucide-react";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/errors";
 
 interface TestEmailButtonProps {
   userEmail: string;
@@ -28,7 +29,7 @@ export function TestEmailButton({ userEmail, userName }: TestEmailButtonProps) {
     } catch (error) {
       console.error("Failed to send test email:", error);
       toast.error("Failed to send test email", {
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description: errorMessage(error, "Unknown error occurred"),
       });
     } finally {
       setIsSending(false);

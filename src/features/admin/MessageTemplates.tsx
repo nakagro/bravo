@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotificationCard } from "@/components/shared/assignments/NotificationCard";
+import { errorMessage } from "@/lib/errors";
 
 type Row = NonNullable<ReturnType<typeof useQuery<typeof api.notificationTemplates.listNotificationTemplates>>>[number];
 
@@ -92,7 +93,7 @@ function TemplateCard({ row }: { row: Row }) {
       await save({ key, title, body });
       toast.success(`Saved "${def.label}"`);
     } catch (e) {
-      toast.error("Not saved", { description: e instanceof Error ? e.message : String(e) });
+      toast.error("Not saved", { description: errorMessage(e) });
     } finally {
       setSaving(false);
     }

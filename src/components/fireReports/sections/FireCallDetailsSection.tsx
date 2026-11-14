@@ -3,6 +3,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export interface FireCallDetailsValues {
   incidentNumber: string;
@@ -35,17 +36,17 @@ export function FireCallDetailsSection({ values, onChangeField }: FireCallDetail
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="incidentNumber">Incident Number *</Label>
+          <Field>
+            <FieldLabel htmlFor="incidentNumber">Incident Number *</FieldLabel>
             <Input
               id="incidentNumber"
               value={values.incidentNumber}
               onChange={(e) => onChangeField("incidentNumber", e.target.value)}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brigadeAdvisedDate">Brigade Advised (Date) *</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="brigadeAdvisedDate">Brigade Advised (Date) *</FieldLabel>
             <Input
               id="brigadeAdvisedDate"
               type="date"
@@ -53,9 +54,9 @@ export function FireCallDetailsSection({ values, onChangeField }: FireCallDetail
               onChange={(e) => onChangeField("brigadeAdvisedDate", e.target.value)}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brigadeAdvisedTime">Brigade Advised (Time) *</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="brigadeAdvisedTime">Brigade Advised (Time) *</FieldLabel>
             <Input
               id="brigadeAdvisedTime"
               type="time"
@@ -63,26 +64,26 @@ export function FireCallDetailsSection({ values, onChangeField }: FireCallDetail
               onChange={(e) => onChangeField("brigadeAdvisedTime", e.target.value)}
               required
             />
-          </div>
+          </Field>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="brigadeCaller">Brigade Call Number</Label>
+          <Field>
+            <FieldLabel htmlFor="brigadeCaller">Brigade Call Number</FieldLabel>
             <Input
               id="brigadeCaller"
               value={values.brigadeCaller}
               onChange={(e) => onChangeField("brigadeCaller", e.target.value)}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="firecomCaller">Firecom Call Number</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="firecomCaller">Firecom Call Number</FieldLabel>
             <Input
               id="firecomCaller"
               value={values.firecomCaller}
               onChange={(e) => onChangeField("firecomCaller", e.target.value)}
             />
-          </div>
+          </Field>
         </div>
 
         <div className="space-y-4">
@@ -104,8 +105,8 @@ export function FireCallDetailsSection({ values, onChangeField }: FireCallDetail
             </RadioGroup>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="typeOfAttendance">Type of Attendance *</Label>
+          <Field>
+            <FieldLabel htmlFor="typeOfAttendance">Type of Attendance *</FieldLabel>
             <Select value={values.typeOfAttendance} onValueChange={(value) => onChangeField("typeOfAttendance", value as FireCallDetailsValues["typeOfAttendance"])}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
@@ -118,56 +119,56 @@ export function FireCallDetailsSection({ values, onChangeField }: FireCallDetail
                 <SelectItem value="falseAlarm">False Alarm</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label htmlFor="jobDetail">Job Detail</Label>
+          <Field>
+            <FieldLabel htmlFor="jobDetail">Job Detail</FieldLabel>
             <Input
               id="jobDetail"
               value={values.jobDetail}
               onChange={(e) => onChangeField("jobDetail", e.target.value)}
             />
-          </div>
+          </Field>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="incidentController">Incident Controller *</Label>
+          <Field>
+            <FieldLabel htmlFor="incidentController">Incident Controller *</FieldLabel>
             <Input
               id="incidentController"
               value={values.incidentController}
               onChange={(e) => onChangeField("incidentController", e.target.value)}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brigadeOIC">Brigade OIC</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="brigadeOIC">Brigade OIC</FieldLabel>
             <Input
               id="brigadeOIC"
               value={values.brigadeOIC}
               onChange={(e) => onChangeField("brigadeOIC", e.target.value)}
             />
-          </div>
+          </Field>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="propertyAddress">Property Address/Location *</Label>
+          <Field>
+            <FieldLabel htmlFor="propertyAddress">Property Address/Location *</FieldLabel>
             <Input
               id="propertyAddress"
               value={values.propertyAddress}
               onChange={(e) => onChangeField("propertyAddress", e.target.value)}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="propertyCoordinates">GPS Coordinates</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="propertyCoordinates">GPS Coordinates</FieldLabel>
             <Input
               id="propertyCoordinates"
               value={values.propertyCoordinates}
               onChange={(e) => onChangeField("propertyCoordinates", e.target.value)}
             />
-          </div>
+          </Field>
         </div>
 
         <div className="flex gap-8">

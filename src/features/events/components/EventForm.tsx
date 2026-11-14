@@ -25,6 +25,7 @@ import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { eventTypeColors } from "../types";
 import { CrewAppliancesField } from "./CrewAppliancesField";
+import { errorMessage } from "@/lib/errors";
 
 const slotSchema = z.object({
   _id: z.string().optional(),
@@ -412,7 +413,7 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
     } catch (error) {
       console.error("Error saving event:", error);
       toast.error(isEditing ? "Failed to update event" : "Failed to create event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

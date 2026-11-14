@@ -162,6 +162,11 @@ so pages get it by default. Don't rebuild it per page.
   the spinner. Keep the label as it is; don't swap it for "Saving...". Other loading indicators use
   `ui/spinner.tsx` (shadcn's), e.g. `<Spinner className="size-8 text-muted-foreground" />` for a
   section.
+- **Form fields use `ui/field.tsx`** (shadcn's `Field`): `<Field><FieldLabel htmlFor>…</FieldLabel><Input id/></Field>`,
+  with `FieldDescription` for hints and `FieldError` for errors. Not a hand-spaced `div` plus `Label`.
+- **Failed calls report through `src/lib/errors.ts`**: `toastError(error, "Could not save")`, or
+  `errorMessage(error, fallback)` for a toast description or inline text. It strips Convex's server
+  wrapper, so members see the reason, not a stack trace.
 
 ### Styling Patterns
 - **Tailwind CSS**: Utility-first with CSS variables for theming

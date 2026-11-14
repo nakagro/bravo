@@ -26,11 +26,12 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { KIT_TRACKS, KitSizeChart, KitTracks, generateSizeRange } from "../features/memberRecords/types";
 import { KitSortableList, movedIds } from "../features/memberRecords/components/KitSortableList";
+import { toastError, errorMessage } from "@/lib/errors";
 
 const NO_SET = "__standalone__";
 
 function reportError(caught: unknown) {
-  toast.error(caught instanceof Error ? caught.message : "Something went wrong");
+  toastError(caught, "Something went wrong");
 }
 
 /**
@@ -133,7 +134,7 @@ function MemberKitItemPage() {
         toast.success("Item saved");
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save");
+      setError(errorMessage(caught, "Could not save"));
     } finally {
       setSaving(false);
     }
@@ -668,7 +669,7 @@ function ChartForm({
             try {
               await onSubmit(name.trim() || undefined, sizes);
             } catch (caught) {
-              setError(caught instanceof Error ? caught.message : "Could not save");
+              setError(errorMessage(caught, "Could not save"));
             } finally {
               setSaving(false);
             }

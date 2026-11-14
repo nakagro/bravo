@@ -5,6 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { MemberCombobox, MemberOption } from "@/components/shared/MemberCombobox";
 import {
@@ -17,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { RANK_ORDER, isBARecordMemberOption } from "../memberEligibility";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 interface BARecordFormProps {
   onSuccess?: () => void;
@@ -121,7 +123,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
       onSuccess?.();
     } catch (err) {
       console.error("Failed to create BA record:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to submit record");
+      toastError(err, "Failed to submit record");
     } finally {
       setIsSubmitting(false);
     }
@@ -229,10 +231,10 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
       </div>
 
       {/* Date */}
-      <div className="space-y-2">
-        <Label htmlFor="dateUsed">
+      <Field>
+        <FieldLabel htmlFor="dateUsed">
           Date <span className="text-red-500">*</span>
-        </Label>
+        </FieldLabel>
         <Input
           id="dateUsed"
           type="date"
@@ -242,7 +244,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
           max={new Date().toISOString().split("T")[0]}
           required
         />
-      </div>
+      </Field>
 
       {/* Duration */}
       <div className="space-y-2">
@@ -301,10 +303,10 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
       />
 
       {/* Notes - required */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">
+      <Field>
+        <FieldLabel htmlFor="notes">
           Notes <span className="text-red-500">*</span>
-        </Label>
+        </FieldLabel>
         <Textarea
           id="notes"
           placeholder={
@@ -320,7 +322,7 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
         {attempted && !isNotesValid && (
           <p className="text-sm text-destructive">Please add a brief note about this BA usage.</p>
         )}
-      </div>
+      </Field>
 
       <Button loading={isSubmitting} type="submit" size="lg" className="w-full h-12 text-base" disabled={isSubmitting}>
         <>

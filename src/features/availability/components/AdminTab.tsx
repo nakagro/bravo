@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { errorMessage } from "@/lib/errors";
 
 interface AdminTabProps {
   isAuthenticated: boolean;
@@ -44,7 +45,7 @@ function AdminTab({ isAuthenticated }: AdminTabProps) {
       toast.success('Appliance location permissions updated');
     } catch (error) {
       toast.error('Failed to update permissions', {
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setIsSavingSkills(false);

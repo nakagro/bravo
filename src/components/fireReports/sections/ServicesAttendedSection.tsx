@@ -3,6 +3,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Checkbox } from "../../ui/checkbox";
 import { Separator } from "../../ui/separator";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export interface ServicesValues {
   electricityNotified: boolean;
@@ -128,33 +129,33 @@ export function ServicesAttendedSection({ values, onChangeField }: ServicesAtten
         <Separator />
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="policeDetails">Police: Name or Number / Station</Label>
+          <Field>
+            <FieldLabel htmlFor="policeDetails">Police: Name or Number / Station</FieldLabel>
             <Input
               id="policeDetails"
               value={values.policeDetails}
               onChange={(e) => onChangeField("policeDetails", e.target.value)}
               placeholder="Police contact details"
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="otherServices">Other Services</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="otherServices">Other Services</FieldLabel>
             <Input
               id="otherServices"
               value={values.otherServices}
               onChange={(e) => onChangeField("otherServices", e.target.value)}
               placeholder="Other emergency services involved"
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="firstOnScene">FIRST on SCENE</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="firstOnScene">FIRST on SCENE</FieldLabel>
             <Input
               id="firstOnScene"
               value={values.firstOnScene}
               onChange={(e) => onChangeField("firstOnScene", e.target.value)}
               placeholder="First responder on scene"
             />
-          </div>
+          </Field>
         </div>
       </CardContent>
     </Card>

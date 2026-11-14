@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { getServiceToken } from '@/features/serviceAccounts/ServiceAccountContext';
 import { loadContactDirectory, type ContactDirectoryIndex } from './contactDirectoryData';
+import { errorMessage } from "@/lib/errors";
 
 /**
  * Loads the contact book for either view: a signed-in member, or a kiosk tablet
@@ -32,7 +33,7 @@ export function useContactDirectory(): {
                 if (cancelled) return;
                 setFetchError({
                     url,
-                    message: error instanceof Error ? error.message : 'Unable to load contact directory.',
+                    message: errorMessage(error, "Unable to load contact directory."),
                 });
             });
 

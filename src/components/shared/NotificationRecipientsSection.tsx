@@ -16,6 +16,7 @@ import {
 import { Bell, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 /**
  * Reusable "who gets told when this happens" editor.
@@ -128,9 +129,7 @@ export function NotificationRecipientsSection({
       });
       toast.success("Notification settings saved");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save notification settings"
-      );
+      toastError(error, "Failed to save notification settings");
     } finally {
       setIsSaving(false);
     }
@@ -160,9 +159,7 @@ export function NotificationRecipientsSection({
         description: `Check ${channels.join(" and ")}.`,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send the test notification"
-      );
+      toastError(error, "Failed to send the test notification");
     } finally {
       setIsTesting(false);
     }

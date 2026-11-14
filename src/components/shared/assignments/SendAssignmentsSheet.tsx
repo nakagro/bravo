@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NotificationCard } from "./NotificationCard";
 import { NotificationLog } from "./NotificationLog";
+import { errorMessage } from "@/lib/errors";
 
 export type AssignmentSourceKey = "event" | "deploymentDay";
 type Audience = "changes" | "everyone";
@@ -88,7 +89,7 @@ export function SendAssignmentsSheet({
       close();
     } catch (error) {
       toast.error("Not sent", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSending(false);

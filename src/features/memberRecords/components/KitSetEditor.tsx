@@ -10,6 +10,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../types";
 import { KitItemControl } from "./KitItemControl";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
+import { errorMessage } from "@/lib/errors";
 
 interface KitSetEditorProps {
   userId: Id<"users">;
@@ -75,7 +76,7 @@ export function KitSetEditor({ userId, setId, itemId, onClose }: KitSetEditorPro
       guard.release();
       onClose();
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Could not save";
+      const message = errorMessage(caught, "Could not save");
       setError(message);
       toast.error(message);
     } finally {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CircleCheck, AlertCircle } from "lucide-react";
+import { errorMessage as describeError } from "@/lib/errors";
 
 type UpdateStatus = "idle" | "updating" | "success" | "error";
 
@@ -44,7 +45,7 @@ export function ForceUpdateButton() {
       console.error("Force update failed:", error);
       setStatus("error");
       setErrorMessage(
-        error instanceof Error ? error.message : "Unknown error occurred"
+        describeError(error, "Unknown error occurred")
       );
     }
   };

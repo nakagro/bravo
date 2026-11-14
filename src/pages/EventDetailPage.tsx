@@ -52,6 +52,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { errorMessage } from "@/lib/errors";
 
 const breakdownGroups = [
   {
@@ -149,7 +150,7 @@ export function EventDetailPage() {
               console.error("Error restoring event:", error);
               toast.error("Failed to restore event", {
                 description:
-                  error instanceof Error ? error.message : "An unexpected error occurred.",
+                  errorMessage(error, "An unexpected error occurred."),
               });
             });
         },
@@ -167,7 +168,7 @@ export function EventDetailPage() {
     } catch (error) {
       console.error("Error deleting event:", error);
       toast.error("Failed to delete event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -231,7 +232,7 @@ export function EventDetailPage() {
       toast.success(notNeeded ? "Marked as no attendance needed" : "Attendance reopened");
     } catch (error) {
       toast.error("Couldn't update attendance", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

@@ -1,8 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { ActionList } from "../features/actionCentre/components/ActionList";
 import { isUpdate } from "../features/actionCentre/types";
+import { toastError } from "@/lib/errors";
 
 export function ActionsPage() {
   const actions = useQuery(api.actionCentre.getMyActions);
@@ -26,7 +26,7 @@ export function ActionsPage() {
     try {
       await dismissActions({ actionIds: updates.map((a) => a.id) });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to clear updates");
+      toastError(err, "Failed to clear updates");
     }
   };
 

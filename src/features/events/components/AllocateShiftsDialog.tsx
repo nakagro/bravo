@@ -7,6 +7,7 @@ import { ResponsiveModal } from "../../../components/shared/ResponsiveModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, Search } from "lucide-react";
 import { formatSlotWhen, slotCoverageLabel, getInitials, formatUserName } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 interface AllocateShiftsDialogProps {
   open: boolean;
@@ -36,7 +37,7 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
       else await toggleEventAllocation({ eventId, userId });
     } catch (error) {
       toast.error("Couldn't update the roster", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

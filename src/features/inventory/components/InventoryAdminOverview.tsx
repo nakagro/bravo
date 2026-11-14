@@ -14,6 +14,7 @@ import { weekBoundaries } from "@/lib/dutyWeek";
 import { getRelativeTimeString } from "../../../utils/dateUtils";
 import { runUserName, type AdminRunSummary } from "./inventoryAdminShared";
 import { Spinner } from "@/components/ui/spinner";
+import { errorMessage } from "@/lib/errors";
 
 interface ApplianceOverview {
   templateId: Id<"applianceTemplates">;
@@ -112,7 +113,7 @@ export function InventoryAdminOverview() {
       toast.success("Inventory check cancelled");
     } catch (error) {
       toast.error("Failed to cancel inventory check", {
-        description: error instanceof Error ? error.message : undefined,
+        description: errorMessage(error),
       });
     }
   };

@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Trash2, MessageSquare } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
   const [newComment, setNewComment] = useState("");
@@ -27,7 +28,7 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
       setNewComment("");
       toast.success("Comment added");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add comment");
+      toastError(error, "Failed to add comment");
     } finally {
       setIsSubmitting(false);
     }
@@ -38,7 +39,7 @@ export function HoseComments({ hoseId }: { hoseId: Id<"hoses"> }) {
       await deleteComment({ commentId });
       toast.success("Comment deleted");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete comment");
+      toastError(error, "Failed to delete comment");
     }
   };
 

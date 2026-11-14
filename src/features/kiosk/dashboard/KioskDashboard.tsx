@@ -14,6 +14,7 @@ import { DEFAULT_LAYOUT, type PlacedWidget, type KioskOverlay } from './layout';
 import { GridRenderer, type DashboardContext } from './GridRenderer';
 import { DoorControlModal, AreaControlModal, ConfirmDialog, type ConfirmConfig } from './modals';
 import { type ResolvedState } from './widgets';
+import { errorMessage } from "@/lib/errors";
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 type ActiveModal = { type: 'door' | 'area'; id: string; name: string; secureLabel?: string } | null;
@@ -119,7 +120,7 @@ export default function KioskDashboard({
       setTimeout(() => setActionStatus('idle'), 2500);
     } catch (err) {
       setActionStatus('error');
-      setActionError(err instanceof Error ? err.message : 'Action failed');
+      setActionError(errorMessage(err, "Action failed"));
       setTimeout(() => { setActionStatus('idle'); setActionError(null); }, 4000);
     }
   }, [loadState]);

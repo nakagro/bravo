@@ -41,6 +41,7 @@ import {
   rankLabel,
   type MarkStatus,
 } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 type NightData = NonNullable<FunctionReturnType<typeof api.training.getNight>>;
 type RollRow = NightData["members"][number];
@@ -146,7 +147,7 @@ export function NightRoll({ date }: { date: string }) {
       await setMark({ date, who: whoOf(row), status });
     } catch (error) {
       toast.error("Couldn't update the roll", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -156,7 +157,7 @@ export function NightRoll({ date }: { date: string }) {
       await setMarkNote({ date, who: whoOf(row), note });
     } catch (error) {
       toast.error("Couldn't save the note", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -197,7 +198,7 @@ export function NightRoll({ date }: { date: string }) {
       });
     } catch (error) {
       toast.error("Couldn't close the roll", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setClosing(false);
@@ -211,7 +212,7 @@ export function NightRoll({ date }: { date: string }) {
       toast.success(isCancelled ? "Roll restored" : "Roll cancelled");
     } catch (error) {
       toast.error("Couldn't change the roll", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -225,7 +226,7 @@ export function NightRoll({ date }: { date: string }) {
       toast.success(otherKind === "meeting" ? "Now a Brigade Meeting" : "Now a Training night");
     } catch (error) {
       toast.error("Couldn't change the night", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

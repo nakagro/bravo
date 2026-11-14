@@ -13,6 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Status, Size, Type, Location } from "../types";
+import { toastError } from "@/lib/errors";
 
 export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onClose: () => void }) {
   const hose = useQuery(api.hoses.get, hoseId ? { id: hoseId } : "skip");
@@ -155,7 +156,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       }
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "An error occurred");
+      toastError(error, "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -172,7 +173,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       setReplacementNotes("");
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "An error occurred");
+      toastError(error, "An error occurred");
     }
   };
 
@@ -187,7 +188,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
       setDeletionReason("");
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "An error occurred");
+      toastError(error, "An error occurred");
     }
   };
 

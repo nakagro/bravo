@@ -11,6 +11,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { CheckCircle2, ChevronRight, Clock, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { USAGE_TYPE_LABEL } from "../lib/currency";
+import { toastError } from "@/lib/errors";
 
 interface BARecord {
   _id: Id<"baRecords">;
@@ -82,7 +83,7 @@ export function BARecordCard({
       setDetailOpen(false);
     } catch (err) {
       console.error("Failed to delete record:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to delete record");
+      toastError(err, "Failed to delete record");
       // Keeps the confirm prompt up so the member can retry.
       throw err;
     }

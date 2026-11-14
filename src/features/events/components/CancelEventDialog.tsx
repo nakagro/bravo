@@ -6,6 +6,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { ChangeNoticePreview, useChangePreview } from "./EventChangeNotice";
+import { errorMessage } from "@/lib/errors";
 
 // Matches NOTE_MAX on the server: the reason is the notice's {message}.
 const REASON_MAX = 140;
@@ -72,7 +73,7 @@ function CancelEventSheet({
     } catch (error) {
       console.error("Error cancelling event:", error);
       toast.error("Failed to cancel event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setBusy(false);

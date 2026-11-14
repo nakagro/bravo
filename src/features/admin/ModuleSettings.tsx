@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { errorMessage } from "@/lib/errors";
 
 interface ModuleSettingsProps {
   showTitle?: boolean
@@ -142,7 +143,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       setNewRoleDescription("");
       setRoleError(null);
     } catch (error) {
-      setRoleError(error instanceof Error ? error.message : "Failed to create role");
+      setRoleError(errorMessage(error, "Failed to create role"));
     }
   };
   
@@ -155,7 +156,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
     try {
       await deleteRole({ roleId });
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to delete role");
+      alert(errorMessage(error, "Failed to delete role"));
     }
   };
   
@@ -164,7 +165,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
     try {
       await updateRole({ roleId, isActive });
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to update role");
+      alert(errorMessage(error, "Failed to update role"));
     }
   };
   
@@ -201,7 +202,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       });
       cancelEditingRole();
     } catch (error) {
-      setRoleError(error instanceof Error ? error.message : "Failed to update role");
+      setRoleError(errorMessage(error, "Failed to update role"));
     }
   };
   

@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { MessageSquare, Send, CircleCheckBig, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { getVersionString } from "@/utils/version";
+import { toastError } from "@/lib/errors";
 
 export function FeedbackPage() {
   const [subject, setSubject] = useState("");
@@ -47,7 +49,7 @@ export function FeedbackPage() {
       setCategory("general");
       setIsAnonymous(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit feedback");
+      toastError(error, "Failed to submit feedback");
     } finally {
       setIsSubmitting(false);
     }
@@ -173,8 +175,8 @@ export function FeedbackPage() {
         </div>
 
         {/* Subject */}
-        <div className="space-y-2">
-          <Label htmlFor="subject">Subject *</Label>
+        <Field>
+          <FieldLabel htmlFor="subject">Subject *</FieldLabel>
           <Input
             id="subject"
             value={subject}
@@ -182,11 +184,11 @@ export function FeedbackPage() {
             placeholder="Brief summary of your feedback"
             required
           />
-        </div>
+        </Field>
 
         {/* Message */}
-        <div className="space-y-2">
-          <Label htmlFor="message">Message *</Label>
+        <Field>
+          <FieldLabel htmlFor="message">Message *</FieldLabel>
           <Textarea
             id="message"
             value={message}
@@ -195,7 +197,7 @@ export function FeedbackPage() {
             rows={6}
             required
           />
-        </div>
+        </Field>
 
         {/* Anonymous Option */}
         <div className="flex items-center space-x-2">

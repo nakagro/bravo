@@ -14,6 +14,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { KitValue, kitValuesEqual } from "../features/memberRecords/types";
 import { KitItemControl } from "../features/memberRecords/components/KitItemControl";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
+import { errorMessage } from "@/lib/errors";
 
 type Draft = Record<string, KitValue | null>;
 
@@ -95,7 +96,7 @@ function MemberKitBulkPage() {
       toast.success(`Saved ${changedIds.length} change${changedIds.length === 1 ? "" : "s"}`);
       setDraft({});
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Could not save";
+      const message = errorMessage(caught, "Could not save");
       setError(message);
       toast.error(message);
     } finally {

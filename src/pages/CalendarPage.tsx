@@ -32,6 +32,7 @@ import { DayAgenda } from "@/features/calendar/components/DayAgenda";
 import { ItemDetailSheet } from "@/features/calendar/components/ItemDetailSheet";
 import { EventFormModal } from "@/features/calendar/components/EventFormModal";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/errors";
 
 function parseDateParam(value: string | null): Date | null {
   if (!value) return null;
@@ -114,9 +115,7 @@ export function CalendarPage() {
       refresh();
     } catch (err) {
       console.error("Failed to delete calendar event:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete the event",
-      );
+      toastError(err, "Failed to delete the event");
       // Keeps the confirm prompt up so the member can retry.
       throw err;
     }

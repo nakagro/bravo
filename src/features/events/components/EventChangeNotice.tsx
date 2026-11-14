@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NotificationCard } from "@/components/shared/assignments/NotificationCard";
 import { NoteField } from "@/components/shared/assignments/SendAssignmentsSheet";
+import { errorMessage } from "@/lib/errors";
 
 export type ChangeKind = "cancelled" | "detailsChanged" | "restored" | "message";
 export type MessageAudience = "involved" | "everyone";
@@ -121,7 +122,7 @@ export function EventChangeNoticeSheet({
       close();
     } catch (error) {
       toast.error("Not sent", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSending(false);
@@ -189,7 +190,7 @@ export function RestoreEventDialog({
       onOpenChange(false);
     } catch (error) {
       toast.error("Failed to restore event", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setBusy(false);

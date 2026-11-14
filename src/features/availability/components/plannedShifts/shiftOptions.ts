@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { format } from "date-fns";
 import { NEXT_STATUS_OPTIONS } from "@/constants/statusOptions";
 
@@ -67,7 +68,5 @@ export function toDateKey(date: Date): string {
 
 /** Convex error text without the server wrapper and stack. */
 export function errorText(error: unknown): string {
-  if (!(error instanceof Error)) return "Something went wrong.";
-  const match = /Uncaught Error: (.*)/.exec(error.message);
-  return (match ? match[1] : error.message.split("\n")[0]) || "Something went wrong.";
+  return errorMessage(error);
 }

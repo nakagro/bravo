@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDirtyDraftGuard } from "@/hooks/useDirtyDraftGuard";
 import type { CalendarEvent } from "../lib/parseIcs";
+import { toastError } from "@/lib/errors";
 
 interface EventFormModalProps {
   open: boolean;
@@ -153,9 +154,7 @@ export function EventFormModal({
       onClose();
     } catch (err) {
       console.error("Failed to save calendar event:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save the event",
-      );
+      toastError(err, "Failed to save the event");
     } finally {
       setSaving(false);
     }

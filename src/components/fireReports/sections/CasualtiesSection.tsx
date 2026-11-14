@@ -5,6 +5,7 @@ import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Plus } from "lucide-react";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export interface Casualty {
   name: string;
@@ -79,15 +80,15 @@ export function CasualtiesSection({ casualties, onChange }: CasualtiesSectionPro
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`casualty-name-${index}`}>Name</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`casualty-name-${index}`}>Name</FieldLabel>
                     <Input
                       id={`casualty-name-${index}`}
                       value={casualty.name}
                       onChange={(e) => updateAt(index, "name", e.target.value)}
                       placeholder="Casualty name"
                     />
-                  </div>
+                  </Field>
                   <div className="space-y-2">
                     <Label>Injuries</Label>
                     <RadioGroup
@@ -150,8 +151,8 @@ export function CasualtiesSection({ casualties, onChange }: CasualtiesSectionPro
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`casualty-details-${index}`}>Additional Details</Label>
+                <Field>
+                  <FieldLabel htmlFor={`casualty-details-${index}`}>Additional Details</FieldLabel>
                   <Textarea
                     id={`casualty-details-${index}`}
                     value={casualty.details}
@@ -159,7 +160,7 @@ export function CasualtiesSection({ casualties, onChange }: CasualtiesSectionPro
                     placeholder="Additional casualty details"
                     rows={2}
                   />
-                </div>
+                </Field>
               </CardContent>
             </Card>
           ))

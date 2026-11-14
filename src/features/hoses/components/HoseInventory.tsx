@@ -23,7 +23,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectI
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { ChevronDown, Clock, Flame, Funnel, MapPin, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -295,8 +295,8 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
       {/* Filter panel */}
       {showFilters && (
         <div id="hose-inventory-filters" className="grid grid-cols-1 gap-4 rounded-lg border bg-muted/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2">
-            <Label htmlFor="hose-status-filter">Status</Label>
+          <Field>
+            <FieldLabel htmlFor="hose-status-filter">Status</FieldLabel>
           <Select
             value={filters.status === "" ? "all" : filters.status}
             onValueChange={(value) => setFilters(f => ({ ...f, status: value === "all" ? "" : value as Status }))}
@@ -314,9 +314,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               </SelectGroup>
             </SelectContent>
           </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="hose-size-filter">Size</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="hose-size-filter">Size</FieldLabel>
           <Select
             value={filters.size === "" ? "all" : filters.size}
             onValueChange={(value) => setFilters(f => ({ ...f, size: value === "all" ? "" : value as Size }))}
@@ -333,9 +333,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               </SelectGroup>
             </SelectContent>
           </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="hose-type-filter">Type</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="hose-type-filter">Type</FieldLabel>
           <Select
             value={filters.type === "" ? "all" : filters.type}
             onValueChange={(value) => setFilters(f => ({ ...f, type: value === "all" ? "" : value as Type }))}
@@ -351,9 +351,9 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               </SelectGroup>
             </SelectContent>
           </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="hose-location-filter">Location</Label>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="hose-location-filter">Location</FieldLabel>
           <Select
             value={filters.location === "" ? "all" : filters.location}
             onValueChange={(value) => setFilters(f => ({ ...f, location: value === "all" ? "" : value as Location }))}
@@ -372,7 +372,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
               </SelectGroup>
             </SelectContent>
           </Select>
-          </div>
+          </Field>
         </div>
       )}
 

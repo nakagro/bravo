@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Check, Search } from "lucide-react";
 import { formatUserName, getInitials } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 interface ConfirmAttendanceDialogProps {
   open: boolean;
@@ -93,7 +94,7 @@ export function ConfirmAttendanceDialog({ open, onClose, eventId }: ConfirmAtten
     } catch (error) {
       console.error("Error confirming attendance:", error);
       toast.error("Couldn't record attendance", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);
@@ -109,7 +110,7 @@ export function ConfirmAttendanceDialog({ open, onClose, eventId }: ConfirmAtten
     } catch (error) {
       console.error("Error clearing attendance:", error);
       toast.error("Couldn't clear the attendance record", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);

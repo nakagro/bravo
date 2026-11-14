@@ -17,6 +17,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { MemberCombobox } from "@/components/shared/MemberCombobox";
 import { ChevronDown, Link2, Pencil, UserPlus } from "lucide-react";
 import { personName, rankLabel, type RosterEntry } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 const RANKS: Rank[] = ["Captain", "Lieutenant", "Firefighter", "Probationary", "Brigade Member"];
 
@@ -50,7 +51,7 @@ export function MembersTab() {
       );
     } catch (error) {
       toast.error("Couldn't update the member", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -198,7 +199,7 @@ function RollMemberModal({ entry, onClose }: { entry: RosterEntry | null; onClos
       onClose();
     } catch (error) {
       toast.error("Couldn't save the member", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);
@@ -345,7 +346,7 @@ function LinkAccountModal({
       onClose();
     } catch (error) {
       toast.error("Couldn't link the account", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);

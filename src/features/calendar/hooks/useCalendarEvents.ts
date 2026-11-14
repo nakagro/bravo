@@ -3,6 +3,7 @@ import { useAction } from "convex/react";
 import { addMonths } from "date-fns";
 import { api } from "../../../../convex/_generated/api";
 import { parseIcs, type CalendarEvent } from "../lib/parseIcs";
+import { errorMessage } from "@/lib/errors";
 
 // Radicale returns the whole collection in one response, so a single shared
 // fetch serves both the dashboard widget and the calendar page; month
@@ -48,7 +49,7 @@ function fetchCalendarEvents(fetchIcs?: () => Promise<string>): Promise<void> {
       console.error("Error fetching calendar events:", err);
       setStore({
         error:
-          err instanceof Error ? err.message : "Failed to fetch calendar events",
+          errorMessage(err, "Failed to fetch calendar events"),
       });
     } finally {
       inflight = null;

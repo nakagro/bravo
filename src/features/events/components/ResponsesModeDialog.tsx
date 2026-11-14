@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { formatUserName, getInitials } from "../types";
+import { errorMessage } from "@/lib/errors";
 
 interface ResponsesModeDialogProps {
   open: boolean;
@@ -87,7 +88,7 @@ export function ResponsesModeDialog({
     } catch (error) {
       console.error("Error changing responses mode:", error);
       toast.error("Couldn't change responses", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     } finally {
       setSaving(false);

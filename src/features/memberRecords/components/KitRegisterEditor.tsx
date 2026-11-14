@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
 import { ChevronRight, MoreVertical, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +16,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { KIT_TRACKS_LABELS, KitItemDef, KitSetDef } from "../types";
 import { KitSortableList, movedIds } from "./KitSortableList";
+import { toastError } from "@/lib/errors";
 
 /**
  * The Kit tab. Two sections, kit sets and the standalone items, so an officer
@@ -49,7 +49,7 @@ export function KitRegisterEditor() {
 
   const run = (promise: Promise<unknown>) =>
     promise.catch((error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "Something went wrong"),
+      toastError(error, "Something went wrong"),
     );
 
   const setIds = defs.sets.map((set) => set._id);
@@ -222,7 +222,7 @@ export function KitItemRows({
 
   const run = (promise: Promise<unknown>) =>
     promise.catch((error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "Something went wrong"),
+      toastError(error, "Something went wrong"),
     );
 
   const secondary = (item: KitItemDef) => {

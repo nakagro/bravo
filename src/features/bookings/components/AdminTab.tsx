@@ -13,6 +13,7 @@ import { PendingApprovals } from "./PendingApprovals";
 import { EmptyState } from "../../../components/shared/EmptyState";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { Plus, Inbox, Archive, SquarePen, Trash2, Users, Lock, LockOpen, ExternalLink } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 export function AdminTab() {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export function AdminTab() {
     } catch (error) {
       console.error("Error deleting resource:", error);
       toast.error("Failed to delete resource", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

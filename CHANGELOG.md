@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.11.15]
+
+- General: Error messages now give the reason in plain words, without the technical detail.
+
 ## [2026.11.14]
 - Events: Crew seats have an X to remove someone, and picking someone already on the truck swaps them over.
 - Availability: Deployment crew seats work the same way, with an X and swapping.

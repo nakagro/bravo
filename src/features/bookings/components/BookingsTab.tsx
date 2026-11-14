@@ -19,6 +19,7 @@ import { EmptyState } from "../../../components/shared/EmptyState";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Inbox, ChevronDown, Repeat } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 
 type MyBooking = FunctionReturnType<typeof api.bookings.getMyBookings>[number];
 
@@ -39,7 +40,7 @@ export function BookingsTab() {
     } catch (error) {
       console.error("Error cancelling booking:", error);
       toast.error("Failed to cancel booking", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };
@@ -51,7 +52,7 @@ export function BookingsTab() {
     } catch (error) {
       console.error("Error cancelling repeating booking:", error);
       toast.error("Failed to cancel bookings", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        description: errorMessage(error, "An unexpected error occurred."),
       });
     }
   };

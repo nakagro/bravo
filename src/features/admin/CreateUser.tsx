@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { errorMessage } from "@/lib/errors";
 
 const ranks = [
   "Brigade Member",
@@ -83,7 +84,7 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
       setForm(initialForm);
     } catch (error) {
       toast.error("Could not create user", {
-        description: error instanceof Error ? error.message : String(error),
+        description: errorMessage(error),
       });
     } finally {
       setIsSubmitting(false);
