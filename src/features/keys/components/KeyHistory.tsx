@@ -3,13 +3,14 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Spinner } from "@/components/ui/spinner";
+import { formatDateTime } from "@/lib/dateFormat";
 
 export function KeyHistory({ keyId }: { keyId: Id<"keys"> }) {
   const history = useQuery(api.keys.getHistory, { keyId });
   
   // Format the history entries for display
   const formatHistoryEntry = (entry: any) => {
-    const date = new Date(entry.timestamp).toLocaleString();
+    const date = formatDateTime(entry.timestamp);
     
     // Special handling for key deletion
     if (entry.changeType === 'key_deleted') {

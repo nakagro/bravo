@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { statusToneClasses } from "@/lib/statusTone";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
 function statusClass(status: string) {
-  if (status === "In date") return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300";
-  if (status === "Due for testing") return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
-  return "bg-muted text-muted-foreground";
+  if (status === "In date") return statusToneClasses.success;
+  if (status === "Due for testing") return statusToneClasses.warning;
+  return statusToneClasses.neutral;
 }
 
 export function HoseStatusSync() {

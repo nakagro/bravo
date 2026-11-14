@@ -47,6 +47,7 @@ import {
   isItemResolved,
   checkItemStatus,
 } from "../types";
+import { statusToneClasses } from "@/lib/statusTone";
 
 const PAGE_SIZE = 12;
 
@@ -96,11 +97,11 @@ interface HistorySubmission {
 }
 
 function completionBadgeClass(completed: number, total: number) {
-  if (total === 0) return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
+  if (total === 0) return statusToneClasses.neutral;
   const pct = completed / total;
-  if (pct === 1) return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400";
-  if (pct >= 0.7) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400";
-  return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400";
+  if (pct === 1) return statusToneClasses.success;
+  if (pct >= 0.7) return statusToneClasses.warning;
+  return statusToneClasses.danger;
 }
 
 function ItemStatusIcon({

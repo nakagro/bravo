@@ -19,6 +19,7 @@ import {
   Download,
 } from "lucide-react";
 import { errorMessage } from "@/lib/errors";
+import { formatDateTime } from "@/lib/dateFormat";
 
 const DEVICE_ICONS = {
   mobile: Smartphone,
@@ -126,7 +127,7 @@ function DeviceList() {
                     {label}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Registered {new Date(sub.createdAt).toLocaleString()}
+                    Registered {formatDateTime(sub.createdAt)}
                   </p>
                 </div>
               </div>

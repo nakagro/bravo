@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, SquarePen, Plus, Trash2 } from "lucide-react";
 import { statusConfig, priorityConfig, fieldNameMap } from "../types";
+import { formatDate, formatDateTime } from "@/lib/dateFormat";
 
 const actionIcons = {
   fault_created: Plus,
@@ -60,13 +61,12 @@ export function VehicleFaultAuditTrail() {
     );
   }
 
-  const formatDate = (timestamp: number) => new Date(timestamp).toLocaleString();
 
   const formatValue = (value: any) => {
     if (value === null || value === undefined || value === "") return "(empty)";
     if (typeof value === "boolean") return value ? "true" : "false";
     if (typeof value === "number" && value > 1000000000000) {
-      return new Date(value).toLocaleDateString();
+      return formatDate(value);
     }
     return String(value);
   };
@@ -120,7 +120,7 @@ export function VehicleFaultAuditTrail() {
                   </span>
                 </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 sm:ml-2">
-                  {formatDate(entry.timestamp)}
+                  {formatDateTime(entry.timestamp)}
                 </span>
               </div>
 

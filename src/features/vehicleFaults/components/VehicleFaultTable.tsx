@@ -12,6 +12,7 @@ import { SortableTableHeader } from "@/components/shared/SortableTableHeader";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { statusConfig, priorityConfig } from "../types";
 import type { VehicleFault } from "../types";
+import { formatDate } from "@/lib/dateFormat";
 
 type SortField = "vehicle" | "priority" | "status" | "dateReported" | "reporter" | "shortDescription";
 type SortDirection = "asc" | "desc";
@@ -128,7 +129,7 @@ export function VehicleFaultTable({ faults, onFaultClick }: VehicleFaultTablePro
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
-                  {new Date(fault.dateReported).toLocaleDateString()}
+                  {formatDate(fault.dateReported)}
                 </TableCell>
                 <TableCell className="text-sm">
                   {fault.reportedByUser?.name || "Unknown"}

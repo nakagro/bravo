@@ -1,6 +1,7 @@
 import { parse, format } from "date-fns";
 import { enAU } from "date-fns/locale";
 import { ConvexError } from "convex/values";
+import { statusToneClasses } from "@/lib/statusTone";
 
 // Extract the clean conflict message from a structured booking error,
 // or null if the error is not a booking conflict
@@ -88,10 +89,10 @@ export const bookingTabs: { key: BookingTab; label: string }[] = [
 
 // Status badge color classes
 export const bookingStatusColors: Record<BookingStatus | string, string> = {
-  pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200",
-  approved: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
-  rejected: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
-  cancelled: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
+  pending: statusToneClasses.warning,
+  approved: statusToneClasses.success,
+  rejected: statusToneClasses.danger,
+  cancelled: statusToneClasses.neutral,
 };
 
 export function getStatusBadgeClasses(status: string): string {

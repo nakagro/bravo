@@ -167,6 +167,11 @@ so pages get it by default. Don't rebuild it per page.
 - **Failed calls report through `src/lib/errors.ts`**: `toastError(error, "Could not save")`, or
   `errorMessage(error, fallback)` for a toast description or inline text. It strips Convex's server
   wrapper, so members see the reason, not a stack trace.
+- **Dates shown to members use `src/lib/dateFormat.ts`**: `formatDate` ("15 Nov 2026") and
+  `formatDateTime`, on Melbourne time. Never a bare `toLocaleDateString()`, which follows the phone's
+  locale.
+- **Status colours use a tone** (`src/lib/statusTone.ts`): `<Badge tone="success|warning|danger|info|neutral">`,
+  or `statusToneClasses[tone]` for a pill that isn't a Badge. Don't pick green/amber/red per module.
 
 ### Styling Patterns
 - **Tailwind CSS**: Utility-first with CSS variables for theming

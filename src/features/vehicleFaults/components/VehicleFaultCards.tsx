@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { statusConfig, priorityConfig } from "../types";
 import type { VehicleFault } from "../types";
+import { formatDate } from "@/lib/dateFormat";
 
 interface VehicleFaultCardsProps {
   faults: VehicleFault[];
@@ -56,7 +57,7 @@ export function VehicleFaultCards({ faults, onFaultClick }: VehicleFaultCardsPro
 
               {/* Footer */}
               <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-1">
-                <span>{new Date(fault.dateReported).toLocaleDateString()}</span>
+                <span>{formatDate(fault.dateReported)}</span>
                 <span>{fault.reportedByUser?.name || "Unknown"}</span>
               </div>
             </div>

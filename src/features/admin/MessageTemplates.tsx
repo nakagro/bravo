@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotificationCard } from "@/components/shared/assignments/NotificationCard";
 import { errorMessage } from "@/lib/errors";
+import { formatDate } from "@/lib/dateFormat";
 
 type Row = NonNullable<ReturnType<typeof useQuery<typeof api.notificationTemplates.listNotificationTemplates>>>[number];
 
@@ -163,7 +164,7 @@ function TemplateCard({ row }: { row: Row }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-gray-500">
             {row.customised && row.updatedAt
-              ? `Edited by ${row.updatedByName ?? "an admin"} on ${new Date(row.updatedAt).toLocaleDateString("en-AU")}`
+              ? `Edited by ${row.updatedByName ?? "an admin"} on ${formatDate(row.updatedAt)}`
               : "Standard wording"}
           </span>
           <div className="flex gap-2">

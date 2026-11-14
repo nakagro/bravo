@@ -9,6 +9,7 @@ import { Bell, BellOff, Clock, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { MessageTemplates } from "./MessageTemplates";
 import { Spinner } from "@/components/ui/spinner";
+import { formatDateTime } from "@/lib/dateFormat";
 
 interface NotificationSettingsProps {
   showTitle?: boolean;
@@ -162,7 +163,7 @@ export default function NotificationSettings({ showTitle = true }: NotificationS
                   {setting.description}
                 </p>
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-                  Last updated: {new Date(setting.updatedAt).toLocaleString()}
+                  Last updated: {formatDateTime(setting.updatedAt)}
                 </div>
               </CardContent>
             </Card>

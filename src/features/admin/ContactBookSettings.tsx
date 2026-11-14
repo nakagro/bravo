@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { isContactBookData } from "@/features/kiosk/contactDirectoryData";
 import { toastError } from "@/lib/errors";
+import { formatDate } from "@/lib/dateFormat";
 
 interface ContactBookSettingsProps {
   showTitle?: boolean;
@@ -86,7 +87,7 @@ export default function ContactBookSettings({ showTitle = true }: ContactBookSet
             <p className="font-medium">{summary.title ?? summary.fileName}</p>
             <p className="text-muted-foreground">
               {summary.fileName} · {formatSize(summary.sizeBytes)} · uploaded{" "}
-              {new Date(summary.uploadedAt).toLocaleDateString("en-AU")} by {summary.uploadedByName}
+              {formatDate(summary.uploadedAt)} by {summary.uploadedByName}
             </p>
           </div>
         )}

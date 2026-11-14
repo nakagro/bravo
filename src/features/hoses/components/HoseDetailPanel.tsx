@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { HoseComments } from "./HoseComments";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTapeColorStyle, statusColors, TapeColor } from "../types";
+import { formatDate } from "@/lib/dateFormat";
 
 import {
   Sheet,
@@ -119,7 +120,7 @@ export function HoseDetailPanel({
             <TriangleAlert className="h-4 w-4" />
             <AlertDescription>
               This hose was marked as replaced on{" "}
-              {new Date(hose.replacedAt).toLocaleDateString()}.
+              {formatDate(hose.replacedAt)}.
             </AlertDescription>
           </Alert>
         )}
@@ -177,7 +178,7 @@ export function HoseDetailPanel({
             </span>
             <span className="text-gray-900 dark:text-gray-100 font-medium">
               {hose.testDate
-                ? new Date(hose.testDate).toLocaleDateString()
+                ? formatDate(hose.testDate)
                 : "Not recorded"}
             </span>
           </div>
@@ -193,7 +194,7 @@ export function HoseDetailPanel({
               <span
                 className={`font-medium ${isOverdue ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}
               >
-                {testExpiryDate.toLocaleDateString()}
+                {formatDate(testExpiryDate)}
                 {isOverdue && " (overdue)"}
               </span>
             </div>
@@ -396,10 +397,10 @@ function HistoryEntry({ entry }: { entry: any }) {
   let newDisplay = entry.newValue;
   if (entry.field === "testDate") {
     oldDisplay = entry.oldValue
-      ? new Date(entry.oldValue).toLocaleDateString()
+      ? formatDate(entry.oldValue)
       : "(empty)";
     newDisplay = entry.newValue
-      ? new Date(entry.newValue).toLocaleDateString()
+      ? formatDate(entry.newValue)
       : "(empty)";
   }
 

@@ -3,6 +3,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, Pencil, Plus, Trash2 } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/dateFormat";
 
 const actionIcons = {
   "key_created": Plus,
@@ -52,17 +53,13 @@ export function KeyAuditTrail() {
     );
   }
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
   const formatValue = (value: any) => {
     if (value === null || value === undefined || value === '') return '(empty)';
     if (typeof value === 'boolean') return value ? 'true' : 'false';
     if (typeof value === 'number') {
       // Check if it's a timestamp (likely > 1000000000000)
       if (value > 1000000000000) {
-        return new Date(value).toLocaleDateString();
+        return formatDate(value);
       }
       return String(value);
     }
@@ -119,7 +116,7 @@ export function KeyAuditTrail() {
                   )}
                 </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                  {formatDate(entry.timestamp)}
+                  {formatDateTime(entry.timestamp)}
                 </span>
               </div>
               

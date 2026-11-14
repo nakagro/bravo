@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { ChevronDown, Clock, Flame, Funnel, MapPin, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/dateFormat";
 
 // Shared components
 import { InventorySearch } from "@/components/shared/InventorySearch";
@@ -468,7 +469,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                   </div>
                   <div className="flex items-center gap-1 text-xs">
                     <Clock aria-hidden="true" className="size-3.5" />
-                    Tested {new Date(hose.testDate).toLocaleDateString()}
+                    Tested {formatDate(hose.testDate)}
                   </div>
                 </div>
               </CardContent>
@@ -526,7 +527,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
                       {hose.location || '-'}
                     </span>
                   </TableCell>
-                  <TableCell>{new Date(hose.testDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatDate(hose.testDate)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

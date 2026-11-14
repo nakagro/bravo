@@ -1,4 +1,5 @@
 import { TriangleAlert, Clock, CircleCheckBig, CircleHelp, type LucideIcon } from "lucide-react";
+import { statusToneClasses } from "@/lib/statusTone";
 
 export type CurrencyStatus = "current" | "warning" | "expired" | "never_used";
 
@@ -17,7 +18,7 @@ export interface StatusMeta {
 export const STATUS_META: Record<CurrencyStatus, StatusMeta> = {
   expired: {
     label: "Expired",
-    badgeClass: "bg-red-600 text-white hover:bg-red-700",
+    badgeClass: statusToneClasses.danger,
     cardBorderClass: "border-red-200 dark:border-red-900",
     textClass: "text-red-600 dark:text-red-400",
     solidClass: "bg-red-600",
@@ -26,7 +27,7 @@ export const STATUS_META: Record<CurrencyStatus, StatusMeta> = {
   },
   warning: {
     label: "Expiring soon",
-    badgeClass: "bg-orange-500 text-white hover:bg-orange-600",
+    badgeClass: statusToneClasses.warning,
     cardBorderClass: "border-orange-200 dark:border-orange-900",
     textClass: "text-orange-600 dark:text-orange-400",
     solidClass: "bg-orange-500",
@@ -35,7 +36,7 @@ export const STATUS_META: Record<CurrencyStatus, StatusMeta> = {
   },
   never_used: {
     label: "Never used",
-    badgeClass: "bg-gray-500 text-white hover:bg-gray-600",
+    badgeClass: statusToneClasses.neutral,
     cardBorderClass: "border-gray-200 dark:border-gray-700",
     textClass: "text-gray-600 dark:text-gray-400",
     solidClass: "bg-gray-400",
@@ -44,7 +45,7 @@ export const STATUS_META: Record<CurrencyStatus, StatusMeta> = {
   },
   current: {
     label: "Current",
-    badgeClass: "bg-green-600 text-white hover:bg-green-700",
+    badgeClass: statusToneClasses.success,
     cardBorderClass: "border-green-200 dark:border-green-900",
     textClass: "text-green-600 dark:text-green-400",
     solidClass: "bg-green-500",

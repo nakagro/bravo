@@ -1,5 +1,6 @@
 import { parse, format, formatDistanceToNow } from "date-fns";
 import { enAU } from "date-fns/locale";
+import { statusToneClasses } from "@/lib/statusTone";
 
 // RSVP status values
 export type RsvpStatus = "attending" | "notAttending" | "maybe";
@@ -18,15 +19,15 @@ export const eventTabs: { key: EventTab; label: string }[] = [
 
 // Status badge color classes
 export const eventStatusColors: Record<EventStatus | string, string> = {
-  active: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
-  cancelled: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
+  active: statusToneClasses.success,
+  cancelled: statusToneClasses.neutral,
 };
 
 // RSVP badge color classes
 export const rsvpStatusColors: Record<RsvpStatus, string> = {
-  attending: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
-  maybe: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200",
-  notAttending: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
+  attending: statusToneClasses.success,
+  maybe: statusToneClasses.warning,
+  notAttending: statusToneClasses.danger,
 };
 
 export const rsvpStatusLabels: Record<RsvpStatus, string> = {

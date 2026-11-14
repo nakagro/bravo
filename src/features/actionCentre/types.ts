@@ -1,3 +1,5 @@
+import { statusToneClasses } from "@/lib/statusTone";
+
 export type ActionItem = {
   id: string;
   moduleId: string;
@@ -30,7 +32,7 @@ export const priorityColors: Record<ActionItem["priority"], string> = {
 };
 
 export const priorityBadgeColors: Record<ActionItem["priority"], string> = {
-  high: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  high: statusToneClasses.danger,
+  medium: statusToneClasses.warning,
+  low: statusToneClasses.neutral,
 };

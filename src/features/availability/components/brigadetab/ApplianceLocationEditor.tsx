@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/dateFormat";
 
 interface ApplianceLocationEditorProps {
   onClose: () => void;
@@ -40,7 +41,7 @@ function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
+    return formatDate(timestamp);
   };
 
   const getUpdatedByLabel = (location: typeof applianceLocations[number]) => {

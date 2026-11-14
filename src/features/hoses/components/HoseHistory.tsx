@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Spinner } from "@/components/ui/spinner";
+import { formatDate, formatDateTime } from "@/lib/dateFormat";
 
 export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
   const history = useQuery(api.hoses.getHistory, { hoseId });
@@ -15,7 +16,7 @@ export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
   
   // Format the history entries for display
   const formatHistoryEntry = (entry: any) => {
-    const date = new Date(entry.timestamp).toLocaleString();
+    const date = formatDateTime(entry.timestamp);
     
     // Special handling for hose replacement
     if (entry.changeType === 'hose_replacement') {
@@ -42,8 +43,8 @@ export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
     let newValueDisplay = entry.newValue;
     
     if (entry.field === 'testDate') {
-      oldValueDisplay = new Date(entry.oldValue).toLocaleDateString();
-      newValueDisplay = new Date(entry.newValue).toLocaleDateString();
+      oldValueDisplay = formatDate(entry.oldValue);
+      newValueDisplay = formatDate(entry.newValue);
     }
     
     return (
@@ -63,7 +64,7 @@ export function HoseHistory({ hoseId }: { hoseId: Id<"hoses"> }) {
       {hasBeenReplaced && hose?.replacedAt && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            This hose was marked as replaced on {new Date(hose.replacedAt).toLocaleDateString()}.
+            This hose was marked as replaced on {formatDate(hose.replacedAt)}.
           </AlertDescription>
         </Alert>
       )}
