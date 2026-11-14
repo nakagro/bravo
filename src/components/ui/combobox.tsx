@@ -288,12 +288,17 @@ export function Combobox({
                 close()
                 return
               }
-              setQuery("")
-              setOpen(true)
               // On a phone the chevron opens the list WITHOUT the keyboard:
               // focusing the field raised it, iOS scrolled the page to the
               // field and the sheet was thrown about. Tap the field to type.
-              if (chevronPointer.current !== "touch") inputRef.current?.focus()
+              // A keyboard already up from typing in any field goes away too,
+              // so the list gets the room. Blur first: its close() is undone
+              // by the setOpen below.
+              const touch = chevronPointer.current === "touch"
+              if (touch && document.activeElement instanceof HTMLElement) document.activeElement.blur()
+              setQuery("")
+              setOpen(true)
+              if (!touch) inputRef.current?.focus()
             }}
             className="flex w-11 items-center justify-center"
             aria-label={open ? "Close list" : "Show all"}

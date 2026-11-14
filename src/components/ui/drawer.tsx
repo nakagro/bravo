@@ -92,6 +92,38 @@ function hideFromIOSScroll(el: HTMLElement, then: () => void) {
 
 // Mounted only while the drawer is open (it sits inside the portal), so the
 // viewport listeners come and go with it.
+// While any drawer is open the page behind is pinned in place. iOS scrolls the
+// page to the top on a tap of the status bar, which is right where the drawer's
+// handle is, and nothing can turn that off; with the page pinned there's nothing
+// for it to scroll, and the reader's place is put back exactly on close.
+let pageLocks = 0
+let pageLockScrollY = 0
+const PINNED = { position: "fixed", top: "", left: "0", right: "0", width: "100%" } as const
+
+// vaul pins the page itself in Safari, except when installed to the home
+// screen (standalone), which is how members mostly use BRAVO. Pin only where
+// vaul doesn't, so the two never fight over body styles.
+const vaulPinsPage = () =>
+  /^((?!chrome|android).)*safari/i.test(navigator.userAgent) &&
+  !window.matchMedia("(display-mode: standalone)").matches
+
+function usePagePinnedWhileOpen() {
+  React.useLayoutEffect(() => {
+    if (vaulPinsPage()) return
+    const body = document.body
+    if (pageLocks++ === 0) {
+      pageLockScrollY = window.scrollY
+      Object.assign(body.style, PINNED, { top: `-${pageLockScrollY}px` })
+    }
+    return () => {
+      if (--pageLocks > 0) return
+      // Only undo what this set; Radix and vaul manage their own body styles.
+      for (const prop of Object.keys(PINNED)) body.style.removeProperty(prop)
+      window.scrollTo({ top: pageLockScrollY, behavior: "instant" })
+    }
+  }, [])
+}
+
 // How long after a field loses focus a tap "outside" is still ignored. The
 // keyboard takes about this long to drop and the sheet to settle.
 const BLUR_GRACE_MS = 700
@@ -111,6 +143,7 @@ function KeyboardAwareContent({
   const keyboardUp = React.useRef(false)
   keyboardUp.current = inset !== null
   const lastFieldBlur = React.useRef(0)
+  usePagePinnedWhileOpen()
 
   // A tap that blurs a field and then removes what it hit (a clear button, a
   // picker row), or lands after the sheet moves as the keyboard drops, reaches
