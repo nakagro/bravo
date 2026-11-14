@@ -399,7 +399,7 @@ export function HoseInventory({ initialStatusFilter, onFilterApplied }: HoseInve
         </div>
       ) : hoses.length === 0 && !hasActiveFilters ? (
         <EmptyState
-          icon={<Flame className="size-12 text-red-400 dark:text-red-500" />}
+          icon={<Flame />}
           title="No hoses registered yet"
           description="Track fire hoses across your brigade. Each record includes the hose ID, size, length, type, location, and testing status."
           secondaryDescription="Monitor testing schedules, manage replacements, and maintain compliance records."

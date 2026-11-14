@@ -79,7 +79,7 @@ export function MemberRecordsList() {
 
       {visible.length === 0 ? (
         <EmptyState
-          icon={<Users className="h-8 w-8 text-red-600 dark:text-red-400" />}
+          icon={<Users />}
           title="No members match"
           description="Try a different name or member number."
         />

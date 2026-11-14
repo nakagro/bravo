@@ -168,7 +168,7 @@ export function BookingsTab() {
         ) : upcomingBookings.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Inbox />}
               title="You have no upcoming bookings"
               description="Need a vehicle, room or equipment? Request a booking and an approver will confirm it."
               actionLabel="Request a Booking"

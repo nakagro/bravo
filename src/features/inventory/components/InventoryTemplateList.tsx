@@ -536,7 +536,7 @@ export function InventoryTemplateList() {
       {templates && visible.length === 0 && !showCreate && (
         statusTab === "active" && counts.inactive + counts.archived === 0 ? (
           <EmptyState
-            icon={<FileText className="h-10 w-10 text-red-500 dark:text-red-400" />}
+            icon={<FileText />}
             title="No templates yet"
             description="Create your first inventory check template to get started."
             actionLabel="Create First Template"
@@ -544,7 +544,7 @@ export function InventoryTemplateList() {
           />
         ) : (
           <EmptyState
-            icon={<FileText className="h-10 w-10 text-gray-400 dark:text-gray-500" />}
+            icon={<FileText />}
             title={
               statusTab === "active"
                 ? "Nothing in service"

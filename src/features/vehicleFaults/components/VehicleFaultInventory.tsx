@@ -281,7 +281,7 @@ export function VehicleFaultInventory() {
             {/* Results */}
             {filteredFaults.length === 0 ? (
               <EmptyState
-                icon={<Truck className="h-10 w-10 text-red-600 dark:text-red-400" />}
+                icon={<Truck />}
                 title={searchTerm ? "No Matches" : !hasActiveFilters ? "No Faults" : "No Results"}
                 description={
                   searchTerm

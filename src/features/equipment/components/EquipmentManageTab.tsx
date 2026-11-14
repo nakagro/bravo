@@ -26,6 +26,7 @@ import {
 import { Pencil, Trash2, Package, FolderPlus, Copy, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 export function EquipmentManageTab() {
   const categories = useQuery(api.equipment.getAllCategories);
@@ -248,11 +249,11 @@ export function EquipmentManageTab() {
 
       {/* Categories & Items */}
       {categories.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <FolderPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p className="text-lg font-medium">No categories yet</p>
-          <p className="text-sm mt-1">Create a category to start adding equipment items.</p>
-        </div>
+        <EmptyState
+          icon={<FolderPlus />}
+          title="No categories yet"
+          description="Create a category to start adding equipment items."
+        />
       ) : (
         <Accordion type="multiple" defaultValue={categories.map((c) => c._id)} className="space-y-2">
           {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map((category) => {

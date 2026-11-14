@@ -7,6 +7,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { errorMessage } from "@/lib/errors";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ServiceAccountSettingsProps {
   showTitle?: boolean;
@@ -256,13 +257,11 @@ function ServiceAccountSettings({
 
       {/* Service accounts list */}
       {serviceAccounts.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <Key className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No service accounts yet.</p>
-          <p className="text-xs mt-1">
-            Create one to set up a kiosk, display, or integration.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Key />}
+          title="No service accounts yet"
+          description="Create one to set up a kiosk, display, or integration."
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

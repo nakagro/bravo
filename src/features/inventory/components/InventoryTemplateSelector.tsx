@@ -122,7 +122,7 @@ export function InventoryTemplateSelector() {
   if (!templates || templates.length === 0) {
     return (
       <EmptyState
-        icon={<ClipboardList className="h-10 w-10 text-red-500 dark:text-red-400" />}
+        icon={<ClipboardList />}
         title="No checklists available"
         description="Contact an admin to create inventory check templates."
       />

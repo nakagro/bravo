@@ -41,7 +41,7 @@ export function UpcomingTab() {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <EmptyState
-          icon={<CalendarDays className="h-10 w-10 text-red-400 dark:text-red-500" />}
+          icon={<CalendarDays />}
           title="No upcoming events"
           description="When the brigade plans an event, it will show up here so you can RSVP."
         />

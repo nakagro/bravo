@@ -5,6 +5,7 @@
 - General: Error messages now give the reason in plain words, without the technical detail.
 - General: Dates show the same way on every page, as day, month and year.
 - General: Status badges use the same colours in every module.
+- General: Empty lists look the same everywhere, with an icon and a short note.
 
 ## [2026.11.14]
 - Events: Crew seats have an X to remove someone, and picking someone already on the truck swaps them over.

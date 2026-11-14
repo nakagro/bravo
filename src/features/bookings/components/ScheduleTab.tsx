@@ -456,7 +456,7 @@ export function ScheduleTab({ isAdmin = false, initialDate }: ScheduleTabProps) 
               </div>
             ) : bookings.length === 0 ? (
               <EmptyState
-                icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                icon={<Inbox />}
                 title="No bookings scheduled for this week"
               />
             ) : (

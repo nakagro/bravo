@@ -209,7 +209,7 @@ export function AttendanceTab() {
         <Skeleton className="h-64 w-full rounded-lg" />
       ) : report.nights.length === 0 ? (
         <EmptyState
-          icon={<BarChart3 className="h-10 w-10 text-red-400" />}
+          icon={<BarChart3 />}
           title="No closed rolls in this range"
           description="A roll counts here once it has been closed."
         />

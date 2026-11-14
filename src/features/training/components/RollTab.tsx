@@ -66,7 +66,7 @@ export function RollTab({ canManage }: { canManage: boolean }) {
         <NextRollCard roll={next} today={today} canManage={canManage} />
       ) : (
         <EmptyState
-          icon={<ClipboardCheck className="h-10 w-10 text-red-400" />}
+          icon={<ClipboardCheck />}
           title="No rolls coming up"
           description="Every Tuesday appears here automatically."
         />

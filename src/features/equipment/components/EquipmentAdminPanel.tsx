@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/accordion";
 import { Pencil, Trash2, Package, FolderPlus } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 export function EquipmentAdminPanel() {
   const categories = useQuery(api.equipment.getAllCategories);
@@ -214,9 +215,11 @@ export function EquipmentAdminPanel() {
 
       {/* Categories and Items */}
       {categories.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>No categories yet. Create a category to get started.</p>
-        </div>
+        <EmptyState
+          icon={<FolderPlus />}
+          title="No categories yet"
+          description="Create a category to start adding equipment items."
+        />
       ) : (
         <Accordion type="multiple" defaultValue={categories.map((c) => c._id)} className="space-y-2">
           {categories.map((category) => {

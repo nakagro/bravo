@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 type QRCodeEntry = {
   _id: Id<'qrCodes'>;
@@ -526,17 +527,11 @@ export function QRCodeList() {
 
   if (qrCodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-        <div className="rounded-full bg-muted p-6">
-          <QrCode className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="font-semibold">No saved QR codes yet</h3>
-          <p className="text-sm text-muted-foreground">
-            Switch to the Generate tab to create your first QR code.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<QrCode />}
+        title="No saved QR codes yet"
+        description="Switch to the Generate tab to create your first QR code."
+      />
     );
   }
 

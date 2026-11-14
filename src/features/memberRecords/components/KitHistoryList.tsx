@@ -58,7 +58,7 @@ export function KitHistoryList({ userId }: KitHistoryListProps) {
   if (results.length === 0) {
     return (
       <EmptyState
-        icon={<History className="size-8 text-red-600 dark:text-red-400" />}
+        icon={<History />}
         title="No changes yet"
         description="Recording kit against this member will show up here."
       />

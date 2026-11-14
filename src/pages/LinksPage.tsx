@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ExternalLink, Link2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 export function LinksPage() {
   const links = useQuery(api.links.getActiveLinks);
@@ -31,19 +32,11 @@ export function LinksPage() {
         <div className="flex justify-between items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Links</h1>
         </div>
-        <Card className="border-dashed">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Link2 className="w-5 h-5" />
-              <CardTitle className="text-base font-medium">No links yet</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Links will appear here once they've been added to the system.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Link2 />}
+          title="No links yet"
+          description="Links will appear here once they've been added to the system."
+        />
       </div>
     );
   }

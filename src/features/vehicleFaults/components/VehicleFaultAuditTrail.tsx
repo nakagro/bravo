@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, User, SquarePen, Plus, Trash2 } from "lucide-react";
 import { statusConfig, priorityConfig, fieldNameMap } from "../types";
 import { formatDate, formatDateTime } from "@/lib/dateFormat";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const actionIcons = {
   fault_created: Plus,
@@ -52,10 +53,7 @@ export function VehicleFaultAuditTrail() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit Trail</h2>
         </div>
         <Card>
-          <CardContent className="p-8 text-center">
-            <Clock className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">No recent changes found</p>
-          </CardContent>
+          <EmptyState icon={<Clock />} title="No recent changes" />
         </Card>
       </div>
     );

@@ -52,7 +52,7 @@ function MemberKitProfilePage({ editing }: MemberKitProfilePageProps) {
   if (summary === null) {
     return (
       <EmptyState
-        icon={<Package className="size-8 text-red-600 dark:text-red-400" />}
+        icon={<Package />}
         title="Member not found"
         description="This member may have been removed."
       />
@@ -84,7 +84,7 @@ function MemberKitProfilePage({ editing }: MemberKitProfilePageProps) {
 
       {!hasKit ? (
         <EmptyState
-          icon={<Package className="size-8 text-red-600 dark:text-red-400" />}
+          icon={<Package />}
           title="No kit defined yet"
           description="Kit sets and individual items are set up on the Kit tab."
         />

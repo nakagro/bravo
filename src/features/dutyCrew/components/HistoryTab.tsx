@@ -48,6 +48,7 @@ import {
   checkItemStatus,
 } from "../types";
 import { statusToneClasses } from "@/lib/statusTone";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const PAGE_SIZE = 12;
 
@@ -327,10 +328,11 @@ export function HistoryTab() {
           ))}
         </div>
       ) : results.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-600 gap-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <ClipboardCheck className="h-8 w-8" />
-          <p className="text-sm">No completed check submissions yet</p>
-        </div>
+        <EmptyState
+          icon={<ClipboardCheck />}
+          title="No completed checks yet"
+          className="rounded-lg border bg-card"
+        />
       ) : (
         <>
           {monthGroups.map((group) => (

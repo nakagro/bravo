@@ -10,7 +10,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Slot } from "@radix-ui/react-slot";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { Plus, Pencil, Trash2, Info, Image, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, Info, Image, GripVertical, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { DetailsEditorModal } from "./DetailsEditorModal";
 import {
@@ -31,6 +31,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface TemplateEditorProps {
   templateId: Id<"applianceTemplates">;
@@ -734,18 +735,12 @@ export function InventoryTemplateEditor({ templateId }: TemplateEditorProps) {
 
         {sections.length === 0 ? (
           <Card>
-            <CardContent className="py-12">
-              <div className="text-center">
-                <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <Plus className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No sections yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start by adding your first section to organize the checklist items.
-                </p>
-                <AddSectionDialog onAdd={handleAddSection} />
-              </div>
-            </CardContent>
+            <EmptyState
+              icon={<ListChecks />}
+              title="No sections yet"
+              description="Start by adding your first section to organize the checklist items."
+              action={<AddSectionDialog onAdd={handleAddSection} />}
+            />
           </Card>
         ) : (
           <div className="space-y-4">

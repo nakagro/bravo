@@ -357,7 +357,7 @@ export function AdminTab() {
             </div>
           ) : upcomingEvents.length === 0 ? (
             <EmptyState
-              icon={<CalendarDays className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<CalendarDays />}
               title="No upcoming events"
               actionLabel="Create Your First Event"
               onAction={handleAddEvent}
@@ -398,7 +398,7 @@ export function AdminTab() {
               </div>
             ) : pastArchive.results.length === 0 ? (
               <EmptyState
-                icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
+                icon={<Archive />}
                 title={debouncedSearch ? "No matching past events" : "No past events"}
                 description={
                   debouncedSearch

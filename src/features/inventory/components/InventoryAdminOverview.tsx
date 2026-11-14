@@ -75,7 +75,7 @@ export function InventoryAdminOverview() {
   if (overview.length === 0) {
     return (
       <EmptyState
-        icon={<ClipboardList className="h-10 w-10 text-red-500 dark:text-red-400" />}
+        icon={<ClipboardList />}
         title="No appliances yet"
         description="Create and publish a checklist in the Templates tab and it will show up here."
       />

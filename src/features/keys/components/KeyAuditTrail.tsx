@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/dateFormat";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const actionIcons = {
   "key_created": Plus,
@@ -41,15 +42,11 @@ export function KeyAuditTrail() {
 
   if (recentChanges.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-          <Clock className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No changes yet</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
-          Changes to keys will appear here as they happen.
-        </p>
-      </div>
+      <EmptyState
+        icon={<Clock />}
+        title="No changes yet"
+        description="Changes to keys will appear here as they happen."
+      />
     );
   }
 

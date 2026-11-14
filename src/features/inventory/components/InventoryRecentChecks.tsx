@@ -135,7 +135,7 @@ export function InventoryRecentChecks() {
 
         {status !== "LoadingFirstPage" && filteredSummaries.length === 0 && (
           <EmptyState
-            icon={<History className="h-10 w-10 text-red-500 dark:text-red-400" />}
+            icon={<History />}
             title={selectedName ? `No history for ${selectedName}` : "No check history"}
             description={
               !selectedName

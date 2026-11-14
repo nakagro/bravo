@@ -24,7 +24,7 @@ export function PastTab() {
           <EventListSkeleton />
         ) : events.length === 0 ? (
           <EmptyState
-            icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
+            icon={<Archive />}
             title="No past events"
             description="Past events stay here as an attendance record."
           />

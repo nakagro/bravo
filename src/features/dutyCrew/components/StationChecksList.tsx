@@ -372,7 +372,7 @@ export function StationChecksList({
   if (checkItems.length === 0 && !isLeader && !isAdmin) {
     return (
       <EmptyState
-        icon={<AlertCircle className="h-10 w-10 text-red-500 dark:text-red-400" />}
+        icon={<AlertCircle />}
         title="No station checks configured"
         description="Ask an admin to add station checks for the brigade."
       />

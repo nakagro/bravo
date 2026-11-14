@@ -73,7 +73,7 @@ export function PreviousTab() {
   if (rolls.length === 0) {
     return (
       <EmptyState
-        icon={<History className="h-10 w-10 text-red-400" />}
+        icon={<History />}
         title="No previous rolls yet"
         description="Rolls move here the day after they're held."
       />

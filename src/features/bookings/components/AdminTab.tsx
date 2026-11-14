@@ -85,7 +85,7 @@ export function AdminTab() {
         {!resources || resources.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<Archive className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Archive />}
               title="No resources created yet"
               actionLabel="Add Your First Resource"
               onAction={handleAddResource}
@@ -193,7 +193,7 @@ export function AdminTab() {
         {!allBookings || allBookings.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border">
             <EmptyState
-              icon={<Inbox className="h-10 w-10 text-red-400 dark:text-red-500" />}
+              icon={<Inbox />}
               title="No bookings have been made yet"
             />
           </div>

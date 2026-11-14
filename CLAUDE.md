@@ -172,6 +172,8 @@ so pages get it by default. Don't rebuild it per page.
   locale.
 - **Status colours use a tone** (`src/lib/statusTone.ts`): `<Badge tone="success|warning|danger|info|neutral">`,
   or `statusToneClasses[tone]` for a pill that isn't a Badge. Don't pick green/amber/red per module.
+- **Empty lists use `EmptyState`** (`src/components/shared/`, on shadcn's `Empty`): pass a bare lucide
+  icon (`icon={<Inbox />}`), a title, and `action` or `actionLabel`/`onAction`. `size="sm"` inside a card.
 
 ### Styling Patterns
 - **Tailwind CSS**: Utility-first with CSS variables for theming

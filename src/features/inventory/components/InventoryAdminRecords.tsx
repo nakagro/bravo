@@ -92,7 +92,7 @@ export function InventoryAdminRecords() {
         </div>
       ) : records.length === 0 ? (
         <EmptyState
-          icon={<Inbox className="h-10 w-10 text-red-500 dark:text-red-400" />}
+          icon={<Inbox />}
           title="No inventory checks"
           description={EMPTY_COPY[filter]}
         />

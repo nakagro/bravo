@@ -17,6 +17,7 @@ import { TriangleAlert, Package, Search, X, ChevronRight, Plus } from "lucide-re
 import { EquipmentItemHistory } from "./EquipmentItemHistory";
 import { StepperInput } from "@/components/common/StepperInput";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface SelectedItem {
   _id: Id<"equipmentItems">;
@@ -93,11 +94,11 @@ export function EquipmentStockTab() {
 
   if (itemsByCategory.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p className="text-lg font-medium">No equipment items yet</p>
-        <p className="text-sm mt-1">Equipment items will appear here once added.</p>
-      </div>
+      <EmptyState
+        icon={<Package />}
+        title="No equipment items yet"
+        description="Equipment items will appear here once added."
+      />
     );
   }
 

@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { cn } from "../../../lib/utils";
 import { Search, Plus, LayoutGrid, List, ChevronDown, ChevronUp, KeyRound, X, Phone, User } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 type ViewMode = 'cards' | 'table';
 type SortField = 'pegNumber' | 'siteName' | 'address' | 'itemCount';
@@ -143,24 +144,19 @@ export function KeyInventory() {
   // Empty state when no keys exist at all
   if (keys.length === 0 && !debouncedSearch) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="rounded-full bg-red-50 dark:bg-red-950/30 p-5 mb-5">
-          <KeyRound className="h-12 w-12 text-red-400 dark:text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No protected premises keys yet</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-center mb-2 max-w-md">
-          Track keys held for protected premises in your brigade area. Each key record includes the peg number, site details, contact info, and individual items on the peg.
-        </p>
-        <p className="text-gray-400 dark:text-gray-500 text-center mb-6 max-w-md text-sm">
-          Members can quickly look up addresses and contacts during callouts.
-        </p>
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-red-700 hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add First Key
-        </Button>
+      <div>
+        <EmptyState
+          icon={<KeyRound />}
+          title="No protected premises keys yet"
+          description="Track keys held for protected premises in your brigade area. Each key record includes the peg number, site details, contact info, and individual items on the peg."
+          secondaryDescription="Members can quickly look up addresses and contacts during callouts."
+          action={
+            <Button onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add First Key
+            </Button>
+          }
+        />
         {showAddForm && (
           <KeyForm keyId={null} onClose={() => setShowAddForm(false)} />
         )}
