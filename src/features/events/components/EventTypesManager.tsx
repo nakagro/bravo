@@ -3,16 +3,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ArrowUp, ArrowDown, EyeOff, Eye } from "lucide-react";
@@ -53,7 +45,6 @@ function ColorPicker({
 }
 
 export function EventTypesManager({ open, onOpenChange }: EventTypesManagerProps) {
-  const isMobile = useIsMobile();
   const allTypes = useQuery(api.eventTypes.getAllEventTypes);
   const addType = useMutation(api.eventTypes.addEventType);
   const updateType = useMutation(api.eventTypes.updateEventType);
@@ -138,8 +129,8 @@ export function EventTypesManager({ open, onOpenChange }: EventTypesManagerProps
   const sorted = allTypes ? [...allTypes].sort((a, b) => a.order - b.order) : [];
 
   const content = (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-4">
+    <div className="flex flex-col pb-4">
+      <div className="space-y-4">
         {/* Add new type */}
         <div className="space-y-2">
           <div className="flex gap-2">
@@ -254,28 +245,15 @@ export function EventTypesManager({ open, onOpenChange }: EventTypesManagerProps
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[80vh] flex flex-col border-gray-700">
-          <DrawerHeader>
-            <DrawerTitle>Manage Event Types</DrawerTitle>
-          </DrawerHeader>
-          <div className="flex-1 overflow-hidden px-6 pb-6">{content}</div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-sm p-6 flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Manage Event Types</SheetTitle>
-          <SheetDescription>Add, rename, recolour, reorder, or deactivate event types.</SheetDescription>
-        </SheetHeader>
-        <div className="flex-1 overflow-hidden mt-4">{content}</div>
-      </SheetContent>
-    </Sheet>
+    <ResponsiveModal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title="Manage Event Types"
+      drawerHeight="h-[80vh]"
+      maxWidth="sm:max-w-sm"
+    >
+      {content}
+    </ResponsiveModal>
   );
 }

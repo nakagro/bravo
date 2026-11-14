@@ -4,31 +4,17 @@ import { api } from "../../../../convex/_generated/api";
 import { HOSE_ID_FORMAT_MESSAGE, isValidHoseId } from "../../../../convex/lib/hoseId";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter,
-} from "@/components/ui/drawer";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, CircleCheckBig, TriangleAlert, X } from "lucide-react";
+import { RefreshCw, Trash2, CircleCheckBig, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Status, Size, Type, Location } from "../types";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onClose: () => void }) {
-  const isMobile = useIsMobile();
   const hose = useQuery(api.hoses.get, hoseId ? { id: hoseId } : "skip");
   const moduleSettings = useQuery(api.modules.getModuleSettings, {});
   const add = useMutation(api.hoses.add);
@@ -484,61 +470,24 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
     </form>
   );
 
-  // Sticky footer with action buttons
-  const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1 h-12 text-base">
-        Cancel
-      </Button>
-      <Button type="submit" form="hose-form" disabled={isSubmitting || hoseIdInvalid} className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800">
-        {isSubmitting && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
-        {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
-      </Button>
-    </div>
-  );
-
-  // Mobile: Full-screen drawer sliding up from bottom
-  if (isMobile) {
-    return (
-      <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DrawerContent className="h-[95vh] flex flex-col border-gray-700">
-          <DrawerHeader className="flex-shrink-0 border-b border-gray-700 pb-4">
-            <div className="flex items-center justify-between">
-              <DrawerTitle className="text-xl font-bold">
-                {hoseId ? `Edit ${hose?.hoseId || 'Hose'}` : 'Add New Hose'}
-              </DrawerTitle>
-              <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close hose form" className="h-10 w-10">
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-          </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 pt-4">
-            {formContent}
-          </div>
-          <DrawerFooter className="flex-shrink-0 p-0">
-            {formFooter}
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  // Desktop: Traditional dialog
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 dark:border-gray-700">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-700 dark:border-gray-700">
-          <DialogTitle className="text-xl font-bold">
-            {hoseId ? `Edit Hose - ${hose?.hoseId}` : 'Add New Hose'}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 pt-4">
-          {formContent}
-        </div>
-        <div className="flex-shrink-0">
-          {formFooter}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveModal
+      open
+      onClose={onClose}
+      title={hoseId ? `Edit Hose - ${hose?.hoseId}` : 'Add New Hose'}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" form="hose-form" disabled={isSubmitting || hoseIdInvalid} className="bg-red-700 hover:bg-red-800">
+            {isSubmitting && <RefreshCw aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
+            {isSubmitting ? "Saving…" : `${hoseId ? "Update" : "Add"} hose`}
+          </Button>
+        </>
+      }
+    >
+      {formContent}
+    </ResponsiveModal>
   );
 }

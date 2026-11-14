@@ -1,20 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter,
-} from "@/components/ui/drawer";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 
 interface ApplianceLocationEditorProps {
@@ -22,7 +9,6 @@ interface ApplianceLocationEditorProps {
 }
 
 function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
-  const isMobile = useIsMobile();
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
   const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
   const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
@@ -187,52 +173,20 @@ function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
     </div>
   );
 
-  const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
-        Done
-      </Button>
-    </div>
-  );
-
-  // Mobile: Drawer sliding up from bottom
-  if (isMobile) {
-    return (
-      <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DrawerContent className="max-h-[85vh] flex flex-col border-gray-700">
-          <DrawerHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4">
-            <DrawerTitle className="text-xl font-bold">
-              Move Appliances
-            </DrawerTitle>
-          </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
-            {formContent}
-          </div>
-          <DrawerFooter className="flex-shrink-0 p-0">
-            {formFooter}
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  // Desktop: Dialog
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0 dark:border-gray-700">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <DialogTitle className="text-xl font-bold">
-            Move Appliances
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4">
-          {formContent}
-        </div>
-        <div className="flex-shrink-0">
-          {formFooter}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveModal
+      open
+      onClose={onClose}
+      title="Move Appliances"
+      drawerHeight="max-h-[85vh]"
+      footer={
+        <Button type="button" variant="outline" onClick={onClose}>
+          Done
+        </Button>
+      }
+    >
+      {formContent}
+    </ResponsiveModal>
   );
 }
 

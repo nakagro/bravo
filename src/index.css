@@ -193,3 +193,15 @@ body {
 .dark .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background-color: rgba(107, 114, 128, 0.7);
 }
+
+/* iOS zooms the page into any text field under 16px when it takes focus, and
+   the zoom throws forms around. On touch screens no field goes below 16px,
+   whatever size class it carries. Unlayered on purpose so it beats the
+   utilities. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}

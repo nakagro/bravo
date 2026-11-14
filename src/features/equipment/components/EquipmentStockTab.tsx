@@ -2,21 +2,11 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-} from "@/components/ui/sheet";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-} from "@/components/ui/drawer";
 import {
   Accordion,
   AccordionContent,
@@ -38,7 +28,6 @@ interface SelectedItem {
 }
 
 export function EquipmentStockTab() {
-  const isMobile = useIsMobile();
   const itemsByCategory = useQuery(api.equipment.getItemsByCategory);
   const replenishItem = useMutation(api.equipment.replenishItem);
   const [search, setSearch] = useState("");
@@ -229,18 +218,6 @@ export function EquipmentStockTab() {
       )}
       {/* Item History Panel */}
       {selectedItem && (() => {
-        const panelHeader = (
-          <>
-            <div className="text-lg font-semibold">
-              {selectedItem.name}
-              {selectedItem.size && <span className="text-muted-foreground ml-1">({selectedItem.size})</span>}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Stock: {selectedItem.currentStock}{selectedItem.minimumStock !== undefined && ` / ${selectedItem.minimumStock}`} {selectedItem.unit || "units"}
-            </p>
-          </>
-        );
-
         const panelContent = (
           <>
             {/* Quick restock */}
@@ -273,28 +250,20 @@ export function EquipmentStockTab() {
           </>
         );
 
-        return isMobile ? (
-          <Drawer open onOpenChange={(open) => { if (!open) { setSelectedItem(null); setRestockQty(1); } }}>
-            <DrawerContent className="max-h-[85vh]">
-              <DrawerHeader className="border-b pb-3">
-                {panelHeader}
-              </DrawerHeader>
-              <div className="overflow-y-auto p-4 space-y-4">
-                {panelContent}
-              </div>
-            </DrawerContent>
-          </Drawer>
-        ) : (
-          <Sheet open onOpenChange={(open) => { if (!open) { setSelectedItem(null); setRestockQty(1); } }}>
-            <SheetContent className="overflow-y-auto sm:max-w-md">
-              <SheetHeader>
-                {panelHeader}
-              </SheetHeader>
-              <div className="mt-4 space-y-4">
-                {panelContent}
-              </div>
-            </SheetContent>
-          </Sheet>
+        return (
+          <ResponsiveModal
+            open
+            onClose={() => { setSelectedItem(null); setRestockQty(1); }}
+            title={selectedItem.size ? `${selectedItem.name} (${selectedItem.size})` : selectedItem.name}
+            drawerHeight="max-h-[85vh]"
+          >
+            <div className="space-y-4 pb-4">
+              <p className="text-sm text-muted-foreground">
+                Stock: {selectedItem.currentStock}{selectedItem.minimumStock !== undefined && ` / ${selectedItem.minimumStock}`} {selectedItem.unit || "units"}
+              </p>
+              {panelContent}
+            </div>
+          </ResponsiveModal>
         );
       })()}
     </div>

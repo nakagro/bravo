@@ -7,6 +7,9 @@
 - General: Forms on phones no longer close by themselves when you tap while typing.
 - General: On phones, the arrows on a member picker open the full list and put the keyboard away.
 - General: Tapping the top of the screen with a form open no longer scrolls the page behind it.
+- General: Forms across Keys, Hoses, Vehicle Faults, Equipment, Availability, Events and Bookings now open and handle the keyboard the same way.
+- General: Forms no longer bring up the keyboard by themselves when they open on a phone.
+- General: Phones no longer zoom in when you tap a small text field.
 
 ## [2026.11.13]
 - Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.

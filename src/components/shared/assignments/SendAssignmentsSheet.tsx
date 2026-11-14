@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { NotificationCard } from "./NotificationCard";
@@ -102,12 +102,45 @@ export function SendAssignmentsSheet({
   const first = recipients[0];
 
   return (
-    <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto">
-        <SheetHeader className="text-left">
-          <SheetTitle>{step === "who" ? "Send to crew" : "Check what they'll see"}</SheetTitle>
-          <SheetDescription>{heading}</SheetDescription>
-        </SheetHeader>
+    <ResponsiveModal
+      open={open}
+      onClose={close}
+      title={step === "who" ? "Send to crew" : "Check what they'll see"}
+      drawerHeight="max-h-[90vh]"
+      footer={
+        step === "who" ? (
+          <>
+            <Button variant="outline" onClick={close}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => setStep("confirm")}
+              disabled={recipients.length === 0}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Next
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={() => setStep("who")}>
+              Back
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={sending || !upToDate || recipients.length === 0}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {sending
+                ? "Sending..."
+                : `Send to ${recipients.length} ${recipients.length === 1 ? "member" : "members"}`}
+            </Button>
+          </>
+        )
+      }
+    >
+      <div className="pb-4">
+        <p className="text-sm text-muted-foreground">{heading}</p>
 
         {preview === null && (
           <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">This can't be sent any more.</p>
@@ -182,18 +215,6 @@ export function SendAssignmentsSheet({
 
             <NotificationLog source={source} scopeId={scopeId} limit={3} title="Already sent" bare />
 
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={close} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => setStep("confirm")}
-                disabled={recipients.length === 0}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              >
-                Next
-              </Button>
-            </div>
           </div>
         )}
 
@@ -225,24 +246,10 @@ export function SendAssignmentsSheet({
               ))}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Also appears in each member's Action Centre.</p>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep("who")} className="flex-1">
-                Back
-              </Button>
-              <Button
-                onClick={handleSend}
-                disabled={sending || !upToDate || recipients.length === 0}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              >
-                {sending
-                  ? "Sending..."
-                  : `Send to ${recipients.length} ${recipients.length === 1 ? "member" : "members"}`}
-              </Button>
-            </div>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </ResponsiveModal>
   );
 }
 

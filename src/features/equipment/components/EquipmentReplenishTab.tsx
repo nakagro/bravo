@@ -2,24 +2,11 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter,
-} from "@/components/ui/drawer";
 import { Plus, Minus, X, Search, TriangleAlert, Package, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,7 +30,6 @@ interface ReplenishGroup {
 }
 
 export function EquipmentReplenishTab() {
-  const isMobile = useIsMobile();
   const items = useQuery(api.equipment.getItems);
   const replenishItem = useMutation(api.equipment.replenishItem);
 
@@ -290,39 +276,39 @@ export function EquipmentReplenishTab() {
   );
 
   const footer = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
+    <>
       {selectedVariant && selectedGroup?.hasSizes && selectedGroup.variants.length > 1 ? (
         <>
-          <Button variant="outline" onClick={handleBack} className="flex-1 h-12 text-base">
+          <Button variant="outline" onClick={handleBack}>
             Back
           </Button>
           <Button
             onClick={handleReplenish}
             disabled={isSubmitting || quantity <= 0}
-            className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700"
+            className="bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? "Adding..." : `Add ${quantity}`}
           </Button>
         </>
       ) : selectedVariant ? (
         <>
-          <Button variant="outline" onClick={handleClose} className="flex-1 h-12 text-base">
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             onClick={handleReplenish}
             disabled={isSubmitting || quantity <= 0}
-            className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700"
+            className="bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? "Adding..." : `Add ${quantity}`}
           </Button>
         </>
       ) : (
-        <Button variant="outline" onClick={handleClose} className="flex-1 h-12 text-base">
+        <Button variant="outline" onClick={handleClose}>
           Cancel
         </Button>
       )}
-    </div>
+    </>
   );
 
   return (
@@ -400,43 +386,17 @@ export function EquipmentReplenishTab() {
         </div>
       )}
 
-      {/* Mobile: Drawer */}
-      {isMobile && selectedGroup && (
-        <Drawer open onOpenChange={(open) => { if (!open) handleClose(); }}>
-          <DrawerContent className="border-gray-700">
-            <DrawerHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
-              <div className="flex items-center justify-between">
-                <DrawerTitle className="text-xl font-bold">Replenish Stock</DrawerTitle>
-                <Button variant="ghost" size="icon" onClick={handleClose} className="h-10 w-10">
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
-            </DrawerHeader>
-            <div className="px-4">
-              {modalContent}
-            </div>
-            <DrawerFooter className="p-0">
-              {footer}
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-      )}
-
-      {/* Desktop: Dialog */}
-      {!isMobile && selectedGroup && (
-        <Dialog open onOpenChange={(open) => { if (!open) handleClose(); }}>
-          <DialogContent className="max-w-sm p-0 dark:border-gray-700">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle className="text-xl font-bold">Replenish Stock</DialogTitle>
-            </DialogHeader>
-            <div className="px-6">
-              {modalContent}
-            </div>
-            <div>
-              {footer}
-            </div>
-          </DialogContent>
-        </Dialog>
+      {selectedGroup && (
+        <ResponsiveModal
+          open
+          onClose={handleClose}
+          title="Replenish Stock"
+          drawerHeight="max-h-[85vh]"
+          maxWidth="sm:max-w-sm"
+          footer={footer}
+        >
+          {modalContent}
+        </ResponsiveModal>
       )}
     </div>
   );

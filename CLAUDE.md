@@ -136,6 +136,25 @@ guidelines and skill files, and had gone 15 months without an update.
 - **Feature Components**: `src/features/[domain]/components/`
 - **Common Components**: `src/components/common/` (DarkModeToggle, etc.)
 
+### Forms, Pickers and the Phone Keyboard
+
+Phones are the primary device. Focus, keyboard and dismissal behaviour live in the shared components,
+so pages get it by default. Don't rebuild it per page.
+
+- **Forms and detail panels open in `ResponsiveModal`** (`src/components/shared/`): a bottom drawer on
+  phones, a side panel on desktop. Pass the action buttons as `footer` and a small header control as
+  `headerAction`. Don't hand-roll `isMobile ? <Drawer> : <Dialog>`, and don't use `Sheet` or `Dialog`
+  for a form members fill in on a phone.
+- **The drawer (`ui/drawer.tsx`) owns the keyboard**: it sits above the keyboard, keeps iOS from
+  scrolling the page, ignores taps outside while typing, pins the page behind (scroll position kept),
+  and drops `autoFocus` on open for touch screens. Fixes go there, not in a page.
+- **Pickers**: members via `MemberCombobox`, other lists via `ui/combobox.tsx`. Type-in-place by
+  design: the field is the search box, and the chevron opens the full list without raising the
+  keyboard on phones. Crew seats use `CrewSeatPickers` and the rules in `crew/crewSeats.ts`.
+- **Text fields never render under 16px on touch screens** (a global rule in `src/index.css`), so
+  iOS doesn't zoom on focus.
+- `autoFocus` is fine for a field that appears because the member tapped something (e.g. Edit).
+
 ### Styling Patterns
 - **Tailwind CSS**: Utility-first with CSS variables for theming
 - **Dark Mode**: Complete light/dark theme support via ThemeContext

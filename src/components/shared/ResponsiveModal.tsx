@@ -29,6 +29,8 @@ interface ResponsiveModalProps {
    * so every modal's actions look and sit the same. Don't wrap them.
    */
   footer?: ReactNode;
+  /** A small control beside the title, e.g. an Edit toggle. */
+  headerAction?: ReactNode;
   /** Mobile drawer height - defaults to "h-[90vh]" */
   drawerHeight?: string;
   /** Desktop sheet max-width - defaults to "sm:max-w-md md:max-w-lg" */
@@ -64,6 +66,7 @@ export function ResponsiveModal({
   title,
   children,
   footer,
+  headerAction,
   drawerHeight = "h-[90vh]",
   maxWidth = "sm:max-w-md md:max-w-lg",
   onRequestClose,
@@ -109,6 +112,7 @@ export function ResponsiveModal({
           <DrawerHeader className="shrink-0 border-b border-border pb-4">
             <div className="flex items-center justify-between">
               <DrawerTitle className="text-xl font-bold">{title}</DrawerTitle>
+              <div className="ml-auto mr-1">{headerAction}</div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -151,7 +155,10 @@ export function ResponsiveModal({
         )}
       >
         <SheetHeader className="shrink-0 border-b border-border p-6 pb-4">
-          <SheetTitle className="text-xl font-bold">{title}</SheetTitle>
+          <div className="flex items-center justify-between gap-3 pr-8">
+            <SheetTitle className="text-xl font-bold">{title}</SheetTitle>
+            {headerAction}
+          </div>
           <SheetDescription className="sr-only">{title}</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-4 pb-4">

@@ -3,23 +3,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { statusConfig, priorityConfig } from "../types";
 import type { StatusType, PriorityType } from "../types";
 import { VehicleFaultAttachments } from "./VehicleFaultAttachments";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +34,6 @@ export function VehicleFaultForm({
   onOpenChange,
   onSaved,
 }: VehicleFaultFormProps) {
-  const isMobile = useIsMobile();
   const isEdit = !!faultId;
 
   const fault = useQuery(
@@ -161,7 +148,7 @@ export function VehicleFaultForm({
   };
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-y-auto">
+    <form id="vehicle-fault-form" onSubmit={handleSubmit} className="space-y-4 pb-4">
       {/* Vehicle + Priority row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -328,46 +315,27 @@ export function VehicleFaultForm({
         <VehicleFaultAttachments faultId={faultId} mode="edit" />
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2 pt-2 pb-4">
-        <Button type="submit" className="flex-1 gap-2" disabled={saving}>
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : isEdit ? "Save Changes" : "Report Fault"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[92vh] flex flex-col border-gray-700">
-          <DrawerHeader>
-            <DrawerTitle>{isEdit ? "Edit Fault" : "Report Vehicle Fault"}</DrawerTitle>
-          </DrawerHeader>
-          <div className="flex-1 overflow-hidden px-6 pb-6">
-            {formContent}
-          </div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Fault" : "Report Vehicle Fault"}</DialogTitle>
-        </DialogHeader>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+    <ResponsiveModal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title={isEdit ? "Edit Fault" : "Report Vehicle Fault"}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="vehicle-fault-form" className="gap-2" disabled={saving}>
+            <Save className="h-4 w-4" />
+            {saving ? "Saving..." : isEdit ? "Save Changes" : "Report Fault"}
+          </Button>
+        </>
+      }
+    >
+      {formContent}
+    </ResponsiveModal>
   );
 }

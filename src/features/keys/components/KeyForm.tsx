@@ -4,19 +4,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { KeyItems } from "./KeyItems";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter,
-} from "@/components/ui/drawer";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,8 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { X, Trash2 } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Trash2 } from "lucide-react";
 
 export function KeyForm({
   keyId,
@@ -42,7 +29,6 @@ export function KeyForm({
   keyId: Id<"keys"> | null,
   onClose: () => void
 }) {
-  const isMobile = useIsMobile();
   const existingKey = useQuery(api.keys.get, keyId ? { id: keyId } : "skip");
 
   const [formData, setFormData] = useState({
@@ -298,65 +284,28 @@ export function KeyForm({
     </div>
   );
 
-  // Sticky footer with action buttons
-  const formFooter = (
-    <div className="flex gap-3 p-4 pb-8 md:pb-4 border-t border-gray-200 dark:border-gray-700 bg-background">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12 text-base">
-        Cancel
-      </Button>
-      <Button
-        type="submit"
-        form="key-form"
-        disabled={isSubmitting}
-        className="flex-1 h-12 text-base bg-red-700 hover:bg-red-800"
-      >
-        {isSubmitting ? "Saving..." : (keyId ? "Update" : "Add")} Key
-      </Button>
-    </div>
-  );
-
-  // Mobile: Full-screen drawer sliding up from bottom
-  if (isMobile) {
-    return (
-      <Drawer open onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DrawerContent className="h-[95vh] flex flex-col border-gray-700">
-          <DrawerHeader className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 pb-4">
-            <div className="flex items-center justify-between">
-              <DrawerTitle className="text-xl font-bold">
-                {keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
-              </DrawerTitle>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10">
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-          </DrawerHeader>
-          <div className="flex-1 overflow-y-auto px-4 pt-4">
-            {formContent}
-          </div>
-          <DrawerFooter className="flex-shrink-0 p-0">
-            {formFooter}
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  // Desktop: Traditional dialog
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 dark:border-gray-700">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <DialogTitle className="text-xl font-bold">
-            {keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 pt-4">
-          {formContent}
-        </div>
-        <div className="flex-shrink-0">
-          {formFooter}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveModal
+      open
+      onClose={onClose}
+      title={keyId ? `Edit Key - ${existingKey?.pegNumber || ''}` : 'Add New Key'}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="key-form"
+            disabled={isSubmitting}
+            className="bg-red-700 hover:bg-red-800"
+          >
+            {isSubmitting ? "Saving..." : (keyId ? "Update" : "Add")} Key
+          </Button>
+        </>
+      }
+    >
+      {formContent}
+    </ResponsiveModal>
   );
 }

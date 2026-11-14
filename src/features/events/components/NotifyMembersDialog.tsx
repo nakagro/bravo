@@ -3,13 +3,7 @@ import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { NoteField } from "@/components/shared/assignments/SendAssignmentsSheet";
 import { ChangeNoticePreview, useChangePreview, type MessageAudience } from "./EventChangeNotice";
@@ -80,53 +74,55 @@ function MessageSheet({ open, onOpenChange, eventId, eventTitle }: NotifyMembers
   ];
 
   return (
-    <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto">
-        <SheetHeader className="text-left">
-          <SheetTitle>Message members</SheetTitle>
-          <SheetDescription>
-            {eventTitle ? `Send a notification about "${eventTitle}".` : "Send a notification about this event."}
-          </SheetDescription>
-        </SheetHeader>
-        <div className="mt-4 space-y-4">
-          {preview === null && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">Messages can't be sent for this event any more.</p>
-          )}
-          <fieldset className="space-y-1 text-sm">
-            {options.map(([value, label, count]) => (
-              <label key={value} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="message-audience"
-                  checked={audience === value}
-                  onChange={() => setAudience(value)}
-                />
-                {label}
-                {count !== undefined && <span className="text-gray-500">({count})</span>}
-              </label>
-            ))}
-          </fieldset>
-          <NoteField
-            value={message}
-            onChange={setMessage}
-            label="Message"
-            hint="The event's date, time and place are added underneath."
-          />
-          {preview && hasText && <ChangeNoticePreview preview={preview} />}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={close} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSend}
-              disabled={sending || !preview || !current || !hasText || n === 0}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-            >
-              {sending ? "Sending..." : `Send to ${n}`}
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <ResponsiveModal
+      open={open}
+      onClose={close}
+      title="Message members"
+      drawerHeight="max-h-[90vh]"
+      footer={
+        <>
+          <Button variant="outline" onClick={close}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={sending || !preview || !current || !hasText || n === 0}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
+            {sending ? "Sending..." : `Send to ${n}`}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4 pb-4">
+        <p className="text-sm text-muted-foreground">
+          {eventTitle ? `Send a notification about "${eventTitle}".` : "Send a notification about this event."}
+        </p>
+        {preview === null && (
+          <p className="text-sm text-gray-600 dark:text-gray-400">Messages can't be sent for this event any more.</p>
+        )}
+        <fieldset className="space-y-1 text-sm">
+          {options.map(([value, label, count]) => (
+            <label key={value} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="message-audience"
+                checked={audience === value}
+                onChange={() => setAudience(value)}
+              />
+              {label}
+              {count !== undefined && <span className="text-gray-500">({count})</span>}
+            </label>
+          ))}
+        </fieldset>
+        <NoteField
+          value={message}
+          onChange={setMessage}
+          label="Message"
+          hint="The event's date, time and place are added underneath."
+        />
+        {preview && hasText && <ChangeNoticePreview preview={preview} />}
+      </div>
+    </ResponsiveModal>
   );
 }

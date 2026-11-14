@@ -145,6 +145,23 @@ function KeyboardAwareContent({
   const lastFieldBlur = React.useRef(0)
   usePagePinnedWhileOpen()
 
+  // A field that grabs focus as the drawer opens (autoFocus) would raise the
+  // keyboard before the member has touched anything, and the sheet jumps as
+  // it opens. On touch screens drop that focus; the keyboard comes up when
+  // they tap a field. Runs once, before paint, after children have focused.
+  // Fields focused later (e.g. tapping Edit) are left alone.
+  React.useLayoutEffect(() => {
+    const sheet = sheetRef.current
+    const focused = document.activeElement
+    if (
+      window.matchMedia("(pointer: coarse)").matches &&
+      sheet?.contains(focused) &&
+      isTextEntry(focused)
+    ) {
+      focused.blur()
+    }
+  }, [])
+
   // A tap that blurs a field and then removes what it hit (a clear button, a
   // picker row), or lands after the sheet moves as the keyboard drops, reaches
   // Radix as a tap outside, and the drawer closed mid-edit. While typing, or
