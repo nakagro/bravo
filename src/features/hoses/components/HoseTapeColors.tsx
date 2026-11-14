@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -87,8 +88,8 @@ function TapeColorEditor({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="tape-year">Test Year</Label>
+      <Field>
+        <FieldLabel htmlFor="tape-year">Test Year</FieldLabel>
         <Input
           id="tape-year"
           name="tapeYear"
@@ -108,7 +109,7 @@ function TapeColorEditor({
             Create a new entry to assign tape to a different year.
           </p>
         ) : null}
-      </div>
+      </Field>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 text-sm font-medium">Tape Style</legend>

@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "../../convex/_generated/api";
@@ -92,8 +92,8 @@ function MemberKitSetPage({ mode = "view" }: MemberKitSetPageProps) {
         <h1 className="text-2xl font-bold">{isNew ? "New kit set" : "Edit kit set"}</h1>
 
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="set-name">Name</Label>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="set-name">Name</FieldLabel>
             <Input
               id="set-name"
               value={name}
@@ -104,9 +104,9 @@ function MemberKitSetPage({ mode = "view" }: MemberKitSetPageProps) {
               aria-describedby={error ? "set-error" : undefined}
               className="min-h-11"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="set-description">Description</Label>
+          </Field>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="set-description">Description</FieldLabel>
             <Textarea
               id="set-description"
               value={description}
@@ -114,7 +114,7 @@ function MemberKitSetPage({ mode = "view" }: MemberKitSetPageProps) {
               rows={2}
               placeholder="Optional: what this set is for"
             />
-          </div>
+          </Field>
           {error && (
             <p id="set-error" role="alert" className="text-sm text-destructive">
               {error}

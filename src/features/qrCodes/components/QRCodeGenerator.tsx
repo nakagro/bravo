@@ -31,6 +31,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Field, FieldLabel } from "@/components/ui/field";
 
 type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 
@@ -212,12 +213,12 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
         </div>
 
         {/* Name - optional */}
-        <div className="space-y-1.5">
-          <Label htmlFor="name" className="flex items-center gap-2 text-sm font-medium">
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="name" className="flex items-center gap-2 text-sm font-medium">
             <Tag className="w-4 h-4" />
             Name
             <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-          </Label>
+          </FieldLabel>
           <Input
             id="name"
             type="text"
@@ -225,7 +226,7 @@ export function QRCodeGenerator({ onSaved }: QRCodeGeneratorProps) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-        </div>
+        </Field>
 
         {/* Options */}
         <div className="grid grid-cols-2 gap-3">

@@ -8,6 +8,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Trash2, CircleCheckBig, TriangleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -319,8 +320,8 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
             </SelectContent>
           </Select>
           {lengthOption === 'other' && (
-            <div className="mt-3 space-y-2">
-            <Label htmlFor="customLength">Custom length (metres)</Label>
+            <Field className="mt-3">
+            <FieldLabel htmlFor="customLength">Custom length (metres)</FieldLabel>
             <Input
               id="customLength"
               name="customLength"
@@ -337,7 +338,7 @@ export function HoseForm({ hoseId, onClose }: { hoseId: Id<"hoses"> | null, onCl
               min="1"
               step="0.1"
             />
-            </div>
+            </Field>
           )}
         </div>
       </div>

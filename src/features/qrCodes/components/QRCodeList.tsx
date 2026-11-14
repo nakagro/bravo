@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { Spinner } from "@/components/ui/spinner";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 type QRCodeEntry = {
   _id: Id<'qrCodes'>;
@@ -344,18 +345,18 @@ function QREditDialog({ qrCode, onClose, onSaved }: QREditDialogProps) {
               )}
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-name">
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="edit-name">
               Name{' '}
               <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-            </Label>
+            </FieldLabel>
             <Input
               id="edit-name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder="My QR Code"
             />
-          </div>
+          </Field>
 
           {/* Live preview while editing */}
           {editSvg ? (

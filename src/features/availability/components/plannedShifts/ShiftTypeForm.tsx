@@ -7,6 +7,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { cn } from "@/lib/utils";
@@ -134,8 +135,8 @@ export function ShiftTypeForm({ initial, onDone, onSavingChange }: ShiftTypeForm
 
   return (
     <form id={SHIFT_TYPE_FORM_ID} onSubmit={handleSubmit} className="space-y-5 pb-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="shift-type-name">Name</Label>
+      <Field className="gap-1.5">
+        <FieldLabel htmlFor="shift-type-name">Name</FieldLabel>
         <Input
           id="shift-type-name"
           placeholder="e.g. Night"
@@ -144,7 +145,7 @@ export function ShiftTypeForm({ initial, onDone, onSavingChange }: ShiftTypeForm
           onChange={(e) => setName(e.target.value)}
           className="text-base md:text-sm"
         />
-      </div>
+      </Field>
 
       <div>
         <div className="flex gap-3">

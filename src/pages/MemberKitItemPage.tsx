@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -155,8 +156,8 @@ function MemberKitItemPage() {
       <form onSubmit={submit} className="space-y-4">
         <h2 className="text-base font-semibold">Details</h2>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="item-name">Name</Label>
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="item-name">Name</FieldLabel>
           <Input
             id="item-name"
             value={name}
@@ -165,10 +166,10 @@ function MemberKitItemPage() {
             required
             className="min-h-11"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="item-description">Description</Label>
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="item-description">Description</FieldLabel>
           <Textarea
             id="item-description"
             value={description}
@@ -176,10 +177,10 @@ function MemberKitItemPage() {
             rows={2}
             placeholder="Optional: helper text shown under the control"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="item-belongs">Belongs to</Label>
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="item-belongs">Belongs to</FieldLabel>
           <Select value={belongsTo} onValueChange={setBelongsTo}>
             <SelectTrigger id="item-belongs" className="min-h-11">
               <SelectValue />
@@ -193,10 +194,10 @@ function MemberKitItemPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="item-tracks">Tracks</Label>
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="item-tracks">Tracks</FieldLabel>
           <Select
             value={tracks}
             onValueChange={(next) => setTracks(next as KitTracks)}
@@ -218,7 +219,7 @@ function MemberKitItemPage() {
               ? `${recordedCount} value(s) are recorded, so this cannot change. Archive this item and add a new one instead.`
               : KIT_TRACKS.find((option) => option.value === tracks)?.hint}
           </p>
-        </div>
+        </Field>
 
         {tracks === "choice" && <OptionsEditor options={options} onChange={setOptions} />}
 
@@ -549,8 +550,8 @@ function ChartForm({
         {chart ? `Edit ${chart.name ?? "sizes"}` : "New size chart"}
       </h3>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="chart-name">Brand or model (optional)</Label>
+      <Field className="gap-1.5">
+        <FieldLabel htmlFor="chart-name">Brand or model (optional)</FieldLabel>
         <Input
           id="chart-name"
           value={name}
@@ -563,7 +564,7 @@ function ChartForm({
           only when you stock the same item from more than one supplier, so an
           officer has to pick which one a member was issued.
         </p>
-      </div>
+      </Field>
 
       <div className="space-y-1.5">
         <Label htmlFor="chart-size">Sizes</Label>

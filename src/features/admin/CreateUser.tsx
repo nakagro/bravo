@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -103,8 +103,8 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
       <form onSubmit={handleSubmit}>
         <CardContent className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-first-name">First name</Label>
+            <Field>
+              <FieldLabel htmlFor="create-user-first-name">First name</FieldLabel>
               <Input
                 id="create-user-first-name"
                 autoComplete="given-name"
@@ -115,9 +115,9 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                   updateField("firstName", event.target.value)
                 }
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-last-name">Last name</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="create-user-last-name">Last name</FieldLabel>
               <Input
                 id="create-user-last-name"
                 autoComplete="family-name"
@@ -128,12 +128,12 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                   updateField("lastName", event.target.value)
                 }
               />
-            </div>
+            </Field>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-email">Email address</Label>
+            <Field>
+              <FieldLabel htmlFor="create-user-email">Email address</FieldLabel>
               <Input
                 id="create-user-email"
                 type="email"
@@ -143,9 +143,9 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                 value={form.email}
                 onChange={(event) => updateField("email", event.target.value)}
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-member-number">CFA number</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="create-user-member-number">CFA number</FieldLabel>
               <Input
                 id="create-user-member-number"
                 inputMode="numeric"
@@ -157,11 +157,11 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                   updateField("memberNumber", event.target.value)
                 }
               />
-            </div>
+            </Field>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="create-user-rank">Rank</Label>
+          <Field>
+            <FieldLabel htmlFor="create-user-rank">Rank</FieldLabel>
             <Select
               value={form.rank}
               onValueChange={(rank: Rank) => updateField("rank", rank)}
@@ -179,11 +179,11 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-password">Temporary password</Label>
+            <Field>
+              <FieldLabel htmlFor="create-user-password">Temporary password</FieldLabel>
               <Input
                 id="create-user-password"
                 type="password"
@@ -195,11 +195,11 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                   updateField("password", event.target.value)
                 }
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="create-user-confirm-password">
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="create-user-confirm-password">
                 Confirm password
-              </Label>
+              </FieldLabel>
               <Input
                 id="create-user-confirm-password"
                 type="password"
@@ -215,7 +215,7 @@ export default function CreateUser({ showTitle = true }: CreateUserProps) {
                   updateField("confirmPassword", event.target.value)
                 }
               />
-            </div>
+            </Field>
           </div>
         </CardContent>
         <CardFooter>

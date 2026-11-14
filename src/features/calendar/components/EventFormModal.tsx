@@ -7,6 +7,7 @@ import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -185,8 +186,8 @@ export function EventFormModal({
         }
       >
         <div className="space-y-4 pb-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="event-title">Title</Label>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="event-title">Title</FieldLabel>
             <Input
               id="event-title"
               value={title}
@@ -194,7 +195,7 @@ export function EventFormModal({
               placeholder="e.g. Training night"
               maxLength={200}
             />
-          </div>
+          </Field>
 
           <div className="flex items-center justify-between">
             <Label htmlFor="event-all-day">All day</Label>
@@ -205,19 +206,19 @@ export function EventFormModal({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="event-date">{allDay ? "Start date" : "Date"}</Label>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="event-date">{allDay ? "Start date" : "Date"}</FieldLabel>
             <Input
               id="event-date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
-          </div>
+          </Field>
 
           {allDay ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="event-end-date">End date</Label>
+            <Field className="gap-1.5">
+              <FieldLabel htmlFor="event-end-date">End date</FieldLabel>
               <Input
                 id="event-end-date"
                 type="date"
@@ -225,22 +226,22 @@ export function EventFormModal({
                 min={date}
                 onChange={(e) => setEndDate(e.target.value)}
               />
-            </div>
+            </Field>
           ) : (
             // Native time inputs are intrinsically wide; side by side they collide
             // on a phone, so stack them there.
             <div className={isMobile ? "space-y-3" : "grid grid-cols-2 gap-3"}>
-              <div className="space-y-1.5">
-                <Label htmlFor="event-start-time">Starts</Label>
+              <Field className="gap-1.5">
+                <FieldLabel htmlFor="event-start-time">Starts</FieldLabel>
                 <Input
                   id="event-start-time"
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="event-end-time">Ends (optional)</Label>
+              </Field>
+              <Field className="gap-1.5">
+                <FieldLabel htmlFor="event-end-time">Ends (optional)</FieldLabel>
                 <Input
                   id="event-end-time"
                   type="time"
@@ -250,12 +251,12 @@ export function EventFormModal({
                 <p className="text-xs text-muted-foreground">
                   Leave blank if the finish time isn&apos;t known
                 </p>
-              </div>
+              </Field>
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="event-location">Location (optional)</Label>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="event-location">Location (optional)</FieldLabel>
             <Input
               id="event-location"
               value={location}
@@ -263,10 +264,10 @@ export function EventFormModal({
               placeholder="e.g. Station"
               maxLength={200}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="event-description">Description (optional)</Label>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="event-description">Description (optional)</FieldLabel>
             <Textarea
               id="event-description"
               value={description}
@@ -274,7 +275,7 @@ export function EventFormModal({
               rows={3}
               maxLength={2000}
             />
-          </div>
+          </Field>
         </div>
       </ResponsiveModal>
 
