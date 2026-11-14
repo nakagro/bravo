@@ -85,18 +85,6 @@ function scrollWithinList(item: HTMLElement | null) {
   }
 }
 
-// Focusing from code (the chevron) let iOS scroll the page to the field,
-// throwing a drawer off screen. Same trick a tapped field gets in drawer.tsx:
-// park the field off screen as focus lands so iOS finds nothing to scroll to.
-function focusWithoutPageScroll(input: HTMLInputElement | null) {
-  if (!input || document.activeElement === input) return
-  input.style.transform = "translateY(-2000px)"
-  input.focus({ preventScroll: true })
-  requestAnimationFrame(() => {
-    input.style.transform = ""
-  })
-}
-
 // Type-in-place picker, deliberately (it replaces a Headless UI Combobox and
 // keeps its behaviour):
 // - the field is the search box; focusing it only gives you a cursor
@@ -178,6 +166,9 @@ export function Combobox({
       )
     : options
 
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const chevronPointer = React.useRef("")
+
   const close = () => {
     setOpen(false)
     setQuery("")
@@ -203,12 +194,26 @@ export function Combobox({
     setText(created)
   }
 
+  // Opened from the chevron on a phone, the field has no focus, so blur can't
+  // close the list. Any tap outside the picker does instead.
+  const closeRef = React.useRef(close)
+  closeRef.current = close
+  React.useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) closeRef.current()
+    }
+    document.addEventListener("pointerdown", onPointerDown, true)
+    return () => document.removeEventListener("pointerdown", onPointerDown, true)
+  }, [open])
+
   // Offer to add the typed text unless it exactly matches an existing option.
   const canCreate =
     !!onCreate && needle !== "" && !options.some((o) => o.label.toLowerCase() === needle)
 
   return (
     <CommandPrimitive
+      ref={rootRef}
       shouldFilter={false}
       className={cn("relative", className)}
       onBlur={(e) => {
@@ -246,7 +251,7 @@ export function Combobox({
           placeholder={placeholder}
           className={cn(
             "w-full rounded-md border border-gray-300 bg-white py-2 pl-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white",
-            showClearButton && selectedOption ? "pr-20" : "pr-10",
+            showClearButton && selectedOption ? "pr-[5.25rem]" : "pr-11",
             ariaInvalid && "border-red-500 dark:border-red-500"
           )}
         />
@@ -273,18 +278,24 @@ export function Combobox({
             type="button"
             tabIndex={-1}
             disabled={disabled}
+            onPointerDown={(e) => {
+              chevronPointer.current = e.pointerType
+            }}
             // Keep focus in the field so the toggle doesn't trigger a blur-close.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (open) {
                 close()
-              } else {
-                setQuery("")
-                setOpen(true)
-                focusWithoutPageScroll(inputRef.current)
+                return
               }
+              setQuery("")
+              setOpen(true)
+              // On a phone the chevron opens the list WITHOUT the keyboard:
+              // focusing the field raised it, iOS scrolled the page to the
+              // field and the sheet was thrown about. Tap the field to type.
+              if (chevronPointer.current !== "touch") inputRef.current?.focus()
             }}
-            className="flex w-10 items-center justify-center"
+            className="flex w-11 items-center justify-center"
             aria-label={open ? "Close list" : "Show all"}
           >
             <ChevronsUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />

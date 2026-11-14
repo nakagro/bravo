@@ -5,6 +5,7 @@
 - Availability: Deployment crew seats work the same way, with an X and swapping.
 - General: Tapping a filled member picker selects the name, so you can type over it.
 - General: Forms on phones no longer close by themselves when you tap while typing.
+- General: On phones, the arrows on a member picker open the full list without bringing up the keyboard.
 
 ## [2026.11.13]
 - Contacts: The District contact book now only loads for signed-in accounts, and admins upload new editions from Admin Settings.
