@@ -85,6 +85,18 @@ function scrollWithinList(item: HTMLElement | null) {
   }
 }
 
+// Focusing from code (the chevron) let iOS scroll the page to the field,
+// throwing a drawer off screen. Same trick a tapped field gets in drawer.tsx:
+// park the field off screen as focus lands so iOS finds nothing to scroll to.
+function focusWithoutPageScroll(input: HTMLInputElement | null) {
+  if (!input || document.activeElement === input) return
+  input.style.transform = "translateY(-2000px)"
+  input.focus({ preventScroll: true })
+  requestAnimationFrame(() => {
+    input.style.transform = ""
+  })
+}
+
 // Type-in-place picker, deliberately (it replaces a Headless UI Combobox and
 // keeps its behaviour):
 // - the field is the search box; focusing it only gives you a cursor
@@ -269,7 +281,7 @@ export function Combobox({
               } else {
                 setQuery("")
                 setOpen(true)
-                inputRef.current?.focus()
+                focusWithoutPageScroll(inputRef.current)
               }
             }}
             className="flex w-10 items-center justify-center"

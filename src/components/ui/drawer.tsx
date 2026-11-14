@@ -92,17 +92,37 @@ function hideFromIOSScroll(el: HTMLElement, then: () => void) {
 
 // Mounted only while the drawer is open (it sits inside the portal), so the
 // viewport listeners come and go with it.
+// How long after a field loses focus a tap "outside" is still ignored. The
+// keyboard takes about this long to drop and the sheet to settle.
+const BLUR_GRACE_MS = 700
+
 function KeyboardAwareContent({
   style,
   ref,
   onTouchEnd,
   onFocusCapture,
+  onBlurCapture,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
   const inset = useKeyboardInset()
   const sheetRef = React.useRef<HTMLDivElement | null>(null)
   const keyboardUp = React.useRef(false)
   keyboardUp.current = inset !== null
+  const lastFieldBlur = React.useRef(0)
+
+  // A tap that blurs a field and then removes what it hit (a clear button, a
+  // picker row), or lands after the sheet moves as the keyboard drops, reaches
+  // Radix as a tap outside, and the drawer closed mid-edit. While typing, or
+  // just after, only deliberate actions (X, Cancel, the handle) close it.
+  const guardOutside = (e: Event) => {
+    const typing =
+      keyboardUp.current ||
+      isTextEntry(document.activeElement) ||
+      performance.now() - lastFieldBlur.current < BLUR_GRACE_MS
+    if (typing) e.preventDefault()
+  }
 
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -140,6 +160,18 @@ function KeyboardAwareContent({
         e.preventDefault()
         field.style.transform = "translateY(-2000px)"
         field.focus({ preventScroll: true })
+      }}
+      onBlurCapture={(e) => {
+        onBlurCapture?.(e)
+        if (isTextEntry(e.target)) lastFieldBlur.current = performance.now()
+      }}
+      onPointerDownOutside={(e) => {
+        onPointerDownOutside?.(e)
+        guardOutside(e)
+      }}
+      onFocusOutside={(e) => {
+        onFocusOutside?.(e)
+        guardOutside(e)
       }}
       // Any focus, including the keyboard's up/down arrows
       onFocusCapture={(e) => {
