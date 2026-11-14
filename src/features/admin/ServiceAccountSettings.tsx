@@ -5,7 +5,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Plus, Trash2, Pencil, Key, RefreshCw, Clipboard, Ban, CircleCheckBig } from "lucide-react";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface ServiceAccountSettingsProps {
   showTitle?: boolean;
@@ -545,51 +545,51 @@ function ServiceAccountSettings({
       </ResponsiveModal>
 
       {/* ─── Regenerate PIN Dialog ─── */}
-      <Dialog open={isRegenerateOpen} onOpenChange={(o) => { if (!o) closeRegenerate(); }}>
-        <DialogContent className="max-w-sm gap-0 p-0" aria-describedby={undefined}>
-          <DialogHeader className="border-b border-border p-4 text-left">
-            <DialogTitle>Set New PIN</DialogTitle>
-          </DialogHeader>
-          <div className="p-4 space-y-3">
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              The old PIN will stop working immediately and all active sessions will be revoked.
-            </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                New PIN *
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="\d*"
-                value={formPin}
-                onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="4–10 digits"
-                autoFocus
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
-              />
-              {formPin.length > 0 && !isPinValid(formPin) && (
-                <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 border-t border-border p-4">
-            <button
-              onClick={closeRegenerate}
-              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
+      <ResponsiveModal
+        open={isRegenerateOpen}
+        onClose={closeRegenerate}
+        title="Set New PIN"
+        drawerHeight="max-h-[85vh]"
+        maxWidth="sm:max-w-sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={closeRegenerate}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleRegenerateSubmit}
               disabled={!isPinValid(formPin) || isSubmitting}
-              className="px-4 py-2 text-sm text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors disabled:opacity-50"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               {isSubmitting ? "Saving..." : "Set PIN"}
-            </button>
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3 pb-4">
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            The old PIN will stop working immediately and all active sessions will be revoked.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              New PIN *
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              value={formPin}
+              onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="4–10 digits"
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
+            />
+            {formPin.length > 0 && !isPinValid(formPin) && (
+              <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </ResponsiveModal>
 
       {/* ─── PIN Display Dialog ─── */}
       <Dialog open={isPinOpen} onOpenChange={(o) => { if (!o) closePinDisplay(); }}>

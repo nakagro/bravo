@@ -5,14 +5,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, TriangleAlert } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -140,16 +133,29 @@ export function EquipmentItemCard({ item, canManage = false }: EquipmentItemCard
       </div>
 
       {/* Take Item Dialog */}
-      <Dialog open={showTakeDialog} onOpenChange={setShowTakeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Take {item.name}</DialogTitle>
-            <DialogDescription>
+      <ResponsiveModal
+        open={showTakeDialog}
+        onClose={() => setShowTakeDialog(false)}
+        drawerHeight="max-h-[85vh]"
+        title={`Take ${item.name}`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowTakeDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTake}
+              disabled={isSubmitting || quantity <= 0 || quantity > item.currentStock}
+            >
+              {isSubmitting ? "Taking..." : `Take ${quantity}`}
+            </Button>
+          </>
+        }
+      >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
               How many {unitLabel} are you taking?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
+            </p>
             <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"
@@ -188,32 +194,32 @@ export function EquipmentItemCard({ item, canManage = false }: EquipmentItemCard
               rows={2}
             />
           </div>
+      </ResponsiveModal>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTakeDialog(false)}>
+      {/* Replenish Item Dialog */}
+      <ResponsiveModal
+        open={showReplenishDialog}
+        onClose={() => setShowReplenishDialog(false)}
+        drawerHeight="max-h-[85vh]"
+        title={`Replenish ${item.name}`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowReplenishDialog(false)}>
               Cancel
             </Button>
             <Button
-              onClick={handleTake}
-              disabled={isSubmitting || quantity <= 0 || quantity > item.currentStock}
+              onClick={handleReplenish}
+              disabled={isSubmitting || quantity <= 0}
             >
-              {isSubmitting ? "Taking..." : `Take ${quantity}`}
+              {isSubmitting ? "Adding..." : `Add ${quantity}`}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Replenish Item Dialog */}
-      <Dialog open={showReplenishDialog} onOpenChange={setShowReplenishDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Replenish {item.name}</DialogTitle>
-            <DialogDescription>
+          </>
+        }
+      >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
               How many {unitLabel} are you adding to stock?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
+            </p>
             <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"
@@ -250,20 +256,7 @@ export function EquipmentItemCard({ item, canManage = false }: EquipmentItemCard
               rows={2}
             />
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReplenishDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReplenish}
-              disabled={isSubmitting || quantity <= 0}
-            >
-              {isSubmitting ? "Adding..." : `Add ${quantity}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveModal>
     </>
   );
 }

@@ -7,14 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -442,18 +435,26 @@ export function EquipmentManageTab() {
       </AlertDialog>
 
       {/* Category Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingCategory ? "Edit Category" : "Add Category"}
-            </DialogTitle>
-            <DialogDescription>
+      <ResponsiveModal
+        open={showCategoryDialog}
+        onClose={() => setShowCategoryDialog(false)}
+        drawerHeight="max-h-[85vh]"
+        title={editingCategory ? "Edit Category" : "Add Category"}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCategory} disabled={isSubmitting || !categoryName.trim()}>
+              {isSubmitting ? "Saving..." : "Save"}
+            </Button>
+          </>
+        }
+      >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
               Categories help organize equipment items.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
+            </p>
             <div className="space-y-2">
               <Label htmlFor="categoryName">Name *</Label>
               <Input
@@ -489,33 +490,31 @@ export function EquipmentManageTab() {
               </div>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveCategory} disabled={isSubmitting || !categoryName.trim()}>
-              {isSubmitting ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveModal>
 
       {/* Item Dialog */}
-      <Dialog open={showItemDialog} onOpenChange={setShowItemDialog}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingItem ? "Edit Item" : "Add Item"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingItem
-                ? "Update this equipment item."
-                : "Add equipment items to track. Use Clone to quickly create size variants."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
+      <ResponsiveModal
+        open={showItemDialog}
+        onClose={() => setShowItemDialog(false)}
+        title={editingItem ? "Edit Item" : "Add Item"}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowItemDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveItem}
+              disabled={isSubmitting || !itemName.trim() || !itemCategoryId}
+            >
+              {isSubmitting ? "Saving..." : "Save"}
+            </Button>
+          </>
+        }
+      >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              {editingItem ? "Update this equipment item." : "Add equipment items to track. Use Clone to quickly create size variants."}
+            </p>
             <div className="space-y-2">
               <Label htmlFor="itemName">Name *</Label>
               <Input
@@ -601,20 +600,7 @@ export function EquipmentManageTab() {
               />
             </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowItemDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveItem}
-              disabled={isSubmitting || !itemName.trim() || !itemCategoryId}
-            >
-              {isSubmitting ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveModal>
     </div>
   );
 }

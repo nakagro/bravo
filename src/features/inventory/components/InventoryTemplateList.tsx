@@ -20,14 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/dialog";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageTabs } from "@/components/shared/PageTabs";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -422,26 +415,13 @@ export function InventoryTemplateList() {
       </div>
 
       {/* Clone Dialog */}
-      <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clone Template</DialogTitle>
-            <DialogDescription>
-              Create a copy of "{cloneTarget?.name}" with all its sections and items.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              New Template Name
-            </label>
-            <Input
-              value={cloneName}
-              onChange={(e) => setCloneName(e.target.value)}
-              placeholder="Enter name for the cloned template"
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
+      <ResponsiveModal
+        open={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        drawerHeight="max-h-[85vh]"
+        title="Clone Template"
+        footer={
+          <>
             <Button variant="outline" onClick={() => setCloneDialogOpen(false)} disabled={isCloning}>
               Cancel
             </Button>
@@ -452,20 +432,52 @@ export function InventoryTemplateList() {
             >
               {isCloning ? "Cloning..." : "Clone Template"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+          <div className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Create a copy of "{cloneTarget?.name}" with all its sections and items.
+            </p>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                New Template Name
+              </label>
+              <Input
+                value={cloneName}
+                onChange={(e) => setCloneName(e.target.value)}
+                placeholder="Enter name for the cloned template"
+                autoFocus
+              />
+            </div>
+          </div>
+      </ResponsiveModal>
 
       {/* Import Dialog */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Import Template</DialogTitle>
-            <DialogDescription>
+      <ResponsiveModal
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        drawerHeight="max-h-[85vh]"
+        title="Import Template"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)} disabled={isImporting}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleImport} 
+              disabled={!importData || !importName.trim() || isImporting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isImporting ? "Importing..." : "Import Template"}
+            </Button>
+          </>
+        }
+      >
+          <div className="pb-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
               Import a template from a previously exported JSON file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
+            </p>
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                 Select File
@@ -505,20 +517,7 @@ export function InventoryTemplateList() {
               </>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)} disabled={isImporting}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleImport} 
-              disabled={!importData || !importName.trim() || isImporting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isImporting ? "Importing..." : "Import Template"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveModal>
 
       {/* Permanent delete. Separate from Archive deliberately: the server
           refuses this once any run references the template, and the admin

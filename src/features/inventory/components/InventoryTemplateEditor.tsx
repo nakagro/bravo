@@ -7,7 +7,8 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
+import { Slot } from "@radix-ui/react-slot";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Info, Image, GripVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -85,18 +86,28 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="default" className="w-full sm:w-auto min-h-[44px]">
-          <Pencil className="h-5 w-5 mr-2" />
-          <span>Edit Template</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Template Details</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <>
+      <Button onClick={() => setOpen(true)} variant="outline" size="default" className="w-full sm:w-auto min-h-[44px]">
+        <Pencil className="h-5 w-5 mr-2" />
+        <span>Edit Template</span>
+      </Button>
+      <ResponsiveModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Edit Template Details"
+        drawerHeight="max-h-[85vh]"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isLoading || !name.trim()}>
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 pb-4">
           <div>
             <label className="text-sm font-medium">Template Name</label>
             <Input
@@ -118,17 +129,9 @@ function TemplateMetaEditor({ template, onSave }: { template: any; onSave: (name
               disabled={isLoading}
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isLoading || !name.trim()} className="w-full sm:w-auto">
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModal>
+    </>
   );
 }
 
@@ -154,18 +157,28 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full min-h-[48px] text-base">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Section
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Section</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <>
+      <Button onClick={() => setOpen(true)} variant="outline" className="w-full min-h-[48px] text-base">
+        <Plus className="h-5 w-5 mr-2" />
+        Add Section
+      </Button>
+      <ResponsiveModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Add New Section"
+        drawerHeight="max-h-[85vh]"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleAdd} disabled={!name.trim() || isLoading}>
+              {isLoading ? "Adding..." : "Add Section"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 pb-4">
           <div>
             <label className="text-sm font-medium">Section Name</label>
             <Input
@@ -178,17 +191,9 @@ function AddSectionDialog({ onAdd }: { onAdd: (name: string) => Promise<void> })
               autoFocus
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button onClick={handleAdd} disabled={!name.trim() || isLoading} className="w-full sm:w-auto">
-              {isLoading ? "Adding..." : "Add Section"}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModal>
+    </>
   );
 }
 
@@ -214,18 +219,28 @@ function AddItemDialog({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="default" className="text-muted-foreground w-full justify-start min-h-[44px]">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Item
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Item</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <>
+      <Button onClick={() => setOpen(true)} variant="ghost" size="default" className="text-muted-foreground w-full justify-start min-h-[44px]">
+        <Plus className="h-5 w-5 mr-2" />
+        Add Item
+      </Button>
+      <ResponsiveModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Add New Item"
+        drawerHeight="max-h-[85vh]"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleAdd} disabled={!name.trim() || isLoading}>
+              {isLoading ? "Adding..." : "Add Item"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 pb-4">
           <div>
             <label className="text-sm font-medium">Item Name</label>
             <Input
@@ -241,17 +256,9 @@ function AddItemDialog({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
               All items are Yes/No checks with optional notes
             </p>
           </div>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button onClick={handleAdd} disabled={!name.trim() || isLoading} className="w-full sm:w-auto">
-              {isLoading ? "Adding..." : "Add Item"}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModal>
+    </>
   );
 }
 
@@ -292,13 +299,25 @@ function EditDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <>
+      <Slot onClick={() => setOpen(true)}>{trigger}</Slot>
+      <ResponsiveModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        drawerHeight="max-h-[85vh]"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={!value.trim() || isLoading}>
+              {isLoading ? "Saving..." : "Save"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 pb-4">
           <div>
             <label className="text-sm font-medium">{label}</label>
             <Input
@@ -310,17 +329,9 @@ function EditDialog({
               autoFocus
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading} className="w-full sm:w-auto">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!value.trim() || isLoading} className="w-full sm:w-auto">
-              {isLoading ? "Saving..." : "Save"}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModal>
+    </>
   );
 }
 

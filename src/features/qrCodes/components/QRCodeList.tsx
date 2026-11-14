@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal } from '@/components/shared/ResponsiveModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -319,12 +320,37 @@ function QREditDialog({ qrCode, onClose, onSaved }: QREditDialogProps) {
   };
 
   return (
-    <Dialog open={!!qrCode} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Edit QR Code</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <ResponsiveModal
+      open={!!qrCode}
+      onClose={onClose}
+      title="Edit QR Code"
+      drawerHeight="max-h-[85vh]"
+      maxWidth="sm:max-w-sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !editSvg || !editUrlValid}
+          >
+            {isSaving ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-1.5" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 mr-1.5" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </>
+      }
+    >
+        <div className="space-y-4 pb-4">
           <div className="space-y-1.5">
             <Label htmlFor="edit-url">URL</Label>
             <div className="relative">
@@ -368,32 +394,8 @@ function QREditDialog({ qrCode, onClose, onSaved }: QREditDialogProps) {
               <QrCode className="w-10 h-10 text-muted-foreground/20" />
             </div>
           )}
-
-          <div className="flex gap-2 pt-1">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={handleSave}
-              disabled={isSaving || !editSvg || !editUrlValid}
-            >
-              {isSaving ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-1.5" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-1.5" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveModal>
   );
 }
 

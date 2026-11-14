@@ -5,14 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare, Bug, Lightbulb, Wrench, Check, X, Clock } from "lucide-react";
 import { useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Id } from "../../convex/_generated/dataModel";
 
@@ -213,15 +206,26 @@ export default function FeedbackManagementPage() {
             </div>
 
             {/* Status Update Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Update Feedback Status</DialogTitle>
-                        <DialogDescription>
+            <ResponsiveModal
+                open={dialogOpen}
+                onClose={() => setDialogOpen(false)}
+                title="Update Feedback Status"
+                drawerHeight="max-h-[85vh]"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSubmit}>
+                            Update Status
+                        </Button>
+                    </>
+                }
+            >
+                    <div className="space-y-4 pb-4">
+                        <p className="text-sm text-muted-foreground">
                             Choose a status and optionally add comments about this feedback.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
+                        </p>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">
                                 Status
@@ -289,16 +293,7 @@ export default function FeedbackManagementPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSubmit}>
-                            Update Status
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            </ResponsiveModal>
         </div>
     );
 }
