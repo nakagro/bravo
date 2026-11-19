@@ -15,7 +15,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { getVersionString } from "@/utils/version";
+import { getBuildStamp, getVersionString } from "@/utils/version";
+import { statusToneClasses } from "@/lib/statusTone";
 import { AnimatedHamburger } from "@/components/common/AnimatedHamburger";
 import { DarkModeToggle } from "@/components/common/DarkModeToggle";
 import { NAV_GROUPS, NAV_ITEMS, type NavItem } from "@/config/navigation";
@@ -207,6 +208,12 @@ export const HamburgerMenu = () => {
               <span className="font-semibold bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent">BRAVO</span>
               {" · "}
               <span>v{getVersionString()}</span>
+              {/* Off prod, which build this is - a tester's "did it land?" */}
+              {getBuildStamp() && (
+                <span className={`rounded px-1.5 font-mono text-[10px] ${statusToneClasses.warning}`}>
+                  {getBuildStamp()?.short}
+                </span>
+              )}
               <span className={`inline-block h-2 w-2 rounded-full ${connectionState.isWebSocketConnected
                 ? 'bg-green-600 dark:bg-green-500'
                 : 'bg-amber-600 dark:bg-amber-500'

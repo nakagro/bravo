@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { getVersionString } from "@/utils/version";
+import { getBuildStamp, getVersionString } from "@/utils/version";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -150,6 +150,11 @@ export default function AboutPage() {
             <span className="font-semibold">Current Version:</span>
             <span className="font-mono bg-muted px-2 py-1 rounded">v{getVersionString()}</span>
           </div>
+          {getBuildStamp() && (
+            <div className="mt-2 text-center font-mono text-xs text-amber-700 dark:text-amber-300">
+              Test build: {getBuildStamp()?.full}
+            </div>
+          )}
         </div>
       </div>
 

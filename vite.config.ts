@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { execSync } from "child_process";
 import { VitePWA } from "vite-plugin-pwa";
 
 const productionTextReplacements: Array<[RegExp, string]> = [
@@ -98,6 +99,26 @@ function environmentAwareHtml(convexUrl: string) {
   };
 }
 
+/**
+ * Which build this is: branch, short commit and build time. Vercel names the
+ * branch and commit in its build env; a local build asks git. Anything
+ * missing comes back empty and the app shows the plain version, as on prod.
+ */
+function buildInfo(env: Record<string, string | undefined>) {
+  const git = (cmd: string) => {
+    try {
+      return execSync(`git ${cmd}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    } catch {
+      return "";
+    }
+  };
+  return {
+    branch: env.VERCEL_GIT_COMMIT_REF || git("rev-parse --abbrev-ref HEAD"),
+    commit: (env.VERCEL_GIT_COMMIT_SHA || git("rev-parse HEAD")).slice(0, 7),
+    builtAt: new Date().toISOString(),
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
@@ -168,6 +189,9 @@ export default defineConfig(({ mode }) => {
     }),
     scrubEmDashesFromBuild(),
   ],
+  define: {
+    __BUILD_INFO__: JSON.stringify(buildInfo(env)),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
