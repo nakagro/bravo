@@ -142,8 +142,8 @@ function CrewsView({ deploymentDates }: CrewsViewProps) {
                     )}
                   </header>
                   <div className="px-3 py-1">
-                    <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} />
                     <CrewSeatRow role="Driver" seat={crew.driver} />
+                    <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} />
                     {[0, 1, 2].map((i) => (
                       <CrewSeatRow key={i} role={`Crew ${i + 1}`} seat={crew.crewMembers[i]} />
                     ))}

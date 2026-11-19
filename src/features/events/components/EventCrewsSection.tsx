@@ -9,9 +9,6 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { CrewSeatRow } from "@/components/shared/crew/CrewSeatRow";
 import { emptySeats, toSeatsDraft } from "@/components/shared/crew/crewSeats";
 import { EventCrewDialog, type EventCrewDraft } from "./EventCrewDialog";
-import { ShiftCrewDialog, type ShiftCrewTarget } from "./ShiftCrewDialog";
-import { formatSlotWhen } from "../types";
-import { shiftCrewSummary } from "./shiftCrews";
 
 type Crew = NonNullable<
   ReturnType<typeof useQuery<typeof api.eventCrews.listEventCrews>>
@@ -55,11 +52,7 @@ export function EventCrewsSection({
   const crews = useQuery(api.eventCrews.listEventCrews, { eventId });
   const me = useQuery(api.auth.loggedInUser);
   const removeCrew = useMutation(api.eventCrews.removeEventCrew);
-  const anyPerShift = !!crews?.some((crew) => crew.perShift);
-  const slots = useQuery(api.events.getEventSlots, anyPerShift ? { eventId } : "skip");
-  const shiftCrews = useQuery(api.eventCrews.listShiftCrews, anyPerShift ? { eventId } : "skip");
   const [editing, setEditing] = useState<EventCrewDraft | null>(null);
-  const [editingShift, setEditingShift] = useState<ShiftCrewTarget | null>(null);
   const [removing, setRemoving] = useState<Crew | null>(null);
 
   const canEdit = canManage && isEditable;
@@ -149,64 +142,18 @@ export function EventCrewsSection({
               </div>
 
               {crew.perShift ? (
-                // One line per shift; the seats themselves open from Edit
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {(slots ?? []).map((slot) => {
-                    const row = shiftCrews?.find(
-                      (r) => r.crewId === crew._id && r.slotId === slot._id
-                    );
-                    const when = formatSlotWhen(slot);
-                    const mine = !!row && !!me && shiftCrewSummary(row, me._id).mine;
-                    return (
-                      <div key={slot._id} className="flex items-center gap-2 py-1.5">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {slot.label}
-                            {when && (
-                              <span className="ml-1.5 text-xs font-normal text-gray-500 dark:text-gray-400">
-                                {when}
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            className={`text-xs ${mine ? "text-blue-700 dark:text-blue-300" : "text-gray-500 dark:text-gray-400"}`}
-                          >
-                            {row ? shiftCrewSummary(row, me?._id).text : "No crew yet"}
-                          </div>
-                        </div>
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 shrink-0"
-                            aria-label={`Crew ${crew.applianceName} for ${slot.label}`}
-                            onClick={() =>
-                              setEditingShift({
-                                crewId: crew._id,
-                                applianceName: crew.applianceName,
-                                slotId: slot._id,
-                                slotLabel: slot.label,
-                                rosteredIds: slot.allocated.map((m) => m._id),
-                                interestedIds: slot.interested.map((m) => m._id),
-                                seats: row ? toSeatsDraft(row) : emptySeats(),
-                              })
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                // The crews themselves live on each shift in Who's coming
+                <p className="py-1.5 text-sm text-gray-500 dark:text-gray-400">
+                  Crewed per shift. Each shift&apos;s crew is listed with the shift above.
+                </p>
               ) : (
                 <>
               {/* Only the seats someone is in - an empty seat isn't shown */}
-              {crew.crewLeader && (
-                <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} isMine={isMine(crew.crewLeader)} />
-              )}
               {crew.driver && (
                 <CrewSeatRow role="Driver" seat={crew.driver} isMine={isMine(crew.driver)} />
+              )}
+              {crew.crewLeader && (
+                <CrewSeatRow role="Crew Leader" seat={crew.crewLeader} isMine={isMine(crew.crewLeader)} />
               )}
               {crew.crewMembers.map((seat, i) => (
                 <CrewSeatRow key={i} role={`Crew ${i + 1}`} seat={seat} isMine={isMine(seat)} />
@@ -238,7 +185,6 @@ export function EventCrewsSection({
       )}
 
       {dialog}
-      <ShiftCrewDialog eventId={eventId} target={editingShift} onClose={() => setEditingShift(null)} />
 
       <ConfirmDialog
         tone="destructive"

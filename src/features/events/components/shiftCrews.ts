@@ -8,7 +8,7 @@ interface ShiftCrewSeats {
 }
 
 /**
- * One shift's crew as a single line ("Alex Carter (CL), Sam Lee (Driver), Jo
+ * One shift's crew as a single line ("Sam Lee (Driver), Alex Carter (CL), Jo
  * Park"), and whether the viewer is on it. Keeps a shift readable at a glance
  * where five seat rows per shift per appliance would swamp the page.
  */
@@ -19,8 +19,8 @@ export function shiftCrewSummary(row: ShiftCrewSeats, myId: Id<"users"> | undefi
     return role ? `${name} (${role})` : name;
   };
   const parts = [
-    ...(row.crewLeader ? [named(row.crewLeader, "CL")] : []),
     ...(row.driver ? [named(row.driver, "Driver")] : []),
+    ...(row.crewLeader ? [named(row.crewLeader, "CL")] : []),
     ...row.crewMembers.map((seat) => named(seat)),
   ];
   const mine =

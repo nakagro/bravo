@@ -133,7 +133,7 @@ export function EventCrewDialog({ open, onClose, eventId, initial, hasShifts }: 
             <FieldContent>
               <FieldLabel htmlFor="event-crew-per-shift">Crew each shift</FieldLabel>
               <FieldDescription>
-                A separate crew for every shift. Set each one from the shift under Appliances.
+                A separate crew for every shift. Set each one from its shift in Who's coming.
               </FieldDescription>
             </FieldContent>
             <Switch

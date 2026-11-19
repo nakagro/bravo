@@ -1,17 +1,27 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
+import { Pencil } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
 import { NameColumns, NameSentence } from "./NameColumns";
 import { shortApplianceName } from "./badges";
 import { shiftCrewSummary } from "./shiftCrews";
+import { ShiftCrewDialog, type ShiftCrewTarget } from "./ShiftCrewDialog";
+import { emptySeats, toSeatsDraft } from "@/components/shared/crew/crewSeats";
 
 interface ShiftBoardProps {
   eventId: Id<"events">;
   /** Team leaders for the event - tagged wherever they appear on the board */
   leaderIds?: Id<"users">[];
+  /** Manager of an open event: per-shift crews get an edit button */
+  canEditCrews?: boolean;
 }
+
+/** Interest-only lists past this many names fold behind "Show all". */
+const INTEREST_PREVIEW = 6;
 
 /**
  * Zone 3 read-only turnout board for a shift event - the communal noticeboard.
@@ -27,7 +37,9 @@ interface ShiftBoardProps {
  * Before anyone is rostered, interest is the whole picture, so it gets the
  * columns instead. Nobody who offered ever disappears.
  */
-export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
+export function ShiftBoard({ eventId, leaderIds = [], canEditCrews = false }: ShiftBoardProps) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [editingCrew, setEditingCrew] = useState<ShiftCrewTarget | null>(null);
   const slots = useQuery(api.events.getEventSlots, { eventId });
   // Marks "you" in the lists - the one thing you can't work out by looking,
   // since offers get spread across shifts by the organiser
@@ -116,24 +128,6 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
               </div>
             )}
 
-            {perShiftCrews.map((crew) => {
-              const row = shiftCrews?.find((r) => r.crewId === crew._id && r.slotId === slot._id);
-              const summary = row ? shiftCrewSummary(row, myUserId ?? undefined) : null;
-              return (
-                <p
-                  key={crew._id}
-                  className={`mt-1.5 text-xs ${
-                    summary?.mine
-                      ? "font-medium text-blue-700 dark:text-blue-300"
-                      : "text-gray-600 dark:text-gray-400"
-                  }`}
-                >
-                  <span className="font-semibold">{shortApplianceName(crew.applianceName)}:</span>{" "}
-                  {summary?.text || "no crew yet"}
-                </p>
-              );
-            })}
-
             {cantMakeIt.length > 0 && (
               <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                 Can&apos;t make it: {cantMakeIt.map(formatUserName).join(", ")}
@@ -150,13 +144,101 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
                   className="mt-2 text-gray-500 dark:text-gray-400"
                 />
               ) : (
+                // Before anyone's rostered, interest is the picture - but a
+                // long list of it swamps a phone, so it folds after a few.
                 <div className="mt-2">
-                  <NameColumns members={interested} myUserId={myUserId} leaderIds={leaderIds} />
+                  <NameColumns
+                    members={
+                      expanded.has(slot._id)
+                        ? interested
+                        : previewMembers(interested, myUserId, INTEREST_PREVIEW)
+                    }
+                    myUserId={myUserId}
+                    leaderIds={leaderIds}
+                  />
+                  {interested.length > INTEREST_PREVIEW && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(slot._id)) next.delete(slot._id);
+                          else next.add(slot._id);
+                          return next;
+                        })
+                      }
+                      className="mt-1 min-h-[44px] text-sm font-medium text-red-700 hover:underline dark:text-red-400"
+                    >
+                      {expanded.has(slot._id)
+                        ? "Show fewer"
+                        : `Show all ${interested.length}`}
+                    </button>
+                  )}
                 </div>
               ))}
+
+            {/* Per-shift appliance crews close the shift: who's on, then the truck */}
+            {perShiftCrews.map((crew) => {
+              const row = shiftCrews?.find((r) => r.crewId === crew._id && r.slotId === slot._id);
+              const summary = row ? shiftCrewSummary(row, myUserId ?? undefined) : null;
+              return (
+                <div
+                  key={crew._id}
+                  className="mt-2 flex items-center gap-2 rounded-md bg-gray-50 px-3 py-1.5 dark:bg-gray-900/40"
+                >
+                  <p
+                    className={`min-w-0 flex-1 text-xs ${
+                      summary?.mine
+                        ? "font-medium text-blue-700 dark:text-blue-300"
+                        : "text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {shortApplianceName(crew.applianceName)}
+                    </span>{" "}
+                    {summary?.text || <span className="italic">no crew yet</span>}
+                  </p>
+                  {canEditCrews && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      aria-label={`Crew ${crew.applianceName} for ${slot.label}`}
+                      onClick={() =>
+                        setEditingCrew({
+                          crewId: crew._id,
+                          applianceName: crew.applianceName,
+                          slotId: slot._id,
+                          slotLabel: slot.label,
+                          rosteredIds: slot.allocated.map((m) => m._id),
+                          interestedIds: slot.interested.map((m) => m._id),
+                          seats: row ? toSeatsDraft(row) : emptySeats(),
+                        })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
+      <ShiftCrewDialog eventId={eventId} target={editingCrew} onClose={() => setEditingCrew(null)} />
     </div>
   );
+}
+
+/** The first few names alphabetically, always including the viewer's own. */
+function previewMembers<T extends { _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>(
+  members: T[],
+  myUserId: Id<"users"> | null,
+  count: number
+): T[] {
+  const sorted = [...members].sort(compareUserNames);
+  const preview = sorted.slice(0, count);
+  const me = myUserId ? sorted.find((m) => m._id === myUserId) : undefined;
+  if (me && !preview.includes(me)) preview[count - 1] = me;
+  return preview;
 }

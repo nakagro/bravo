@@ -101,9 +101,13 @@ export function EventDetailPage() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [changeNotice, setChangeNotice] = useState<"detailsChanged" | "cancelled" | null>(null);
   const [copied, setCopied] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
-  );
+  // On a phone the panel sits below everything else and repeats names the
+  // board already shows, so every group starts folded there: counts first,
+  // tap for names.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+    return Object.fromEntries(breakdownGroups.map((g) => [g.key, !phone && g.defaultOpen]));
+  });
 
   const typedEventId = eventId as Id<"events"> | undefined;
   const event = useQuery(api.events.getEvent, typedEventId ? { eventId: typedEventId } : "skip");
@@ -871,7 +875,11 @@ export function EventDetailPage() {
             )}
             {event.hasShifts ? (
               <>
-                <ShiftBoard eventId={event._id} leaderIds={leaderIds} />
+                <ShiftBoard
+                  eventId={event._id}
+                  leaderIds={leaderIds}
+                  canEditCrews={canManageEvents && event.status === "active"}
+                />
                 {/* Rostered, but not against any shift - otherwise they'd
                     appear nowhere on this page */}
                 {attendance && attendance.rosteredNoShift.length > 0 && (

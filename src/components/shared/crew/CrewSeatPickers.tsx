@@ -19,7 +19,7 @@ interface CrewSeatPickersProps {
 }
 
 /**
- * Crew Leader, Driver and Crew 1-3: each a member, or a typed outside name.
+ * Driver, Crew Leader and Crew 1-3: each a member, or a typed outside name.
  * The X empties a seat. Members already on the truck stay in every list,
  * tagged with their seat, and picking one moves them (see placeMember).
  */

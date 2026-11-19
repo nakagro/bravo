@@ -3,12 +3,12 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
 // Seats on a crewed appliance, shared by Deployment → Crews (strike teams)
-// and appliance crews on events: Crew Leader, Driver and up to three crew.
+// and appliance crews on events: Driver, Crew Leader and up to three crew.
 
 export const MAX_CREW_MEMBERS = 3;
 export const MAX_NAME_LENGTH = 60;
 export const MAX_NOTES_LENGTH = 500;
-/** Crew Leader + Driver + crew */
+/** Driver + Crew Leader + crew */
 export const SEATS_PER_APPLIANCE = 2 + MAX_CREW_MEMBERS;
 
 // A BRAVO member, or a typed name for someone from another brigade.
@@ -111,8 +111,8 @@ export const filledSeats = (crew: CrewSeats) =>
 /** The seat a member holds on a crew, if any, as a display label. */
 export function seatOf(crew: CrewSeats, userId: Id<"users">): string | null {
   const is = (seat?: Seat) => !!seat && "userId" in seat && seat.userId === userId;
-  if (is(crew.crewLeader)) return "Crew Leader";
   if (is(crew.driver)) return "Driver";
+  if (is(crew.crewLeader)) return "Crew Leader";
   return crew.crewMembers.some(is) ? "Crew" : null;
 }
 
@@ -149,8 +149,8 @@ export function seatLines(crew: CrewSeats & { applianceName: string }) {
     if ("userId" in seat) members.push({ userId: seat.userId, line: `${label} · ${crew.applianceName}` });
     else external.push(seat.name);
   };
-  add(crew.crewLeader, "Crew Leader");
   add(crew.driver, "Driver");
+  add(crew.crewLeader, "Crew Leader");
   for (const seat of crew.crewMembers) add(seat, "Crew");
   return { members, external };
 }

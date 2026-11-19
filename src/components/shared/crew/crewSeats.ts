@@ -76,8 +76,8 @@ export const saveErrorMessage = (error: unknown) => errorMessage(error, "");
 export type SeatKey = "crewLeader" | "driver" | number;
 
 export const SEAT_KEYS: SeatKey[] = [
-  "crewLeader",
   "driver",
+  "crewLeader",
   ...Array.from({ length: CREW_SEATS }, (_, i) => i),
 ];
 
