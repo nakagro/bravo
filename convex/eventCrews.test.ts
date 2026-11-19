@@ -186,3 +186,162 @@ describe("appliance crews on events", () => {
     expect(left).toEqual([]);
   });
 });
+
+// A station-crewing day: two shifts, the Pumper crewed for each one.
+async function shiftSetup() {
+  const base = await setup();
+  const { asAdmin } = base;
+  const eventId = await asAdmin.mutation(api.events.createEvent, {
+    title: "Station crewing day",
+    startDate: FUTURE,
+    isAllDay: true,
+    hasShifts: true,
+    slots: [
+      { label: "Morning", startTime: "08:00", endTime: "12:00" },
+      { label: "Afternoon", startTime: "12:00", endTime: "16:00" },
+    ],
+    crewAppliances: ["Wyndham Vale Pumper"],
+  });
+  const [pumper] = await asAdmin.query(api.eventCrews.listEventCrews, { eventId });
+  await asAdmin.mutation(api.eventCrews.saveEventCrew, {
+    eventId,
+    crewId: pumper._id,
+    applianceName: pumper.applianceName,
+    crewMembers: [],
+    perShift: true,
+  });
+  const [morning, afternoon] = await asAdmin.query(api.events.getEventSlots, { eventId });
+  return { ...base, eventId, crewId: pumper._id, morning, afternoon };
+}
+
+describe("appliance crews per shift", () => {
+  it("keeps a crew for each shift, counted together on the event", async () => {
+    const { eventId, crewId, morning, afternoon, aliceId, bobId, asAdmin, asBob } =
+      await shiftSetup();
+    await asAdmin.mutation(api.eventCrews.saveShiftCrew, {
+      crewId,
+      slotId: morning._id,
+      crewLeader: { userId: aliceId },
+      crewMembers: [],
+    });
+    await asAdmin.mutation(api.eventCrews.saveShiftCrew, {
+      crewId,
+      slotId: afternoon._id,
+      driver: { userId: bobId },
+      crewMembers: [{ name: "Werribee volunteer" }],
+    });
+
+    const rows = await asBob.query(api.eventCrews.listShiftCrews, { eventId });
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.slotId === afternoon._id)?.driver?.name).toBe("Bob Birch");
+
+    const event = await asBob.query(api.events.getEvent, { eventId });
+    expect(event?.crews).toEqual([{ applianceName: "Wyndham Vale Pumper", filled: 3, total: 10 }]);
+    expect(event?.myCrewSeat).toEqual({
+      applianceName: "Wyndham Vale Pumper",
+      role: "Driver",
+      shiftLabel: "Afternoon",
+    });
+  });
+
+  it("drops a shift crew saved empty, and refuses switching back while seats are filled", async () => {
+    const { t, eventId, crewId, morning, aliceId, asAdmin } = await shiftSetup();
+    const save = (crewLeader?: { userId: typeof aliceId }) =>
+      asAdmin.mutation(api.eventCrews.saveShiftCrew, {
+        crewId,
+        slotId: morning._id,
+        crewLeader,
+        crewMembers: [],
+      });
+    await save({ userId: aliceId });
+    const backToWhole = () =>
+      asAdmin.mutation(api.eventCrews.saveEventCrew, {
+        eventId,
+        crewId,
+        applianceName: "Wyndham Vale Pumper",
+        crewMembers: [],
+        perShift: false,
+      });
+    await expect(backToWhole()).rejects.toThrow("Clear the shift crews");
+
+    await save();
+    expect(await t.run((ctx) => ctx.db.query("eventShiftCrews").collect())).toEqual([]);
+    await backToWhole();
+    const [pumper] = await asAdmin.query(api.eventCrews.listEventCrews, { eventId });
+    expect(pumper.perShift).toBe(false);
+  });
+
+  it("only offers per-shift crewing on a shift event, with empty whole-event seats", async () => {
+    const { eventId, aliceId, asAdmin } = await setup();
+    const [pumper] = await asAdmin.query(api.eventCrews.listEventCrews, { eventId });
+    await expect(
+      asAdmin.mutation(api.eventCrews.saveEventCrew, {
+        eventId,
+        crewId: pumper._id,
+        applianceName: pumper.applianceName,
+        crewMembers: [],
+        perShift: true,
+      })
+    ).rejects.toThrow("Only an event with shifts");
+
+    const shift = await shiftSetup();
+    await expect(
+      shift.asAdmin.mutation(api.eventCrews.saveEventCrew, {
+        eventId: shift.eventId,
+        crewId: shift.crewId,
+        applianceName: "Wyndham Vale Pumper",
+        crewLeader: { userId: aliceId },
+        crewMembers: [],
+      })
+    ).rejects.toThrow("Clear the whole-event seats");
+  });
+
+  it("removes a shift's crews with the shift, and resets the appliance when shifts go", async () => {
+    const { t, eventId, crewId, morning, afternoon, aliceId, asAdmin } = await shiftSetup();
+    for (const slot of [morning, afternoon]) {
+      await asAdmin.mutation(api.eventCrews.saveShiftCrew, {
+        crewId,
+        slotId: slot._id,
+        crewLeader: { userId: aliceId },
+        crewMembers: [],
+      });
+    }
+    await asAdmin.mutation(api.events.updateEvent, {
+      eventId,
+      hasShifts: true,
+      slots: [{ _id: afternoon._id, label: "Afternoon" }],
+    });
+    const left = await t.run((ctx) => ctx.db.query("eventShiftCrews").collect());
+    expect(left.map((r) => r.slotId)).toEqual([afternoon._id]);
+
+    await asAdmin.mutation(api.events.updateEvent, { eventId, hasShifts: false, slots: [] });
+    expect(await t.run((ctx) => ctx.db.query("eventShiftCrews").collect())).toEqual([]);
+    const [pumper] = await asAdmin.query(api.eventCrews.listEventCrews, { eventId });
+    expect(pumper.perShift).toBe(false);
+  });
+
+  it("removes shift crews with their appliance and with the event", async () => {
+    const { t, eventId, crewId, morning, aliceId, asAdmin } = await shiftSetup();
+    await asAdmin.mutation(api.eventCrews.saveShiftCrew, {
+      crewId,
+      slotId: morning._id,
+      crewLeader: { userId: aliceId },
+      crewMembers: [],
+    });
+    await asAdmin.mutation(api.events.cancelEvent, { eventId });
+    await asAdmin.mutation(api.events.deleteEvent, { eventId });
+    expect(await t.run((ctx) => ctx.db.query("eventShiftCrews").collect())).toEqual([]);
+  });
+
+  it("stops a member who can't manage the event from crewing a shift", async () => {
+    const { crewId, morning, bobId, asBob } = await shiftSetup();
+    await expect(
+      asBob.mutation(api.eventCrews.saveShiftCrew, {
+        crewId,
+        slotId: morning._id,
+        driver: { userId: bobId },
+        crewMembers: [],
+      })
+    ).rejects.toThrow();
+  });
+});

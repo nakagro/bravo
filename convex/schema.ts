@@ -1390,13 +1390,16 @@ const applicationTables = {
     .index("by_slot_user", ["slotId", "userId"]),
 
   // Appliances crewed for an event - a truck at a school visit or community
-  // day. Same seats as deploymentCrews, one crew per appliance for the whole
-  // event (never per shift). Deliberately independent of the roster: being in
-  // a seat doesn't put a member on eventSlotAllocations, and neither excludes
-  // the other.
+  // day. Same seats as deploymentCrews. By default one crew for the whole
+  // event; on a shift event an appliance can instead be crewed per shift
+  // (perShift), and then its seats live on eventShiftCrews and the seats here
+  // stay empty. Deliberately independent of the roster: being in a seat
+  // doesn't put a member on eventSlotAllocations, and neither excludes the
+  // other.
   eventCrews: defineTable({
     eventId: v.id("events"),
     applianceName: v.string(),
+    perShift: v.optional(v.boolean()), // absent = one crew for the whole event
     crewLeader: v.optional(crewSeat),
     driver: v.optional(crewSeat),
     crewMembers: v.array(crewSeat), // up to 3
@@ -1405,6 +1408,24 @@ const applicationTables = {
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   }).index("by_event", ["eventId"]),
+
+  // One shift's crew on a perShift appliance (eventCrews). A row exists only
+  // once a seat has been filled, so adding a shift creates nothing; an
+  // all-empty save deletes the row. Cascade-deleted with its shift or its
+  // appliance.
+  eventShiftCrews: defineTable({
+    eventId: v.id("events"),
+    crewId: v.id("eventCrews"),
+    slotId: v.id("eventSlots"),
+    crewLeader: v.optional(crewSeat),
+    driver: v.optional(crewSeat),
+    crewMembers: v.array(crewSeat), // up to 3
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_crew_and_slot", ["crewId", "slotId"])
+    .index("by_slot", ["slotId"]),
 
   // Who actually turned up. Deliberately a separate layer from both the RSVPs
   // (what members said beforehand) and eventSlotAllocations (who was rostered):

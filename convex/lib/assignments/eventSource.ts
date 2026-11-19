@@ -3,7 +3,7 @@ import type { QueryCtx } from "../../_generated/server";
 import { eventManagerId } from "../../events";
 import { seatLines } from "../crewSeats";
 import { brigadeDateStr } from "../dates";
-import { MAX_APPLIANCES_PER_EVENT } from "../eventCrews";
+import { seatedCrewsFor } from "../eventCrews";
 import { WHOLE_EVENT_LINE, formatDateRange, formatDay, formatTime12 } from "../notificationTemplates";
 import type { AssignmentSource } from "./types";
 
@@ -56,10 +56,7 @@ export const eventAssignmentSource: AssignmentSource = {
     if (!event || event.status === "cancelled" || eventIsOver(event)) return null;
 
     const [crews, allocations, slots] = await Promise.all([
-      ctx.db
-        .query("eventCrews")
-        .withIndex("by_event", (q) => q.eq("eventId", event._id))
-        .take(MAX_APPLIANCES_PER_EVENT * 2),
+      seatedCrewsFor(ctx, event._id),
       ctx.db
         .query("eventSlotAllocations")
         .withIndex("by_event", (q) => q.eq("eventId", event._id))
@@ -72,16 +69,22 @@ export const eventAssignmentSource: AssignmentSource = {
     const slotById = new Map(slots.map((s) => [s._id, s]));
 
     // Seats first, then shifts in slot order, so the joined text reads naturally.
-    const held = new Map<Id<"users">, { seats: string[]; shifts: { order: number; line: string }[]; whole: boolean }>();
+    // A seat on one shift of a per-shift appliance names that shift.
+    type Held = { seats: string[]; shifts: { order: number; line: string }[]; whole: boolean; wholeSeat: boolean };
+    const held = new Map<Id<"users">, Held>();
     const entry = (userId: Id<"users">) => {
       let e = held.get(userId);
-      if (!e) held.set(userId, (e = { seats: [], shifts: [], whole: false }));
+      if (!e) held.set(userId, (e = { seats: [], shifts: [], whole: false, wholeSeat: false }));
       return e;
     };
     const externalNames: string[] = [];
-    for (const crew of [...crews].sort((a, b) => a._creationTime - b._creationTime)) {
+    for (const crew of crews) {
       const { members, external } = seatLines(crew);
-      for (const m of members) entry(m.userId).seats.push(m.line);
+      for (const m of members) {
+        const e = entry(m.userId);
+        e.seats.push(crew.slot ? `${m.line} · ${slotLine(crew.slot)}` : m.line);
+        if (!crew.slot) e.wholeSeat = true;
+      }
       externalNames.push(...external);
     }
     for (const a of allocations) {
@@ -95,7 +98,7 @@ export const eventAssignmentSource: AssignmentSource = {
       const shifts = e.shifts.sort((a, b) => a.order - b.order).map((s) => s.line);
       const lines = [...e.seats, ...(e.whole ? [WHOLE_EVENT_LINE] : []), ...shifts];
       // A shift gives its own times, so the event start time would mislead.
-      const onlyShifts = e.seats.length === 0 && !e.whole;
+      const onlyShifts = !e.wholeSeat && !e.whole;
       return { userId, lines, values: onlyShifts ? { time: "" } : undefined };
     });
 

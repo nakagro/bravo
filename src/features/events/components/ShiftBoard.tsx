@@ -4,6 +4,8 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { compareUserNames, formatSlotWhen, slotCoverageLabel, formatUserName } from "../types";
 import { NameColumns, NameSentence } from "./NameColumns";
+import { shortApplianceName } from "./badges";
+import { shiftCrewSummary } from "./shiftCrews";
 
 interface ShiftBoardProps {
   eventId: Id<"events">;
@@ -30,6 +32,14 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
   // Marks "you" in the lists - the one thing you can't work out by looking,
   // since offers get spread across shifts by the organiser
   const myUserId = useQuery(api.messages.getCurrentUserId) ?? null;
+  // Appliances crewed per shift show their crew inside each shift, where
+  // members already look for "when am I on"
+  const crews = useQuery(api.eventCrews.listEventCrews, { eventId });
+  const perShiftCrews = (crews ?? []).filter((crew) => crew.perShift);
+  const shiftCrews = useQuery(
+    api.eventCrews.listShiftCrews,
+    perShiftCrews.length > 0 ? { eventId } : "skip"
+  );
 
   if (slots === undefined) {
     return (
@@ -49,7 +59,9 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
     );
   }
 
-  const anyone = slots.some((slot) => slot.allocated.length > 0 || slot.interested.length > 0);
+  const anyone =
+    slots.some((slot) => slot.allocated.length > 0 || slot.interested.length > 0) ||
+    (shiftCrews?.length ?? 0) > 0;
   if (!anyone) {
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -103,6 +115,24 @@ export function ShiftBoard({ eventId, leaderIds = [] }: ShiftBoardProps) {
                 <NameColumns members={onRoster} myUserId={myUserId} leaderIds={leaderIds} />
               </div>
             )}
+
+            {perShiftCrews.map((crew) => {
+              const row = shiftCrews?.find((r) => r.crewId === crew._id && r.slotId === slot._id);
+              const summary = row ? shiftCrewSummary(row, myUserId ?? undefined) : null;
+              return (
+                <p
+                  key={crew._id}
+                  className={`mt-1.5 text-xs ${
+                    summary?.mine
+                      ? "font-medium text-blue-700 dark:text-blue-300"
+                      : "text-gray-600 dark:text-gray-400"
+                  }`}
+                >
+                  <span className="font-semibold">{shortApplianceName(crew.applianceName)}:</span>{" "}
+                  {summary?.text || "no crew yet"}
+                </p>
+              );
+            })}
 
             {cantMakeIt.length > 0 && (
               <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">

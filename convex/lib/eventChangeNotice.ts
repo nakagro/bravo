@@ -3,7 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { attendanceFor } from "../events";
 import { displayName, seatLines } from "./crewSeats";
-import { MAX_APPLIANCES_PER_EVENT } from "./eventCrews";
+import { seatedCrewsFor } from "./eventCrews";
 import { eventIsOver, eventValues } from "./assignments/eventSource";
 import { loadModuleMap, loadTemplates, loadUsers, logNoticeSend, unreachableReason } from "./notificationDelivery";
 import { fingerprintOf, renderTemplate } from "./notificationTemplates";
@@ -43,10 +43,7 @@ export async function involvedMembers(
   const involved = new Map<Id<"users">, InvolvedReason>();
   for (const id of rostered) involved.set(id, "rostered");
 
-  const crews = await ctx.db
-    .query("eventCrews")
-    .withIndex("by_event", (q) => q.eq("eventId", event._id))
-    .take(MAX_APPLIANCES_PER_EVENT * 2);
+  const crews = await seatedCrewsFor(ctx, event._id);
   for (const crew of crews) {
     for (const m of seatLines(crew).members) involved.set(m.userId, "rostered");
   }

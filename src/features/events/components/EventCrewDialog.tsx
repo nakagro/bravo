@@ -13,11 +13,15 @@ import {
   type CrewSeatsDraft,
 } from "@/components/shared/crew/crewSeats";
 import { Button } from "@/components/ui/button";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 
 export interface EventCrewDraft extends CrewSeatsDraft {
   crewId?: Id<"eventCrews">;
   applianceName: string;
   notes: string;
+  /** Crewed shift by shift; the seats are then set per shift, not here */
+  perShift: boolean;
 }
 
 interface EventCrewDialogProps {
@@ -25,13 +29,15 @@ interface EventCrewDialogProps {
   onClose: () => void;
   eventId: Id<"events">;
   initial: EventCrewDraft;
+  /** The event has shifts, so the appliance can be crewed per shift */
+  hasShifts: boolean;
 }
 
 // Same seats as Deployment → Crews. The difference is who's listed first:
 // members going to this event, then maybes, then everyone else, with anyone
 // who can't make it still pickable but flagged. Crewing someone doesn't put
 // them on the roster - the two are independent.
-export function EventCrewDialog({ open, onClose, eventId, initial }: EventCrewDialogProps) {
+export function EventCrewDialog({ open, onClose, eventId, initial, hasShifts }: EventCrewDialogProps) {
   const [draft, setDraft] = useState<EventCrewDraft>(initial);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string>();
@@ -79,8 +85,10 @@ export function EventCrewDialog({ open, onClose, eventId, initial }: EventCrewDi
         eventId,
         crewId: draft.crewId,
         applianceName,
-        ...seatsPayload(draft),
+        // Per shift, the appliance keeps no seats of its own
+        ...(draft.perShift ? { crewMembers: [] } : seatsPayload(draft)),
         notes: draft.notes.trim() || undefined,
+        perShift: draft.perShift,
       });
       toast.success(`${applianceName} crew saved`);
       onClose();
@@ -103,8 +111,8 @@ export function EventCrewDialog({ open, onClose, eventId, initial }: EventCrewDi
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : "Save crew"}
+          <Button onClick={handleSave} loading={saving}>
+            Save crew
           </Button>
         </>
       }
@@ -120,16 +128,36 @@ export function EventCrewDialog({ open, onClose, eventId, initial }: EventCrewDi
           error={nameError}
         />
 
-        <p className="text-xs text-muted-foreground">
-          Members going to this event are listed first. Seats can stay empty until you know who&apos;s
-          on. Crew from another brigade? Type their name and tap Add.
-        </p>
+        {(hasShifts || draft.perShift) && (
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel htmlFor="event-crew-per-shift">Crew each shift</FieldLabel>
+              <FieldDescription>
+                A separate crew for every shift. Set each one from the shift under Appliances.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id="event-crew-per-shift"
+              checked={draft.perShift}
+              onCheckedChange={(perShift) => setDraft((d) => ({ ...d, perShift }))}
+            />
+          </Field>
+        )}
 
-        <CrewSeatPickers
-          options={options}
-          seats={draft}
-          onChange={(seats) => setDraft((d) => ({ ...d, ...seats }))}
-        />
+        {!draft.perShift && (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Members going to this event are listed first. Seats can stay empty until you know
+              who&apos;s on. Crew from another brigade? Type their name and tap Add.
+            </p>
+
+            <CrewSeatPickers
+              options={options}
+              seats={draft}
+              onChange={(seats) => setDraft((d) => ({ ...d, ...seats }))}
+            />
+          </>
+        )}
 
         <div>
           <label

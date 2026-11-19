@@ -567,6 +567,7 @@ export function EventDetailPage() {
           {event.myCrewSeat && (
             <div className="mb-3 rounded-md bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
               You&apos;re crewing the {event.myCrewSeat.applianceName} as {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role}
+              {event.myCrewSeat.shiftLabel && <> on {event.myCrewSeat.shiftLabel}</>}
             </div>
           )}
           {responsesClosed ? (
@@ -937,6 +938,7 @@ export function EventDetailPage() {
               the response activity */}
           <EventCrewsSection
             eventId={event._id}
+            hasShifts={!!event.hasShifts}
             canManage={canManageEvents}
             isEditable={event.status === "active"}
             adding={addingCrew}

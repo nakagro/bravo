@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.11.19]
+
+- Events: An appliance on a shift event can now have its own crew for each shift.
+
 ## [2026.11.15]
 
 - General: Error messages now give the reason in plain words, without the technical detail.

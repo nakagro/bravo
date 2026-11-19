@@ -4,7 +4,13 @@ import { paginationOptsValidator } from "convex/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
-import { crewSummaryFor, deleteEventCrews, reconcileCrewAppliances } from "./lib/eventCrews";
+import {
+  crewSummaryFor,
+  deleteEventCrews,
+  deleteShiftCrewsOfSlot,
+  reconcileCrewAppliances,
+  resetPerShiftCrews,
+} from "./lib/eventCrews";
 import { brigadeDateStr } from "./lib/dates";
 import { moduleSettingAllows } from "./modules";
 import { applyChangeNotice, buildChangePreview, changeNoticeRow, MESSAGE_NOTICE_KEY } from "./lib/eventChangeNotice";
@@ -195,7 +201,15 @@ const enrichedEventValidator = v.object({
   ),
   // The caller's own seat, if they're crewing an appliance - independent of
   // whether they're on the roster.
-  myCrewSeat: v.union(v.null(), v.object({ applianceName: v.string(), role: v.string() })),
+  myCrewSeat: v.union(
+    v.null(),
+    v.object({
+      applianceName: v.string(),
+      role: v.string(),
+      // Set when the seat is on one shift of a per-shift appliance
+      shiftLabel: v.optional(v.string()),
+    })
+  ),
   // Resolved category (name + colour) from eventTypeId; null when unset/deleted
   eventTypeInfo: v.union(
     v.object({
@@ -514,6 +528,7 @@ async function reconcileSlots(
       for (const row of [...responses, ...allocations]) {
         await ctx.db.delete(row._id);
       }
+      await deleteShiftCrewsOfSlot(ctx, slot._id);
       await ctx.db.delete(slot._id);
     }
   }
@@ -1458,6 +1473,9 @@ export const updateEvent = mutation({
       // with it and an event with known attendees would empty itself.
       if (!hasShifts && event.hasShifts) {
         await liftAllocationsToEventLevel(ctx, args.eventId);
+        // The shift crews go with the shifts; their appliances stay, as
+        // whole-event crews.
+        await resetPerShiftCrews(ctx, args.eventId);
       }
       // Turning shifts off clears all slots; otherwise sync to the payload.
       await reconcileSlots(ctx, args.eventId, hasShifts ? args.slots : []);

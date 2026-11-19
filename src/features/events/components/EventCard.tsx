@@ -135,6 +135,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             <div className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">
               You&apos;re {event.myCrewSeat.role === "Crew" ? "crew" : event.myCrewSeat.role} on the{" "}
               {shortApplianceName(event.myCrewSeat.applianceName)}
+              {event.myCrewSeat.shiftLabel && <> ({event.myCrewSeat.shiftLabel})</>}
             </div>
           )}
 

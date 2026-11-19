@@ -2,7 +2,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { displayName, seatLines } from "./crewSeats";
-import { MAX_APPLIANCES_PER_EVENT } from "./eventCrews";
+import { seatedCrewsFor } from "./eventCrews";
 import { loadModuleMap, loadUsers, unreachableReason } from "./notificationDelivery";
 import { upsertNotice } from "./notifyEvent";
 
@@ -29,10 +29,7 @@ async function heldOnEvent(ctx: MutationCtx, eventId: Id<"events">, userId: Id<"
     .query("eventSlotAllocations")
     .withIndex("by_event_user", (q) => q.eq("eventId", eventId).eq("userId", userId))
     .first();
-  const crews = await ctx.db
-    .query("eventCrews")
-    .withIndex("by_event", (q) => q.eq("eventId", eventId))
-    .take(MAX_APPLIANCES_PER_EVENT * 2);
+  const crews = await seatedCrewsFor(ctx, eventId);
   const crewed = crews.some((crew) => seatLines(crew).members.some((m) => m.userId === userId));
   return { rostered: !!allocation, crewed };
 }
