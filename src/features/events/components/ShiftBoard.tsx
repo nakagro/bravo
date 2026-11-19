@@ -20,8 +20,6 @@ interface ShiftBoardProps {
   canEditCrews?: boolean;
 }
 
-/** Interest-only lists past this many names fold behind "Show all". */
-const INTEREST_PREVIEW = 6;
 
 /**
  * Zone 3 read-only turnout board for a shift event - the communal noticeboard.
@@ -38,7 +36,6 @@ const INTEREST_PREVIEW = 6;
  * columns instead. Nobody who offered ever disappears.
  */
 export function ShiftBoard({ eventId, leaderIds = [], canEditCrews = false }: ShiftBoardProps) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingCrew, setEditingCrew] = useState<ShiftCrewTarget | null>(null);
   const slots = useQuery(api.events.getEventSlots, { eventId });
   // Marks "you" in the lists - the one thing you can't work out by looking,
@@ -144,36 +141,8 @@ export function ShiftBoard({ eventId, leaderIds = [], canEditCrews = false }: Sh
                   className="mt-2 text-gray-500 dark:text-gray-400"
                 />
               ) : (
-                // Before anyone's rostered, interest is the picture - but a
-                // long list of it swamps a phone, so it folds after a few.
                 <div className="mt-2">
-                  <NameColumns
-                    members={
-                      expanded.has(slot._id)
-                        ? interested
-                        : previewMembers(interested, myUserId, INTEREST_PREVIEW)
-                    }
-                    myUserId={myUserId}
-                    leaderIds={leaderIds}
-                  />
-                  {interested.length > INTEREST_PREVIEW && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpanded((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(slot._id)) next.delete(slot._id);
-                          else next.add(slot._id);
-                          return next;
-                        })
-                      }
-                      className="mt-1 min-h-[44px] text-sm font-medium text-red-700 hover:underline dark:text-red-400"
-                    >
-                      {expanded.has(slot._id)
-                        ? "Show fewer"
-                        : `Show all ${interested.length}`}
-                    </button>
-                  )}
+                  <NameColumns members={interested} myUserId={myUserId} leaderIds={leaderIds} />
                 </div>
               ))}
 
@@ -230,15 +199,3 @@ export function ShiftBoard({ eventId, leaderIds = [], canEditCrews = false }: Sh
   );
 }
 
-/** The first few names alphabetically, always including the viewer's own. */
-function previewMembers<T extends { _id: Id<"users">; firstName?: string; lastName?: string; name?: string }>(
-  members: T[],
-  myUserId: Id<"users"> | null,
-  count: number
-): T[] {
-  const sorted = [...members].sort(compareUserNames);
-  const preview = sorted.slice(0, count);
-  const me = myUserId ? sorted.find((m) => m._id === myUserId) : undefined;
-  if (me && !preview.includes(me)) preview[count - 1] = me;
-  return preview;
-}

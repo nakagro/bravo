@@ -101,13 +101,9 @@ export function EventDetailPage() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [changeNotice, setChangeNotice] = useState<"detailsChanged" | "cancelled" | null>(null);
   const [copied, setCopied] = useState(false);
-  // On a phone the panel sits below everything else and repeats names the
-  // board already shows, so every group starts folded there: counts first,
-  // tap for names.
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-    return Object.fromEntries(breakdownGroups.map((g) => [g.key, !phone && g.defaultOpen]));
-  });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(breakdownGroups.map((g) => [g.key, g.defaultOpen]))
+  );
 
   const typedEventId = eventId as Id<"events"> | undefined;
   const event = useQuery(api.events.getEvent, typedEventId ? { eventId: typedEventId } : "skip");

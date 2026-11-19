@@ -4,8 +4,6 @@
 
 - Events: An appliance on a shift event can now have its own crew for each shift.
 - Events: A shift's crew is shown and edited right on the shift.
-- Events: Long interest lists on a shift fold after a few names, with Show all.
-- Events: On phones the responses panel starts folded, showing just the counts.
 - Events and Availability: Driver is listed before Crew Leader on every crew.
 
 ## [2026.11.15]
