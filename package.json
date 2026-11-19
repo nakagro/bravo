@@ -30,6 +30,7 @@
     "import:uat": "CONVEX_DEPLOYMENT=precious-magpie-647 convex import --replace-all",
     "import:cloud": "node scripts/renamed-script.mjs import:cloud import:uat",
     "seed:uat": "CONVEX_DEPLOYMENT=precious-magpie-647 npx convex run seed:seedDevDatabase",
+    "uat:test-event": "CONVEX_DEPLOYMENT=precious-magpie-647 npx convex run uatFixtures:createTestEvent",
     "seed:cloud": "node scripts/renamed-script.mjs seed:cloud seed:uat",
     "clone:uat": "bash scripts/clone-prod-to-uat.sh",
     "snapshot:prod": "bash scripts/snapshot-prod.sh",
