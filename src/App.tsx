@@ -31,6 +31,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Spinner } from "@/components/ui/spinner";
 
 const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
+const AccessControlPage = lazy(() => import("./features/accessControl/AccessControlPage").then((m) => ({ default: m.AccessControlPage })));
 const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
 const AuthPage = lazy(() => import("./pages/AuthPage").then((m) => ({ default: m.AuthPage })));
 const DutyCrewPage = lazy(() => import("./pages/DutyCrewPage").then((m) => ({ default: m.DutyCrewPage })));
@@ -399,6 +400,12 @@ function AuthenticatedApp() {
           <Route path="/settings" element={
             <ProtectedRoute moduleId="settings">
               <UserSettingsPage />
+            </ProtectedRoute>
+          } />
+          {/* Mock preview, not wired to the panels yet: admins only, no menu tile. */}
+          <Route path="/access-control" element={
+            <ProtectedRoute moduleId="admin">
+              <AccessControlPage />
             </ProtectedRoute>
           } />
           <Route path="/admin" element={
