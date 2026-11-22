@@ -19,6 +19,7 @@ import type * as actionCentreProviders_dutyCrew from "../actionCentreProviders/d
 import type * as actionCentreProviders_events from "../actionCentreProviders/events.js";
 import type * as actionCentreProviders_notices from "../actionCentreProviders/notices.js";
 import type * as actionCentreProviders_profile from "../actionCentreProviders/profile.js";
+import type * as actionCentreProviders_signups from "../actionCentreProviders/signups.js";
 import type * as actionCentreProviders_types from "../actionCentreProviders/types.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as apiKeyAuth from "../apiKeyAuth.js";
@@ -147,6 +148,7 @@ declare const fullApi: ApiFromModules<{
   "actionCentreProviders/events": typeof actionCentreProviders_events;
   "actionCentreProviders/notices": typeof actionCentreProviders_notices;
   "actionCentreProviders/profile": typeof actionCentreProviders_profile;
+  "actionCentreProviders/signups": typeof actionCentreProviders_signups;
   "actionCentreProviders/types": typeof actionCentreProviders_types;
   adminUsers: typeof adminUsers;
   apiKeyAuth: typeof apiKeyAuth;

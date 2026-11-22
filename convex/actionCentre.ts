@@ -1,6 +1,5 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isSharedAccount } from "./lib/accountType";
 import { moduleSettingAllows } from "./modules";
@@ -12,8 +11,9 @@ import { baSkillsLmsProvider } from "./actionCentreProviders/baSkills";
 import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
 import { noticesProvider } from "./actionCentreProviders/notices";
 import { assignmentsProvider } from "./actionCentreProviders/assignments";
+import { pendingSignupsProvider } from "./actionCentreProviders/signups";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
-import { requireUser } from "./lib/access";
+import { getActiveUser, requireUser } from "./lib/access";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
 
@@ -25,6 +25,7 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   { run: availabilityProvider, membersOnly: true },
   { run: profileProvider, membersOnly: true },
   { run: bookingApprovalsProvider },
+  { run: pendingSignupsProvider },
   { run: eventRsvpProvider, membersOnly: true },
   { run: baSkillsLmsProvider },
   { run: dutyCrewProvider, membersOnly: true },
@@ -84,11 +85,9 @@ export const getMyActions = query({
   args: {},
   returns: v.array(actionItemValidator),
   handler: async (ctx): Promise<ActionItem[]> => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
-    const user = await ctx.db.get(userId);
+    const user = await getActiveUser(ctx);
     if (!user) return [];
+    const userId = user._id;
 
     const allModuleSettings = await ctx.db.query("moduleSettings").collect();
     const moduleMap = new Map(allModuleSettings.map((m) => [m.moduleId, m]));

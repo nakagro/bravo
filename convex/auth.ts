@@ -38,14 +38,12 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ...(memberNumber ? { memberNumber } : {}),
         };
       },
-      // Custom password validation that allows numeric passwords (CFA member numbers)
+      // Applies whenever a password is set (sign-up, reset). Existing
+      // passwords are untouched: this is never checked at sign-in.
       validatePasswordRequirements: (password: string) => {
-        // Only require minimum length of 4 characters
-        // This allows CFA member numbers which are typically 7+ digits
-        if (password.length < 4) {
-          throw new Error("Password must be at least 4 characters long");
+        if (password.length < 8) {
+          throw new Error("Password must be at least 8 characters long");
         }
-        // No other requirements - allows purely numeric passwords
       },
     }),
     Email({

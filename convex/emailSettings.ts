@@ -1,7 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { getAdmin } from "./lib/access";
+import { getAdmin, requireAdmin } from "./lib/access";
 
 /**
  * Get all email settings
@@ -63,16 +62,7 @@ export const updateEmailSetting = mutation({
   },
   returns: v.id("emailSettings"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update email settings");
-    }
-
-    // Check if user is admin
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Only administrators can update email settings");
-    }
+    const userId = (await requireAdmin(ctx))._id;
 
     // Find existing setting
     const existingSetting = await ctx.db
@@ -113,16 +103,7 @@ export const initializeEmailSettings = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to initialize email settings");
-    }
-
-    // Check if user is admin
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Only administrators can initialize email settings");
-    }
+    const userId = (await requireAdmin(ctx))._id;
 
     const emailTypes = [
       {

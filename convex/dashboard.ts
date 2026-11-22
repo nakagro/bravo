@@ -1,6 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getActiveUser } from "./lib/access";
 
 interface PendingAction {
   _id: string;
@@ -34,7 +34,7 @@ export const getPendingActions = query({
   ),
   handler: async (ctx) => {
     // Get the current authenticated user ID
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getActiveUser(ctx))?._id;
     if (!userId) {
       return [];
     }

@@ -12,6 +12,7 @@ import {
   X,
   HelpCircle,
   LoaderCircle,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
@@ -28,6 +29,7 @@ const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> =
   events: CalendarCheck,
   actions: ClipboardList,
   settings: Bell,
+  admin: UserCheck,
 };
 
 type RsvpStatus = "attending" | "notAttending" | "maybe";

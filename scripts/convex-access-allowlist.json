@@ -1,0 +1,31 @@
+{
+  "public": {
+    "auth:validateSignupData": "Sign-up form: checks the CFA number and email are free before an account exists.",
+    "availability:getMainStatusOptions": "Static list of status labels; no data.",
+    "availability:getAvailableStatusOptions": "Static list of status labels; no data.",
+    "passwordReset:requestPasswordReset": "Forgot-password form; same answer whether or not the email exists, throttled per address.",
+    "passwordReset:verifyResetToken": "Reset link page; needs the emailed token.",
+    "passwordReset:resetPasswordWithToken": "Reset link page; needs the emailed token.",
+    "serviceAccounts:validateServicePin": "Kiosk PIN sign-in; rate-limited per device and brigade-wide.",
+    "serviceAccounts:getServiceSession": "Kiosk checks its own session token.",
+    "serviceAccounts:logoutServiceAccount": "Kiosk ends its own session token."
+  },
+  "self": {
+    "auth:loggedInUser": "The caller's own account row; the app needs it to show the pending and disabled screens.",
+    "auth:updateUserProfile": "The caller's own profile.",
+    "auth:storeSignupData": "The caller's own pending sign-up only.",
+    "auth:changePassword": "The caller's own password; needs the current one.",
+    "availability:getCurrentUserStatus": "The caller's own status.",
+    "availability:getCurrentUserId": "The caller's own id.",
+    "availability:isCurrentUserDutyOfficer": "The caller's own flag.",
+    "availability:getUserInfoForYouTab": "The caller's own details.",
+    "messages:getCurrentUserId": "The caller's own id.",
+    "modules:getAllModuleAccess": "The caller's own access map; false everywhere for pending and disabled accounts.",
+    "notificationHistory:getRecentNotifications": "Notifications sent to the caller.",
+    "notificationPrefs:getMyNotificationPrefs": "The caller's own preferences.",
+    "pushNotifications:getMySubscriptions": "The caller's own devices.",
+    "qrCodes:getUserQRCodes": "The caller's own QR codes.",
+    "shortcuts:getToken": "The caller's own Shortcuts token.",
+    "userLaunches:recordLaunch": "Records the caller's own app launch."
+  }
+}

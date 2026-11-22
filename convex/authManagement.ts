@@ -2,7 +2,6 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { logAction } from "./lib/logging";
 import { internal } from "./_generated/api";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireAdmin } from "./lib/access";
 import { summarizeLaunches } from "./lib/launches";
 
@@ -667,12 +666,7 @@ export const getMemberActivity = query({
     lastBrowserLaunchAt: v.optional(v.number()),
   })),
   handler: async (ctx) => {
-    const actorId = await getAuthUserId(ctx);
-    if (!actorId) throw new Error("You must be signed in");
-    const actor = await ctx.db.get(actorId);
-    if (!actor || !actor.isAdmin) {
-      throw new Error("Only administrators can view member activity");
-    }
+    await requireAdmin(ctx, "view member activity");
 
     const now = Date.now();
     const users = await ctx.db.query("users").collect();
@@ -776,12 +770,7 @@ export const getUserSessionHistory = query({
     expiresAt: v.number(),
   })),
   handler: async (ctx, args) => {
-    const actorId = await getAuthUserId(ctx);
-    if (!actorId) throw new Error("You must be signed in");
-    const actor = await ctx.db.get(actorId);
-    if (!actor || !actor.isAdmin) {
-      throw new Error("Only administrators can view member activity");
-    }
+    await requireAdmin(ctx, "view member activity");
 
     const sessions = await ctx.db
       .query("authSessions")
@@ -832,12 +821,7 @@ export const getUserStatusHistory = query({
     timestamp: v.number(),
   })),
   handler: async (ctx, args) => {
-    const actorId = await getAuthUserId(ctx);
-    if (!actorId) throw new Error("You must be signed in");
-    const actor = await ctx.db.get(actorId);
-    if (!actor || !actor.isAdmin) {
-      throw new Error("Only administrators can view member activity");
-    }
+    await requireAdmin(ctx, "view member activity");
 
     const entries = await ctx.db
       .query("memberStatusHistory")

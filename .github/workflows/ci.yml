@@ -25,6 +25,9 @@ jobs:
       - name: Lint (Oxlint via Vite+)
         run: npx vp lint
 
+      - name: Convex access check
+        run: npm run check:convex-access
+
       - name: Typecheck
         run: npm run typecheck
 

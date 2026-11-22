@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireUser } from "./lib/access";
 
 export const getUserQRCodes = query({
   args: {},
@@ -40,10 +41,7 @@ export const createQRCode = mutation({
   },
   returns: v.id("qrCodes"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireUser(ctx))._id;
 
     const now = Date.now();
     const qrCodeId = await ctx.db.insert("qrCodes", {
@@ -68,10 +66,7 @@ export const updateQRCode = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireUser(ctx))._id;
 
     const existing = await ctx.db.get(args.id);
     if (!existing) {
@@ -99,10 +94,7 @@ export const deleteQRCode = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireUser(ctx))._id;
 
     const existing = await ctx.db.get(args.id);
     if (!existing) {

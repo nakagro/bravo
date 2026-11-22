@@ -3,7 +3,6 @@
 import { action, ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -64,10 +63,7 @@ export const notifyEventMembers = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in");
-    }
+    const userId = await ctx.runQuery(internal.access.assertUser, {});
 
     const event = await ctx.runQuery(api.events.getEvent, { eventId: args.eventId });
     if (!event) {

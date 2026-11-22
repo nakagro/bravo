@@ -1,12 +1,11 @@
 import { query, mutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
 import { compareBySeniority, isValidLieutenantNumber, type Rank } from "./lib/ranks";
 import { isTuesday, tuesdayKind, tuesdaysBetween } from "./lib/rollNights";
 import { moduleSettingAllows } from "./modules";
-import { requireUser } from "./lib/access";
+import { getActiveUser, requireUser } from "./lib/access";
 
 // Training roll. See docs/plans/training-roll-plan.md.
 //
@@ -63,8 +62,7 @@ export const getAccess = query({
   args: {},
   returns: v.object({ canManage: v.boolean(), canRecordApologies: v.boolean() }),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user) return { canManage: false, canRecordApologies: false };
     return await accessFor(ctx, user);
   },
@@ -252,8 +250,7 @@ export const getRoster = query({
   args: {},
   returns: v.array(rosterEntryValidator),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user || !(await accessFor(ctx, user)).canManage) return [];
     return await rollRoster(ctx);
   },
@@ -318,8 +315,7 @@ export const getFirstRollDate = query({
   args: {},
   returns: v.union(v.string(), v.null()),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user || !(await accessFor(ctx, user)).canRecordApologies) return null;
     const first = await ctx.db.query("rollNights").withIndex("by_date").first();
     return first?.date ?? null;
@@ -334,8 +330,7 @@ export const listNights = query({
   args: { from: v.string(), to: v.string() },
   returns: v.array(nightSummaryValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user || !(await accessFor(ctx, user)).canRecordApologies) return [];
 
     const rows = await ctx.db
@@ -395,8 +390,7 @@ export const getNight = query({
     })
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user) return null;
     const access = await accessFor(ctx, user);
     if (!access.canRecordApologies) return null;
@@ -818,8 +812,7 @@ export const getReport = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const user = userId ? await ctx.db.get(userId) : null;
+    const user = await getActiveUser(ctx);
     if (!user || !(await accessFor(ctx, user)).canManage) return { nights: [], rows: [] };
 
     const nights = (

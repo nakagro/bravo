@@ -4,6 +4,8 @@ import { internal } from "./_generated/api";
 import { modifyAccountCredentials } from "@convex-dev/auth/server";
 import { randomToken, revokeSessions, sha256Hex } from "./lib/access";
 
+const MAX_RESETS_PER_HOUR = 3;
+
 /**
  * Request a password reset - creates a token and sends email
  * Public mutation (no auth required)
@@ -36,6 +38,22 @@ export const requestPasswordReset = mutation({
       };
     }
     
+    // At most a few reset emails per address per hour, so the form can't be
+    // used to flood a member's inbox. Same answer either way.
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    const recentRequests = (
+      await ctx.db
+        .query("passwordResetTokens")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .collect()
+    ).filter((t) => t.createdAt > hourAgo);
+    if (recentRequests.length >= MAX_RESETS_PER_HOUR) {
+      return {
+        success: true,
+        message: "If an account exists with this email, a password reset link has been sent.",
+      };
+    }
+
     // The email carries the token; the database keeps only its hash, so a
     // read of this table can't be turned into a password reset.
     const token = randomToken(32);
@@ -266,13 +284,13 @@ export const cleanupExpiredTokens = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
     
-    // Find all expired tokens
+    // Keep tokens for an hour past expiry: the per-address throttle above
+    // counts the last hour's requests.
     const expiredTokens = await ctx.db
       .query("passwordResetTokens")
-      .filter(q => q.lt(q.field("expiresAt"), now))
-      .collect();
+      .withIndex("by_expiresAt", (q) => q.lt("expiresAt", now - 60 * 60 * 1000))
+      .take(500);
     
-    // Delete them
     for (const token of expiredTokens) {
       await ctx.db.delete(token._id);
     }

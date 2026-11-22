@@ -3,7 +3,9 @@
 ## [2026.11.22]
 
 - Sign-in: New sign-ups wait for an administrator to approve them before they can use BRAVO.
+- Sign-in: New sign-ups choose their own password, at least 8 characters.
 - Admin: User Management lists sign-ups waiting for approval, with Approve and Reject.
+- Action Centre: Admins see when sign-ups are waiting for approval.
 - Availability: Only Lieutenants, Captains and administrators can set the Duty Officer.
 - Kiosk: PIN sign-in now opens the kiosk screens only.
 - General: Each module's rank and role settings now apply to everything in it, not just what the menu shows.

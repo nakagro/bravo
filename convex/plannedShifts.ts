@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   internalMutation,
   mutation,
@@ -15,7 +14,7 @@ import {
   nextStatusValidator,
   plannedStatusValidator,
 } from "./lib/statusValidators";
-import { requireModule } from "./lib/access";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Planned shifts: a member enters the shifts they work (e.g. a nursing roster)
 // and is marked unavailable automatically while at work. A shift type holds the
@@ -302,7 +301,7 @@ export const getMyShiftTypes = query({
   args: {},
   returns: v.array(shiftTypeReturn),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) return [];
     const types = await ctx.db
       .query("shiftTypes")
@@ -328,7 +327,7 @@ export const getMyPlannedShifts = query({
   args: { from: v.string(), to: v.string() },
   returns: v.array(plannedShiftReturn),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) return [];
     parseDate(args.from);
     parseDate(args.to);

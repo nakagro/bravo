@@ -261,3 +261,30 @@ describe("password reset", () => {
     await t.finishAllScheduledFunctions(() => {});
   });
 });
+
+describe("password reset throttle", () => {
+  it("sends at most three reset emails an hour per address", async () => {
+    const { t } = await setup();
+    for (let i = 0; i < 5; i++) {
+      await t.mutation(api.passwordReset.requestPasswordReset, { email: "sam@example.com" });
+    }
+    const tokens = await t.run((ctx) =>
+      ctx.db
+        .query("passwordResetTokens")
+        .withIndex("by_email", (q) => q.eq("email", "sam@example.com"))
+        .collect(),
+    );
+    expect(tokens).toHaveLength(3);
+    await t.finishAllScheduledFunctions(() => {});
+  });
+});
+
+describe("Action Centre", () => {
+  it("tells admins, and only admins, about sign-ups waiting for approval", async () => {
+    const { asAdmin, asMember } = await setup();
+    const adminActions = await asAdmin.query(api.actionCentre.getMyActions, {});
+    expect(adminActions.find((a) => a.id === "admin:pendingSignups")).toMatchObject({ count: 1 });
+    const memberActions = await asMember.query(api.actionCentre.getMyActions, {});
+    expect(memberActions.find((a) => a.id === "admin:pendingSignups")).toBeUndefined();
+  });
+});

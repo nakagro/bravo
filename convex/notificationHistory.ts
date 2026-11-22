@@ -2,6 +2,7 @@ import { mutation, query, internalMutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
+import { requireAdmin } from "./lib/access";
 
 /**
  * Create a new notification history entry
@@ -143,15 +144,7 @@ export const manualCleanup = mutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Only admins can manually cleanup notifications");
-    }
+    await requireAdmin(ctx);
 
     const now = Date.now();
 

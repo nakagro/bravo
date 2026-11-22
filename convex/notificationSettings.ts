@@ -1,6 +1,6 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAdmin } from "./lib/access";
 
 // Get all notification settings
 export const getNotificationSettings = query({
@@ -18,16 +18,7 @@ export const getNotificationSettings = query({
     updatedAt: v.number()
   })),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user is admin
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Admin access required");
-    }
+    await requireAdmin(ctx);
 
     return await ctx.db.query("notificationSettings").collect();
   },
@@ -61,16 +52,7 @@ export const initializeNotificationSettings = mutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user is admin
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Admin access required");
-    }
+    const userId = (await requireAdmin(ctx))._id;
 
     const defaultSettings = [
       {
@@ -115,16 +97,7 @@ export const updateNotificationSetting = mutation({
   },
   returns: v.id("notificationSettings"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    // Check if user is admin
-    const user = await ctx.db.get(userId);
-    if (!user?.isAdmin) {
-      throw new Error("Admin access required");
-    }
+    const userId = (await requireAdmin(ctx))._id;
 
     // Find existing setting
     const existing = await ctx.db

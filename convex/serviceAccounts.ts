@@ -1,7 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { requireAdmin as requireAdminUser } from "./lib/access";
+import { getAdmin, requireAdmin as requireAdminUser } from "./lib/access";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,11 +63,7 @@ export const listServiceAccounts = query({
     })
   ),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
-    const user = await ctx.db.get(userId);
-    if (!user || !user.isAdmin) return [];
+    if (!(await getAdmin(ctx))) return [];
 
     const accounts = await ctx.db.query("serviceAccounts").collect();
     // Strip pinHash from results

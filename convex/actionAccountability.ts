@@ -1,8 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireModuleAccess } from "./modules";
 import { notifyEvent, resolveAudience } from "./lib/notifyEvent";
+import { getActiveUser } from "./lib/access";
 
 /**
  * Admin API for "who is accountable for this, and how do they hear about it".
@@ -36,8 +36,7 @@ export const getAccountability = query({
   args: { conditionKey: v.string() },
   returns: v.union(configValidator, v.null()),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return null;
+    if (!(await getActiveUser(ctx))) return null;
 
     const mapping = await ctx.db
       .query("actionAccountability")

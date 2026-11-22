@@ -1,6 +1,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { isActiveAccount, requireUser } from "./lib/access";
 
 export const getToken = query({
     args: {},
@@ -24,10 +25,7 @@ export const generateToken = mutation({
     args: {},
     returns: v.string(),
     handler: async (ctx) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) {
-            throw new Error("You must be signed in to generate a shortcut token");
-        }
+        const userId = (await requireUser(ctx))._id;
 
         // Revoke previous tokens for this user
         const existingTokens = await ctx.db
@@ -56,10 +54,7 @@ export const revokeToken = mutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) {
-            throw new Error("You must be signed in to revoke your shortcut token");
-        }
+        const userId = (await requireUser(ctx))._id;
 
         const existingTokens = await ctx.db
             .query("shortcutTokens")
@@ -84,6 +79,12 @@ export const verifyTokenAndGetUser = internalMutation({
             .first();
 
         if (!tokenRecord) {
+            return null;
+        }
+
+        // A disabled or unapproved account's token stops working.
+        const user = await ctx.db.get(tokenRecord.userId);
+        if (!user || !isActiveAccount(user)) {
             return null;
         }
 

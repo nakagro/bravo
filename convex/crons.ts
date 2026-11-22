@@ -18,6 +18,7 @@ const at = (
 // Daily auth cleanup: purge expired sessions, expired tokens, and orphaned
 // tokens, before the other daily jobs
 at("auth cleanup", { hour: 3, minute: 0 }, internal.authManagement.scheduledAuthCleanup);
+at("password reset token cleanup", { hour: 3, minute: 10 }, internal.passwordReset.cleanupExpiredTokens);
 
 // Clean up expired service account sessions daily
 at(

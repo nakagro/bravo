@@ -9,7 +9,7 @@ import {
   categoryForType,
   isCategoryEnabled,
 } from "./lib/notificationPrefs";
-import { requireAdmin } from "./lib/access";
+import { requireAdmin, requireUser } from "./lib/access";
 
 const categoryValidator = v.union(
   v.literal("availabilityReminders"),
@@ -81,10 +81,7 @@ export const setMyNotificationPref = mutation({
   args: { category: categoryValidator, enabled: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error("User not found");
+    const user = await requireUser(ctx);
     await setPref(ctx, user, args.category, args.enabled);
     return null;
   },

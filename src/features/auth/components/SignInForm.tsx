@@ -18,6 +18,7 @@ const signUpSchema = z.object({
   lastName: z.string().min(1, "Last name is required").trim(),
   memberNumber: z.string().min(1, "CFA member number is required").trim(),
   email: z.email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 const signInSchema = z.object({
@@ -51,7 +52,7 @@ export function SignInForm() {
 
   const signUpForm = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { firstName: "", lastName: "", memberNumber: "", email: "" },
+    defaultValues: { firstName: "", lastName: "", memberNumber: "", email: "", password: "" },
   });
 
   const signInForm = useForm<SignInValues>({
@@ -107,7 +108,7 @@ export function SignInForm() {
       }
 
       const email = values.email.toLowerCase().trim();
-      const { firstName, lastName, memberNumber } = values;
+      const { firstName, lastName, memberNumber, password } = values;
 
       // Validate uniqueness BEFORE creating the auth account
       const validation = await convex.query(api.auth.validateSignupData, {
@@ -125,7 +126,7 @@ export function SignInForm() {
       const formData = new FormData();
       formData.set("flow", "signUp");
       formData.set("email", email);
-      formData.set("password", memberNumber);
+      formData.set("password", password);
       formData.set("firstName", firstName);
       formData.set("lastName", lastName);
       formData.set("memberNumber", memberNumber);
@@ -356,20 +357,20 @@ export function SignInForm() {
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">Initial Password Setup</h4>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                  Your initial password will be set to your CFA member number. You can change it after signing in through your profile settings.
-                </p>
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Password
+            </label>
+            <input
+              className="input-field"
+              type="password"
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              {...signUpForm.register("password")}
+            />
+            {signUpForm.formState.errors.password && (
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">{signUpForm.formState.errors.password.message}</p>
+            )}
           </div>
 
           {captchaEnabled && (

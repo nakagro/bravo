@@ -125,6 +125,15 @@ Note: there is **no** `convex/features/` directory — backend modules are flat 
 `npx convex ai-files update` (wired into `npm run skills:sync`), so it tracks the installed Convex
 version, and it explicitly overrides Convex patterns learned from training data.
 
+**Every public function checks its caller** with a helper from `convex/lib/access.ts`:
+`requireModule(ctx, "<moduleId>")` for module work (the same Module Settings gate the app uses to
+show the page), `requireAdmin`, `requireOfficer` or `requireUser`; queries use the soft twins
+(`getModuleUser`, `getAdmin`, `getActiveUser`) and return an empty result. Actions check through
+`internal.access.assert*`. Crons and server code call `internal` functions, never public ones.
+`npm run check:convex-access` (in `lint` and CI) fails on a public function with no check; a
+genuinely public or caller's-own-data function goes in `scripts/convex-access-allowlist.json` with
+its reason.
+
 The former `rules/*.mdc` files were removed on 2026-08-23 — they predated both the generated
 guidelines and skill files, and had gone 15 months without an update.
 

@@ -181,8 +181,7 @@ export const deleteMySubscription = mutation({
   args: { id: v.id("pushSubscriptions") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireUser(ctx))._id;
 
     const sub = await ctx.db.get(args.id);
     if (!sub || sub.userId !== userId) {
