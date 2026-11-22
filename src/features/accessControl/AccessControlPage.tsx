@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { formatDateTime } from "@/lib/dateFormat";
+import { formatDate } from "@/lib/dateFormat";
 import { statusToneClasses, type StatusTone } from "@/lib/statusTone";
 import { cn } from "@/lib/utils";
 import {
@@ -68,7 +68,9 @@ function ago(ms: number, now: number): string {
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
   if (h < 24) return `${h}h ago`;
-  return formatDateTime(ms);
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return formatDate(ms);
 }
 
 function siteSummary(site: AccessSite): { label: string; tone: StatusTone; icon: LucideIcon } {
@@ -270,14 +272,14 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
               return (
                 <li key={area.id} className="flex items-center justify-between gap-3 p-3">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-foreground">{area.name}</span>
-                      <Badge tone={info.tone}>{info.label}</Badge>
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    <div className="truncate font-medium text-foreground">{area.name}</div>
+                    <div className="mt-1 flex min-w-0 items-center gap-2">
+                      <Badge tone={info.tone} className="shrink-0">{info.label}</Badge>
+                      <span className="truncate text-xs text-muted-foreground">
                       {ago(area.changedAt, now)}
                       {area.changedBy ? ` · ${area.changedBy}` : ""}
-                    </p>
+                    </span>
+                    </div>
                   </div>
                   {!stale && <ConfirmDialog
                     title={`${armed ? "Disarm" : "Arm"} ${site.name}: ${area.name}?`}
@@ -376,7 +378,6 @@ interface DoorRowProps {
 function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
   const [busy, setBusy] = useState<"pulse" | "hold" | null>(null);
   const info = DOOR_INFO[door.status];
-  const Icon = info.icon;
   const held = door.status === "unlocked" && !door.unlockedUntil;
   const pulsing = door.status === "unlocked" && !!door.unlockedUntil;
   const label = pulsing ? `Unlocked · ${PULSE_MS / 1000}s` : held ? "Kept unlocked" : info.label;
@@ -392,14 +393,11 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
 
   return (
     <li className="flex items-center justify-between gap-3 p-3">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate font-medium text-foreground">{door.name}</span>
-            <Badge tone={info.tone}>{label}</Badge>
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{ago(door.changedAt, now)}</p>
+      <div className="min-w-0">
+        <div className="truncate font-medium text-foreground">{door.name}</div>
+        <div className="mt-1 flex min-w-0 items-center gap-2">
+          <Badge tone={info.tone} className="shrink-0">{label}</Badge>
+          <span className="truncate text-xs text-muted-foreground">{ago(door.changedAt, now)}</span>
         </div>
       </div>
 
