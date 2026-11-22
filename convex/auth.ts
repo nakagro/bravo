@@ -294,6 +294,9 @@ export const changePassword = action({
     if (args.newPassword.length < 8) {
       throw new Error("Password must be at least 8 characters long");
     }
+    if (user.memberNumber && args.newPassword.trim() === user.memberNumber.trim()) {
+      throw new Error("Choose a password that isn't your CFA number");
+    }
 
     try {
       // Verify current password by attempting to retrieve the account with credentials
@@ -313,6 +316,12 @@ export const changePassword = action({
           id: userEmail,
           secret: args.newPassword
         }
+      });
+
+      // The Action Centre stops asking them to change it.
+      await ctx.runMutation(internal.passwordAudit.setPasswordChangeReason, {
+        userId,
+        reason: undefined,
       });
 
       return { success: true };
@@ -361,6 +370,12 @@ export const adminResetPassword = action({
           id: targetEmail,
           secret: args.newPassword
         }
+      });
+
+      // The admin knows this password, so ask the member to pick their own.
+      await ctx.runMutation(internal.passwordAudit.setPasswordChangeReason, {
+        userId: args.targetUserId,
+        reason: "temporary",
       });
 
       return { success: true };

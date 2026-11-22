@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { formatRank } from "../../convex/lib/ranks";
@@ -15,6 +17,15 @@ import {
 export function UserSettingsPage() {
   // Fetch the current user's data
   const user = useQuery(api.auth.loggedInUser);
+  const { hash } = useLocation();
+  const loaded = !!user;
+
+  // The Action Centre links to /settings#password. The page renders after the
+  // user loads, so scroll once it's there.
+  useEffect(() => {
+    if (!loaded || !hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [loaded, hash]);
   
   // Loading state
   if (user === undefined) {
@@ -68,8 +79,8 @@ export function UserSettingsPage() {
           </div>
         )}
         
-        {/* Password Change Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
+        {/* Password Change Section. The Action Centre links here as #password. */}
+        <div id="password" className="scroll-mt-24 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <PasswordChangeForm />
         </div>
         

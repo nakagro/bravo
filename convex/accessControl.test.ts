@@ -2,7 +2,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { openModules } from "./moduleFixtures.testing";
 
@@ -286,5 +286,63 @@ describe("Action Centre", () => {
     expect(adminActions.find((a) => a.id === "admin:pendingSignups")).toMatchObject({ count: 1 });
     const memberActions = await asMember.query(api.actionCentre.getMyActions, {});
     expect(memberActions.find((a) => a.id === "admin:pendingSignups")).toBeUndefined();
+  });
+});
+
+describe("passwords to change", () => {
+  async function withPasswords() {
+    const s = await setup();
+    const { Scrypt } = await import("lucia");
+    const scrypt = new Scrypt();
+    await s.t.run(async (ctx) => {
+      // Sam's password is still their CFA number; Jo chose their own.
+      await ctx.db.insert("authAccounts", {
+        userId: s.member,
+        provider: "password",
+        providerAccountId: "sam@example.com",
+        secret: await scrypt.hash("1000001"),
+      });
+      await ctx.db.insert("authAccounts", {
+        userId: s.captain,
+        provider: "password",
+        providerAccountId: "jo@example.com",
+        secret: await scrypt.hash("a long private phrase"),
+      });
+      await ctx.db.patch(s.lieutenant, { passwordChangeReason: "temporary" });
+    });
+    return s;
+  }
+
+  it("flags accounts whose password is their CFA number, and only those", async () => {
+    const { t, member, captain, lieutenant } = await withPasswords();
+    const result = await t.action(internal.passwordAudit.auditPasswords, {});
+    expect(result).toEqual({ checked: 2, flagged: 1 });
+    const [sam, jo, riley] = await t.run(async (ctx) => [
+      await ctx.db.get(member),
+      await ctx.db.get(captain),
+      await ctx.db.get(lieutenant),
+    ]);
+    expect(sam?.passwordChangeReason).toBe("cfaNumber");
+    expect(jo?.passwordChangeReason).toBeUndefined();
+    // A temporary password an admin set is left flagged.
+    expect(riley?.passwordChangeReason).toBe("temporary");
+  });
+
+  it("asks the member in the Action Centre until it's cleared, with no way to dismiss it", async () => {
+    const { t, asMember, member } = await withPasswords();
+    await t.action(internal.passwordAudit.auditPasswords, {});
+    const actions = await asMember.query(api.actionCentre.getMyActions, {});
+    const item = actions.find((a) => a.id === "settings:changePassword");
+    expect(item).toMatchObject({ title: "Change your password", url: "/settings#password" });
+    expect(item?.dismissible).toBeFalsy();
+
+    await t.mutation(internal.passwordAudit.setPasswordChangeReason, { userId: member, reason: undefined });
+    const after = await asMember.query(api.actionCentre.getMyActions, {});
+    expect(after.find((a) => a.id === "settings:changePassword")).toBeUndefined();
+  });
+
+  it("only lets an admin run the check", async () => {
+    const { asMember } = await withPasswords();
+    await expect(asMember.action(api.passwordAudit.runPasswordAudit, {})).rejects.toThrow(/Admin access/);
   });
 });

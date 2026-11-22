@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -20,6 +20,8 @@ export function PasswordChangeForm() {
   const [error, setError] = useState<string | null>(null);
 
   const changePassword = useAction(api.auth.changePassword);
+  const user = useQuery(api.auth.loggedInUser);
+  const reason = user?.passwordChangeReason;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +43,11 @@ export function PasswordChangeForm() {
       return;
     }
     
+    if (user?.memberNumber && newPassword.trim() === user.memberNumber.trim()) {
+      setError("Choose a password that isn't your CFA number");
+      return;
+    }
+
     if (newPassword === currentPassword) {
       setError("New password must be different from current password");
       return;
@@ -107,6 +114,15 @@ export function PasswordChangeForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {reason && (
+            <Alert>
+              <AlertDescription>
+                {reason === "cfaNumber"
+                  ? "Your password is still your CFA number. Enter it as your current password, then choose a new one."
+                  : "An administrator set your password. Choose your own so only you know it."}
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

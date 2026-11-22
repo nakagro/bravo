@@ -12,6 +12,7 @@ import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
 import { noticesProvider } from "./actionCentreProviders/notices";
 import { assignmentsProvider } from "./actionCentreProviders/assignments";
 import { pendingSignupsProvider } from "./actionCentreProviders/signups";
+import { passwordProvider } from "./actionCentreProviders/password";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
 import { getActiveUser, requireUser } from "./lib/access";
 
@@ -26,6 +27,8 @@ const providers: Array<{ run: ActionProvider; membersOnly?: boolean }> = [
   { run: profileProvider, membersOnly: true },
   { run: bookingApprovalsProvider },
   { run: pendingSignupsProvider },
+  // Shared device logins have passwords too, so no membersOnly gate.
+  { run: passwordProvider },
   { run: eventRsvpProvider, membersOnly: true },
   { run: baSkillsLmsProvider },
   { run: dutyCrewProvider, membersOnly: true },

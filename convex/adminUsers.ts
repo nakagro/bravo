@@ -110,6 +110,8 @@ export const createUser = action({
         isAdmin: false,
         // An admin made this account, so it needs no approval.
         approvalStatus: "approved",
+        // The admin chose this password; the member is asked to change it.
+        passwordChangeReason: "temporary",
       },
     });
 

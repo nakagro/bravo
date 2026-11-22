@@ -213,6 +213,13 @@ export const resetPasswordWithToken = action({
         message: "Password must be at least 8 characters long",
       };
     }
+    const memberNumber: string | null = await ctx.runQuery(
+      internal.passwordReset.memberNumberForEmail,
+      { email },
+    );
+    if (memberNumber && args.newPassword.trim() === memberNumber) {
+      return { success: false, message: "Choose a password that isn't your CFA number" };
+    }
     
     try {
       // Update the password using Convex auth
@@ -243,6 +250,19 @@ export const resetPasswordWithToken = action({
   },
 });
 
+/** The member's CFA number, so a reset can refuse it as the new password. */
+export const memberNumberForEmail = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .first();
+    return user?.memberNumber?.trim() || null;
+  },
+});
+
 /**
  * Internal mutation to mark a token as used
  */
@@ -265,7 +285,11 @@ export const markTokenAsUsed = internalMutation({
         .query("users")
         .withIndex("email", (q) => q.eq("email", resetToken.email))
         .first();
-      if (user) await revokeSessions(ctx, user._id);
+      if (user) {
+        await revokeSessions(ctx, user._id);
+        // They chose a new password; stop asking them to change it.
+        await ctx.db.patch(user._id, { passwordChangeReason: undefined });
+      }
     }
     
     return null;

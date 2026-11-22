@@ -90,6 +90,10 @@ const extendedAuthTables = {
     approvalStatus: v.optional(v.union(v.literal("pending"), v.literal("approved"))),
     approvedAt: v.optional(v.number()),
     approvedBy: v.optional(v.id("users")),
+    // Set when the member should pick a new password: it is still their CFA
+    // number (the old sign-up form set it that way), or an admin set a
+    // temporary one. Cleared when they change it. Absent means fine.
+    passwordChangeReason: v.optional(v.union(v.literal("cfaNumber"), v.literal("temporary"))),
     // Push categories the member has switched off (see lib/notificationPrefs.ts).
     // Absent, or a key absent, means on.
     notificationPrefs: v.optional(

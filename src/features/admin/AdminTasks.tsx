@@ -22,6 +22,7 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
   const morningReminder = useAction(api.availabilityActions.morningReminder);
   const processTransitions = useMutation(api.availability.processStatusTransitions);
   const cleanupNotifications = useAction(api.notificationHistory.cleanupExpiredNotificationsAction);
+  const passwordAudit = useAction(api.passwordAudit.runPasswordAudit);
 
   // Task statuses
   const [deleteMessagesStatus, setDeleteMessagesStatus] = useState<TaskStatus>({ status: "idle", count: null });
@@ -29,6 +30,7 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
   const [reminderStatus, setReminderStatus] = useState<TaskStatus>({ status: "idle", count: null });
   const [transitionsStatus, setTransitionsStatus] = useState<TaskStatus>({ status: "idle", count: null });
   const [cleanupStatus, setCleanupStatus] = useState<TaskStatus>({ status: "idle", count: null });
+  const [passwordStatus, setPasswordStatus] = useState<TaskStatus>({ status: "idle", count: null });
 
   const handleDeleteMessages = async () => {
     try {
@@ -85,6 +87,21 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
     }
   };
 
+  const handlePasswordAudit = async () => {
+    try {
+      setPasswordStatus({ status: "running", count: null });
+      const { checked, flagged } = await passwordAudit({});
+      setPasswordStatus({
+        status: "success",
+        count: flagged,
+        message: `Checked ${checked} accounts. ${flagged} still use their CFA number as their password and will be asked to change it.`,
+      });
+    } catch (err) {
+      console.error(err);
+      setPasswordStatus({ status: "error", count: null, message: String(err) });
+    }
+  };
+
   const renderTaskButton = (
     label: string,
     onClick: () => void,
@@ -111,7 +128,7 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
       </div>
       {taskStatus.status === "success" && (
         <p className="text-green-600 dark:text-green-400 text-xs">
-          ✓ Done! {taskStatus.count !== null ? `${taskStatus.count} items processed.` : ""}
+          ✓ Done! {taskStatus.message ?? (taskStatus.count !== null ? `${taskStatus.count} items processed.` : "")}
         </p>
       )}
       {taskStatus.status === "error" && (
@@ -179,6 +196,16 @@ export default function AdminTasks({ showTitle = true }: AdminTasksProps) {
           cleanupStatus,
           "Delete notification history entries older than 24 hours",
           "Scheduled: Every hour"
+        )}
+
+        <Separator />
+
+        {renderTaskButton(
+          "Find CFA-number passwords",
+          handlePasswordAudit,
+          passwordStatus,
+          "Find members whose password is still their CFA number and ask them in the Action Centre to change it",
+          "Run once after deploying; members are asked until they change it"
         )}
       </CardContent>
     </Card>

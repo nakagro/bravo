@@ -6,6 +6,7 @@
 - Sign-in: New sign-ups choose their own password, at least 8 characters.
 - Admin: User Management lists sign-ups waiting for approval, with Approve and Reject.
 - Action Centre: Admins see when sign-ups are waiting for approval.
+- Action Centre: Members whose password is still their CFA number, or was set by an admin, are asked to change it until they do.
 - Availability: Only Lieutenants, Captains and administrators can set the Duty Officer.
 - Kiosk: PIN sign-in now opens the kiosk screens only.
 - General: Each module's rank and role settings now apply to everything in it, not just what the menu shows.

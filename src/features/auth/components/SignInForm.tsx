@@ -19,6 +19,9 @@ const signUpSchema = z.object({
   memberNumber: z.string().min(1, "CFA member number is required").trim(),
   email: z.email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+}).refine((v) => v.password.trim() !== v.memberNumber.trim(), {
+  message: "Choose a password that isn't your CFA number",
+  path: ["password"],
 });
 
 const signInSchema = z.object({
