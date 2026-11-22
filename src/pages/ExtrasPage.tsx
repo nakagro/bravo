@@ -45,6 +45,13 @@ const EXTRA_LINKS: ExtraLink[] = [
     to: "/shortcuts",
     emoji: "⚡",
   },
+  {
+    title: "Access Control (Mock)",
+    description: "Preview of station and satellite access control status and door controls with made-up data.",
+    to: "/access-control",
+    emoji: "🔐",
+    moduleId: "admin",
+  },
 ];
 
 export default function ExtrasPage() {
