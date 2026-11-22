@@ -2,19 +2,7 @@ import { mutation, action, query, internalQuery, internalMutation } from "./_gen
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { modifyAccountCredentials } from "@convex-dev/auth/server";
-
-/**
- * Generate a cryptographically secure random token
- */
-function generateResetToken(): string {
-  // Generate a random token (32 characters)
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
+import { randomToken, revokeSessions, sha256Hex } from "./lib/access";
 
 /**
  * Request a password reset - creates a token and sends email
@@ -39,16 +27,19 @@ export const requestPasswordReset = mutation({
       .first();
     
     // For security, always return success even if user doesn't exist
-    // This prevents email enumeration attacks
-    if (!user) {
+    // This prevents email enumeration attacks. A disabled account gets the
+    // same answer and no email: resetting must not bring it back.
+    if (!user || user.isDisabled) {
       return {
         success: true,
         message: "If an account exists with this email, a password reset link has been sent.",
       };
     }
     
-    // Generate a unique token
-    const token = generateResetToken();
+    // The email carries the token; the database keeps only its hash, so a
+    // read of this table can't be turned into a password reset.
+    const token = randomToken(32);
+    const tokenHash = await sha256Hex(token);
     
     // Set expiration to 30 minutes from now
     const expiresAt = Date.now() + (30 * 60 * 1000);
@@ -67,7 +58,7 @@ export const requestPasswordReset = mutation({
     // Create new reset token
     await ctx.db.insert("passwordResetTokens", {
       email,
-      token,
+      token: tokenHash,
       expiresAt,
       used: false,
       createdAt: Date.now(),
@@ -91,9 +82,10 @@ export const requestPasswordReset = mutation({
  * Internal helper to verify a reset token
  */
 async function verifyTokenHelper(ctx: any, token: string) {
+  const tokenHash = await sha256Hex(token);
   const resetToken = await ctx.db
     .query("passwordResetTokens")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
+    .withIndex("by_token", (q: any) => q.eq("token", tokenHash))
     .first();
   
   if (!resetToken) {
@@ -106,6 +98,14 @@ async function verifyTokenHelper(ctx: any, token: string) {
   
   if (resetToken.expiresAt < Date.now()) {
     return { valid: false as const, reason: "This reset link has expired" };
+  }
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("email", (q: any) => q.eq("email", resetToken.email))
+    .first();
+  if (!user || user.isDisabled) {
+    return { valid: false as const, reason: "Invalid reset token" };
   }
   
   return {
@@ -234,13 +234,20 @@ export const markTokenAsUsed = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const tokenHash = await sha256Hex(args.token);
     const resetToken = await ctx.db
       .query("passwordResetTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .first();
     
     if (resetToken) {
       await ctx.db.patch(resetToken._id, { used: true });
+      // A reset is often "someone else knows my password": sign out every device.
+      const user = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", resetToken.email))
+        .first();
+      if (user) await revokeSessions(ctx, user._id);
     }
     
     return null;
@@ -249,9 +256,9 @@ export const markTokenAsUsed = internalMutation({
 
 /**
  * Cleanup expired tokens (can be run periodically)
- * Admin only
+ * Internal: run from the dashboard or a cron
  */
-export const cleanupExpiredTokens = mutation({
+export const cleanupExpiredTokens = internalMutation({
   args: {},
   returns: v.object({
     deleted: v.number(),

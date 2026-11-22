@@ -1,7 +1,8 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import { getActiveUser, requireAdmin, requireUser } from "./lib/access";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { logAction } from "./lib/logging";
 
 /**
@@ -10,6 +11,7 @@ import { logAction } from "./lib/logging";
 export const getSkills = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getActiveUser(ctx))) return [];
     return await ctx.db.query("skills")
       .filter((q) => q.eq(q.field("isActive"), true))
       .order("asc")
@@ -25,6 +27,7 @@ export const ensureNoneSkill = mutation({
   args: {},
   returns: v.id("skills"),
   handler: async (ctx) => {
+    await requireUser(ctx);
     const existing = await ctx.db
       .query("skills")
       .withIndex("by_code", (q) => q.eq("code", "NONE"))
@@ -53,12 +56,11 @@ export const getUserSkills = query({
     userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // If userId is provided, use it; otherwise, get the current user's ID
-    const userId = args.userId || await getAuthUserId(ctx);
-    
-    if (!userId) {
-      return [];
-    }
+    // Any active member may look up a member's skills (the availability board
+    // shows them); signed-out and unapproved callers get nothing.
+    const caller = await getActiveUser(ctx);
+    if (!caller) return [];
+    const userId = args.userId ?? caller._id;
     
     // Get the user
     const user = await ctx.db.get(userId);
@@ -85,11 +87,7 @@ export const getUserSkills = query({
  * Get skills for multiple users in a single query (batch)
  * This is optimized to avoid N+1 query problems when displaying skills for many users
  */
-export const getBatchUserSkills = query({
-  args: {
-    userIds: v.array(v.id("users")),
-  },
-  handler: async (ctx, args) => {
+async function batchUserSkills(ctx: QueryCtx, args: { userIds: Id<"users">[] }) {
     const { userIds } = args;
     
     if (userIds.length === 0) {
@@ -133,7 +131,24 @@ export const getBatchUserSkills = query({
     await logAction(ctx, "getBatchUserSkills", "Batch skills lookup", { userCount: userIds.length });
     
     return result;
+}
+
+export const getBatchUserSkills = query({
+  args: {
+    userIds: v.array(v.id("users")),
   },
+  handler: async (ctx, args) => {
+    if (!(await getActiveUser(ctx))) return {};
+    return await batchUserSkills(ctx, args);
+  },
+});
+
+/** For the CAD availability endpoint, which has no signed-in user. */
+export const getBatchUserSkillsInternal = internalQuery({
+  args: {
+    userIds: v.array(v.id("users")),
+  },
+  handler: async (ctx, args) => await batchUserSkills(ctx, args),
 });
 
 /**
@@ -144,10 +159,7 @@ export const addSkillToUser = mutation({
     skillId: v.id("skills"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update your skills");
-    }
+    const userId = (await requireUser(ctx))._id;
     
     // Get the user
     const user = await ctx.db.get(userId);
@@ -185,10 +197,7 @@ export const removeSkillFromUser = mutation({
     skillId: v.id("skills"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update your skills");
-    }
+    const userId = (await requireUser(ctx))._id;
     
     // Get the user
     const user = await ctx.db.get(userId);
@@ -224,6 +233,7 @@ export const createSkill = mutation({
   },
   returns: v.id("skills"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "create skills");
     const { name, code, description, category } = args;
     
     // Check if skill with the same code already exists
@@ -264,6 +274,7 @@ export const updateSkill = mutation({
   },
   returns: v.id("skills"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "change skills");
     const { skillId, ...updates } = args;
     
     // Verify the skill exists
@@ -291,6 +302,7 @@ export const deleteSkill = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "delete skills");
     const { skillId } = args;
     
     // Verify the skill exists

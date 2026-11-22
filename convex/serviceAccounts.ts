@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAdmin as requireAdminUser } from "./lib/access";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -30,16 +31,15 @@ function generateToken(): string {
 // ─── Admin helper ───────────────────────────────────────────────────────────
 
 async function requireAdmin(ctx: any): Promise<string> {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) {
-    throw new Error("You must be signed in");
-  }
-  const user = await ctx.db.get(userId);
-  if (!user || !user.isAdmin) {
-    throw new Error("Only administrators can manage service accounts");
-  }
-  return userId;
+  return (await requireAdminUser(ctx, "manage service accounts"))._id;
 }
+
+/**
+ * PIN sessions are for the kiosk tablets only. Whatever modules an account row
+ * lists (older rows may name more), a session is only ever given the kiosk.
+ * Every other shared device signs in with a shared account instead.
+ */
+const KIOSK_ONLY = ["kiosk"];
 
 // ─── Admin Queries ──────────────────────────────────────────────────────────
 
@@ -79,7 +79,7 @@ export const listServiceAccounts = query({
 // ─── Admin Mutations ────────────────────────────────────────────────────────
 
 /**
- * Create a new service account with an admin-chosen PIN (4–10 digits).
+ * Create a new service account with an admin-chosen PIN (6–10 digits).
  */
 export const createServiceAccount = mutation({
   args: {
@@ -95,8 +95,8 @@ export const createServiceAccount = mutation({
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
 
-    if (!/^\d{4,10}$/.test(args.pin)) {
-      throw new Error("PIN must be 4–10 digits");
+    if (!/^\d{6,10}$/.test(args.pin)) {
+      throw new Error("PIN must be 6–10 digits");
     }
 
     const pin = args.pin;
@@ -107,7 +107,7 @@ export const createServiceAccount = mutation({
       description: args.description?.trim(),
       pinHash,
       isActive: true,
-      allowedModules: args.allowedModules,
+      allowedModules: KIOSK_ONLY,
       createdBy: userId as any,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -144,8 +144,7 @@ export const updateServiceAccount = mutation({
     if (args.name !== undefined) updates.name = args.name.trim();
     if (args.description !== undefined)
       updates.description = args.description.trim();
-    if (args.allowedModules !== undefined)
-      updates.allowedModules = args.allowedModules;
+    if (args.allowedModules !== undefined) updates.allowedModules = KIOSK_ONLY;
     if (args.isActive !== undefined) {
       updates.isActive = args.isActive;
       // If deactivating, revoke all sessions
@@ -168,7 +167,7 @@ export const updateServiceAccount = mutation({
 });
 
 /**
- * Set a new PIN for a service account (admin-chosen, 4–10 digits).
+ * Set a new PIN for a service account (admin-chosen, 6–10 digits).
  * Also revokes all existing sessions.
  */
 export const regeneratePin = mutation({
@@ -182,8 +181,8 @@ export const regeneratePin = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    if (!/^\d{4,10}$/.test(args.pin)) {
-      throw new Error("PIN must be 4–10 digits");
+    if (!/^\d{6,10}$/.test(args.pin)) {
+      throw new Error("PIN must be 6–10 digits");
     }
 
     const account = await ctx.db.get(args.serviceAccountId);
@@ -276,6 +275,10 @@ export const revokeAllSessions = mutation({
 // ─── Rate Limiting ──────────────────────────────────────────────────────────
 
 const MAX_PIN_ATTEMPTS = 5;
+// The per-device limit keys on an identifier the client sends, so it only
+// slows an honest tablet. This one counts every failure, from anywhere, and
+// is what actually stops someone guessing PINs.
+const MAX_PIN_ATTEMPTS_GLOBAL = 20;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 /**
@@ -294,7 +297,13 @@ async function checkRateLimit(
     .collect();
 
   const failedAttempts = recentAttempts.filter((a: any) => !a.success);
-  return failedAttempts.length >= MAX_PIN_ATTEMPTS;
+  if (failedAttempts.length >= MAX_PIN_ATTEMPTS) return true;
+
+  const allRecent = await ctx.db
+    .query("serviceAccountLoginAttempts")
+    .withIndex("by_attemptedAt", (q: any) => q.gte("attemptedAt", windowStart))
+    .take(500);
+  return allRecent.filter((a: any) => !a.success).length >= MAX_PIN_ATTEMPTS_GLOBAL;
 }
 
 // ─── Public Auth Functions (no user auth required) ──────────────────────────
@@ -382,7 +391,7 @@ export const validateServicePin = mutation({
       success: true as const,
       token,
       accountName: account.name,
-      allowedModules: account.allowedModules,
+      allowedModules: KIOSK_ONLY,
     };
   },
 });
@@ -434,7 +443,7 @@ export const getServiceSession = query({
       valid: true as const,
       accountName: account.name,
       accountDescription: account.description,
-      allowedModules: account.allowedModules,
+      allowedModules: KIOSK_ONLY,
       serviceAccountId: account._id,
     };
   },

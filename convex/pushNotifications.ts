@@ -1,4 +1,5 @@
-import { internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { requireUser } from "./lib/access";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -18,8 +19,7 @@ export const register = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireUser(ctx))._id;
 
     const endpoint = args.subscription?.endpoint;
 
@@ -76,7 +76,9 @@ export const getSubscriptionsForUsers = internalQuery({
   },
 });
 
-export const getSubscriptions = query({
+// Internal-only: every subscription, or one member's, with push keys. Never
+// expose this to clients.
+export const getSubscriptions = internalQuery({
   args: {
     userId: v.optional(v.id("users")),
   },
@@ -92,7 +94,8 @@ export const getSubscriptions = query({
   },
 });
 
-export const deleteSubscription = mutation({
+// Internal-only: prune a dead subscription after the push service rejects it.
+export const deleteSubscription = internalMutation({
   args: { id: v.id("pushSubscriptions") },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -137,8 +140,8 @@ export const getMySubscriptionsRaw = internalQuery({
 });
 
 // Self-service: list only the current user's own registered devices, for the
-// user settings page (as opposed to getSubscriptions, which is used by admin
-// tooling and can list any/all users' subscriptions).
+// user settings page (as opposed to the internal getSubscriptions, which can
+// list any/all users' subscriptions).
 export const getMySubscriptions = query({
   args: {},
   returns: v.array(

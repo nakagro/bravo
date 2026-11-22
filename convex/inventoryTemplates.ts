@@ -1,12 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { moduleSettingAllows } from "./modules";
+import { requireModule, requireUser } from "./lib/access";
 
  async function requireSignedIn(ctx: any) {
-   const userId = await getAuthUserId(ctx);
-   if (!userId) throw new Error("You must be signed in");
-   return userId;
+   return (await requireUser(ctx))._id;
  }
 
  async function requireInventoryAdmin(ctx: any) {
@@ -53,7 +51,7 @@ export const listTemplates = query({
     statuses: v.optional(v.array(templateStatusValidator)),
   },
   handler: async (ctx, { statuses }) => {
-    await requireSignedIn(ctx);
+    await requireModule(ctx, "inventory");
     const wanted = statuses ?? ["active"];
     const templates = await ctx.db
       .query("applianceTemplates")
@@ -71,7 +69,7 @@ export const listTemplates = query({
 export const getApplianceTemplates = query({
   args: {},
   handler: async (ctx) => {
-    await requireSignedIn(ctx);
+    await requireModule(ctx, "inventory");
     return await ctx.db
       .query("applianceTemplates")
       .withIndex("by_updatedAt")
@@ -85,7 +83,7 @@ export const getTemplateStructure = query({
     templateId: v.id("applianceTemplates"),
   },
   handler: async (ctx, { templateId }) => {
-    await requireSignedIn(ctx);
+    await requireModule(ctx, "inventory");
     const template = await ctx.db.get(templateId);
     if (!template) return null;
 
@@ -520,7 +518,7 @@ export const generateUploadUrl = mutation({
 export const getImageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, { storageId }) => {
-    await requireSignedIn(ctx);
+    await requireModule(ctx, "inventory");
     return await ctx.storage.getUrl(storageId);
   },
 });
@@ -684,7 +682,7 @@ export const cloneTemplate = mutation({
 export const exportTemplate = query({
   args: { templateId: v.id("applianceTemplates") },
   handler: async (ctx, { templateId }) => {
-    await requireSignedIn(ctx);
+    await requireModule(ctx, "inventory");
 
     const template = await ctx.db.get(templateId);
     if (!template) throw new Error("Template not found");

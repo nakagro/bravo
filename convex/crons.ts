@@ -1,5 +1,5 @@
 import { cronJobs } from "convex/server";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { brigadeCron, type BrigadeTime } from "./brigadeCron";
 
 const crons = cronJobs();
@@ -47,12 +47,12 @@ at(
   internal.stationChecks.closeElapsedWeeks
 );
 
-at("nightly reset statuses", { hour: 4, minute: 30 }, api.availabilityActions.nightlyReset);
+at("nightly reset statuses", { hour: 4, minute: 30 }, internal.availabilityActions.nightlyResetJob);
 
 at(
   "morning availability reminder",
   { hour: 10, minute: 0 },
-  api.availabilityActions.morningReminder
+  internal.availabilityActions.morningReminderJob
 );
 
 // Nudge the outgoing duty crew at 4pm on the Monday, the last day of the
@@ -67,7 +67,7 @@ at(
 crons.interval(
   "process status transitions", // identifier
   { minutes: 5 },
-  api.availability.processStatusTransitions,
+  internal.availability.processStatusTransitionsJob,
   {}
 );
 

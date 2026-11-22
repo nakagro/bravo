@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Query to get all fire reports for the dashboard
 export const getFireReports = query({
@@ -15,6 +16,7 @@ export const getFireReports = query({
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "fireReports"))) return [];
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -56,6 +58,7 @@ export const getMyFireReports = query({
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "fireReports"))) return [];
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -88,6 +91,7 @@ export const getFireReport = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "fireReports"))) return null;
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -163,10 +167,7 @@ export const createFireReport = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {
@@ -247,10 +248,7 @@ export const updateFireReport = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {
@@ -301,10 +299,7 @@ export const updateFireReportStatus = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {
@@ -356,10 +351,7 @@ export const deleteFireReport = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {
@@ -408,10 +400,7 @@ export const addFireReportAttachment = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {
@@ -459,10 +448,7 @@ export const removeFireReportAttachment = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("User not found");
-    }
+    const userId = (await requireModule(ctx, "fireReports"))._id;
     const user = await ctx.db.get(userId);
 
     if (!user) {

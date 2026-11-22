@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
 import { isMemberAccount } from "./lib/accountType";
 import { secretMatches } from "./labsMember";
@@ -54,7 +54,7 @@ http.route({
       // Get all users. `getUsers` deliberately still returns shared accounts (the
       // admin screen needs them), so the external CAD/paging consumer filters here
       // - it must never be told the DO phone is "available".
-      const users = (await ctx.runQuery(api.users.getUsers)).filter(isMemberAccount);
+      const users = (await ctx.runQuery(internal.users.listAllUsers, {})).filter(isMemberAccount);
 
       // Get all user IDs for batch skills query
       const userIds = users
@@ -62,7 +62,7 @@ http.route({
         .map((user) => user._id);
 
       // Fetch all skills in ONE batch query (avoids N+1 problem)
-      const batchSkills = await ctx.runQuery(api.skills.getBatchUserSkills, {
+      const batchSkills = await ctx.runQuery(internal.skills.getBatchUserSkillsInternal, {
         userIds,
       });
 
@@ -105,71 +105,6 @@ http.route({
       return new Response(
         JSON.stringify({
           error: "Failed to fetch member availability",
-          details: error instanceof Error ? error.message : "Unknown error",
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            ...getCorsHeaders(),
-          },
-        },
-      );
-    }
-  }),
-});
-
-// ============================================================================
-// TEST ENDPOINT - API Key Authentication Demo
-// ============================================================================
-
-// CORS preflight for test endpoint
-http.route({
-  path: "/api/test-auth",
-  method: "OPTIONS",
-  handler: httpAction(async (_ctx, _request) => {
-    return new Response(null, {
-      status: 200,
-      headers: getCorsHeaders(),
-    });
-  }),
-});
-
-// Test endpoint demonstrating API key authentication
-http.route({
-  path: "/api/test-auth",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    // Validate API key
-    const authResult = validateApiKey(request);
-
-    // If validation failed, return the error response
-    if (!authResult.isValid) {
-      return authResult.errorResponse!;
-    }
-
-    // API key is valid - proceed with the request
-    try {
-      const testData = {
-        message: "API key authentication successful!",
-        timestamp: new Date().toISOString(),
-        endpoint: "/api/test-auth",
-        authenticated: true,
-      };
-
-      return new Response(JSON.stringify(testData), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...getCorsHeaders(),
-        },
-      });
-    } catch (error) {
-      console.error("Error in test endpoint:", error);
-      return new Response(
-        JSON.stringify({
-          error: "Internal server error",
-          details: error instanceof Error ? error.message : "Unknown error",
         }),
         {
           status: 500,
@@ -367,7 +302,6 @@ const shortcutsHandler = httpAction(async (ctx, request) => {
     return new Response(
       JSON.stringify({
         error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
       }),
       {
         status: 500,

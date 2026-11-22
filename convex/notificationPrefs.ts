@@ -9,6 +9,7 @@ import {
   categoryForType,
   isCategoryEnabled,
 } from "./lib/notificationPrefs";
+import { requireAdmin } from "./lib/access";
 
 const categoryValidator = v.union(
   v.literal("availabilityReminders"),
@@ -90,10 +91,7 @@ export const setMyNotificationPref = mutation({
 });
 
 async function requireAdminUser(ctx: QueryCtx) {
-  const actorId = await getAuthUserId(ctx);
-  if (!actorId) throw new Error("You must be signed in");
-  const actor = await ctx.db.get(actorId);
-  if (!actor?.isAdmin) throw new Error("Only administrators can manage member notifications");
+  await requireAdmin(ctx, "manage member notifications");
 }
 
 export const getUserNotificationPrefs = query({

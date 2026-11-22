@@ -1,6 +1,6 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { getActiveUser, getAdmin, requireAdmin as requireAdminUser, revokeSessions } from "./lib/access";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
@@ -17,13 +17,7 @@ async function requireAdminActingOnSomeoneElse(
   targetUserId: Id<"users">,
   verb: string,
 ) {
-  const actorId = await getAuthUserId(ctx);
-  if (!actorId) throw new Error("You must be signed in");
-
-  const actor = await ctx.db.get(actorId);
-  if (!actor || !actor.isAdmin) {
-    throw new Error(`Only administrators can ${verb} accounts`);
-  }
+  const actorId = (await requireAdminUser(ctx, `${verb} accounts`))._id;
   if (actorId === targetUserId) {
     throw new Error(`You cannot ${verb} your own account`);
   }
@@ -32,29 +26,6 @@ async function requireAdminActingOnSomeoneElse(
   if (!target) throw new Error(`User with ID ${targetUserId} not found`);
 
   return { actorId, target };
-}
-
-/**
- * Drop every live session for a user, so an account that was just disabled or
- * deleted stops working on devices that are already signed in rather than at
- * the next login. Refresh tokens hang off sessions and must go with them.
- */
-async function revokeSessions(ctx: MutationCtx, userId: Id<"users">) {
-  const sessions = await ctx.db
-    .query("authSessions")
-    .withIndex("userId", (q) => q.eq("userId", userId))
-    .collect();
-
-  for (const session of sessions) {
-    const refreshTokens = await ctx.db
-      .query("authRefreshTokens")
-      .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
-      .collect();
-    for (const token of refreshTokens) {
-      await ctx.db.delete(token._id);
-    }
-    await ctx.db.delete(session._id);
-  }
 }
 
 /**
@@ -85,6 +56,8 @@ export const backfillBrigadeMemberRank = internalMutation({
 export const getUsers = query({
   args: {},
   handler: async (ctx) => {
+    // Every account with every field: User Management only.
+    if (!(await getAdmin(ctx))) return [];
     return await ctx.db.query("users").collect();
   },
 });
@@ -95,29 +68,51 @@ export const getUsers = query({
  * Deliberately separate from `getUsers`, which must keep returning shared
  * accounts so the admin User Management screen can see and edit them.
  */
+const memberPickerValidator = v.object({
+  _id: v.id("users"),
+  _creationTime: v.number(),
+  name: v.optional(v.string()),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  rank: v.optional(v.string()),
+  lieutenantNumber: v.optional(v.number()),
+  roles: v.optional(v.array(v.string())),
+  skills: v.optional(v.array(v.id("skills"))),
+  isDutyOfficer: v.optional(v.boolean()),
+});
+
 export const getMemberUsers = query({
   args: {},
+  returns: v.array(memberPickerValidator),
   handler: async (ctx) => {
+    if (!(await getActiveUser(ctx))) return [];
     const users = await ctx.db.query("users").collect();
-    return users.filter(isMemberAccount);
+    // What a picker needs to show and sort a person - not their email or CFA number.
+    return users.filter(isMemberAccount).map((u) => ({
+      _id: u._id,
+      _creationTime: u._creationTime,
+      name: u.name,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      rank: u.rank,
+      lieutenantNumber: u.lieutenantNumber,
+      roles: u.roles,
+      skills: u.skills,
+      isDutyOfficer: u.isDutyOfficer,
+    }));
   },
 });
 
-/**
- * Get all admin users from the system
- */
-export const getAdminUsers = query({
+/** Every account, for server code (the CAD availability endpoint). */
+export const listAllUsers = internalQuery({
   args: {},
-  handler: async (ctx) => {
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers.filter(user => user.isAdmin === true);
-  },
+  handler: async (ctx) => await ctx.db.query("users").collect(),
 });
 
 /**
  * Get a user by ID
  */
-export const getUserById = query({
+export const getUserById = internalQuery({
   args: {
     userId: v.id("users"),
   },
@@ -132,6 +127,7 @@ export const getUserById = query({
 export const getRoles = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getActiveUser(ctx))) return [];
     return await ctx.db.query("roles").collect();
   },
 });
@@ -150,14 +146,7 @@ export const updateUserAccountType = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    const actorId = await getAuthUserId(ctx);
-    if (!actorId) {
-      throw new Error("You must be signed in");
-    }
-    const actor = await ctx.db.get(actorId);
-    if (!actor || !actor.isAdmin) {
-      throw new Error("Only administrators can change an account type");
-    }
+    await requireAdmin(ctx, "change an account type");
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -174,13 +163,7 @@ export const updateUserAccountType = mutation({
  * every account can reach, so only an admin may change them.
  */
 async function requireAdmin(ctx: MutationCtx, verb: string) {
-  const actorId = await getAuthUserId(ctx);
-  if (!actorId) throw new Error("You must be signed in");
-  const actor = await ctx.db.get(actorId);
-  if (!actor || !actor.isAdmin) {
-    throw new Error(`Only administrators can ${verb}`);
-  }
-  return actorId;
+  return (await requireAdminUser(ctx, verb))._id;
 }
 
 /**
@@ -301,6 +284,7 @@ export const createRole = mutation({
   },
   returns: v.id("roles"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "create roles");
     const { name, description } = args;
     
     // Check if role with the same name already exists
@@ -338,6 +322,7 @@ export const updateRole = mutation({
   },
   returns: v.id("roles"),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "change roles");
     const { roleId, name, description, isActive } = args;
     
     // Verify the role exists
@@ -408,6 +393,7 @@ export const deleteRole = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "delete roles");
     const { roleId } = args;
     
     // Verify the role exists
@@ -529,6 +515,60 @@ export const deleteUser = mutation({
     // Delete the user
     await ctx.db.delete(userId);
 
+    return null;
+  },
+});
+
+// ─── Sign-up approval ───────────────────────────────────────────────────────
+
+/** Self-service sign-ups waiting for an admin, oldest first. Admins only. */
+export const listPendingUsers = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      email: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      name: v.optional(v.string()),
+      memberNumber: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    if (!(await getAdmin(ctx))) return [];
+    const pending = await ctx.db
+      .query("users")
+      .withIndex("by_approvalStatus", (q) => q.eq("approvalStatus", "pending"))
+      .collect();
+    return pending.map((u) => ({
+      _id: u._id,
+      _creationTime: u._creationTime,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      name: u.name,
+      memberNumber: u.memberNumber,
+    }));
+  },
+});
+
+/**
+ * Let a pending sign-up in. They keep the floor rank they signed up with;
+ * set rank and roles from User Management as usual. To turn a sign-up away,
+ * delete the account (deleteUser), which frees the email to try again.
+ */
+export const approveUser = mutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { actorId, target } = await requireAdminActingOnSomeoneElse(ctx, args.userId, "approve");
+    if (target.approvalStatus !== "pending") return null;
+    await ctx.db.patch(args.userId, {
+      approvalStatus: "approved",
+      approvedAt: Date.now(),
+      approvedBy: actorId,
+    });
     return null;
   },
 });

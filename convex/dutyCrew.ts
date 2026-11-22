@@ -1,8 +1,8 @@
 import { query, mutation, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { weekWindow } from "./stationChecks";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Get all duty crews
 export const getAllDutyCrews = query({
@@ -20,6 +20,7 @@ export const getAllDutyCrews = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "dutyCrew", "availability"))) return [];
     const crews = await ctx.db.query("dutyCrew").collect();
     return crews.sort((a, b) => a.number - b.number);
   },
@@ -40,6 +41,7 @@ export const getDutyCrew = query({
     updatedAt: v.number(),
   }),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "dutyCrew");
     const dutyCrew = await ctx.db.get(args.id);
     if (!dutyCrew) {
       throw new Error("Duty crew not found");
@@ -58,10 +60,7 @@ export const createDutyCrew = mutation({
   },
   returns: v.id("dutyCrew"),
   handler: async (ctx, args): Promise<Id<"dutyCrew">> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     // Check if a duty crew with the same number already exists
     const existingDutyCrew = await ctx.db
@@ -96,10 +95,7 @@ export const updateDutyCrew = mutation({
   },
   returns: v.id("dutyCrew"),
   handler: async (ctx, args): Promise<Id<"dutyCrew">> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     const dutyCrew = await ctx.db.get(args.id);
     if (!dutyCrew) {
@@ -144,10 +140,7 @@ export const deleteDutyCrew = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     // Check if there are any schedules using this duty crew
     const schedules = await ctx.db
@@ -198,6 +191,7 @@ export const getDutyCrewForDate = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew"))) return null;
     const date = new Date(args.date);
 
     // Check if there's a manual assignment for this date
@@ -347,6 +341,7 @@ export const getUpcomingDutyCrewAssignments = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew", "availability"))) return [];
     const count = args.count ?? 4; // Default to 4 upcoming assignments
     // Start from the Sunday of the current duty week, not today: the week runs
     // Tuesday to Monday, so on a Monday "this week" is still yesterday's
@@ -476,10 +471,7 @@ export const assignDutyCrew = mutation({
   },
   returns: v.id("dutyCrewSchedule"),
   handler: async (ctx, args): Promise<Id<"dutyCrewSchedule">> => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user) {
@@ -530,10 +522,7 @@ export const deleteAssignment = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     await ctx.db.delete(args.id);
     return true;
@@ -547,7 +536,7 @@ export const isCurrentUserDutyCrewLeader = query({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "dutyCrew"))?._id;
     if (!userId) return false;
 
     const dutyCrew = await ctx.db.get(args.dutyCrewId);

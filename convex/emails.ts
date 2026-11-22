@@ -1,6 +1,8 @@
 import { action, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { internal } from "./_generated/api";
+import { escapeHtml } from "./lib/access";
 
 const FROM_ADDRESS = "BRAVO <noreply@mail.bravo.grayhux.io>";
 
@@ -97,7 +99,17 @@ export const sendTestEmail = action({
     to: v.string(),
     userName: v.string(),
   },
-  handler: async (ctx, args) => {
+  // `to` and `userName` are ignored: the test only ever goes to the caller's
+  // own address. They stay in the args so older app builds keep working.
+  handler: async (
+    ctx,
+  ): Promise<{ success: boolean; emailId: string | undefined; message: string }> => {
+    const caller: { email: string | null; name: string } = await ctx.runQuery(
+      internal.access.callerContact,
+      {},
+    );
+    if (!caller.email) throw new Error("Your account has no email address");
+    const args = { to: caller.email, userName: escapeHtml(caller.name) };
     try {
       const result = await sendGuardedEmail({
         to: args.to,
@@ -271,15 +283,15 @@ export const sendNewUserSignupNotification = internalAction({
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Name:</td>
-                  <td style="padding: 8px 0; color: #111827;">${args.newUserName}</td>
+                  <td style="padding: 8px 0; color: #111827;">${escapeHtml(args.newUserName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Email:</td>
-                  <td style="padding: 8px 0; color: #111827;">${args.newUserEmail}</td>
+                  <td style="padding: 8px 0; color: #111827;">${escapeHtml(args.newUserEmail)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">CFA Member Number:</td>
-                  <td style="padding: 8px 0; color: #111827;">${args.newUserMemberNumber}</td>
+                  <td style="padding: 8px 0; color: #111827;">${escapeHtml(args.newUserMemberNumber)}</td>
                 </tr>
               </table>
             </div>
@@ -341,7 +353,7 @@ export const sendPasswordResetEmail = internalAction({
             <h2 style="color: #374151; margin-bottom: 16px;">Password Reset Request</h2>
             
             <p style="color: #4b5563; margin-bottom: 16px;">
-              Hello ${args.userName},
+              Hello ${escapeHtml(args.userName)},
             </p>
             
             <p style="color: #4b5563; margin-bottom: 16px;">

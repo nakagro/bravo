@@ -6,6 +6,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { shiftInstants } from "./plannedShifts";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -19,6 +20,7 @@ const HOUR = 60 * 60 * 1000;
 
 async function setup() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => openModules(ctx));
   const { memberId, otherId, sharedId, adminId } = await t.run(async (ctx) => {
     const memberId = await ctx.db.insert("users", {
       name: "Sam Nurse",
@@ -160,7 +162,7 @@ describe("applyShift", () => {
     expect(history).toMatchObject([{ userId: s.memberId, status: "not available" }]);
 
     vi.setSystemTime(shift.endAt);
-    await s.t.mutation(api.availability.processStatusTransitions, {});
+    await s.t.mutation(internal.availability.processStatusTransitionsJob, {});
     expect((await user(s))!.currentStatus).toBeUndefined();
   });
 
@@ -179,7 +181,7 @@ describe("applyShift", () => {
     vi.setSystemTime(shift.startAt);
     await apply(s, shift._id, shift.startAt);
     vi.setSystemTime(shift.endAt);
-    await s.t.mutation(api.availability.processStatusTransitions, {});
+    await s.t.mutation(internal.availability.processStatusTransitionsJob, {});
 
     const after = (await user(s))!;
     expect(after.currentStatus).toBe("available - station");

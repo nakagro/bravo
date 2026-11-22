@@ -9,30 +9,33 @@ import { v } from "convex/values";
 import { isMemberAccount, isDisabledAccount } from "./lib/accountType";
 import { sendGuardedEmail } from "./emails";
 import { createOrUpdateAuthUser } from "./lib/authUser";
+import { randomDigits } from "./lib/access";
 
-/**
- * DEFAULT SIGNUP RANK CONFIGURATION
- * 
- * Set the default rank for new user signups.
- * Options: "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
- *
- * - "Brigade Member" = Non-operational member (floor rank, default for new signups)
- * - "Probationary" = Probationary firefighter
- * - "Firefighter" = Full firefighter
- * - "Lieutenant" = Lieutenant rank
- * - "Captain" = Captain rank
- *
- * Change this value to set what rank new users receive on signup.
- */
-const DEFAULT_SIGNUP_RANK: "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" = "Brigade Member";
+// New sign-ups get the floor rank "Brigade Member" and wait for approval;
+// see insertNewUser in lib/authUser.ts.
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Password({
       profile(params) {
+        const email = params.email as string;
+        // Sign-up also carries the member's name and CFA number, so the account
+        // is complete the moment it exists. Pick fields by name: nothing else
+        // from the form (an approval status, an admin flag) reaches the row.
+        const text = (key: string) => {
+          const value = params[key];
+          return typeof value === "string" && value.trim() ? value.trim().slice(0, 100) : undefined;
+        };
+        const firstName = text("firstName");
+        const lastName = text("lastName");
+        const memberNumber = text("memberNumber");
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
         return {
-          email: params.email as string,
-          name: params.email as string,
+          email,
+          name: fullName || email,
+          ...(firstName ? { firstName } : {}),
+          ...(lastName ? { lastName } : {}),
+          ...(memberNumber ? { memberNumber } : {}),
         };
       },
       // Custom password validation that allows numeric passwords (CFA member numbers)
@@ -49,7 +52,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       id: "email-otp",
       maxAge: 10 * 60,
       async generateVerificationToken() {
-        return String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
+        return randomDigits(6);
       },
       async sendVerificationRequest({ identifier: email, token }) {
         // ctx is passed at runtime by @convex-dev/auth but absent from the
@@ -80,6 +83,15 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   ],
   callbacks: {
     createOrUpdateUser: createOrUpdateAuthUser,
+    // Runs for every sign-in method (password, email code, refresh), so a
+    // disabled account can't sign back in by any route. Pending sign-ups may
+    // sign in: they see the "waiting for approval" screen and nothing else.
+    async beforeSessionCreation(ctx, { userId }) {
+      const user = await ctx.db.get(userId);
+      if (!user || isDisabledAccount(user)) {
+        throw new Error("This account has been disabled.");
+      }
+    },
   },
   jwt: {
     customClaims: async (ctx, { userId }) => {
@@ -205,8 +217,11 @@ export const updateUserProfile = mutation({
   },
 });
 
-// Mutation to store user profile information during signup
-// This is a special function that doesn't require authentication
+// Fills in a new sign-up's name and CFA number. Older app builds call this
+// after creating the account; the sign-up form now sends these fields with the
+// account itself (see the Password profile above), so this is a fallback.
+// It only ever touches the caller's own account, and only while that account
+// is still waiting for approval, so it can't rename or re-rank anyone.
 export const storeSignupData = mutation({
   args: {
     email: v.string(),
@@ -215,75 +230,39 @@ export const storeSignupData = mutation({
     memberNumber: v.string(),
   },
   handler: async (ctx, args) => {
-    // Store the signup data in a temporary table or session
-    // We'll use this to update the user profile once they're authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return { success: false, message: "User not found. Try again after signing in." };
+    }
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return { success: false, message: "User not found. Try again after signing in." };
+    }
+    if (user.approvalStatus !== "pending") {
+      // Approved accounts change their details through updateUserProfile.
+      return { success: true };
+    }
+    if (user.email !== args.email.toLowerCase().trim()) {
+      throw new Error("You can only update your own account");
+    }
 
-    // Normalize email to lowercase for consistency
-    const email = args.email.toLowerCase().trim();
-
-    // Check member number uniqueness before proceeding
+    const memberNumber = args.memberNumber.trim();
     const existingMember = await ctx.db
       .query("users")
-      .withIndex("by_memberNumber", (q) => q.eq("memberNumber", args.memberNumber))
+      .withIndex("by_memberNumber", (q) => q.eq("memberNumber", memberNumber))
       .first();
-
-    if (existingMember) {
+    if (existingMember && existingMember._id !== userId) {
       throw new Error("A member with this CFA number already exists. Please check your member number or contact an administrator.");
     }
 
-    // Find the user by email (should be created by the auth system)
-    const users = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", email))
-      .collect();
-
-    if (users.length === 0) {
-      // User not found yet, might be a timing issue
-      return { success: false, message: "User not found. Try again after signing in." };
-    }
-
-    const user = users[0];
-
-    // Update the user profile with default rank
-    await ctx.db.patch(user._id, {
-      firstName: args.firstName,
-      lastName: args.lastName,
-      memberNumber: args.memberNumber,
-      name: `${args.firstName} ${args.lastName}`.trim(),
-      rank: DEFAULT_SIGNUP_RANK,
+    const firstName = args.firstName.trim().slice(0, 100);
+    const lastName = args.lastName.trim().slice(0, 100);
+    await ctx.db.patch(userId, {
+      firstName,
+      lastName,
+      memberNumber,
+      name: `${firstName} ${lastName}`.trim(),
     });
-
-    // Check if new user signup email is enabled
-    const emailSetting = await ctx.db
-      .query("emailSettings")
-      .withIndex("by_emailType", (q) => q.eq("emailType", "newUserSignup"))
-      .first();
-
-    // Only send email if setting is enabled (or doesn't exist yet - default to enabled)
-    const shouldSendEmail = !emailSetting || emailSetting.enabled;
-
-    if (shouldSendEmail) {
-      // Get all admin users to notify them
-      const adminUsers = await ctx.db
-        .query("users")
-        .collect()
-        .then(users => users.filter(u => u.isAdmin === true));
-
-      // Collect admin emails (only those who have email addresses)
-      const adminEmails = adminUsers
-        .map(admin => admin.email)
-        .filter((email): email is string => !!email);
-
-      // Schedule email notification to admins (don't await to avoid blocking)
-      if (adminEmails.length > 0) {
-        ctx.scheduler.runAfter(0, internal.emails.sendNewUserSignupNotification, {
-          adminEmails,
-          newUserName: `${args.firstName} ${args.lastName}`.trim(),
-          newUserEmail: email,
-          newUserMemberNumber: args.memberNumber,
-        });
-      }
-    }
 
     return { success: true };
   },
@@ -357,24 +336,10 @@ export const adminResetPassword = action({
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to reset passwords");
-    }
-
-    // Get current user to check admin status
-    const currentUser = await ctx.runQuery(api.auth.loggedInUser);
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
-
-    // Check if current user is admin
-    if (!currentUser.isAdmin) {
-      throw new Error("Only administrators can reset passwords");
-    }
+    await ctx.runQuery(internal.access.assertAdmin, {});
 
     // Get target user information
-    const targetUser = await ctx.runQuery(api.users.getUserById, { userId: args.targetUserId });
+    const targetUser = await ctx.runQuery(internal.users.getUserById, { userId: args.targetUserId });
     if (!targetUser) {
       throw new Error("Target user not found");
     }

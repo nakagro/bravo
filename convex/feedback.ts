@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { getModuleUser, requireModule } from "./lib/access";
 
 /**
  * Submit feedback from a user
@@ -22,6 +23,7 @@ export const submitFeedback = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "feedback");
     const userId = await getAuthUserId(ctx);
 
     let submittedBy: Id<"users"> | undefined = undefined;
@@ -109,6 +111,7 @@ export const getAllFeedback = query({
     respondedAt: v.optional(v.number()),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "feedback"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
@@ -142,10 +145,7 @@ export const updateFeedbackStatus = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "feedback"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) {

@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 const MAX_PRESETS = 5;
 
@@ -19,7 +19,7 @@ export const getPresets = query({
         })
     ),
     handler: async (ctx) => {
-        const userId = await getAuthUserId(ctx);
+        const userId = (await getModuleUser(ctx, "availability"))?._id;
         if (!userId) {
             return [];
         }
@@ -40,10 +40,7 @@ export const createPreset = mutation({
     },
     returns: v.id("messagePresets"),
     handler: async (ctx, args) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) {
-            throw new Error("You must be signed in to create a message preset");
-        }
+        const userId = (await requireModule(ctx, "availability"))._id;
 
         // Check current preset count
         const existingPresets = await ctx.db
@@ -80,10 +77,7 @@ export const updatePreset = mutation({
     },
     returns: v.null(),
     handler: async (ctx, args) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) {
-            throw new Error("You must be signed in to update a message preset");
-        }
+        const userId = (await requireModule(ctx, "availability"))._id;
 
         const preset = await ctx.db.get(args.presetId);
         if (!preset) {
@@ -110,10 +104,7 @@ export const deletePreset = mutation({
     },
     returns: v.null(),
     handler: async (ctx, args) => {
-        const userId = await getAuthUserId(ctx);
-        if (!userId) {
-            throw new Error("You must be signed in to delete a message preset");
-        }
+        const userId = (await requireModule(ctx, "availability"))._id;
 
         const preset = await ctx.db.get(args.presetId);
         if (!preset) {

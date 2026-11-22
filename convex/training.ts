@@ -6,6 +6,7 @@ import { isMemberAccount } from "./lib/accountType";
 import { compareBySeniority, isValidLieutenantNumber, type Rank } from "./lib/ranks";
 import { isTuesday, tuesdayKind, tuesdaysBetween } from "./lib/rollNights";
 import { moduleSettingAllows } from "./modules";
+import { requireUser } from "./lib/access";
 
 // Training roll. See docs/plans/training-roll-plan.md.
 //
@@ -46,10 +47,7 @@ async function accessFor(ctx: QueryCtx | MutationCtx, user: Doc<"users">) {
 }
 
 async function requireAccess(ctx: MutationCtx, need: "manage" | "apologies") {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found");
+  const user = await requireUser(ctx);
   const access = await accessFor(ctx, user);
   if (need === "manage" ? !access.canManage : !access.canRecordApologies) {
     throw new Error(
@@ -58,7 +56,7 @@ async function requireAccess(ctx: MutationCtx, need: "manage" | "apologies") {
         : "Only officers or the Duty Officer can record apologies"
     );
   }
-  return { userId, access };
+  return { userId: user._id, access };
 }
 
 export const getAccess = query({

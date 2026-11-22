@@ -11,7 +11,7 @@ interface ApplianceLocationEditorProps {
 
 function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
   const applianceLocations = useQuery(api.applianceLocations.getApplianceLocationsWithUsers) || [];
-  const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
+  const allLocations = useQuery(api.applianceLocations.getAllLocations, {}) || [];
   const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
 
   const [isUpdating, setIsUpdating] = useState(false);

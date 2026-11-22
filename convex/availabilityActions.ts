@@ -1,23 +1,23 @@
 "use node";
 
-import { action } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { action, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { trackCronNotification } from "./posthogAnalytics";
 
 // Action triggered by daily cron to reset statuses and send push notifications
-export const nightlyReset = action({
+export const nightlyResetJob = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
     const startTime = Date.now();
     
     // Check if notifications are enabled for this type
-    const notificationsEnabled = await ctx.runQuery(api.notificationSettings.isNotificationEnabled, {
+    const notificationsEnabled = await ctx.runQuery(internal.notificationSettings.isNotificationEnabled, {
       notificationType: "nightlyReset"
     });
 
-    const users = await ctx.runQuery(api.availability.getAllUsersStatus, {});
+    const users = await ctx.runQuery(internal.availability.listAllUsersStatus, {});
 
     let successCount = 0;
     let failureCount = 0;
@@ -36,7 +36,7 @@ export const nightlyReset = action({
           if (notificationsEnabled) {
             totalRecipients++;
             try {
-              await ctx.runAction(api.pushNotificationAction.sendNotification, {
+              await ctx.runAction(internal.pushNotificationAction.send, {
                 title: "Daily Availability Reset",
                 body: "Please update your availability status for today.",
                 userId: user._id,
@@ -69,14 +69,14 @@ export const nightlyReset = action({
 });
 
 // Action triggered by cron to send reminders to users who haven't set their status
-export const morningReminder = action({
+export const morningReminderJob = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
     const startTime = Date.now();
     
     // Check if notifications are enabled for this type
-    const notificationsEnabled = await ctx.runQuery(api.notificationSettings.isNotificationEnabled, {
+    const notificationsEnabled = await ctx.runQuery(internal.notificationSettings.isNotificationEnabled, {
       notificationType: "morningReminder"
     });
 
@@ -94,7 +94,7 @@ export const morningReminder = action({
     }
 
     // Get all users to check their status (raw status fields)
-    const users = await ctx.runQuery(api.availability.getAllUsersStatus, {});
+    const users = await ctx.runQuery(internal.availability.listAllUsersStatus, {});
     
     let successCount = 0;
     let failureCount = 0;
@@ -108,7 +108,7 @@ export const morningReminder = action({
       if (needsReminder) {
         totalRecipients++;
         try {
-          await ctx.runAction(api.pushNotificationAction.sendNotification, {
+          await ctx.runAction(internal.pushNotificationAction.send, {
             title: "Availability Status Reminder",
             body: "Don't forget to set your availability status for the day",
             userId: user._id,
@@ -137,5 +137,25 @@ export const morningReminder = action({
     });
 
     return successCount;
+  },
+});
+
+// The same two jobs, run by hand from Admin Tasks. Admin-only: each one pushes
+// every member, and the reset clears everyone's availability.
+export const nightlyReset = action({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx): Promise<number> => {
+    await ctx.runQuery(internal.access.assertAdmin, {});
+    return await ctx.runAction(internal.availabilityActions.nightlyResetJob, {});
+  },
+});
+
+export const morningReminder = action({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx): Promise<number> => {
+    await ctx.runQuery(internal.access.assertAdmin, {});
+    return await ctx.runAction(internal.availabilityActions.morningReminderJob, {});
   },
 });

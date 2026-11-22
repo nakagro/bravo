@@ -191,7 +191,6 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
           name:
             [member.firstName, member.lastName].filter(Boolean).join(" ") ||
             member.name ||
-            member.email ||
             "Unnamed member",
           rank: member.rank,
         }))

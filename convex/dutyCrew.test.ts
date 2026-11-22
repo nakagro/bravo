@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -13,6 +14,7 @@ const THIRD_SUNDAY = Date.UTC(2026, 7, 16);
 
 async function setupCrews() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => openModules(ctx));
   const ids = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { name: "Crew member" });
     const crewIds = [];
@@ -30,7 +32,7 @@ async function setupCrews() {
     }
     return { userId, crewIds };
   });
-  return { t, ...ids };
+  return { t: t.withIdentity({ subject: ids.userId }), ...ids };
 }
 
 describe("getDutyCrewForDate", () => {

@@ -1,63 +1,9 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Doc } from "./_generated/dataModel";
+import { getActiveUser, isActiveAccount, moduleSettingAllows, requireAdmin, requireModule } from "./lib/access";
 
-/**
- * The single rank ladder. It lived in three places (two here, one in the member
- * records module) and every new rank meant finding all of them. "Brigade
- * Member" was added by hand to each. Keep it here and import it.
- */
-export const RANK_ORDER: Record<string, number> = {
-  "Brigade Member": 0,
-  Probationary: 1,
-  Firefighter: 2,
-  Lieutenant: 3,
-  Captain: 4,
-};
-
-/**
- * Does this user satisfy a module's gate? A missing or disabled module denies.
- * Admins are handled by the callers, which short-circuit before getting here.
- *
- * When both a role list and a minimum rank are set, `requirementMode` decides
- * how they combine: "all" (the default, and what every row written before this
- * field existed means) requires both, "any" requires either. "any" exists for
- * gates like Events Admin, where the officers qualify on rank and the social
- * crew qualify on role, and nobody should need both.
- */
-export function moduleSettingAllows(
-  user: Doc<"users">,
-  moduleSetting: Doc<"moduleSettings"> | null | undefined,
-): boolean {
-  if (!moduleSetting || !moduleSetting.isEnabled) return false;
-  // A disabled account keeps its rank and roles (so re-enabling is a single
-  // switch) but reaches nothing while it's off - including admin-only modules.
-  if (user.isDisabled) return false;
-  if (moduleSetting.adminOnly && !user.isAdmin) return false;
-
-  const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
-  const hasRankReq = !!moduleSetting.minimumRank;
-
-  let roleOk = true;
-  if (hasRoleReq) {
-    const userRoles = user.roles || [];
-    roleOk = moduleSetting.requiredRoles!.some((role: string) => userRoles.includes(role));
-  }
-
-  let rankOk = true;
-  if (hasRankReq) {
-    const userRank = user.rank;
-    rankOk = userRank ? RANK_ORDER[userRank] >= RANK_ORDER[moduleSetting.minimumRank!] : false;
-  }
-
-  // The mode only means anything when there are two requirements to combine.
-  if (hasRoleReq && hasRankReq && moduleSetting.requirementMode === "any") {
-    return roleOk || rankOk;
-  }
-
-  return roleOk && rankOk;
-}
+export { RANK_ORDER, moduleSettingAllows } from "./lib/access";
 
 /**
  * Throw unless the signed-in user passes a moduleSettings-gated module. The gate
@@ -69,21 +15,7 @@ export async function requireModuleAccess(
   moduleId: string,
   denialMessage: string,
 ) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found");
-  if (user.isAdmin) return userId;
-
-  const moduleSetting = await ctx.db
-    .query("moduleSettings")
-    .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
-    .first();
-
-  if (!moduleSettingAllows(user, moduleSetting)) throw new Error(denialMessage);
-
-  return userId;
+  return (await requireModule(ctx, moduleId, denialMessage))._id;
 }
 
 /**
@@ -92,6 +24,7 @@ export async function requireModuleAccess(
 export const getModuleSettings = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getActiveUser(ctx))) return [];
     return await ctx.db.query("moduleSettings").collect();
   },
 });
@@ -107,11 +40,7 @@ export const updateModuleConfig = mutation({
   handler: async (ctx, args) => {
     const { moduleId, config } = args;
 
-    // Get the authenticated user ID
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update module settings");
-    }
+    const userId = (await requireAdmin(ctx, "change module settings"))._id;
 
     // Find the module setting
     const moduleSetting = await ctx.db
@@ -139,6 +68,7 @@ export const updateModuleConfig = mutation({
 export const syncModuleSettings = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx, "change module settings");
     // Define the default modules with role and rank requirements
     const defaultModules = [
       {
@@ -405,6 +335,7 @@ export const syncModuleSettings = mutation({
 export const initializeModuleSettings = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx, "change module settings");
     // Define the default modules with role and rank requirements
     const defaultModules = [
       {
@@ -673,11 +604,7 @@ export const updateModuleStatus = mutation({
   handler: async (ctx, args) => {
     const { moduleId, isEnabled } = args;
 
-    // Get the authenticated user ID
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update module settings");
-    }
+    const userId = (await requireAdmin(ctx, "change module settings"))._id;
 
     // Find the module setting
     const moduleSetting = await ctx.db
@@ -720,11 +647,7 @@ export const updateModuleRequirements = mutation({
   handler: async (ctx, args) => {
     const { moduleId, adminOnly, requiredRoles, minimumRank, requirementMode } = args;
 
-    // Get the authenticated user ID
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update module settings");
-    }
+    const userId = (await requireAdmin(ctx, "change module settings"))._id;
 
     // Find the module setting
     const moduleSetting = await ctx.db
@@ -761,20 +684,14 @@ export const checkModuleAccess = query({
   handler: async (ctx, args) => {
     const { moduleId, userId } = args;
 
-    // If no userId is provided, use the authenticated user
-    let targetUserId = userId;
-    if (!targetUserId) {
-      const authUserId = await getAuthUserId(ctx);
-      if (!authUserId) {
-        return false; // Not authenticated
-      }
-      targetUserId = authUserId;
-    }
+    // Only admins may ask about someone else.
+    const caller = await getActiveUser(ctx);
+    if (!caller) return false;
+    if (userId && userId !== caller._id && !caller.isAdmin) return false;
 
-    // Get the user
-    const user = await ctx.db.get(targetUserId);
-    if (!user) {
-      return false; // User not found
+    const user = userId ? await ctx.db.get(userId) : caller;
+    if (!user || !isActiveAccount(user)) {
+      return false;
     }
 
     // Admin users always have access to all modules
@@ -866,7 +783,7 @@ export const getAllModuleAccess = query({
     }
 
     const user = await ctx.db.get(userId);
-    if (!user) {
+    if (!user || !isActiveAccount(user)) {
       return {
         dashboard: false,
         hoses: false,

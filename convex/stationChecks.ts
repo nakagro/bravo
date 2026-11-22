@@ -13,6 +13,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { notifyEvent } from "./lib/notifyEvent";
 import { brigadeDayOfWeek, brigadeParts, brigadeTimestamp } from "./lib/dates";
 import { resolveCrewForSunday } from "./lib/dutyCrewRotation";
+import { getModuleUser, requireModule } from "./lib/access";
 
 type SubmissionCheckItem = {
   checkId?: Id<"stationChecks">;
@@ -398,6 +399,7 @@ export const getAllStationChecks = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew"))) return [];
     const includeInactive = args.includeInactive ?? false;
 
     const checks = includeInactive
@@ -447,6 +449,7 @@ export const getStationCheck = query({
     subItems: v.array(subItemValidator),
   }),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "dutyCrew");
     const check = await ctx.db.get(args.id);
     if (!check) {
       throw new Error("Station check not found");
@@ -488,10 +491,7 @@ export const createStationCheck = mutation({
   returns: v.id("stationChecks"),
   handler: async (ctx, args): Promise<Id<"stationChecks">> => {
     // Get the current user ID using the auth system
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
@@ -549,10 +549,7 @@ export const updateStationCheck = mutation({
   },
   returns: v.id("stationChecks"),
   handler: async (ctx, args): Promise<Id<"stationChecks">> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     const check = await ctx.db.get(args.id);
     if (!check) {
@@ -618,10 +615,7 @@ export const deleteStationCheck = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireModule(ctx, "dutyCrew");
 
     const subItems = await ctx.db
       .query("stationCheckSubitems")
@@ -822,6 +816,7 @@ export const getLinkedInventoryStatus = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -903,6 +898,7 @@ export const getCurrentWeekCheckStatus = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew"))) return null;
     const { sunday: currentWeekSunday } = weekWindow(args.date ?? Date.now());
     const sundayTimestamp = new Date(currentWeekSunday).setHours(0, 0, 0, 0);
 
@@ -1039,10 +1035,7 @@ export const saveDraftStationCheck = mutation({
   returns: v.id("stationCheckSubmissions"),
   handler: async (ctx, args): Promise<Id<"stationCheckSubmissions">> => {
     // Get the current user ID using the auth system
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
@@ -1137,10 +1130,7 @@ export const submitStationCheck = mutation({
   returns: v.id("stationCheckSubmissions"),
   handler: async (ctx, args): Promise<Id<"stationCheckSubmissions">> => {
     // Get the current user ID using the auth system
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
@@ -1287,10 +1277,7 @@ export const reopenStationCheck = mutation({
   returns: v.id("stationCheckSubmissions"),
   handler: async (ctx, args): Promise<Id<"stationCheckSubmissions">> => {
     // Get the current user ID using the auth system
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     // Get the current user from the database
     const currentUser = await ctx.db.get(userId);
@@ -1620,7 +1607,7 @@ export const getStationCheckHistoryPage = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "dutyCrew"))?._id;
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 /**
  * Get all key items for a specific key
@@ -10,6 +11,7 @@ export const list = query({
     keyId: v.id("keys"),
   },
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "keys"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -53,8 +55,7 @@ export const add = mutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "keys"))._id;
 
     // Validate that the key exists
     const key = await ctx.db.get(args.keyId);
@@ -88,8 +89,7 @@ export const update = mutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "keys");
 
     // Get the current key item data
     const keyItem = await ctx.db.get(args.id);
@@ -115,8 +115,7 @@ export const remove = mutation({
     id: v.id("keyItems"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "keys");
 
     // Get the key item
     const keyItem = await ctx.db.get(args.id);

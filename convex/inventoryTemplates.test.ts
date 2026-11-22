@@ -5,11 +5,14 @@ import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
 async function setup() {
   const t = convexTest(schema, modules);
+  // inventoryAdmin stays closed: the tests below check that gate.
+  await t.run((ctx) => openModules(ctx, ["inventory"]));
 
   const { adminId, memberId } = await t.run(async (ctx) => {
     const adminId = await ctx.db.insert("users", {

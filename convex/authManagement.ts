@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { logAction } from "./lib/logging";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireAdmin } from "./lib/access";
 import { summarizeLaunches } from "./lib/launches";
 
 /**
@@ -21,6 +22,7 @@ export const searchUsers = query({
     lastName: v.optional(v.string()),
   })),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "manage sign-ins");
     const { searchTerm } = args;
     
     if (!searchTerm || searchTerm.trim().length < 2) {
@@ -111,6 +113,7 @@ export const getUserAuthInfo = query({
     })
   ),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "manage sign-ins");
     const { userId } = args;
     
     // Get the user
@@ -205,6 +208,7 @@ export const invalidateUserSessions = query({
     refreshTokensDeleted: v.number(),
   }),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "manage sign-ins");
     // This is a query for now to show what would be deleted
     // The actual deletion would need to be a mutation
     const { userId } = args;
@@ -244,6 +248,7 @@ export const purgeExpiredTokens = mutation({
     deletedCount: v.number(),
   }),
   handler: async (ctx, args) => {
+    await requireAdmin(ctx, "manage sign-ins");
     const { userId } = args;
     const now = Date.now();
     
@@ -303,6 +308,7 @@ export const purgeAllExpiredTokens = mutation({
     status: v.string(),
   }),
   handler: async (ctx) => {
+    await requireAdmin(ctx, "manage sign-ins");
     await logAction(ctx, "purgeAllExpiredTokens", "Initiating batched purge of expired and orphaned tokens");
     
     // Schedule the expired tokens purge
@@ -555,6 +561,7 @@ export const getAuthStats = query({
     orphanedTokenCount: v.number(),
   }),
   handler: async (ctx) => {
+    await requireAdmin(ctx, "manage sign-ins");
     const users = await ctx.db.query("users").collect();
     const sessions = await ctx.db.query("authSessions").collect();
     const sessionIds = new Set(sessions.map(s => s._id));

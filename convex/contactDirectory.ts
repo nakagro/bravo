@@ -1,8 +1,8 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
-import { isDisabledAccount } from "./lib/accountType";
+import { getActiveUser } from "./lib/access";
+import { requireAdmin as requireAdminUser } from "./lib/access";
 
 // The District contact book. It holds named people's phone numbers and emails
 // and carries a CFA no-reproduction notice, so it lives in file storage behind
@@ -41,22 +41,12 @@ async function isKioskSession(
 }
 
 async function canRead(ctx: QueryCtx, serviceToken: string | undefined) {
-  const userId = await getAuthUserId(ctx);
-  if (userId) {
-    const user = await ctx.db.get(userId);
-    if (user && !isDisabledAccount(user)) return true;
-  }
+  if (await getActiveUser(ctx)) return true;
   return await isKioskSession(ctx, serviceToken);
 }
 
 async function requireAdmin(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-  const user = await ctx.db.get(userId);
-  if (!user?.isAdmin || isDisabledAccount(user)) {
-    throw new Error("Admin access required");
-  }
-  return userId;
+  return (await requireAdminUser(ctx))._id;
 }
 
 async function currentFile(ctx: QueryCtx) {

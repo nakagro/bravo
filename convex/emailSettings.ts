@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAdmin } from "./lib/access";
 
 /**
  * Get all email settings
@@ -19,6 +20,7 @@ export const getEmailSettings = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getAdmin(ctx))) return [];
     return await ctx.db.query("emailSettings").collect();
   },
 });
@@ -43,6 +45,7 @@ export const getEmailSetting = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getAdmin(ctx))) return null;
     return await ctx.db
       .query("emailSettings")
       .withIndex("by_emailType", (q) => q.eq("emailType", args.emailType))

@@ -11,7 +11,7 @@
  * Run this mutation from the Convex dashboard or via CLI to fix existing data.
  */
 
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 // Helper to get the "intended" local date for AEDT timezone (+11 hours)
@@ -24,7 +24,7 @@ function getIntendedDateKey(timestamp: number): string {
 }
 
 // Preview what the migration will do (run this first!)
-export const previewNormalization = query({
+export const previewNormalization = internalQuery({
     args: {},
     returns: v.array(v.object({
         userId: v.id("users"),
@@ -139,7 +139,7 @@ export const previewNormalization = query({
 });
 
 // Actually run the migration
-export const normalizeDeploymentDates = mutation({
+export const normalizeDeploymentDates = internalMutation({
     args: {},
     returns: v.object({
         totalRecords: v.number(),

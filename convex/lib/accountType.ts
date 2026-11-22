@@ -35,11 +35,14 @@ export function isMemberAccount(user: {
   accountType?: string | null;
   isAnonymous?: boolean;
   isDisabled?: boolean | null;
+  approvalStatus?: string | null;
   firstName?: string;
   lastName?: string;
   name?: string;
 }): boolean {
   if (isSharedAccount(user)) return false;
   if (isDisabledAccount(user)) return false;
+  // A sign-up waiting for approval isn't a member yet.
+  if (user.approvalStatus === "pending") return false;
   return !user.isAnonymous && !!(user.firstName || user.lastName || user.name);
 }

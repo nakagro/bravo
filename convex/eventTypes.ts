@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireEventsAdmin } from "./events";
+import { getModuleUser } from "./lib/access";
 
 const eventTypeValidator = v.object({
   _id: v.id("eventTypes"),
@@ -22,6 +23,7 @@ export const getEventTypes = query({
   args: {},
   returns: v.array(eventTypeValidator),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "events", "calendar"))) return [];
     const types = await ctx.db
       .query("eventTypes")
       .withIndex("by_active", (q) => q.eq("isActive", true))
@@ -37,6 +39,7 @@ export const getAllEventTypes = query({
   args: {},
   returns: v.array(eventTypeValidator),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "events"))) return [];
     return await ctx.db.query("eventTypes").withIndex("by_order").collect();
   },
 });

@@ -1,9 +1,9 @@
 import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
 import { moduleSettingAllows } from "./modules";
+import { getModuleUser, requireModule } from "./lib/access";
 
 const usageTypeValidator = v.union(
   v.literal("firecall"),
@@ -118,7 +118,7 @@ export const listRecords = query({
   },
   returns: v.array(recordReturnValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "baSkills"))?._id;
     if (!userId) return [];
 
     const records = args.memberId
@@ -146,7 +146,7 @@ export const listMyRecords = query({
   },
   returns: v.array(recordReturnValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "baSkills"))?._id;
     if (!userId) return [];
 
     const records = await ctx.db
@@ -174,8 +174,10 @@ export const createRecord = mutation({
   },
   returns: v.id("baRecords"),
   handler: async (ctx, args) => {
-    const authenticatedUserId = await getAuthUserId(ctx);
     const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
+    const authenticatedUserId = serviceAccountId
+      ? null
+      : (await requireModule(ctx, "baSkills", "You do not have access to BA records"))._id;
     const userId = serviceAccountId ? args.verifiedBy : authenticatedUserId;
     if (!userId) throw new Error("You must be signed in to log BA usage");
     // Keep the existing user foreign key for ownership/deletion compatibility,
@@ -230,8 +232,7 @@ export const updateRecord = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in to update a record");
+    const userId = (await requireModule(ctx, "baSkills"))._id;
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new Error("Record not found");
@@ -285,8 +286,7 @@ export const deleteRecord = mutation({
   args: { recordId: v.id("baRecords") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in to delete a record");
+    const userId = (await requireModule(ctx, "baSkills"))._id;
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new Error("Record not found");
@@ -318,8 +318,7 @@ export const setLmsEntered = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in to update LMS status");
+    const userId = (await requireModule(ctx, "baSkills"))._id;
 
     const record = await ctx.db.get(args.recordId);
     if (!record) throw new Error("Record not found");
@@ -368,8 +367,7 @@ export const listMembers = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
+    if (!(await getModuleUser(ctx, "baSkills"))) {
       const serviceAccountId = await resolveKioskServiceAccount(ctx, args.serviceToken);
       if (!serviceAccountId) return [];
     }
@@ -411,7 +409,7 @@ export const getCurrentUser = query({
     v.null(),
   ),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "baSkills"))?._id;
     if (!userId) return null;
     const user = await ctx.db.get(userId);
     if (!user) return null;

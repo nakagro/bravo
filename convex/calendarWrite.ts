@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   action,
   internalQuery,
@@ -10,6 +9,7 @@ import {
 import { internal } from "./_generated/api";
 import { fetchCalendarData } from "./calendarProxy";
 import { moduleSettingAllows } from "./modules";
+import { requireUser } from "./lib/access";
 
 // Calendar reads and CalDAV writes are authenticated Convex actions, so the
 // browser never sees Radicale or its credentials. Read and write access use
@@ -251,11 +251,7 @@ async function requireCalendarAccess(
   ctx: QueryCtx,
   moduleId: "calendar" | "calendarWrite",
 ) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found");
+  const user = await requireUser(ctx);
   if (user.isAdmin) return;
 
   const moduleSetting = await ctx.db

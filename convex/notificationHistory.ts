@@ -7,7 +7,7 @@ import { internal } from "./_generated/api";
  * Create a new notification history entry
  * This is called by the push notification action to store notifications for 24 hours
  */
-export const createNotification = mutation({
+export const createNotification = internalMutation({
   args: {
     title: v.string(),
     body: v.string(),
@@ -178,6 +178,7 @@ export const cleanupExpiredNotificationsAction = action({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
+    await ctx.runQuery(internal.access.assertAdmin, {});
     const count: number = await ctx.runMutation(internal.notificationHistory.cleanupExpiredNotifications);
     return count;
   },

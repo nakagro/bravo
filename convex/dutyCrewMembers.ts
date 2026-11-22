@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { getModuleUser } from "./lib/access";
 
 // Get duty crew members with their details
 export const getDutyCrewMembers = query({
@@ -23,6 +24,7 @@ export const getDutyCrewMembers = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "dutyCrew"))) return [];
     const dutyCrew = await ctx.db.get(args.dutyCrewId);
     if (!dutyCrew) {
       return [];

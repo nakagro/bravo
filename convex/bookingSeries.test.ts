@@ -6,6 +6,7 @@ import { ConvexError } from "convex/values";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -15,6 +16,7 @@ const modules = import.meta.glob("./**/*.ts");
 
 async function setup() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => openModules(ctx));
   const { memberId, otherId, approverId, resourceId } = await t.run(async (ctx) => {
     const memberId = await ctx.db.insert("users", { name: "Sam Nurse", firstName: "Sam" });
     const otherId = await ctx.db.insert("users", { name: "Jo Adams", firstName: "Jo" });

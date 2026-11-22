@@ -1,8 +1,8 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { weekWindow } from "./stationChecks";
 import { targetKey } from "./lib/stationCheckAllocations";
+import { getModuleUser, requireModule } from "./lib/access";
 
 const allocationTargetValidator = v.union(
   v.object({ kind: v.literal("area"), area: v.string() }),
@@ -28,7 +28,7 @@ export const getWeekAllocations = query({
   },
   returns: v.array(allocationValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "dutyCrew"))?._id;
     if (!userId) return [];
 
     const { start: weekStart } = weekWindow(args.date);
@@ -66,8 +66,7 @@ export const setAllocation = mutation({
   },
   returns: v.union(v.id("stationCheckAllocations"), v.null()),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "dutyCrew"))._id;
 
     const crew = await ctx.db.get(args.dutyCrewId);
     if (!crew) throw new Error("Duty crew not found");

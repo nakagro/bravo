@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Query to get all vehicle faults with user details
 export const getVehicleFaults = query({
@@ -43,6 +43,7 @@ export const getVehicleFaults = query({
     })),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     const faults = await ctx.db.query("vehicleFaults")
       .order("desc")
       .collect();
@@ -101,6 +102,7 @@ export const getVehicleFaultsByVehicle = query({
     notes: v.optional(v.string()),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     return await ctx.db.query("vehicleFaults")
       .filter((q) => q.eq(q.field("vehicle"), args.vehicle))
       .order("desc")
@@ -143,6 +145,7 @@ export const getVehicleFaultsByStatus = query({
     notes: v.optional(v.string()),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     return await ctx.db.query("vehicleFaults")
       .filter((q) => q.eq(q.field("status"), args.status))
       .order("desc")
@@ -168,10 +171,7 @@ export const createVehicleFault = mutation({
   },
   returns: v.id("vehicleFaults"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to report vehicle faults");
-    }
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user) {
@@ -240,10 +240,7 @@ export const updateVehicleFault = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update vehicle faults");
-    }
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user) {
@@ -327,10 +324,7 @@ export const deleteVehicleFault = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete vehicle faults");
-    }
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user) {
@@ -411,6 +405,7 @@ export const getVehicleFault = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return null;
     const fault = await ctx.db.get(args.faultId);
     if (!fault) {
       return null;
@@ -457,6 +452,7 @@ export const getVehicleFaultComments = query({
     })),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     const comments = await ctx.db
       .query("vehicleFaultComments")
       .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))
@@ -491,10 +487,7 @@ export const addVehicleFaultComment = mutation({
   },
   returns: v.id("vehicleFaultComments"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to add comments");
-    }
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user) {
@@ -523,10 +516,7 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to upload files");
-    }
+    await requireModule(ctx, "vehicleFaults");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -548,6 +538,7 @@ export const getAttachments = query({
     url: v.union(v.string(), v.null()),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     const attachments = await ctx.db
       .query("vehicleFaultAttachments")
       .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))
@@ -577,10 +568,7 @@ export const addAttachment = mutation({
   },
   returns: v.id("vehicleFaultAttachments"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to add attachments");
-    }
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     // Verify the fault exists
     const fault = await ctx.db.get(args.faultId);
@@ -608,10 +596,7 @@ export const deleteAttachment = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete attachments");
-    }
+    await requireModule(ctx, "vehicleFaults");
 
     const attachment = await ctx.db.get(args.attachmentId);
     if (!attachment) {
@@ -644,6 +629,7 @@ export const getFaultHistory = query({
     userName: v.optional(v.string()),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     const entries = await ctx.db
       .query("vehicleFaultHistory")
       .withIndex("by_fault", (q) => q.eq("faultId", args.faultId))

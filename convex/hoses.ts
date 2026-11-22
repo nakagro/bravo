@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { HOSE_ID_FORMAT_MESSAGE, HOSE_ID_PATTERN, normaliseHoseId } from "./lib/hoseId";
+import { getModuleUser, requireModule } from "./lib/access";
 
 export const list = query({
   args: {
@@ -25,8 +26,7 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "hoses");
 
     let query = ctx.db.query("hoses");
     let results = await query.collect();
@@ -70,8 +70,7 @@ export const get = query({
     id: v.id("hoses"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "hoses");
 
     const hose = await ctx.db.get(args.id);
     if (!hose) throw new Error("Hose not found");
@@ -104,8 +103,7 @@ export const add = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     const hoseId = normaliseHoseId(args.hoseId);
     if (!HOSE_ID_PATTERN.test(hoseId)) {
@@ -135,6 +133,7 @@ export const getHistory = query({
     hoseId: v.id("hoses"),
   },
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "hoses"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -221,8 +220,7 @@ export const markAsReplaced = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     // Get the current hose data
     const hose = await ctx.db.get(args.id);
@@ -262,8 +260,7 @@ export const deleteHose = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     // Get the hose
     const hose = await ctx.db.get(args.id);
@@ -330,8 +327,7 @@ export const update = mutation({
     )),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     const { id, ...updates } = args;
     

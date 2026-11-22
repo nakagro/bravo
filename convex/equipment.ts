@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // ============================================================================
 // CATEGORY FUNCTIONS
@@ -24,6 +24,7 @@ export const getCategories = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "equipment"))) return [];
     const categories = await ctx.db
       .query("equipmentCategories")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))
@@ -50,6 +51,7 @@ export const getAllCategories = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "equipmentAdmin"))) return [];
     const categories = await ctx.db.query("equipmentCategories").collect();
     return categories.sort((a, b) => a.order - b.order);
   },
@@ -66,10 +68,7 @@ export const createCategory = mutation({
   },
   returns: v.id("equipmentCategories"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to create categories");
-    }
+    const userId = (await requireModule(ctx, "equipmentAdmin"))._id;
 
     // Get the highest order number
     const categories = await ctx.db.query("equipmentCategories").collect();
@@ -103,10 +102,7 @@ export const updateCategory = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update categories");
-    }
+    await requireModule(ctx, "equipmentAdmin");
 
     const category = await ctx.db.get(args.categoryId);
     if (!category) {
@@ -135,10 +131,7 @@ export const deleteCategory = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete categories");
-    }
+    await requireModule(ctx, "equipmentAdmin");
 
     // Check if any items are associated with this category
     const items = await ctx.db
@@ -182,6 +175,7 @@ export const getItems = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "equipment"))) return [];
     const items = await ctx.db
       .query("equipmentItems")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))
@@ -237,6 +231,7 @@ export const getItemsByCategory = query({
     })),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "equipment"))) return [];
     const categories = await ctx.db
       .query("equipmentCategories")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))
@@ -295,10 +290,7 @@ export const createItem = mutation({
   },
   returns: v.id("equipmentItems"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to create items");
-    }
+    const userId = (await requireModule(ctx, "equipmentAdmin"))._id;
 
     // Verify category exists
     const category = await ctx.db.get(args.categoryId);
@@ -356,10 +348,7 @@ export const updateItem = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update items");
-    }
+    const userId = (await requireModule(ctx, "equipmentAdmin"))._id;
 
     const item = await ctx.db.get(args.itemId);
     if (!item) {
@@ -399,10 +388,7 @@ export const deleteItem = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete items");
-    }
+    await requireModule(ctx, "equipmentAdmin");
 
     // Delete all transactions for this item
     const transactions = await ctx.db
@@ -434,10 +420,7 @@ export const takeItem = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to take items");
-    }
+    const userId = (await requireModule(ctx, "equipment"))._id;
 
     if (args.quantity <= 0) {
       throw new Error("Quantity must be positive");
@@ -493,10 +476,7 @@ export const replenishItem = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to replenish items");
-    }
+    const userId = (await requireModule(ctx, "equipmentAdmin"))._id;
 
     if (args.quantity <= 0) {
       throw new Error("Quantity must be positive");
@@ -544,10 +524,7 @@ export const adjustStock = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to adjust stock");
-    }
+    const userId = (await requireModule(ctx, "equipmentAdmin"))._id;
 
     if (args.newStockLevel < 0) {
       throw new Error("Stock level cannot be negative");
@@ -608,6 +585,7 @@ export const getItemTransactions = query({
     createdAt: v.number(),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "equipmentAdmin"))) return [];
     let query = ctx.db
       .query("equipmentTransactions")
       .withIndex("by_item", (q) => q.eq("itemId", args.itemId))
@@ -667,6 +645,7 @@ export const getRecentTransactions = query({
     createdAt: v.number(),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "equipment"))) return [];
     const fetchLimit = args.type ? 200 : (args.limit ?? 20);
     let transactions = await ctx.db
       .query("equipmentTransactions")
@@ -723,7 +702,7 @@ export const getMyRecentTakes = query({
     createdAt: v.number(),
   })),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "equipment"))?._id;
     if (!userId) return [];
 
     const limit = args.limit ?? 5;
@@ -768,6 +747,7 @@ export const getLowStockItems = query({
     unit: v.optional(v.string()),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "equipment"))) return [];
     const items = await ctx.db
       .query("equipmentItems")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))

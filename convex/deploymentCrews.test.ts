@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -30,6 +31,8 @@ async function setup() {
       minimumRank: "Lieutenant",
       updatedAt: Date.now(),
     });
+    // Everyone else uses the availability page, which the crews live on.
+    await openModules(ctx, ["availability"]);
     return { officerId, memberId, otherId };
   });
   return {

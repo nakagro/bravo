@@ -1,6 +1,5 @@
 import { query, mutation, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { displayName } from "./lib/crewSeats";
 import {
   NOTIFICATION_TEMPLATES,
@@ -9,17 +8,14 @@ import {
   isTemplateKey,
   validateTemplate,
 } from "./lib/notificationTemplates";
+import { requireAdmin as requireAdminUser } from "./lib/access";
 
 // Admin editor for the message text of targeted notifications. Global admins
 // only, the same isAdmin gate as the rest of Notification Settings. The text
 // in lib/notificationTemplates.ts is only the default.
 
 async function requireAdmin(ctx: QueryCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-  const user = await ctx.db.get(userId);
-  if (!user?.isAdmin) throw new Error("Admin access required");
-  return userId;
+  return (await requireAdminUser(ctx))._id;
 }
 
 async function storedRow(ctx: QueryCtx, templateKey: string) {

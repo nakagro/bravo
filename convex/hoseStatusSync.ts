@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Helper function to determine if a hose should be "In date" or "Due for testing" based on test date
 function getAutoStatus(testDate: number): "In date" | "Due for testing" {
@@ -20,6 +21,7 @@ export const getHosesNeedingStatusUpdate = query({
     daysSinceTest: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "hoses"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -62,8 +64,7 @@ export const syncAllHoseStatuses = mutation({
     })),
   }),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     const hoses = await ctx.db.query("hoses").collect();
     const updates = [];
@@ -119,8 +120,7 @@ export const syncHoseStatus = mutation({
     newStatus: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     const hose = await ctx.db.get(args.hoseId);
     if (!hose) throw new Error("Hose not found");

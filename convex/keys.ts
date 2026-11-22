@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 /**
  * List all keys with optional filtering
@@ -10,6 +11,7 @@ export const list = query({
     search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "keys"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -79,8 +81,7 @@ export const get = query({
     id: v.id("keys"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "keys");
 
     const key = await ctx.db.get(args.id);
     if (!key) throw new Error("Key not found");
@@ -116,8 +117,7 @@ export const add = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "keys"))._id;
 
     // Check if a key with this peg number already exists
     const existing = await ctx.db
@@ -155,8 +155,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "keys"))._id;
 
     // Get the current key data
     const key = await ctx.db.get(args.id);
@@ -224,8 +223,7 @@ export const remove = mutation({
     id: v.id("keys"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "keys"))._id;
 
     // Get the key
     const key = await ctx.db.get(args.id);
@@ -279,6 +277,7 @@ export const getHistory = query({
     keyId: v.id("keys"),
   },
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "keys"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 

@@ -5,8 +5,8 @@ import { getRelativeTimeCompact } from "../../../../utils/dateUtils";
 import ApplianceLocationEditor from "./ApplianceLocationEditor";
 
 function ApplianceLocations() {
-  const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
-  const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
+  const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations, {}) || [];
+  const allLocations = useQuery(api.applianceLocations.getAllLocations, {}) || [];
   const currentUserSkills = useQuery(api.skills.getUserSkills, {});
   const locationEditSkills = useQuery(api.applianceLocations.getLocationEditSkills);
 

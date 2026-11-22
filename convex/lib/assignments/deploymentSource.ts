@@ -1,10 +1,10 @@
 import type { QueryCtx } from "../../_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { moduleSettingAllows } from "../../modules";
 import { seatLines } from "../crewSeats";
 import { brigadeDateStr } from "../dates";
 import { formatDayMs } from "../notificationTemplates";
 import type { Assignment, AssignmentSource } from "./types";
+import { getActiveUser } from "../../lib/access";
 
 // Deployment → Crews for one day (scopeId = the UTC-midnight date as a
 // string). Fills {date} and, per member, {assignment}. Default text:
@@ -26,10 +26,9 @@ export function deploymentDayIsPast(dateMs: number): boolean {
 }
 
 export async function canCrewDeployments(ctx: QueryCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) return null;
-  const user = await ctx.db.get(userId);
+  const user = await getActiveUser(ctx);
   if (!user) return null;
+  const userId = user._id;
   if (user.isAdmin) return userId;
   const setting = await ctx.db
     .query("moduleSettings")

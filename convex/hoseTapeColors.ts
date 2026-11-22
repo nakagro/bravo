@@ -6,6 +6,7 @@ import {
   isHexColor,
   tapeColorValidator,
 } from "./lib/tapeColors";
+import { getModuleUser, requireModule } from "./lib/access";
 
 /**
  * List all year -> tape colour mappings, newest year first.
@@ -13,6 +14,7 @@ import {
 export const list = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "hoses"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -51,8 +53,8 @@ export const upsert = mutation({
     color: tapeColorValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
+
     if (
       !isHexColor(args.color.primary) ||
       (args.color.secondary !== undefined && !isHexColor(args.color.secondary))
@@ -95,8 +97,7 @@ export const remove = mutation({
     id: v.id("hoseTapeColors"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "hoses");
 
     await ctx.db.delete(args.id);
     return null;

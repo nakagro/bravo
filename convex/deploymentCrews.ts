@@ -1,8 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireModuleAccess } from "./modules";
 import { crewSeatFields, seatOutput, seatResolver, validateCrew } from "./lib/crewSeats";
+import { getModuleUser } from "./lib/access";
 
 // Crewing is planned by the same people who see the Availability Admin tab.
 const CREWING_MODULE = "availabilityAdmin";
@@ -33,7 +33,7 @@ export const listCrews = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) return [];
 
     const crews = await ctx.db

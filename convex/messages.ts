@@ -2,6 +2,7 @@ import { mutation, query, internalMutation, action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Get current user ID (for checking message ownership)
 export const getCurrentUserId = query({
@@ -21,10 +22,7 @@ export const postMessage = mutation({
   returns: v.id("availabilityMessages"),
   handler: async (ctx, args) => {
     // Get the authenticated user ID using the same pattern as other mutations
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to post a message");
-    }
+    const userId = (await requireModule(ctx, "availability"))._id;
     
     // Get the current user data directly using the ID
     const user = await ctx.db.get(userId);
@@ -60,6 +58,7 @@ export const getMessages = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     // Get all messages, ordered by timestamp (newest first)
     const messages = await ctx.db
       .query("availabilityMessages")
@@ -112,7 +111,7 @@ export const getLastViewedMessagesAt = query({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) {
       return 0;
     }
@@ -131,10 +130,7 @@ export const markMessagesAsViewed = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to mark messages as viewed");
-    }
+    const userId = (await requireModule(ctx, "availability"))._id;
     
     const now = Date.now();
     
@@ -163,7 +159,7 @@ export const getUnreadMessageCount = query({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) {
       return 0;
     }
@@ -195,10 +191,7 @@ export const updateMessage = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update a message");
-    }
+    const userId = (await requireModule(ctx, "availability"))._id;
 
     // Get the message to verify ownership
     const existingMessage = await ctx.db.get(args.messageId);
@@ -235,10 +228,7 @@ export const deleteMessage = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to delete a message");
-    }
+    const userId = (await requireModule(ctx, "availability"))._id;
 
     // Get the message to verify ownership
     const existingMessage = await ctx.db.get(args.messageId);
@@ -287,6 +277,7 @@ export const deleteAllMessagesAction = action({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
+    await ctx.runQuery(internal.access.assertAdmin, {});
     const count: number = await ctx.runMutation(internal.messages.deleteAllMessages);
     return count;
   },

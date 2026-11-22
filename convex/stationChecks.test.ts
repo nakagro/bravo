@@ -6,6 +6,7 @@ import { api } from "./_generated/api";
 import { buildSubmissionNotice, weekWindow } from "./stationChecks";
 import schema from "./schema";
 import { weekBoundaries } from "../src/lib/dutyWeek";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -13,6 +14,7 @@ const SUNDAY = new Date("2026-08-02T00:00:00").getTime();
 
 async function setup() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => openModules(ctx));
   const { userId, dutyCrewId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { name: "Checks tester" });
     const dutyCrewId = await ctx.db.insert("dutyCrew", {

@@ -21,7 +21,7 @@ async function sendEventPush(
     source: string;
   }
 ) {
-  await ctx.runAction(api.pushNotificationAction.sendNotification, {
+  await ctx.runAction(internal.pushNotificationAction.send, {
     title: args.title,
     body: args.body,
     userId: args.userId,

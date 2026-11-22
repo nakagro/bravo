@@ -2,7 +2,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
@@ -115,7 +115,8 @@ describe("availability board / shared accounts", () => {
       return { memberId, sharedId };
     });
 
-    const statuses = await t.query(api.availability.getAllUsersStatus, {});
+    // The cron-facing twin: same list, no signed-in caller needed.
+    const statuses = await t.query(internal.availability.listAllUsersStatus, {});
     const ids = statuses.map((s: { _id: string }) => s._id);
 
     expect(ids).toContain(memberId as string);

@@ -63,7 +63,7 @@ export function validateApiKey(request: Request): {
   }
 
   // Validate the API key
-  if (providedApiKey !== validApiKey) {
+  if (!constantTimeEqual(providedApiKey, validApiKey)) {
     return {
       isValid: false,
       errorResponse: new Response(
@@ -86,6 +86,14 @@ export function validateApiKey(request: Request): {
   return {
     isValid: true,
   };
+}
+
+/** Compare without leaking how many leading characters matched. */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /**

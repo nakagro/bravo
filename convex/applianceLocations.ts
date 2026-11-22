@@ -1,21 +1,17 @@
 import { query, mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import type { QueryCtx } from "./_generated/server";
+import { getActiveUser, getKioskServiceAccount, getModuleUser, requireAdmin } from "./lib/access";
 
-const SERVICE_MODULE_KIOSK = "kiosk";
-
-async function sha256(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+/** Members who can open the availability page, or the kiosk tablet. */
+async function canSeeLocations(ctx: QueryCtx, serviceToken: string | undefined) {
+  return !!(await getModuleUser(ctx, "availability")) || !!(await getKioskServiceAccount(ctx, serviceToken));
 }
 
 // Query to get all appliance locations
 export const getApplianceLocations = query({
-  args: {},
+  args: { serviceToken: v.optional(v.string()) },
   returns: v.array(v.object({
     _id: v.id("applianceLocations"),
     _creationTime: v.number(),
@@ -32,16 +28,18 @@ export const getApplianceLocations = query({
     ),
     updatedAt: v.number(),
   })),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    if (!(await canSeeLocations(ctx, args.serviceToken))) return [];
     return await ctx.db.query("applianceLocations").collect();
   },
 });
 
 // Query to get all unique locations (for populating location options)
 export const getAllLocations = query({
-  args: {},
+  args: { serviceToken: v.optional(v.string()) },
   returns: v.array(v.string()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    if (!(await canSeeLocations(ctx, args.serviceToken))) return [];
     const locations = await ctx.db.query("applianceLocations").collect();
     const uniqueLocations = new Set<string>();
     
@@ -82,17 +80,13 @@ export const updateApplianceLocation = mutation({
     const stationLocation = args.stationLocation.trim();
 
     // Try normal user auth first
-    const userId = await getAuthUserId(ctx);
+    const activeUser = await getActiveUser(ctx);
     let updatedBy: Id<"users"> | undefined;
     let updatedByServiceAccount: Id<"serviceAccounts"> | undefined;
     let updatedBySource: "user" | "serviceAccount";
 
-    if (userId) {
-      // Get the current user data directly using the ID
-      const user = await ctx.db.get(userId);
-      if (!user) {
-        throw new Error("User not found");
-      }
+    if (activeUser) {
+      const user = activeUser;
 
       // Check if user is admin, has Lieutenant rank or higher, or has the Driver (DR) skill
       const rankOrder = {
@@ -131,28 +125,9 @@ export const updateApplianceLocation = mutation({
       updatedBy = user._id;
       updatedBySource = "user";
     } else {
-      const serviceToken = args.serviceToken?.trim();
-      if (!serviceToken) {
+      const serviceAccount = await getKioskServiceAccount(ctx, args.serviceToken);
+      if (!serviceAccount) {
         throw new Error("You must be signed in to update appliance locations");
-      }
-
-      const tokenHash = await sha256(serviceToken);
-      const session = await ctx.db
-        .query("serviceAccountSessions")
-        .withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash))
-        .first();
-
-      if (!session || session.expiresAt < now) {
-        throw new Error("Service session expired. Please sign in again.");
-      }
-
-      const serviceAccount = await ctx.db.get(session.serviceAccountId);
-      if (!serviceAccount || !serviceAccount.isActive) {
-        throw new Error("Service account is inactive");
-      }
-
-      if (!serviceAccount.allowedModules.includes(SERVICE_MODULE_KIOSK)) {
-        throw new Error("Service account is not permitted to update appliance locations");
       }
 
       updatedByServiceAccount = serviceAccount._id;
@@ -193,6 +168,7 @@ export const initializeApplianceLocations = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    await requireAdmin(ctx, "set up appliance locations");
     const appliances = ["Pumper", "Tanker", "FCV"] as const;
     
     // Get the first admin user to use as the updatedBy field
@@ -244,6 +220,7 @@ export const getLocationEditSkills = query({
   args: {},
   returns: v.array(v.string()),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     return await getLocationEditSkillCodes(ctx);
   },
 });
@@ -255,11 +232,7 @@ export const updateLocationEditSkills = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    const user = await ctx.db.get(userId);
-    if (!user) throw new Error("User not found");
-    if (!user.isAdmin) throw new Error("Admin access required");
+    const userId = (await requireAdmin(ctx, "change who can move appliances"))._id;
 
     const moduleSetting = await ctx.db
       .query("moduleSettings")
@@ -311,6 +284,7 @@ export const getApplianceLocationsWithUsers = query({
     })),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     const locations = await ctx.db.query("applianceLocations").collect();
     
     // Fetch user details for each location

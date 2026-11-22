@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as access from "../access.js";
 import type * as actionAccountability from "../actionAccountability.js";
 import type * as actionCentre from "../actionCentre.js";
 import type * as actionCentreProviders_assignments from "../actionCentreProviders/assignments.js";
@@ -65,6 +66,7 @@ import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
 import type * as labsMember from "../labsMember.js";
+import type * as lib_access from "../lib/access.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_assignments_deploymentSource from "../lib/assignments/deploymentSource.js";
 import type * as lib_assignments_eventSource from "../lib/assignments/eventSource.js";
@@ -123,7 +125,6 @@ import type * as training from "../training.js";
 import type * as uatFixtures from "../uatFixtures.js";
 import type * as userLaunches from "../userLaunches.js";
 import type * as users from "../users.js";
-import type * as utils from "../utils.js";
 import type * as vehicleFaultAuditTrail from "../vehicleFaultAuditTrail.js";
 import type * as vehicleFaultVehicleTypes from "../vehicleFaultVehicleTypes.js";
 import type * as vehicleFaults from "../vehicleFaults.js";
@@ -135,6 +136,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
   actionAccountability: typeof actionAccountability;
   actionCentre: typeof actionCentre;
   "actionCentreProviders/assignments": typeof actionCentreProviders_assignments;
@@ -192,6 +194,7 @@ declare const fullApi: ApiFromModules<{
   keyItems: typeof keyItems;
   keys: typeof keys;
   labsMember: typeof labsMember;
+  "lib/access": typeof lib_access;
   "lib/accountType": typeof lib_accountType;
   "lib/assignments/deploymentSource": typeof lib_assignments_deploymentSource;
   "lib/assignments/eventSource": typeof lib_assignments_eventSource;
@@ -250,7 +253,6 @@ declare const fullApi: ApiFromModules<{
   uatFixtures: typeof uatFixtures;
   userLaunches: typeof userLaunches;
   users: typeof users;
-  utils: typeof utils;
   vehicleFaultAuditTrail: typeof vehicleFaultAuditTrail;
   vehicleFaultVehicleTypes: typeof vehicleFaultVehicleTypes;
   vehicleFaults: typeof vehicleFaults;

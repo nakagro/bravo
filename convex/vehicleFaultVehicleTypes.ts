@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Query to get active vehicle types ordered by order
 export const getVehicleTypes = query({
@@ -16,6 +16,7 @@ export const getVehicleTypes = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     return await ctx.db
       .query("vehicleFaultVehicleTypes")
       .withIndex("by_active", (q) => q.eq("isActive", true))
@@ -37,6 +38,7 @@ export const getAllVehicleTypes = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     return await ctx.db
       .query("vehicleFaultVehicleTypes")
       .withIndex("by_order")
@@ -51,8 +53,7 @@ export const addVehicleType = mutation({
   },
   returns: v.id("vehicleFaultVehicleTypes"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) throw new Error("Admin access required");
@@ -88,8 +89,7 @@ export const updateVehicleType = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) throw new Error("Admin access required");
@@ -113,8 +113,7 @@ export const deleteVehicleType = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) throw new Error("Admin access required");
@@ -148,8 +147,7 @@ export const reorderVehicleTypes = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "vehicleFaults"))._id;
 
     const user = await ctx.db.get(userId);
     if (!user?.isAdmin) throw new Error("Admin access required");

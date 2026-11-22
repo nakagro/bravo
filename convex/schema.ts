@@ -85,6 +85,11 @@ const extendedAuthTables = {
     isDisabled: v.optional(v.boolean()),
     disabledAt: v.optional(v.number()),
     disabledBy: v.optional(v.id("users")),
+    // Self-service sign-ups start "pending" and reach nothing until an admin
+    // approves them. Absent means approved, so existing accounts need no backfill.
+    approvalStatus: v.optional(v.union(v.literal("pending"), v.literal("approved"))),
+    approvedAt: v.optional(v.number()),
+    approvedBy: v.optional(v.id("users")),
     // Push categories the member has switched off (see lib/notificationPrefs.ts).
     // Absent, or a key absent, means on.
     notificationPrefs: v.optional(
@@ -100,6 +105,7 @@ const extendedAuthTables = {
     .index("email", ["email"])
     .index("by_memberNumber", ["memberNumber"])
     .index("by_isAdmin", ["isAdmin"])
+    .index("by_approvalStatus", ["approvalStatus"])
     .index("by_isDutyOfficer", ["isDutyOfficer"])
     .index("by_lieutenantNumber", ["lieutenantNumber"])
 };

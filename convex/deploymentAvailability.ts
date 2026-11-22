@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Helper to normalize a timestamp to midnight UTC of that day
 // This ensures all records for the same calendar date use the same timestamp
@@ -32,6 +32,7 @@ export const getDeploymentAvailability = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     // Get all deployment availability records within the date range
     const deploymentAvailability = await ctx.db
       .query("deploymentAvailability")
@@ -76,7 +77,7 @@ export const getCurrentUserDeploymentAvailability = query({
   ),
   handler: async (ctx, args) => {
     // Get the authenticated user ID
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "availability"))?._id;
     if (!userId) {
       return []; // Return empty array if not authenticated
     }
@@ -119,10 +120,7 @@ export const updateDeploymentAvailability = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     // Get the authenticated user ID
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update your deployment availability");
-    }
+    const userId = (await requireModule(ctx, "availability"))._id;
 
     // Normalize the date to midnight UTC to ensure consistent storage
     const normalizedDate = normalizeToMidnight(args.date);
@@ -196,6 +194,7 @@ export const getAggregatedDeploymentAvailability = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     // Get all deployment availability records within the date range
     const deploymentAvailability = await ctx.db
       .query("deploymentAvailability")

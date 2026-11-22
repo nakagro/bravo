@@ -31,6 +31,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { PendingApprovals } from "./PendingApprovals";
 
 // Format user display name
 const formatUserName = (user: {
@@ -420,6 +421,8 @@ function UserManagement() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4 dark:text-white">User Management</h2>
+
+      <PendingApprovals />
 
       {/* User selection with search */}
       <div className="mb-6">

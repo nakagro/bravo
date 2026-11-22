@@ -1,6 +1,5 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { attendanceFor, eventManagerId, requireEventManager } from "./events";
 import {
   crewSeatFields,
@@ -11,6 +10,7 @@ import {
   validateCrew,
 } from "./lib/crewSeats";
 import { deleteShiftCrewsOfCrew, MAX_APPLIANCES_PER_EVENT, shiftCrewsFor } from "./lib/eventCrews";
+import { getModuleUser } from "./lib/access";
 
 // Appliances crewed for an event. Managed by whoever manages the event
 // (organiser, team leaders, eventsAdmin); visible to every signed-in member.
@@ -34,7 +34,7 @@ export const listEventCrews = query({
     })
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) return [];
 
     const crews = (
@@ -214,7 +214,7 @@ export const listShiftCrews = query({
     })
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) return [];
     const rows = await shiftCrewsFor(ctx, args.eventId);
     const { resolve } = await seatResolver(ctx, rows);

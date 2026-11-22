@@ -1,10 +1,10 @@
 import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { notifyEvent } from "./lib/notifyEvent";
 import { templateStatus } from "./inventoryTemplates";
+import { getModuleUser, requireModule } from "./lib/access";
 
 // Condition key for "an inventory check was completed". Officers map it to
 // themselves in Inventory → Admin → Notifications.
@@ -80,8 +80,7 @@ export const startRun = mutation({
     scheduledDate: v.optional(v.number()),
   },
   handler: async (ctx, { templateId, scheduledDate }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = (await requireModule(ctx, "inventory"))._id;
 
     const template = await ctx.db.get(templateId);
     if (!template) throw new Error("Template not found");
@@ -169,6 +168,7 @@ export const startRun = mutation({
 export const getInProgressRuns = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "inventory"))) return [];
     const runs = await ctx.db
       .query("applianceCheckRuns")
       .withIndex("by_status", (q) => q.eq("status", "in_progress"))
@@ -201,6 +201,7 @@ export const getInProgressRuns = query({
 export const getRun = query({
   args: { runId: v.id("applianceCheckRuns") },
   handler: async (ctx, { runId }) => {
+    if (!(await getModuleUser(ctx, "inventory", "dutyCrew"))) return null;
     const run = await ctx.db.get(runId);
     if (!run) return null;
 
@@ -255,8 +256,7 @@ export const updateRunItem = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { runItemId, value, actualQuantity, notes }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = (await requireModule(ctx, "inventory"))._id;
 
     // Ensure the parent run is still in progress
     const runItem = await ctx.db.get(runItemId);
@@ -294,8 +294,7 @@ export const updateRunItem = mutation({
 export const completeRun = mutation({
   args: { runId: v.id("applianceCheckRuns"), notes: v.optional(v.string()) },
   handler: async (ctx, { runId, notes }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = (await requireModule(ctx, "inventory"))._id;
 
     const run = await ctx.db.get(runId);
     if (!run) throw new Error("Run not found");
@@ -369,8 +368,7 @@ export const cancelRun = mutation({
   args: { runId: v.id("applianceCheckRuns") },
   returns: v.boolean(),
   handler: async (ctx, { runId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = (await requireModule(ctx, "inventory"))._id;
 
     const run = await ctx.db.get(runId);
     if (!run) throw new Error("Run not found");
@@ -392,8 +390,7 @@ export const deleteRun = mutation({
   args: { runId: v.id("applianceCheckRuns") },
   returns: v.boolean(),
   handler: async (ctx, { runId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("You must be signed in");
+    const userId = (await requireModule(ctx, "inventory"))._id;
 
     // Check if user has inventoryAdmin access
     const user = await ctx.db.get(userId);
@@ -451,6 +448,7 @@ export const deleteRun = mutation({
 export const listRecentRuns = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {
+    if (!(await getModuleUser(ctx, "inventory"))) return [];
     const runs = await ctx.db
       .query("applianceCheckRuns")
       .withIndex("by_startedAt")
@@ -536,6 +534,7 @@ export const listRunSummaries = query({
     )),
   },
   handler: async (ctx, { limit, status }) => {
+    if (!(await getModuleUser(ctx, "inventory"))) return [];
     // Newest first straight off the index - this used to collect every run
     // ever recorded just to keep the first few.
     const runs = status
@@ -570,7 +569,7 @@ export const listRunSummariesPage = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { templateId, status, paginationOpts }) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "inventory"))?._id;
     if (!userId) return { page: [], isDone: true, continueCursor: "" };
 
     // Runs are inserted as they start, so creation order is start order.
@@ -605,7 +604,7 @@ export const listRunSummariesPage = query({
 export const getApplianceOverview = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "inventory"))?._id;
     if (!userId) return [];
 
     const templates = await ctx.db
@@ -643,7 +642,7 @@ export const getApplianceOverview = query({
 export const getMyInProgressRuns = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "inventory"))?._id;
     if (!userId) return [];
 
     const runs = await ctx.db
@@ -660,6 +659,7 @@ export const getMyInProgressRuns = query({
 export const getLastCompletedRunsByTemplate = query({
   args: {},
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "inventory"))) return [];
     // Get all completed runs
     const completedRuns = await ctx.db
       .query("applianceCheckRuns")

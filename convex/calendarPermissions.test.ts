@@ -9,7 +9,11 @@ const modules = import.meta.glob("./**/*.ts");
 
 describe("calendar module permissions", () => {
   it("adds separate read and write settings during module sync", async () => {
-    const t = convexTest(schema, modules);
+    const base = convexTest(schema, modules);
+    const adminId = await base.run((ctx) =>
+      ctx.db.insert("users", { name: "Alex Carter", isAdmin: true }),
+    );
+    const t = base.withIdentity({ subject: adminId });
 
     await t.mutation(api.modules.syncModuleSettings, {});
     const settings = await t.query(api.modules.getModuleSettings, {});

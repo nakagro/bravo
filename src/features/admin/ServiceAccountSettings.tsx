@@ -17,7 +17,6 @@ function ServiceAccountSettings({
   showTitle = true,
 }: ServiceAccountSettingsProps) {
   const serviceAccounts = useQuery(api.serviceAccounts.listServiceAccounts);
-  const moduleSettings = useQuery(api.modules.getModuleSettings);
 
   const createAccount = useMutation(api.serviceAccounts.createServiceAccount);
   const updateAccount = useMutation(api.serviceAccounts.updateServiceAccount);
@@ -35,7 +34,6 @@ function ServiceAccountSettings({
   // Form states
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formModules, setFormModules] = useState<string[]>([]);
   const [formPin, setFormPin] = useState("");
   const [editingId, setEditingId] = useState<Id<"serviceAccounts"> | null>(null);
 
@@ -46,19 +44,11 @@ function ServiceAccountSettings({
   // Loading states
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isPinValid = (pin: string) => /^\d{4,10}$/.test(pin);
-
-  // Available modules for selection
-  const availableModules =
-    moduleSettings?.map((m) => ({
-      id: m.moduleId,
-      name: m.moduleName,
-    })) ?? [];
+  const isPinValid = (pin: string) => /^\d{6,10}$/.test(pin);
 
   const resetForm = () => {
     setFormName("");
     setFormDescription("");
-    setFormModules([]);
     setFormPin("");
     setEditingId(null);
   };
@@ -70,7 +60,7 @@ function ServiceAccountSettings({
       const result = await createAccount({
         name: formName.trim(),
         description: formDescription.trim() || undefined,
-        allowedModules: formModules,
+        allowedModules: ["kiosk"],
         pin: formPin,
       });
       setDisplayPin(result.pin);
@@ -88,7 +78,6 @@ function ServiceAccountSettings({
     setEditingId(account._id);
     setFormName(account.name);
     setFormDescription(account.description ?? "");
-    setFormModules(account.allowedModules);
     setIsEditOpen(true);
   };
 
@@ -100,7 +89,7 @@ function ServiceAccountSettings({
         serviceAccountId: editingId,
         name: formName.trim(),
         description: formDescription.trim() || undefined,
-        allowedModules: formModules,
+        allowedModules: ["kiosk"],
       });
       setIsEditOpen(false);
       resetForm();
@@ -202,14 +191,6 @@ function ServiceAccountSettings({
     setIsPinOpen(false);
     setDisplayPin(null);
     setPinCopied(false);
-  };
-
-  const toggleModule = (moduleId: string) => {
-    setFormModules((prev) =>
-      prev.includes(moduleId)
-        ? prev.filter((m) => m !== moduleId)
-        : [...prev, moduleId]
-    );
   };
 
   const formatDate = (ts: number) =>
@@ -454,32 +435,17 @@ function ServiceAccountSettings({
               pattern="\d*"
               value={formPin}
               onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              placeholder="4–10 digits"
+              placeholder="6–10 digits"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
             />
             {formPin.length > 0 && !isPinValid(formPin) && (
-              <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
+              <p className="mt-1 text-xs text-red-500">Must be 6–10 digits</p>
             )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Allowed Modules
-            </label>
-            <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
-              {availableModules.map((mod) => (
-                <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
-                  <input
-                    type="checkbox"
-                    checked={formModules.includes(mod.id)}
-                    onChange={() => toggleModule(mod.id)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
-                  <span className="text-xs text-gray-400">({mod.id})</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            PIN accounts open the kiosk screens only. For a shared phone or tablet
+            that needs other pages, create a user and set its account type to Shared.
+          </p>
         </div>
       </ResponsiveModal>
 
@@ -522,25 +488,10 @@ function ServiceAccountSettings({
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Allowed Modules
-            </label>
-            <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 space-y-1">
-              {availableModules.map((mod) => (
-                <label key={mod.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
-                  <input
-                    type="checkbox"
-                    checked={formModules.includes(mod.id)}
-                    onChange={() => toggleModule(mod.id)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <span className="text-gray-900 dark:text-gray-200">{mod.name}</span>
-                  <span className="text-xs text-gray-400">({mod.id})</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            PIN accounts open the kiosk screens only. For a shared phone or tablet
+            that needs other pages, create a user and set its account type to Shared.
+          </p>
         </div>
       </ResponsiveModal>
 
@@ -580,12 +531,12 @@ function ServiceAccountSettings({
               pattern="\d*"
               value={formPin}
               onChange={(e) => setFormPin(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              placeholder="4–10 digits"
+              placeholder="6–10 digits"
               autoFocus
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest"
             />
             {formPin.length > 0 && !isPinValid(formPin) && (
-              <p className="mt-1 text-xs text-red-500">Must be 4–10 digits</p>
+              <p className="mt-1 text-xs text-red-500">Must be 6–10 digits</p>
             )}
           </div>
         </div>

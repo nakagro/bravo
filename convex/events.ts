@@ -1,7 +1,6 @@
 import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
 import {
@@ -16,13 +15,13 @@ import { moduleSettingAllows } from "./modules";
 import { applyChangeNotice, buildChangePreview, changeNoticeRow, MESSAGE_NOTICE_KEY } from "./lib/eventChangeNotice";
 import { logNoticeSend } from "./lib/notificationDelivery";
 import { BACKOUT_NOTICE_KEY, clearBackout, recordBackout } from "./lib/eventBackouts";
+import { getActiveUser, getModuleUser, requireModule } from "./lib/access";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Signed in, active, and allowed the Events module (admins always are). */
 async function requireSignedIn(ctx: QueryCtx | MutationCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-  return userId;
+  return (await requireModule(ctx, "events", "You do not have access to events"))._id;
 }
 
 /**
@@ -85,7 +84,7 @@ export async function eventManagerId(
   ctx: QueryCtx,
   event: Doc<"events">
 ): Promise<Id<"users"> | null> {
-  const userId = await getAuthUserId(ctx);
+  const userId = (await getActiveUser(ctx))?._id;
   if (!userId) return null;
   if (event.createdBy === userId || isEventTeamLeader(event, userId)) return userId;
   return await hasEventsAdmin(ctx);
@@ -562,7 +561,7 @@ export const getUpcomingEvents = query({
   args: { fromDate: v.string() },
   returns: v.array(enrichedEventValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events", "calendar"))?._id;
     if (!userId) {
       return [];
     }
@@ -587,7 +586,7 @@ export const getPastEvents = query({
   args: { beforeDate: v.string() },
   returns: v.array(enrichedEventValidator),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) {
       return [];
     }
@@ -622,7 +621,7 @@ export const getPastEventsPaged = query({
     continueCursor: v.string(),
   }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }
@@ -660,7 +659,7 @@ export const getEvent = query({
   args: { eventId: v.id("events") },
   returns: v.union(enrichedEventValidator, v.null()),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) {
       return null;
     }
@@ -727,7 +726,7 @@ export const getEventAttendance = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) {
       return null;
     }
@@ -887,7 +886,7 @@ export const getConfirmedAttendance = query({
     v.null()
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) return null;
 
     const event = await ctx.db.get(args.eventId);
@@ -983,6 +982,7 @@ export const getResponseActivity = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "events"))) return null;
     const event = await ctx.db.get(args.eventId);
     if (!event || (await eventManagerId(ctx, event)) === null) {
       return null;
@@ -1034,6 +1034,7 @@ export const getAttendanceSheet = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "events"))) return null;
     const event = await ctx.db.get(args.eventId);
     if (!event || (await eventManagerId(ctx, event)) === null) {
       return null;
@@ -1250,6 +1251,7 @@ export const getEventHistory = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "events"))) return [];
     const event = await ctx.db.get(args.eventId);
     if (!event || (await eventManagerId(ctx, event)) === null) {
       return [];
@@ -1823,6 +1825,7 @@ export const setRsvp = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "events");
     const userId = await requireSignedIn(ctx);
 
     const event = await ctx.db.get(args.eventId);
@@ -1993,6 +1996,7 @@ export const toggleSlotResponse = mutation({
   args: { slotId: v.id("eventSlots") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "events");
     const userId = await requireSignedIn(ctx);
 
     const slot = await ctx.db.get(args.slotId);
@@ -2065,6 +2069,7 @@ export const declineSlotEvent = mutation({
   args: { eventId: v.id("events") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "events");
     const userId = await requireSignedIn(ctx);
     const event = await requireOpenEvent(ctx, args.eventId);
 
@@ -2321,7 +2326,7 @@ export const getEventSlots = query({
     })
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) {
       return [];
     }
@@ -2431,6 +2436,7 @@ export const getEventRoster = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "events"))) return null;
     const event = await ctx.db.get(args.eventId);
     if (!event || (await eventManagerId(ctx, event)) === null) {
       return null;

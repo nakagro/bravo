@@ -1,4 +1,5 @@
-import { createAccount, getAuthUserId } from "@convex-dev/auth/server";
+import { createAccount } from "@convex-dev/auth/server";
+import { requireAdmin } from "./lib/access";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalQuery } from "./_generated/server";
@@ -20,15 +21,7 @@ export const assertCanCreateUser = internalQuery({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const administratorId = await getAuthUserId(ctx);
-    if (!administratorId) {
-      throw new Error("You must be signed in to create a user");
-    }
-
-    const administrator = await ctx.db.get("users", administratorId);
-    if (!administrator?.isAdmin) {
-      throw new Error("Only administrators can create users");
-    }
+    await requireAdmin(ctx, "create users");
 
     const existingEmail = await ctx.db
       .query("users")
@@ -115,6 +108,8 @@ export const createUser = action({
         memberNumber,
         rank: args.rank,
         isAdmin: false,
+        // An admin made this account, so it needs no approval.
+        approvalStatus: "approved",
       },
     });
 

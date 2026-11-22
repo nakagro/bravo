@@ -2,10 +2,9 @@
 
 import { action, internalAction, ActionCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import webpush from "web-push";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { trackNotificationDelivery } from "./posthogAnalytics";
 
 // Configure web-push with VAPID keys from environment variables
@@ -43,7 +42,7 @@ async function pushToSubscriptions(
     success: boolean;
     error?: string;
   }) =>
-    ctx.runMutation(api.notificationAudit.logAttempt, {
+    ctx.runMutation(internal.notificationAudit.logAttempt, {
       userId: entry.userId,
       subscriptionId: entry.sub?._id,
       endpoint: entry.sub?.subscription?.endpoint,
@@ -106,7 +105,7 @@ async function pushToSubscriptions(
       await track(sub.userId, true, undefined, sub);
     } catch (err: any) {
       if (err.statusCode === 410 || err.statusCode === 404) {
-        await ctx.runMutation(api.pushNotifications.deleteSubscription, { id: sub._id });
+        await ctx.runMutation(internal.pushNotifications.deleteSubscription, { id: sub._id });
       }
       const errorMessage = typeof err?.message === "string" ? err.message : String(err);
       await audit({ userId: sub.userId, sub, success: false, error: errorMessage });
@@ -117,7 +116,7 @@ async function pushToSubscriptions(
 
 async function writeHistory(ctx: ActionCtx, message: Message, recipientUserIds?: Id<"users">[]) {
   const now = Date.now();
-  await ctx.runMutation(api.notificationHistory.createNotification, {
+  await ctx.runMutation(internal.notificationHistory.createNotification, {
     title: message.title,
     body: message.body,
     url: message.url,
@@ -129,50 +128,81 @@ async function writeHistory(ctx: ActionCtx, message: Message, recipientUserIds?:
   });
 }
 
+const sendNotificationArgs = {
+  title: v.string(),
+  body: v.string(),
+  userId: v.optional(v.id("users")),
+  url: v.optional(v.string()), // Optional URL for deep-linking when notification is clicked
+  notificationType: v.optional(v.string()),
+  source: v.optional(v.string()),
+};
+
+type SendNotificationArgs = {
+  title: string;
+  body: string;
+  userId?: Id<"users">;
+  url?: string;
+  notificationType?: string;
+  source?: string;
+};
+
+/** Send to one member, or broadcast to every subscribed device. */
+async function sendCore(ctx: ActionCtx, args: SendNotificationArgs) {
+  if (!PUBLIC_KEY || !PRIVATE_KEY) {
+    throw new Error("VAPID keys are not configured on the server");
+  }
+
+  const subs = await ctx.runQuery(
+    internal.pushNotifications.getSubscriptions,
+    args.userId ? { userId: args.userId } : { userId: undefined }
+  );
+
+  const { userId, ...message } = args;
+  // History first, so a muted push stays visible in the app.
+  const recipientUserIds = userId
+    ? [userId]
+    : subs.length > 0
+      ? Array.from(new Set(subs.map((sub) => sub.userId as Id<"users">)))
+      : undefined;
+  await writeHistory(ctx, message, recipientUserIds);
+
+  if (subs.length === 0 && !userId) {
+    await ctx.runMutation(internal.notificationAudit.logAttempt, {
+      userId: undefined,
+      notificationType: args.notificationType,
+      source: args.source,
+      title: args.title,
+      body: args.body,
+      success: false,
+      error: "no_subscriptions",
+      sentAt: Date.now(),
+    });
+    return;
+  }
+
+  await pushToSubscriptions(ctx, subs, message, userId ? [userId] : undefined);
+}
+
+/**
+ * The admin notification tester. Admin-only: it can target anyone or broadcast
+ * to the whole brigade. Server code uses the internal `send` instead.
+ */
 export const sendNotification = action({
-  args: {
-    title: v.string(),
-    body: v.string(),
-    userId: v.optional(v.id("users")),
-    url: v.optional(v.string()), // Optional URL for deep-linking when notification is clicked
-    notificationType: v.optional(v.string()),
-    source: v.optional(v.string()),
-  },
+  args: sendNotificationArgs,
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (!PUBLIC_KEY || !PRIVATE_KEY) {
-      throw new Error("VAPID keys are not configured on the server");
-    }
+    await ctx.runQuery(internal.access.assertAdmin, {});
+    await sendCore(ctx, args);
+    return null;
+  },
+});
 
-    const subs = await ctx.runQuery(
-      api.pushNotifications.getSubscriptions,
-      args.userId ? { userId: args.userId } : { userId: undefined }
-    );
-
-    const { userId, ...message } = args;
-    // History first, so a muted push stays visible in the app.
-    const recipientUserIds = userId
-      ? [userId]
-      : subs.length > 0
-        ? Array.from(new Set(subs.map((sub) => sub.userId as Id<"users">)))
-        : undefined;
-    await writeHistory(ctx, message, recipientUserIds);
-
-    if (subs.length === 0 && !userId) {
-      await ctx.runMutation(api.notificationAudit.logAttempt, {
-        userId: undefined,
-        notificationType: args.notificationType,
-        source: args.source,
-        title: args.title,
-        body: args.body,
-        success: false,
-        error: "no_subscriptions",
-        sentAt: Date.now(),
-      });
-      return null;
-    }
-
-    await pushToSubscriptions(ctx, subs, message, userId ? [userId] : undefined);
+/** Server-side sends: crons, reminders, event notices. */
+export const send = internalAction({
+  args: sendNotificationArgs,
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await sendCore(ctx, args);
     return null;
   },
 });
@@ -236,10 +266,7 @@ export const sendTestNotificationToSelf = action({
       throw new Error("VAPID keys are not configured on the server");
     }
 
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
+    const userId = await ctx.runQuery(internal.access.assertUser, {});
 
     const allSubs = await ctx.runQuery(internal.pushNotifications.getMySubscriptionsRaw, {});
     const targetSubs = args.subscriptionId
@@ -263,7 +290,7 @@ export const sendTestNotificationToSelf = action({
       try {
         await webpush.sendNotification(sub.subscription, payload);
         sentCount++;
-        await ctx.runMutation(api.notificationAudit.logAttempt, {
+        await ctx.runMutation(internal.notificationAudit.logAttempt, {
           userId,
           subscriptionId: sub._id,
           endpoint: sub.subscription?.endpoint,
@@ -278,13 +305,13 @@ export const sendTestNotificationToSelf = action({
         failedCount++;
 
         if (err.statusCode === 410 || err.statusCode === 404) {
-          await ctx.runMutation(api.pushNotifications.deleteSubscription, {
+          await ctx.runMutation(internal.pushNotifications.deleteSubscription, {
             id: sub._id,
           });
         }
 
         const errorMessage = typeof err?.message === "string" ? err.message : String(err);
-        await ctx.runMutation(api.notificationAudit.logAttempt, {
+        await ctx.runMutation(internal.notificationAudit.logAttempt, {
           userId,
           subscriptionId: sub._id,
           endpoint: sub.subscription?.endpoint,

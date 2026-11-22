@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
-import { useMutation, useConvex } from "convex/react";
+import { useConvex } from "convex/react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import { useSearchParams } from "react-router-dom";
@@ -47,7 +47,6 @@ export function SignInForm() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const hCaptchaRef = useRef<HCaptcha>(null);
   const convex = useConvex();
-  const storeSignupData = useMutation(api.auth.storeSignupData);
   const [otpEmail, setOtpEmail] = useState<string | null>(null);
 
   const signUpForm = useForm<SignUpValues>({
@@ -135,28 +134,9 @@ export function SignInForm() {
       const signInResult = await signIn("password", formData);
 
       if (signInResult) {
-        // Store profile data - retry up to 3 times to handle auth system timing
-        let stored = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            await storeSignupData({ email, firstName, lastName, memberNumber });
-            stored = true;
-            break;
-          } catch (error: any) {
-            if (attempt < 2 && error?.message?.includes("User not found")) {
-              // Auth system hasn't created the user record yet, wait and retry
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            } else {
-              throw error;
-            }
-          }
-        }
-
-        if (!stored) {
-          toast.error("Your account was created, but we couldn't save your profile information. Please update your profile in settings.");
-        } else {
-          toast.success("Account created successfully!");
-        }
+        // Name and CFA number travel with the sign-up itself, so the account
+        // is complete. It waits for an administrator to approve it.
+        toast.success("Account created. An administrator needs to approve it before you can use BRAVO.");
         resetCaptcha();
       }
     } catch (error: any) {

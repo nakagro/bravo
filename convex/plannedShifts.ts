@@ -15,6 +15,7 @@ import {
   nextStatusValidator,
   plannedStatusValidator,
 } from "./lib/statusValidators";
+import { requireModule } from "./lib/access";
 
 // Planned shifts: a member enters the shifts they work (e.g. a nursing roster)
 // and is marked unavailable automatically while at work. A shift type holds the
@@ -171,10 +172,7 @@ function dateLabel(date: string): string {
 
 /** The signed-in member. Shared and disabled accounts have no roster. */
 async function requireMember(ctx: MutationCtx): Promise<Doc<"users">> {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in to plan shifts.");
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found.");
+  const user = await requireModule(ctx, "availability", "You do not have access to planned shifts.");
   if (!isMemberAccount(user)) {
     throw new Error("Planned shifts are only for member accounts.");
   }

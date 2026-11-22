@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026.11.22]
+
+- Sign-in: New sign-ups wait for an administrator to approve them before they can use BRAVO.
+- Admin: User Management lists sign-ups waiting for approval, with Approve and Reject.
+- Availability: Only Lieutenants, Captains and administrators can set the Duty Officer.
+- Kiosk: PIN sign-in now opens the kiosk screens only.
+- General: Each module's rank and role settings now apply to everything in it, not just what the menu shows.
+
 ## [2026.11.19]
 
 - Events: An appliance on a shift event can now have its own crew for each shift.

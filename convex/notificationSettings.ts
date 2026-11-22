@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -34,7 +34,7 @@ export const getNotificationSettings = query({
 });
 
 // Get a specific notification setting
-export const getNotificationSetting = query({
+export const getNotificationSetting = internalQuery({
   args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder")) },
   returns: v.union(v.object({
     _id: v.id("notificationSettings"),
@@ -158,7 +158,7 @@ export const updateNotificationSetting = mutation({
 });
 
 // Helper function to check if a notification type is enabled (used by scheduled actions)
-export const isNotificationEnabled = query({
+export const isNotificationEnabled = internalQuery({
   args: { notificationType: v.union(v.literal("nightlyReset"), v.literal("morningReminder")) },
   returns: v.boolean(),
   handler: async (ctx, args) => {

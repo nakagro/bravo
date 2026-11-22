@@ -1,8 +1,9 @@
-import { Fragment, Suspense, lazy, useEffect, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { isDisabledAccount } from "./lib/accountType";
 import { AccountDisabled } from "./components/AccountDisabled";
+import { AwaitingApproval } from "./components/AwaitingApproval";
 import {
   BrowserRouter,
   Routes,
@@ -173,56 +174,14 @@ function ServiceAccountGate() {
  * Only renders modules that the service account has access to.
  */
 function ServiceAccountApp() {
-  const { allowedModules } = useServiceAccount();
-
-  // Map of moduleId → route config
-  const moduleRoutes: Record<string, ReactNode> = {
-    dashboard: <Route key="dashboard" path="/" element={<DashboardPage />} />,
-    kiosk: <Route key="kiosk" path="/kiosk" element={<KioskPage />} />,
-    hoses: <Route key="hoses" path="/hoses" element={<HosesPage />} />,
-    keys: <Route key="keys" path="/keys" element={<KeysPage />} />,
-    dutyCrew: <Route key="dutyCrew" path="/dutycrew" element={<DutyCrewPage />} />,
-    inventory: (
-      <Route key="inventory" path="/inventory" element={<InventoryPage />} />
-    ),
-    vehicleFaults: (
-      <Route key="vehicleFaults" path="/vehicle-faults" element={<VehicleFaultsPage />} />
-    ),
-    bookings: <Route key="bookings" path="/bookings" element={<BookingsPage />} />,
-    events: (
-      <Fragment key="events">
-        <Route path="/events" element={<EventsPage />} />
-        <Route path="/events/:eventId" element={<EventDetailPage />} />
-      </Fragment>
-    ),
-    availability: (
-      <Route key="availability" path="/availability" element={<AvailabilityPage />} />
-    ),
-    fireReports: (
-      <Route key="fireReports" path="/fire-reports" element={<FireReportsPage />} />
-    ),
-    feedback: <Route key="feedback" path="/feedback" element={<FeedbackPage />} />,
-    links: <Route key="links" path="/links" element={<LinksPage />} />,
-    equipment: <Route key="equipment" path="/equipment" element={<EquipmentPage />} />,
-    baSkills: <Route key="baSkills" path="/ba-skills" element={<BASkillsPage />} />,
-  };
-
-  // Determine the default landing page - first allowed module, or kiosk if available
-  const defaultPath = allowedModules.includes("kiosk")
-    ? "/kiosk"
-    : allowedModules.includes("dashboard")
-      ? "/"
-      : "/";
-
+  // PIN sessions are for the kiosk tablets only; the server gives a session
+  // nothing else. Other shared devices sign in with a shared account.
   return (
     <ServiceLayout>
       <RouteSuspense>
         <Routes>
-          {/* Render only routes for allowed modules */}
-          {allowedModules.map((moduleId) => moduleRoutes[moduleId]).filter(Boolean)}
-
-          {/* Catch-all: redirect to the default allowed page */}
-          <Route path="*" element={<Navigate to={defaultPath} replace />} />
+          <Route path="/kiosk" element={<KioskPage />} />
+          <Route path="*" element={<Navigate to="/kiosk" replace />} />
         </Routes>
       </RouteSuspense>
     </ServiceLayout>
@@ -239,6 +198,10 @@ function AuthenticatedApp() {
   const currentUser = useQuery(api.auth.loggedInUser);
   if (isDisabledAccount(currentUser)) {
     return <AccountDisabled />;
+  }
+  // A self-service sign-up reaches nothing until an admin approves it.
+  if (currentUser?.approvalStatus === "pending") {
+    return <AwaitingApproval />;
   }
 
   return (

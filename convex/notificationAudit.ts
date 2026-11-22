@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
-export const logAttempt = mutation({
+export const logAttempt = internalMutation({
   args: {
     userId: v.optional(v.id("users")),
     subscriptionId: v.optional(v.id("pushSubscriptions")),
@@ -20,7 +20,7 @@ export const logAttempt = mutation({
   },
 });
 
-export const recentByUser = query({
+export const recentByUser = internalQuery({
   args: {
     userId: v.id("users"),
     limit: v.optional(v.number()),

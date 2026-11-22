@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalAction, internalQuery } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { currentWeekItems, isResolved } from "./stationChecks";
 import { effectiveAssignee, loadAllocationMap } from "./lib/stationCheckAllocations";
@@ -81,7 +81,7 @@ export const sendWeekClosingReminder = internalAction({
     let sent = 0;
     for (const recipient of target.recipients) {
       try {
-        await ctx.runAction(api.pushNotificationAction.sendNotification, {
+        await ctx.runAction(internal.pushNotificationAction.send, {
           title: `${target.crewName}: week ends tonight`,
           body: weekClosingMessage(target.remaining, recipient.mine),
           userId: recipient.userId,

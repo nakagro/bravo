@@ -1,8 +1,8 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
+import { getModuleUser } from "./lib/access";
 
 const SIX_MONTHS_DAYS = 180;
 // Warning triggers when a member is within 2 weeks of their currency expiring.
@@ -58,7 +58,7 @@ export const getMyCurrency = query({
   args: {},
   returns: v.union(myCurrencyValidator, v.null()),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "baSkills"))?._id;
     if (!userId) return null;
 
     const user = await ctx.db.get(userId);
@@ -128,7 +128,7 @@ export const getBrigadeCurrency = query({
     }),
   }),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "baSkills"))?._id;
     if (!userId) {
       return {
         members: [],

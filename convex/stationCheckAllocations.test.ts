@@ -4,12 +4,14 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { openModules } from "./moduleFixtures.testing";
 
 const modules = import.meta.glob("./**/*.ts");
 const SUNDAY = new Date("2026-08-09T23:59:59.999").getTime();
 
 async function setup() {
   const t = convexTest(schema, modules);
+  await t.run((ctx) => openModules(ctx));
   const ids = await t.run(async (ctx) => {
     const leaderId = await ctx.db.insert("users", { name: "Crew leader" });
     const memberId = await ctx.db.insert("users", { name: "Crew member" });

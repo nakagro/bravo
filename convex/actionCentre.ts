@@ -13,6 +13,7 @@ import { dutyCrewProvider } from "./actionCentreProviders/dutyCrew";
 import { noticesProvider } from "./actionCentreProviders/notices";
 import { assignmentsProvider } from "./actionCentreProviders/assignments";
 import type { ActionItem, ActionProvider, ProviderCtx } from "./actionCentreProviders/types";
+import { requireUser } from "./lib/access";
 
 // ─── Provider registry ────────────────────────────────────────────────────────
 
@@ -54,9 +55,7 @@ const actionItemValidator = v.object({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function requireSignedIn(ctx: QueryCtx | MutationCtx) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) throw new Error("You must be signed in");
-  return userId;
+  return (await requireUser(ctx))._id;
 }
 
 function buildModuleAccessChecker(

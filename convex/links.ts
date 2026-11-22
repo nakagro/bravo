@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireAdmin } from "./lib/access";
 
 async function ensureCategoryExists(ctx: any, userId: any, category: string | undefined) {
   const normalized = category?.trim();
@@ -58,6 +58,7 @@ export const getActiveLinks = query({
     categoryOrder: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "links"))) return [];
     const links = await ctx.db
       .query("links")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))
@@ -96,6 +97,7 @@ export const getAllLinks = query({
     categoryOrder: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "admin"))) return [];
     const links = await ctx.db.query("links").collect();
     const categoryOrderMap = await getCategoryOrderMap(ctx);
 
@@ -126,6 +128,7 @@ export const getLinkCategories = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "admin"))) return [];
     const categories = await ctx.db.query("linkCategories").collect();
     return categories.sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name));
   },
@@ -141,8 +144,8 @@ export const createLink = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireAdmin(ctx, "manage links"))._id;
+
     await ensureCategoryExists(ctx, userId, args.category);
     const now = Date.now();
     const id = await ctx.db.insert("links", {
@@ -166,8 +169,8 @@ export const updateLink = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireAdmin(ctx, "manage links"))._id;
+
     const { id, ...patch } = args;
     if (patch.category !== undefined) {
       await ensureCategoryExists(ctx, userId, patch.category);
@@ -183,8 +186,7 @@ export const reorderLinkCategories = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireAdmin(ctx, "manage links"))._id;
 
     const now = Date.now();
     for (const name of args.orderedCategoryNames) {
@@ -221,8 +223,8 @@ export const reorderLinkCategories = mutation({
 export const deleteLink = mutation({
   args: { id: v.id("links") },
   handler: async (ctx, { id }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireAdmin(ctx, "manage links");
+
     await ctx.db.delete(id);
     return true;
   },

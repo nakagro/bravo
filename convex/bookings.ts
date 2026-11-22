@@ -6,6 +6,7 @@ import { isMemberAccount } from "./lib/accountType";
 import { brigadeDateStr } from "./lib/dates";
 import { describeRepeat, repeatProblem, seriesDates } from "./lib/bookingRecurrence";
 import { moduleSettingAllows } from "./modules";
+import { getModuleUser, requireModule, requireUser } from "./lib/access";
 
 const repeatFrequencyValidator = v.union(
   v.literal("weekly"),
@@ -55,10 +56,7 @@ async function hasBookingsAdminAccess(
 }
 
 async function requireBookingsAdmin(ctx: QueryCtx | MutationCtx): Promise<Id<"users">> {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) {
-    throw new Error("You must be signed in");
-  }
+  const userId = (await requireUser(ctx))._id;
   if (!(await hasBookingsAdminAccess(ctx, userId))) {
     throw new Error("Bookings admin access required");
   }
@@ -207,6 +205,7 @@ export const getBookingResources = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "bookings"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId || !(await hasBookingsAdminAccess(ctx, userId))) {
       return [];
@@ -268,6 +267,7 @@ export const getActiveBookingResources = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "bookings"))) return [];
     return await ctx.db
       .query("bookingResources")
       .withIndex("by_isActive", (q) => q.eq("isActive", true))
@@ -421,6 +421,7 @@ export const getBookings = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "bookings"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId || !(await hasBookingsAdminAccess(ctx, userId))) {
       return [];
@@ -524,7 +525,7 @@ export const getBooking = query({
     })
   ),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "bookings"))?._id;
     if (!userId) {
       return null;
     }
@@ -599,7 +600,7 @@ export const getMyBookings = query({
     })
   ),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "bookings"))?._id;
     if (!userId) {
       return [];
     }
@@ -680,7 +681,7 @@ export const getPendingApprovalsForMe = query({
     })
   ),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "bookings"))?._id;
     if (!userId) {
       return [];
     }
@@ -768,10 +769,7 @@ export const createBooking = mutation({
   },
   returns: v.id("bookings"),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to create a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     // Check if the resource exists and is active
     const resource = await ctx.db.get(args.resourceId);
@@ -921,10 +919,7 @@ export const approveBooking = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to approve a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) {
@@ -970,10 +965,7 @@ export const revertBookingToPending = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to revert a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) {
@@ -1011,10 +1003,7 @@ export const rejectBooking = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to reject a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) {
@@ -1059,10 +1048,7 @@ export const cancelBooking = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to cancel a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) {
@@ -1130,6 +1116,7 @@ export const approveBookingSeries = mutation({
   },
   returns: v.array(v.id("bookings")),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "bookings");
     const { userId, pending } = await seriesForApprover(ctx, args.seriesId);
 
     const now = Date.now();
@@ -1156,6 +1143,7 @@ export const rejectBookingSeries = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireModule(ctx, "bookings");
     const { userId, pending } = await seriesForApprover(ctx, args.seriesId);
 
     const now = Date.now();
@@ -1183,10 +1171,7 @@ export const cancelBookingSeries = mutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to cancel a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     const bookings = await ctx.db
       .query("bookings")
@@ -1233,10 +1218,7 @@ export const updateBooking = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update a booking");
-    }
+    const userId = (await requireModule(ctx, "bookings"))._id;
 
     // Check if user is admin
     const user = await ctx.db.get(userId);
@@ -1358,6 +1340,7 @@ export const getBookingsForDateRange = query({
     })
   ),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "bookings", "calendar"))) return [];
     let allBookings;
 
     // Filter by resource if specified
@@ -1449,7 +1432,7 @@ export const getAllUsers = query({
     })
   ),
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = (await getModuleUser(ctx, "bookings"))?._id;
     if (!userId) {
       return [];
     }

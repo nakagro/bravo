@@ -1,7 +1,9 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
+import { getModuleUser, requireAdmin, requireOfficer, requireUser } from "./lib/access";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 import { plannedStatusValidator } from "./lib/statusValidators";
 import { upcomingShiftSummary } from "./plannedShifts";
@@ -46,6 +48,7 @@ export const getStatuses = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availability"))) return [];
     // Calculate the timestamp for 4am of the current day
     const now = new Date();
     const today4am = new Date(
@@ -97,6 +100,28 @@ export const getStatuses = query({
 });
 
 // Raw query returning users' status fields without any cutoff/reset logic.
+async function allUsersStatus(ctx: QueryCtx) {
+    // Shared accounts (DO phone, appliance tablets) are not brigade members, so
+    // they never appear on the board. The nightly reset and morning reminder both
+    // fan out from this query, so filtering here also stops their pushes.
+    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
+    return users.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      memberNumber: u.memberNumber,
+      currentStatus: u.currentStatus,
+      statusUpdatedAt: u.statusUpdatedAt,
+      statusExpiresAt: u.statusExpiresAt,
+      statusDurationHours: u.statusDurationHours,
+      isBirthday: u.isBirthday,
+      nextStatus: u.nextStatus,
+      nextStatusAt: u.nextStatusAt,
+      isDutyOfficer: u.isDutyOfficer,
+    }));
+}
+
 export const getAllUsersStatus = query({
   args: {},
   returns: v.array(
@@ -136,26 +161,51 @@ export const getAllUsersStatus = query({
     })
   ),
   handler: async (ctx) => {
-    // Shared accounts (DO phone, appliance tablets) are not brigade members, so
-    // they never appear on the board. The nightly reset and morning reminder both
-    // fan out from this query, so filtering here also stops their pushes.
-    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
-    return users.map((u) => ({
-      _id: u._id,
-      name: u.name,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      memberNumber: u.memberNumber,
-      currentStatus: u.currentStatus,
-      statusUpdatedAt: u.statusUpdatedAt,
-      statusExpiresAt: u.statusExpiresAt,
-      statusDurationHours: u.statusDurationHours,
-      isBirthday: u.isBirthday,
-      nextStatus: u.nextStatus,
-      nextStatusAt: u.nextStatusAt,
-      isDutyOfficer: u.isDutyOfficer,
-    }));
+    if (!(await getModuleUser(ctx, "availability"))) return [];
+    return await allUsersStatus(ctx);
   },
+});
+
+/** For the nightly reset and morning reminder crons, which have no signed-in user. */
+export const listAllUsersStatus = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      name: v.optional(v.string()),
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      memberNumber: v.optional(v.string()),
+      currentStatus: v.optional(
+        v.union(
+          v.literal("available - station"),
+          v.literal("available - at station"),
+          v.literal("available - satellite"),
+          v.literal("not available"),
+          v.literal("delayed response"),
+          v.literal("WFH"),
+          v.literal("WFH - at station")
+        )
+      ),
+      statusUpdatedAt: v.optional(v.number()),
+      statusExpiresAt: v.optional(v.number()),
+      statusDurationHours: v.optional(v.number()),
+      isBirthday: v.optional(v.boolean()),
+      nextStatus: v.optional(v.union(
+        v.literal("available - station"),
+        v.literal("available - at station"),
+        v.literal("available - satellite"),
+        v.literal("not available"),
+        v.literal("delayed response"),
+        v.literal("WFH"),
+        v.literal("WFH - at station"),
+        v.literal("reset")
+      )),
+      nextStatusAt: v.optional(v.number()),
+      isDutyOfficer: v.optional(v.boolean()),
+    })
+  ),
+  handler: async (ctx) => await allUsersStatus(ctx),
 });
 
 // Get the current duty officer
@@ -171,6 +221,7 @@ export const getDutyOfficer = query({
     v.null()
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availability"))) return null;
     const dutyOfficer = await ctx.db
       .query("users")
       .withIndex("by_isDutyOfficer", (q) => q.eq("isDutyOfficer", true))
@@ -280,17 +331,9 @@ export const updateUserStatus = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    // Get the authenticated user ID using the same pattern as other mutations
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("You must be signed in to update your status");
-    }
-    
-    // Get the current user data directly using the ID
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
+    // Your own status: any active member.
+    const user = await requireUser(ctx);
+    const userId = user._id;
     
     // Update the user's status
     const now = Date.now();
@@ -347,10 +390,11 @@ export const setDutyOfficer = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    // Get the authenticated user ID using the same pattern as other mutations
-    const currentUserId = await getAuthUserId(ctx);
-    if (!currentUserId) {
-      throw new Error("You must be signed in to set a duty officer");
+    // Lieutenants, Captains and admins appoint the Duty Officer.
+    await requireOfficer(ctx, "set the Duty Officer");
+    const target = await ctx.db.get(args.userId);
+    if (!target || target.isDisabled || target.approvalStatus === "pending") {
+      throw new Error("That member can't be made Duty Officer");
     }
     
     // Find current duty officer if any
@@ -400,17 +444,8 @@ export const unsetDutyOfficer = mutation({
   args: {},
   returns: v.boolean(),
   handler: async (ctx) => {
-    // Get the authenticated user ID
-    const currentUserId = await getAuthUserId(ctx);
-    if (!currentUserId) {
-      throw new Error("You must be signed in to unset duty officer");
-    }
-    
-    // Get the current user
-    const currentUser = await ctx.db.get(currentUserId);
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    const currentUser = await requireUser(ctx);
+    const currentUserId = currentUser._id;
     
     // Check if the current user is the duty officer
     if (!currentUser.isDutyOfficer) {
@@ -454,12 +489,8 @@ export const getUsersWithOfficerSkill = query({
     })
   ),
   handler: async (ctx) => {
-    // Get the authenticated user ID
-    const currentUserId = await getAuthUserId(ctx);
-    if (!currentUserId) {
-      return [];
-    }
-    
+    if (!(await getModuleUser(ctx, "availability"))) return [];
+
     // Find the Officer skill
     const officerSkill = await ctx.db
       .query("skills")
@@ -514,11 +545,7 @@ export const clearStatus = internalMutation({
   },
 });
 
-// Process automatic status transitions (called by cron)
-export const processStatusTransitions = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
+async function runStatusTransitions(ctx: MutationCtx): Promise<number> {
     const now = Date.now();
     let transitionsProcessed = 0;
     
@@ -542,7 +569,7 @@ export const processStatusTransitions = mutation({
           });
           
           // Send notification about status reset
-          await ctx.scheduler.runAfter(0, api.pushNotificationAction.sendNotification, {
+          await ctx.scheduler.runAfter(0, internal.pushNotificationAction.send, {
             title: "Status Updated",
             body: `Your status has been reset from "${previousStatus}" as scheduled.`,
             userId: user._id,
@@ -568,7 +595,7 @@ export const processStatusTransitions = mutation({
           });
           
           // Send notification about status change
-          await ctx.scheduler.runAfter(0, api.pushNotificationAction.sendNotification, {
+          await ctx.scheduler.runAfter(0, internal.pushNotificationAction.send, {
             title: "Status Updated",
             body: `Your status has changed from "${previousStatus}" to "${user.nextStatus}" as scheduled.`,
             userId: user._id,
@@ -582,6 +609,22 @@ export const processStatusTransitions = mutation({
     }
     
     return transitionsProcessed;
+}
+
+// Process automatic status transitions (called by cron)
+export const processStatusTransitionsJob = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => await runStatusTransitions(ctx),
+});
+
+// The same, run by hand from Admin Tasks.
+export const processStatusTransitions = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    await requireAdmin(ctx, "run status transitions");
+    return await runStatusTransitions(ctx);
   },
 });
 
@@ -843,6 +886,7 @@ export const getUsersWithScheduledChanges = query({
     })
   ),
   handler: async (ctx) => {
+    if (!(await getModuleUser(ctx, "availabilityAdmin"))) return [];
     const now = Date.now();
     
     // Get all users

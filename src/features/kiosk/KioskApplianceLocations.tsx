@@ -12,8 +12,9 @@ interface KioskApplianceLocationsProps {
 }
 
 function KioskApplianceLocations({ onBack }: KioskApplianceLocationsProps) {
-    const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations) || [];
-    const allLocations = useQuery(api.applianceLocations.getAllLocations) || [];
+    const kioskToken = getServiceToken() ?? undefined;
+    const applianceLocations = useQuery(api.applianceLocations.getApplianceLocations, { serviceToken: kioskToken }) || [];
+    const allLocations = useQuery(api.applianceLocations.getAllLocations, { serviceToken: kioskToken }) || [];
     const updateApplianceLocation = useMutation(api.applianceLocations.updateApplianceLocation);
 
     const [isUpdating, setIsUpdating] = useState<string | null>(null);

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser, requireModule } from "./lib/access";
 
 /**
  * Get all comments for a specific hose
@@ -10,6 +11,7 @@ export const list = query({
     hoseId: v.id("hoses"),
   },
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "hoses"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -88,8 +90,7 @@ export const add = mutation({
     text: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const userId = (await requireModule(ctx, "hoses"))._id;
 
     // Validate that the hose exists
     const hose = await ctx.db.get(args.hoseId);
@@ -117,8 +118,7 @@ export const remove = mutation({
     commentId: v.id("hoseComments"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireModule(ctx, "hoses");
 
     // Get the comment
     const comment = await ctx.db.get(args.commentId);

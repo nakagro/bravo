@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getModuleUser } from "./lib/access";
 
 export const getRecentChanges = query({
   args: {
@@ -23,6 +24,7 @@ export const getRecentChanges = query({
     faultShortDescription: v.string(),
   })),
   handler: async (ctx, args) => {
+    if (!(await getModuleUser(ctx, "vehicleFaults"))) return [];
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
