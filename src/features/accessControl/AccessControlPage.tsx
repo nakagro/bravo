@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
-  DoorClosed,
   DoorOpen,
   Eye,
-  FlaskConical,
   Lock,
   LockOpen,
+  MoreVertical,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -18,9 +17,15 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { formatDateTime } from "@/lib/dateFormat";
-import type { StatusTone } from "@/lib/statusTone";
+import { statusToneClasses, type StatusTone } from "@/lib/statusTone";
 import { cn } from "@/lib/utils";
 import {
   buildMockEvents,
@@ -74,21 +79,6 @@ function siteSummary(site: AccessSite): { label: string; tone: StatusTone; icon:
   return { label: "Partly armed", tone: "warning", icon: ShieldAlert };
 }
 
-function summaryDotClass(tone: StatusTone): string {
-  switch (tone) {
-    case "success":
-      return "bg-emerald-500";
-    case "warning":
-      return "bg-amber-500";
-    case "danger":
-      return "bg-red-500";
-    case "info":
-      return "bg-blue-500";
-    default:
-      return "bg-muted-foreground";
-  }
-}
-
 export function AccessControlPage() {
   const [sites, setSites] = useState<AccessSite[]>(() => buildMockSites());
   const [events, setEvents] = useState<AccessEvent[]>(() => buildMockEvents());
@@ -136,10 +126,10 @@ export function AccessControlPage() {
     toast.success(`${site.name}: ${area.name} ${verb}`);
   };
 
-  const setDoor = (siteId: string, doorId: string, status: DoorStatus) =>
+  const setDoor = (siteId: string, doorId: string, status: DoorStatus, unlockedUntil?: number) =>
     patchSite(siteId, (s) => ({
       ...s,
-      doors: s.doors.map((d) => (d.id === doorId ? { ...d, status, changedAt: Date.now() } : d)),
+      doors: s.doors.map((d) => (d.id === doorId ? { ...d, status, unlockedUntil, changedAt: Date.now() } : d)),
     }));
 
   const clearPulseTimer = (key: string) => {
@@ -154,7 +144,7 @@ export function AccessControlPage() {
     const key = `${site.id}:${door.id}`;
     clearPulseTimer(key);
     await fakeRoundTrip();
-    setDoor(site.id, door.id, "unlocked");
+    setDoor(site.id, door.id, "unlocked", Date.now() + PULSE_MS);
     log(site.id, `${door.name} unlocked (${PULSE_MS / 1000}s)`);
     toast.success(`${door.name} unlocked for ${PULSE_MS / 1000} seconds`);
     const timer = setTimeout(() => {
@@ -167,28 +157,25 @@ export function AccessControlPage() {
   const toggleHold = async (site: AccessSite, door: AccessDoor) => {
     clearPulseTimer(`${site.id}:${door.id}`);
     await fakeRoundTrip();
-    const next = door.status === "unlocked" ? "secured" : "unlocked";
+    const next = door.status === "unlocked" && !door.unlockedUntil ? "secured" : "unlocked";
     setDoor(site.id, door.id, next);
-    log(site.id, next === "unlocked" ? `${door.name} held open` : `${door.name} locked`);
-    toast.success(next === "unlocked" ? `${door.name} held open` : `${door.name} locked`);
+    const text = next === "unlocked" ? `${door.name} kept unlocked` : `${door.name} locked`;
+    log(site.id, text);
+    toast.success(text);
   };
 
   return (
     <div className="space-y-4 pb-6" data-component="AccessControlPage">
-      {/* Compact header + unobtrusive mock notice */}
-      <div className="space-y-2">
+      <div>
         <div className="flex items-center gap-2.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Control</h1>
           <Badge tone="info">Mock</Badge>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          <FlaskConical className="size-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
-          <span>Sample data only. Not connected to the station panels.</span>
-        </div>
+        <p className="mt-1 text-sm text-muted-foreground">Sample data only. Not connected to the panels.</p>
       </div>
 
       {/* Mobile glance strip: shows both sites' status above the fold and switches active card */}
-      <div className="grid grid-cols-2 gap-2.5 lg:hidden" role="tablist" aria-label="Stations">
+      <div className="grid grid-cols-2 gap-2.5 lg:hidden" aria-label="Stations">
         {sites.map((site) => {
           const summary = siteSummary(site);
           const stale = now - site.lastSeenAt > STALE_AFTER_MS;
@@ -197,33 +184,17 @@ export function AccessControlPage() {
             <button
               key={site.id}
               type="button"
-              role="tab"
-              aria-selected={selected}
+              aria-pressed={selected}
               onClick={() => setActiveSiteId(site.id)}
               className={cn(
                 "min-w-0 rounded-xl border p-3 text-left transition-colors",
-                selected
-                  ? "border-primary/60 bg-card shadow-sm ring-1 ring-primary/25"
-                  : "border-border bg-card/50 text-muted-foreground hover:bg-card",
+                selected ? "border-primary/60 bg-card ring-1 ring-primary/25" : "border-border bg-card/40 hover:bg-card",
               )}
             >
               <div className="truncate text-sm font-semibold text-foreground">{site.name}</div>
-              <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                <span className={cn("size-2 shrink-0 rounded-full", summaryDotClass(summary.tone))} />
-                <span className="truncate font-medium text-foreground">{summary.label}</span>
-              </div>
-              <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                {stale ? (
-                  <>
-                    <WifiOff className="size-3 shrink-0 text-amber-500" />
-                    <span className="truncate text-amber-600 dark:text-amber-400">Offline {ago(site.lastSeenAt, now)}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                    <span>Live</span>
-                  </>
-                )}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge tone={summary.tone}>{summary.label}</Badge>
+                {stale && <WifiOff className="size-3.5 text-muted-foreground" aria-label="Offline" />}
               </div>
             </button>
           );
@@ -267,19 +238,12 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
 
   return (
     <Card className="min-w-0 overflow-hidden">
-      <CardHeader className="space-y-3 p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
+      <CardHeader className={cn("space-y-3 p-4 sm:p-5", !stale && "hidden lg:flex")}>
+        {/* On phones the station switcher above already shows name and status */}
+        <div className="hidden items-start justify-between gap-3 lg:flex">
           <div className="min-w-0">
             <CardTitle className="truncate text-lg">{site.name}</CardTitle>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span>{site.panelLabel}</span>
-              {!stale && (
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  Live
-                </span>
-              )}
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{site.panelLabel}</p>
           </div>
           <Badge tone={summary.tone} className="shrink-0 gap-1.5 px-2.5 py-1 text-xs">
             <SummaryIcon className="size-3.5" />
@@ -288,14 +252,14 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
         </div>
 
         {stale && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-xs", statusToneClasses.warning)}>
             <WifiOff className="size-3.5 shrink-0" />
-            <span>No update since {ago(site.lastSeenAt, now)}. Controls disabled.</span>
+            <span>No update since {ago(site.lastSeenAt, now)}. Controls are hidden until it reconnects.</span>
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-5 p-4 pt-0 sm:p-5 sm:pt-0">
+      <CardContent className={cn("space-y-5 p-4 sm:p-5 lg:pt-0", stale && "pt-0 sm:pt-0")}>
         {/* Areas */}
         <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Areas</h3>
@@ -315,7 +279,7 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
                       {area.changedBy ? ` · ${area.changedBy}` : ""}
                     </p>
                   </div>
-                  <ConfirmDialog
+                  {!stale && <ConfirmDialog
                     title={`${armed ? "Disarm" : "Arm"} ${site.name}: ${area.name}?`}
                     description={
                       armed
@@ -326,12 +290,12 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
                     tone={armed ? "destructive" : "default"}
                     onConfirm={() => onSetArea(site, area, armed ? "disarmed" : "armed")}
                     trigger={
-                      <Button variant="outline" size="sm" className="h-9 shrink-0 px-3 sm:h-8" disabled={stale}>
+                      <Button variant="outline" size="sm" className="h-9 shrink-0 px-3 sm:h-8">
                         {armed ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
                         {armed ? "Disarm" : "Arm"}
                       </Button>
                     }
-                  />
+                  />}
                 </li>
               );
             })}
@@ -356,12 +320,12 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
         </section>
 
         {/* Collapsible recent activity: shows latest event inline without adding vertical noise */}
-        <section className="border-t border-border pt-3">
+        <section className="border-t border-border pt-2">
           <button
             type="button"
             onClick={() => setActivityOpen((open) => !open)}
             aria-expanded={activityOpen}
-            className="flex w-full items-center justify-between gap-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="flex min-h-11 w-full items-center justify-between gap-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <div className="min-w-0">
               <span className="font-semibold uppercase tracking-wider">Recent activity</span>
@@ -413,14 +377,9 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
   const [busy, setBusy] = useState<"pulse" | "hold" | null>(null);
   const info = DOOR_INFO[door.status];
   const Icon = info.icon;
-  const held = door.status === "unlocked";
-  const highlightIcon = door.status === "open"
-    ? "text-blue-500 dark:text-blue-400"
-    : door.status === "unlocked"
-      ? "text-amber-500 dark:text-amber-400"
-      : door.status === "forced" || door.status === "heldOpen"
-        ? "text-red-500 dark:text-red-400"
-        : "text-muted-foreground";
+  const held = door.status === "unlocked" && !door.unlockedUntil;
+  const pulsing = door.status === "unlocked" && !!door.unlockedUntil;
+  const label = pulsing ? `Unlocked · ${PULSE_MS / 1000}s` : held ? "Kept unlocked" : info.label;
 
   const run = async (kind: "pulse" | "hold", fn: () => Promise<void>) => {
     setBusy(kind);
@@ -432,52 +391,69 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
   };
 
   return (
-    <li className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-center justify-between gap-2.5 sm:justify-start">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <Icon className={cn("size-4 shrink-0", highlightIcon)} />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate font-medium text-foreground">{door.name}</span>
-              <Badge tone={info.tone}>{info.label}</Badge>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{ago(door.changedAt, now)}</p>
+    <li className="flex items-center justify-between gap-3 p-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="truncate font-medium text-foreground">{door.name}</span>
+            <Badge tone={info.tone}>{label}</Badge>
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{ago(door.changedAt, now)}</p>
         </div>
-        {!door.canControl && (
-          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground sm:hidden">
-            <Eye className="size-3.5" />
-            View only
-          </span>
-        )}
       </div>
 
-      {door.canControl ? (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-          <Button
-            size="sm"
-            className="h-9 sm:h-8"
-            loading={busy === "pulse"}
-            disabled={disabled || busy !== null || held}
-            onClick={() => run("pulse", onPulse)}
-          >
-            <DoorClosed className="size-3.5" />
-            Unlock
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 sm:h-8"
-            loading={busy === "hold"}
-            disabled={disabled || busy !== null}
-            onClick={() => run("hold", onToggleHold)}
-          >
-            {held ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-            {held ? "Lock" : "Hold open"}
-          </Button>
+      {disabled ? null : door.canControl ? (
+        <div className="flex shrink-0 items-center gap-1">
+          {held ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 px-3 sm:h-8"
+              loading={busy === "hold"}
+              disabled={busy !== null}
+              onClick={() => run("hold", onToggleHold)}
+            >
+              <Lock className="size-3.5" />
+              Lock
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 px-3 sm:h-8"
+              loading={busy === "pulse"}
+              disabled={busy !== null || pulsing}
+              onClick={() => run("pulse", onPulse)}
+            >
+              <DoorOpen className="size-3.5" />
+              Unlock
+            </Button>
+          )}
+          {!held && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-9 sm:size-8"
+                  disabled={busy !== null}
+                  aria-label={`More for ${door.name}`}
+                >
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => run("hold", onToggleHold)}>
+                  <LockOpen className="size-4" />
+                  Keep unlocked
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       ) : (
-        <span className="hidden shrink-0 items-center gap-1 text-xs text-muted-foreground sm:flex">
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
           <Eye className="size-3.5" />
           View only
         </span>

@@ -23,6 +23,8 @@ export interface AccessDoor {
   changedAt: number;
   /** Mock permission: whether the signed-in member may operate this door. */
   canControl: boolean;
+  /** Set while a timed unlock is running; the door relocks at this time. */
+  unlockedUntil?: number;
 }
 
 export interface AccessSite {

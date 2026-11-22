@@ -10,6 +10,7 @@
 - Availability: Only Lieutenants, Captains and administrators can set the Duty Officer.
 - Kiosk: PIN sign-in now opens the kiosk screens only.
 - General: Each module's rank and role settings now apply to everything in it, not just what the menu shows.
+- General: The brigade name in the header stays on one line on smaller phones.
 
 ## [2026.11.19]
 
