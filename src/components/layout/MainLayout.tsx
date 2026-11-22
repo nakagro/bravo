@@ -33,17 +33,23 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <div ref={headerRef} className="sticky top-0 z-30">
-        <header className="bg-white dark:bg-gray-800 px-4 py-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+        <header className="bg-white dark:bg-gray-800 px-4 py-2 flex justify-between items-center gap-2 border-b border-gray-200 dark:border-gray-700">
           <Link
             to="/"
-            className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+            className="group min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
             aria-label="Go to dashboard"
           >
-            <h2 className="text-xl font-semibold text-red-700 dark:text-red-600">
-              Wyndham Vale Fire Brigade
+            {/* One line on every phone: the short name below the width where the full name would wrap */}
+            <h2 className="flex min-w-0 items-center gap-2 whitespace-nowrap text-lg font-semibold text-red-700 dark:text-red-600 sm:text-xl">
+              <span className={`truncate ${envBadge ? "min-[440px]:hidden" : "min-[380px]:hidden"}`}>
+                Wyndham Vale FB
+              </span>
+              <span className={`hidden truncate ${envBadge ? "min-[440px]:inline" : "min-[380px]:inline"}`}>
+                Wyndham Vale Fire Brigade
+              </span>
               {envBadge && (
                 <span
-                  className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold align-middle ${envBadge.className}`}
+                  className={`inline-flex shrink-0 items-center px-2 py-0.5 rounded text-xs font-bold ${envBadge.className}`}
                   title={envBadge.long}
                 >
                   {envBadge.short}
@@ -51,7 +57,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               )}
             </h2>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <ActionBell />
             <HamburgerMenu />
           </div>

@@ -1,5 +1,9 @@
 # Changelog
 
+## [2026.11.22]
+
+- General: The brigade name in the header stays on one line on smaller phones.
+
 ## [2026.11.19]
 
 - Events: An appliance on a shift event can now have its own crew for each shift.
