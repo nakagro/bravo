@@ -61,6 +61,11 @@ export function unavailableReason(site: Site, now: number): string | null {
     const gap = m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
     return `No contact with the station for ${gap}`;
   }
+  if (site.bravoWritesDisabled) {
+    return site.bravoWritesDisabledReason === "allSites"
+      ? "Remote control is switched off in BRAVO for all stations"
+      : "Remote control is switched off in BRAVO for this station";
+  }
   if (!site.controlsEnabled) return "Remote control is off for this station";
   if (!site.writesEnabled) return "This station is view only";
   return null;

@@ -4,6 +4,7 @@
 
 - Access Control: The page is redesigned for phones, one station at a time with its alarm state up front.
 - Access Control: Doors unlock with a press and hold, and an armed station offers Disarm and unlock.
+- Access Control: Controls show when remote control is switched off in BRAVO for one or all stations.
 
 ## [2026.11.23]
 

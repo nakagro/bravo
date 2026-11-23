@@ -21,6 +21,7 @@ function site(overrides: Partial<Site> = {}): Site {
     writesEnabled: true,
     lastSeenAt: NOW - 5_000,
     controlsEnabled: true,
+    bravoWritesDisabled: false,
     areas: [{ id: "a1", name: "Station", status: "armed", changedAt: NOW - 60_000, canControl: true }],
     doors: [
       { id: "d1", name: "Front Door", kind: "door", status: "secured", changedAt: NOW, canControl: true, supportsHold: false },
@@ -48,6 +49,15 @@ describe("unavailableReason", () => {
       "Remote control is off for this station",
     );
     expect(unavailableReason(site({ writesEnabled: false }), NOW)).toBe("This station is view only");
+  });
+
+  it("puts the server kill switch ahead of the station switch", () => {
+    expect(
+      unavailableReason(site({ bravoWritesDisabled: true, bravoWritesDisabledReason: "thisSite", controlsEnabled: false }), NOW),
+    ).toBe("Remote control is switched off in BRAVO for this station");
+    expect(unavailableReason(site({ bravoWritesDisabled: true, bravoWritesDisabledReason: "allSites" }), NOW)).toBe(
+      "Remote control is switched off in BRAVO for all stations",
+    );
   });
 });
 

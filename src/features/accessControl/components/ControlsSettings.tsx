@@ -65,6 +65,11 @@ export function ControlsSettings({ open, onClose, sites, now }: ControlsSettings
                     ? `${site.controlsEnabled ? "On" : "Off"} · ${site.controlsChangedBy}, ${ago(site.controlsChangedAt, now)}`
                     : "Off until turned on"}
                 </FieldDescription>
+                {site.bravoWritesDisabled && (
+                  <FieldDescription className="text-xs font-medium text-foreground">
+                    Switched off on the BRAVO server. This switch has no effect until that is lifted.
+                  </FieldDescription>
+                )}
               </FieldContent>
               <Switch
                 id={`controls-${site.id}`}

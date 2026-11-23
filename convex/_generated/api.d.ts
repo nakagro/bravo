@@ -71,6 +71,7 @@ import type * as keys from "../keys.js";
 import type * as labsMember from "../labsMember.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_accessControlValidators from "../lib/accessControlValidators.js";
+import type * as lib_accessControlWrites from "../lib/accessControlWrites.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_assignments_deploymentSource from "../lib/assignments/deploymentSource.js";
 import type * as lib_assignments_eventSource from "../lib/assignments/eventSource.js";
@@ -204,6 +205,7 @@ declare const fullApi: ApiFromModules<{
   labsMember: typeof labsMember;
   "lib/access": typeof lib_access;
   "lib/accessControlValidators": typeof lib_accessControlValidators;
+  "lib/accessControlWrites": typeof lib_accessControlWrites;
   "lib/accountType": typeof lib_accountType;
   "lib/assignments/deploymentSource": typeof lib_assignments_deploymentSource;
   "lib/assignments/eventSource": typeof lib_assignments_eventSource;

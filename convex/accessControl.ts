@@ -28,6 +28,11 @@ import {
   commandTargetKindValidator,
   panelKindValidator,
 } from "./lib/accessControlValidators";
+import {
+  accessActorName,
+  accessWritesState,
+  writesDisabledMessage,
+} from "./lib/accessControlWrites";
 
 const SITE_ORDER: Record<string, number> = {
   main: 0,
@@ -49,8 +54,30 @@ async function requireAccessControlMember(ctx: QueryCtx | MutationCtx) {
 
 /** The name sent to the site bridges and shown in activity. Never an email. */
 function actorNameFor(user: Doc<"users">): string {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  return fullName || user.name || "Member";
+  return accessActorName(user);
+}
+
+/** Mark one unclaimed command expired, with its audit entry. */
+async function expireCommand(ctx: MutationCtx, cmd: Doc<"accessCommands">, now: number) {
+  const message = "Expired before bridge could claim command";
+  await ctx.db.patch("accessCommands", cmd._id, {
+    status: "expired",
+    completedAt: now,
+    message,
+  });
+  await ctx.db.insert("accessAuditLog", {
+    commandId: cmd._id,
+    siteId: cmd.siteId,
+    targetKind: cmd.targetKind,
+    targetId: cmd.targetId,
+    action: cmd.action,
+    requestedBy: cmd.requestedBy,
+    actorName: cmd.actorName,
+    status: "expired",
+    message,
+    createdAt: cmd.createdAt,
+    completedAt: now,
+  });
 }
 
 /** BRAVO's own switch for a site's remote controls. No row means off. */
@@ -229,6 +256,10 @@ export const getDashboard = query({
         controlsEnabled: v.boolean(),
         controlsChangedBy: v.optional(v.string()),
         controlsChangedAt: v.optional(v.number()),
+        bravoWritesDisabled: v.boolean(),
+        bravoWritesDisabledReason: v.optional(
+          v.union(v.literal("allSites"), v.literal("thisSite")),
+        ),
       }),
     ),
     canManageControls: v.boolean(),
@@ -266,6 +297,7 @@ export const getDashboard = query({
     const sites = await Promise.all(
       rawSites.map(async (s) => {
         const controls = await siteControlsFor(ctx, s.siteId);
+        const writes = accessWritesState(s.siteId);
         return {
           id: s.siteId,
           name: s.name,
@@ -279,6 +311,8 @@ export const getDashboard = query({
           controlsEnabled: controls?.controlsEnabled ?? false,
           controlsChangedBy: controls?.changedByName,
           controlsChangedAt: controls?.changedAt,
+          bravoWritesDisabled: writes.disabled,
+          bravoWritesDisabledReason: writes.disabled ? writes.reason : undefined,
         };
       }),
     );
@@ -352,6 +386,47 @@ export const requestCommand = mutation({
     if (!site) {
       throw new Error("Site has not reported in yet");
     }
+
+    // The server-side kill switch beats everything, admins included. The
+    // refusal is recorded as a failed command rather than thrown, because a
+    // throw would roll back the audit entry. The page shows its message.
+    if (accessWritesState(args.siteId).disabled) {
+      const message = writesDisabledMessage(site.name);
+      const target =
+        args.targetKind === "area"
+          ? site.areas.find((a) => a.id === args.targetId)
+          : site.doors.find((d) => d.id === args.targetId);
+      const commandId = await ctx.db.insert("accessCommands", {
+        siteId: args.siteId,
+        targetKind: args.targetKind,
+        targetId: args.targetId,
+        targetName: target?.name ?? args.targetId,
+        action: args.action,
+        pulseMs: args.pulseMs,
+        status: "failed",
+        requestedBy: userId,
+        actorName,
+        createdAt: now,
+        expiresAt: now,
+        completedAt: now,
+        message,
+      });
+      await ctx.db.insert("accessAuditLog", {
+        commandId,
+        siteId: args.siteId,
+        targetKind: args.targetKind,
+        targetId: args.targetId,
+        action: args.action,
+        requestedBy: userId,
+        actorName,
+        status: "refused",
+        message,
+        createdAt: now,
+        completedAt: now,
+      });
+      return { commandId, expiresAt: now };
+    }
+
     if (!(await siteControlsFor(ctx, args.siteId))?.controlsEnabled) {
       throw new ConvexError(`Remote controls are turned off for ${site.name}`);
     }
@@ -527,6 +602,8 @@ export const claimNextCommand = internalMutation({
   },
   returns: v.object({
     serverTime: v.number(),
+    /** True while the server-side kill switch blocks this site. Additive: older bridges ignore it. */
+    writesDisabled: v.boolean(),
     command: v.union(
       v.null(),
       v.object({
@@ -576,11 +653,23 @@ export const claimNextCommand = internalMutation({
       }
     }
 
+    // Server-side kill switch: hand out nothing, and fail everything queued for
+    // this site straight away (as the BRAVO controls-off path below does), so
+    // nothing queued before the switch went on can run after it is lifted.
+    if (accessWritesState(siteId).disabled) {
+      const site = await ctx.db
+        .query("accessSites")
+        .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+        .unique();
+      await failPendingCommands(ctx, siteId, writesDisabledMessage(site?.name ?? siteId), now);
+      return { serverTime: now, writesDisabled: true, command: null };
+    }
+
     // Belt and braces: never hand the bridge a command while BRAVO has the
     // site's controls off, even one queued just before they were turned off.
     if (!(await siteControlsFor(ctx, siteId))?.controlsEnabled) {
       await failPendingCommands(ctx, siteId, CONTROLS_OFF_MESSAGE, now);
-      return { serverTime: now, command: null };
+      return { serverTime: now, writesDisabled: false, command: null };
     }
 
     const pending = await ctx.db
@@ -593,25 +682,7 @@ export const claimNextCommand = internalMutation({
 
     for (const cmd of pending) {
       if (now > cmd.expiresAt) {
-        const message = "Expired before bridge could claim command";
-        await ctx.db.patch(cmd._id, {
-          status: "expired",
-          completedAt: now,
-          message,
-        });
-        await ctx.db.insert("accessAuditLog", {
-          commandId: cmd._id,
-          siteId: cmd.siteId,
-          targetKind: cmd.targetKind,
-          targetId: cmd.targetId,
-          action: cmd.action,
-          requestedBy: cmd.requestedBy,
-          actorName: cmd.actorName,
-          status: "expired",
-          message,
-          createdAt: cmd.createdAt,
-          completedAt: now,
-        });
+        await expireCommand(ctx, cmd, now);
         continue;
       }
 
@@ -622,6 +693,7 @@ export const claimNextCommand = internalMutation({
 
       return {
         serverTime: now,
+        writesDisabled: false,
         command: {
           commandId: cmd._id,
           siteId: cmd.siteId,
@@ -636,7 +708,7 @@ export const claimNextCommand = internalMutation({
       };
     }
 
-    return { serverTime: now, command: null };
+    return { serverTime: now, writesDisabled: false, command: null };
   },
 });
 
