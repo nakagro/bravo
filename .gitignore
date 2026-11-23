@@ -17,6 +17,7 @@ temp
 .env.docker
 .env.cloud
 .env.vps
+.env.workshop
 
 # Editor directories and files
 .vscode/*

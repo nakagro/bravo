@@ -1822,6 +1822,16 @@ const applicationTables = {
     doors: v.array(accessDoorValidator),
   }).index("by_siteId", ["siteId"]),
 
+  // BRAVO's own switch for remote controls, per site. Kept apart from
+  // accessSites so a bridge push can never turn it back on. No row means off.
+  accessSiteControls: defineTable({
+    siteId: v.string(),
+    controlsEnabled: v.boolean(),
+    changedBy: v.id("users"),
+    changedByName: v.string(),
+    changedAt: v.number(),
+  }).index("by_siteId", ["siteId"]),
+
   // Rolling recent panel and BRAVO-initiated access events per site.
   accessEvents: defineTable({
     siteId: v.string(),

@@ -73,6 +73,12 @@ function satellitePayload(
   };
 }
 
+function enableControls(t: ReturnType<typeof convexTest>, adminId: string, siteId = "satellite") {
+  return t
+    .withIdentity({ subject: adminId })
+    .mutation(api.accessControl.setSiteControls, { siteId, enabled: true });
+}
+
 async function setup() {
   vi.stubEnv("ACCESS_BRIDGE_SATELLITE_TOKEN", SAT_TOKEN);
   vi.stubEnv("ACCESS_BRIDGE_MAIN_TOKEN", MAIN_TOKEN);
@@ -185,6 +191,7 @@ describe("accessControl RBAC and bridge contract", () => {
       { site: "satellite", token: SAT_TOKEN },
     );
     expect(push1.status).toBe(200);
+    await enableControls(t, ids.admin);
 
     // Push same event again to verify dedupe.
     await bridgePost(
@@ -201,7 +208,7 @@ describe("accessControl RBAC and bridge contract", () => {
     const dash = await asLt.query(api.accessControl.getDashboard, {});
     expect(dash.sites).toHaveLength(1);
     expect(dash.sites[0].id).toBe("satellite");
-    expect(dash.events).toHaveLength(1);
+    expect(dash.events.filter((e) => e.source === "panel")).toHaveLength(1);
 
     // Queue Disarm & Open Roller Door.
     const queued = await asLt.mutation(api.accessControl.requestCommand, {
@@ -255,6 +262,7 @@ describe("accessControl RBAC and bridge contract", () => {
       { site: satellitePayload(Date.now(), { writesEnabled: false }) },
       { site: "satellite", token: SAT_TOKEN },
     );
+    await enableControls(t, ids.admin);
     await expect(
       asLt.mutation(api.accessControl.requestCommand, {
         siteId: "satellite",
@@ -325,5 +333,75 @@ describe("accessControl RBAC and bridge contract", () => {
         action: "disarm",
       }),
     ).rejects.toThrow(/offline/i);
+  });
+
+  it("keeps remote controls off until an admin turns them on, and the bridge cannot override it", async () => {
+    const { t, ids } = await setup();
+    const asLt = t.withIdentity({ subject: ids.lt });
+    const asAdmin = t.withIdentity({ subject: ids.admin });
+    const push = (writesEnabled = true) =>
+      bridgePost(
+        t,
+        "/api/access/state",
+        { site: satellitePayload(Date.now(), { writesEnabled, areaStatus: "armed" }) },
+        { site: "satellite", token: SAT_TOKEN },
+      );
+    const disarm = (who = asLt) =>
+      who.mutation(api.accessControl.requestCommand, {
+        siteId: "satellite",
+        targetKind: "area",
+        targetId: "sat-station",
+        action: "disarm",
+      });
+
+    // Off by default, even with the bridge reporting writes on.
+    await push();
+    let dash = await asLt.query(api.accessControl.getDashboard, {});
+    expect(dash.sites[0].controlsEnabled).toBe(false);
+    expect(dash.canManageControls).toBe(false);
+    await expect(disarm()).rejects.toThrow(/turned off/i);
+
+    // Only admins can flip it, and only for a site that has reported in.
+    await expect(
+      asLt.mutation(api.accessControl.setSiteControls, { siteId: "satellite", enabled: true }),
+    ).rejects.toThrow(/administrators/i);
+    await expect(
+      asAdmin.mutation(api.accessControl.setSiteControls, { siteId: "main", enabled: true }),
+    ).rejects.toThrow(/reported in/i);
+    expect((await asAdmin.query(api.accessControl.getDashboard, {})).canManageControls).toBe(true);
+
+    await enableControls(t, ids.admin);
+    await push();
+    dash = await asLt.query(api.accessControl.getDashboard, {});
+    expect(dash.sites[0].controlsEnabled).toBe(true);
+    expect(dash.sites[0].controlsChangedBy).toBe("Alex Carter");
+
+    // Turning it off fails what is queued, and the bridge push doesn't undo it.
+    const queued = await disarm();
+    await asAdmin.mutation(api.accessControl.setSiteControls, { siteId: "satellite", enabled: false });
+    await push();
+    dash = await asLt.query(api.accessControl.getDashboard, {});
+    expect(dash.sites[0].controlsEnabled).toBe(false);
+    const cmd = dash.recentCommands.find((c) => c.id === queued.commandId);
+    expect(cmd?.status).toBe("failed");
+    expect(dash.events.some((e) => e.text === "Remote controls turned off" && e.who === "Alex Carter")).toBe(true);
+    const claimOff = await bridgePost(t, "/api/access/claim", {}, { site: "satellite", token: SAT_TOKEN });
+    expect((await claimOff.json()).command).toBeNull();
+
+    // The claim refuses too if the switch went off after a command was queued.
+    await enableControls(t, ids.admin);
+    vi.advanceTimersByTime(4_000);
+    const raced = await disarm();
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("accessSiteControls")
+        .withIndex("by_siteId", (q) => q.eq("siteId", "satellite"))
+        .unique();
+      await ctx.db.patch("accessSiteControls", row!._id, { controlsEnabled: false });
+    });
+    const claimRaced = await bridgePost(t, "/api/access/claim", {}, { site: "satellite", token: SAT_TOKEN });
+    expect((await claimRaced.json()).command).toBeNull();
+    dash = await asLt.query(api.accessControl.getDashboard, {});
+    expect(dash.recentCommands.find((c) => c.id === raced.commandId)?.status).toBe("failed");
   });
 });

@@ -7,6 +7,7 @@ import {
   Lock,
   LockOpen,
   MoreVertical,
+  Power,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -26,8 +27,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { formatDate } from "@/lib/dateFormat";
+import { errorMessage, toastError } from "@/lib/errors";
 import { statusToneClasses, type StatusTone } from "@/lib/statusTone";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +77,9 @@ interface AccessSite {
   lastSeenAt: number;
   areas: AccessArea[];
   doors: AccessDoor[];
+  controlsEnabled: boolean;
+  controlsChangedBy?: string;
+  controlsChangedAt?: number;
 }
 
 interface AccessEvent {
@@ -122,13 +129,6 @@ function siteSummary(site: AccessSite): { label: string; tone: StatusTone; icon:
   if (armed === site.areas.length) return AREA_INFO.armed;
   if (armed === 0) return AREA_INFO.disarmed;
   return { label: "Partly armed", tone: "warning", icon: ShieldAlert };
-}
-
-function formatError(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message.replace(/^\[CONVEX[^\]]*\]\s*/i, "").replace(/^Uncaught Error:\s*/i, "");
-  }
-  return "Command failed";
 }
 
 export function AccessControlPage() {
@@ -192,7 +192,7 @@ export function AccessControlPage() {
       const res = await requestCommand(params);
       watchedCommands.current.set(res.commandId, label);
     } catch (err) {
-      toast.error(formatError(err));
+      toast.error(errorMessage(err, "Command failed"));
     }
   };
 
@@ -268,6 +268,7 @@ export function AccessControlPage() {
                   now={now}
                   events={events.filter((e) => e.siteId === site.id).slice(0, 8)}
                   inFlightKeys={inFlightKeys}
+                  canManageControls={dashboard.canManageControls}
                   onSendCommand={sendCommand}
                 />
               </div>
@@ -284,6 +285,7 @@ interface SiteCardProps {
   now: number;
   events: AccessEvent[];
   inFlightKeys: Set<string>;
+  canManageControls: boolean;
   onSendCommand: (
     params: {
       siteId: string;
@@ -296,12 +298,13 @@ interface SiteCardProps {
   ) => Promise<void>;
 }
 
-function SiteCard({ site, now, events, inFlightKeys, onSendCommand }: SiteCardProps) {
+function SiteCard({ site, now, events, inFlightKeys, canManageControls, onSendCommand }: SiteCardProps) {
   const [activityOpen, setActivityOpen] = useState(false);
   const summary = useMemo(() => siteSummary(site), [site]);
   const stale = now - site.lastSeenAt > STALE_AFTER_MS;
   const readOnly = !site.writesEnabled;
-  const controlsDisabled = stale || readOnly;
+  const controlsOff = !site.controlsEnabled;
+  const controlsDisabled = stale || readOnly || controlsOff;
   const siteHasArmedArea = site.areas.some((a) => a.status === "armed");
   const SummaryIcon = summary.icon;
   const latestEvent = events[0];
@@ -317,7 +320,11 @@ function SiteCard({ site, now, events, inFlightKeys, onSendCommand }: SiteCardPr
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {readOnly && <Badge tone="warning">Read-only</Badge>}
+            {controlsOff ? (
+              <Badge tone="neutral">Controls off</Badge>
+            ) : (
+              readOnly && <Badge tone="warning">Read-only</Badge>
+            )}
             <Badge tone={summary.tone} className="gap-1.5 px-2.5 py-1 text-xs">
               <SummaryIcon className="size-3.5" />
               {summary.label}
@@ -332,12 +339,21 @@ function SiteCard({ site, now, events, inFlightKeys, onSendCommand }: SiteCardPr
           </div>
         )}
 
-        {!stale && readOnly && (
+        {!stale && controlsOff && !canManageControls && (
+          <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-xs", statusToneClasses.neutral)}>
+            <Power className="size-3.5 shrink-0" />
+            <span>Live status only. Remote controls are turned off for this station.</span>
+          </div>
+        )}
+
+        {!stale && !controlsOff && readOnly && (
           <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-xs", statusToneClasses.info)}>
             <Eye className="size-3.5 shrink-0" />
             <span>Live status only. Remote writes are disabled on this bridge.</span>
           </div>
         )}
+
+        {canManageControls && <SiteControlsSwitch site={site} now={now} />}
       </CardHeader>
 
       <CardContent className="space-y-5 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -469,6 +485,51 @@ function SiteCard({ site, now, events, inFlightKeys, onSendCommand }: SiteCardPr
         </section>
       </CardContent>
     </Card>
+  );
+}
+
+/** Admins' off switch for one station's remote controls. */
+function SiteControlsSwitch({ site, now }: { site: AccessSite; now: number }) {
+  const setSiteControls = useMutation(api.accessControl.setSiteControls);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const enabled = site.controlsEnabled;
+
+  const changed =
+    site.controlsChangedBy && site.controlsChangedAt
+      ? `${enabled ? "Turned on" : "Turned off"} by ${site.controlsChangedBy}, ${ago(site.controlsChangedAt, now)}`
+      : "Off until an administrator turns them on.";
+
+  return (
+    <Field orientation="horizontal" className="rounded-lg border border-border px-3 py-2">
+      <FieldContent className="min-w-0">
+        <FieldLabel htmlFor={`controls-${site.id}`}>Remote controls</FieldLabel>
+        <FieldDescription className="text-xs">{changed}</FieldDescription>
+      </FieldContent>
+      <Switch
+        id={`controls-${site.id}`}
+        checked={enabled}
+        onCheckedChange={() => setConfirmOpen(true)}
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Turn ${enabled ? "off" : "on"} remote controls for ${site.name}?`}
+        description={
+          enabled
+            ? "Members will see live status only. Anything still waiting to be sent to the station is cancelled."
+            : "Lieutenants and above will be able to arm, disarm and open doors at this station from BRAVO."
+        }
+        confirmLabel={enabled ? "Turn off" : "Turn on"}
+        onConfirm={async () => {
+          try {
+            await setSiteControls({ siteId: site.id, enabled: !enabled });
+          } catch (err) {
+            toastError(err, "Could not change remote controls");
+            throw err;
+          }
+        }}
+      />
+    </Field>
   );
 }
 

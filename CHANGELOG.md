@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026.11.23]
+
+- Access Control: Lieutenants and above can see each station's alarm and door status live and control them from BRAVO.
+- Access Control: Administrators can turn a station's remote controls on or off, and they start off.
+
 ## [2026.11.22]
 
 - Sign-in: New sign-ups wait for an administrator to approve them before they can use BRAVO.

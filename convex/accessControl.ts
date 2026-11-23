@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   internalMutation,
   mutation,
@@ -6,9 +6,10 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { requireModuleAccess } from "./modules";
 import { isMemberAccount } from "./lib/accountType";
+import { requireAdmin } from "./lib/access";
 import {
   ACCESS_COMMAND_TTL_MS,
   ACCESS_COOLDOWN_MS,
@@ -39,14 +40,61 @@ async function requireAccessControlMember(ctx: QueryCtx | MutationCtx) {
     "accessControl",
     "Access Control requires Lieutenant rank or above",
   );
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user || !isMemberAccount(user)) {
     throw new Error("Access Control requires an active member account");
   }
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  const actorName = fullName || user.name || user.email || "Member";
-  return { userId, actorName };
+  return { userId, user, actorName: actorNameFor(user) };
 }
+
+/** The name sent to the site bridges and shown in activity. Never an email. */
+function actorNameFor(user: Doc<"users">): string {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return fullName || user.name || "Member";
+}
+
+/** BRAVO's own switch for a site's remote controls. No row means off. */
+async function siteControlsFor(ctx: QueryCtx | MutationCtx, siteId: string) {
+  return await ctx.db
+    .query("accessSiteControls")
+    .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+    .unique();
+}
+
+/** Fail every unclaimed command for a site, e.g. when its controls are turned off. */
+async function failPendingCommands(
+  ctx: MutationCtx,
+  siteId: string,
+  message: string,
+  now: number,
+) {
+  const pending = await ctx.db
+    .query("accessCommands")
+    .withIndex("by_site_status", (q) => q.eq("siteId", siteId).eq("status", "pending"))
+    .take(100);
+  for (const cmd of pending) {
+    await ctx.db.patch("accessCommands", cmd._id, {
+      status: "failed",
+      completedAt: now,
+      message,
+    });
+    await ctx.db.insert("accessAuditLog", {
+      commandId: cmd._id,
+      siteId: cmd.siteId,
+      targetKind: cmd.targetKind,
+      targetId: cmd.targetId,
+      action: cmd.action,
+      requestedBy: cmd.requestedBy,
+      actorName: cmd.actorName,
+      status: "failed",
+      message,
+      createdAt: cmd.createdAt,
+      completedAt: now,
+    });
+  }
+}
+
+const CONTROLS_OFF_MESSAGE = "Remote controls are turned off for this station";
 
 function actionLabel(action: string, targetName: string): string {
   switch (action) {
@@ -178,8 +226,12 @@ export const getDashboard = query({
         lastSeenAt: v.number(),
         areas: v.array(accessAreaValidator),
         doors: v.array(accessDoorValidator),
+        controlsEnabled: v.boolean(),
+        controlsChangedBy: v.optional(v.string()),
+        controlsChangedAt: v.optional(v.number()),
       }),
     ),
+    canManageControls: v.boolean(),
     events: v.array(
       v.object({
         id: v.id("accessEvents"),
@@ -207,22 +259,29 @@ export const getDashboard = query({
     ),
   }),
   handler: async (ctx) => {
-    await requireAccessControlMember(ctx);
+    const { user } = await requireAccessControlMember(ctx);
 
-    const rawSites = await ctx.db.query("accessSites").collect();
-    const sites = rawSites
-      .sort((a, b) => (SITE_ORDER[a.siteId] ?? 99) - (SITE_ORDER[b.siteId] ?? 99))
-      .map((s) => ({
-        id: s.siteId,
-        name: s.name,
-        panel: s.panel,
-        panelLabel: s.panelLabel,
-        writesEnabled: s.writesEnabled,
-        bridgeVersion: s.bridgeVersion,
-        lastSeenAt: s.lastSeenAt,
-        areas: s.areas,
-        doors: s.doors,
-      }));
+    const rawSites = await ctx.db.query("accessSites").take(10);
+    rawSites.sort((a, b) => (SITE_ORDER[a.siteId] ?? 99) - (SITE_ORDER[b.siteId] ?? 99));
+    const sites = await Promise.all(
+      rawSites.map(async (s) => {
+        const controls = await siteControlsFor(ctx, s.siteId);
+        return {
+          id: s.siteId,
+          name: s.name,
+          panel: s.panel,
+          panelLabel: s.panelLabel,
+          writesEnabled: s.writesEnabled,
+          bridgeVersion: s.bridgeVersion,
+          lastSeenAt: s.lastSeenAt,
+          areas: s.areas,
+          doors: s.doors,
+          controlsEnabled: controls?.controlsEnabled ?? false,
+          controlsChangedBy: controls?.changedByName,
+          controlsChangedAt: controls?.changedAt,
+        };
+      }),
+    );
 
     const eventsBySite = await Promise.all(
       sites.map((s) =>
@@ -266,7 +325,7 @@ export const getDashboard = query({
       message: c.message,
     }));
 
-    return { sites, events, recentCommands };
+    return { sites, canManageControls: user.isAdmin === true, events, recentCommands };
   },
 });
 
@@ -292,6 +351,9 @@ export const requestCommand = mutation({
       .unique();
     if (!site) {
       throw new Error("Site has not reported in yet");
+    }
+    if (!(await siteControlsFor(ctx, args.siteId))?.controlsEnabled) {
+      throw new ConvexError(`Remote controls are turned off for ${site.name}`);
     }
     if (now - site.lastSeenAt > ACCESS_STALE_AFTER_MS) {
       throw new Error(`${site.name} is offline. Controls are blocked until it reconnects.`);
@@ -395,6 +457,53 @@ export const requestCommand = mutation({
   },
 });
 
+/**
+ * BRAVO's off switch for one site's remote controls. Admins only. Turning it
+ * off fails anything still queued; a command the bridge already claimed is
+ * left to report its own result.
+ */
+export const setSiteControls = mutation({
+  args: {
+    siteId: v.string(),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { siteId, enabled }) => {
+    const admin = await requireAdmin(ctx, "turn remote controls on or off");
+    const site = await ctx.db
+      .query("accessSites")
+      .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+      .unique();
+    if (!site) throw new ConvexError("Site has not reported in yet");
+
+    const now = Date.now();
+    const changedByName = actorNameFor(admin);
+    const existing = await siteControlsFor(ctx, siteId);
+    if (existing?.controlsEnabled === enabled) return null;
+
+    const row = { siteId, controlsEnabled: enabled, changedBy: admin._id, changedByName, changedAt: now };
+    if (existing) {
+      await ctx.db.patch("accessSiteControls", existing._id, row);
+    } else {
+      await ctx.db.insert("accessSiteControls", row);
+    }
+
+    if (!enabled) {
+      await failPendingCommands(ctx, siteId, CONTROLS_OFF_MESSAGE, now);
+    }
+
+    await ctx.db.insert("accessEvents", {
+      siteId,
+      externalId: `bravo:controls:${now}`,
+      at: now,
+      text: enabled ? "Remote controls turned on" : "Remote controls turned off",
+      who: changedByName,
+      source: "bravo",
+    });
+    return null;
+  },
+});
+
 export const ingestSiteState = internalMutation({
   args: {
     siteId: v.string(),
@@ -465,6 +574,13 @@ export const claimNextCommand = internalMutation({
           completedAt: now,
         });
       }
+    }
+
+    // Belt and braces: never hand the bridge a command while BRAVO has the
+    // site's controls off, even one queued just before they were turned off.
+    if (!(await siteControlsFor(ctx, siteId))?.controlsEnabled) {
+      await failPendingCommands(ctx, siteId, CONTROLS_OFF_MESSAGE, now);
+      return { serverTime: now, command: null };
     }
 
     const pending = await ctx.db
