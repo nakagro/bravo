@@ -57,7 +57,14 @@
     "codegen:convex:uat": "CONVEX_DEPLOYMENT=precious-magpie-647 CI=1 npx convex codegen",
     "codegen:convex:cloud": "node scripts/renamed-script.mjs codegen:convex:cloud codegen:convex:uat",
     "deploy:convex:uat": "echo '' && echo '  Deploying backend -> precious-magpie-647 (UAT)' && echo '' && CONVEX_DEPLOYMENT=precious-magpie-647 convex dev --once",
-    "dev:uat": "npm-run-all --parallel dev:uat:frontend dev:uat:backend"
+    "dev:uat": "npm-run-all --parallel dev:uat:frontend dev:uat:backend",
+    "dev:workshop:frontend": "vp dev --open --mode workshop",
+    "dev:workshop:backend": "echo '' && echo '  convex dev WATCH LOOP -> workshop (.env.workshop)' && echo '' && CONVEX_DEPLOYMENT= convex dev --env-file .env.workshop",
+    "dev:workshop": "npm-run-all --parallel dev:workshop:frontend dev:workshop:backend",
+    "build:workshop": "vp build --mode workshop && npm run check:no-em-dashes",
+    "deploy:convex:workshop": "echo '' && echo '  Deploying backend -> workshop (.env.workshop)' && echo '' && CONVEX_DEPLOYMENT= convex deploy --env-file .env.workshop",
+    "clone:workshop": "bash scripts/clone-prod-to-workshop.sh",
+    "seed:workshop": "CONVEX_DEPLOYMENT= npx convex run --env-file .env.workshop seed:seedDevDatabase"
   },
   "dependencies": {
     "@auth/core": "^0.41.2",
