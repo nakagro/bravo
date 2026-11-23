@@ -9,6 +9,11 @@ it before anything else. Its rules for the live deployment override this file.
   deployment named in `.env.vps`, which for the maintainers is a live brigade's production data that
   members depend on for emergency response. Treat every command that touches a backend as a
   production action unless you have confirmed otherwise.
+- **Local-network DEV tier (`.env.workshop` / `*:workshop`).** A self-hosted LAN Convex stack acts
+  as a local, UAT-like sandbox (guarded prod-shaped data, amber `DEV` badge via `VITE_APP_ENV=dev`
+  or HTTP/LAN URL detection, `VITE_GATE_MOCK=true`, `EMAIL_ALLOWLIST` + `FRONTEND_URL` guards). Use
+  `npm run dev:workshop:frontend`, `npm run deploy:convex:workshop`, or
+  `npm run clone:workshop -- --yes` to iterate without touching production or disturbing UAT.
 - `npm run import:vps` and `npm run import:uat` are both `--replace-all`. One word separates
   "restore UAT" from "wipe production".
 - **Production is human-only.** `npm run deploy:convex:vps` and `git push origin main` (which

@@ -13,19 +13,79 @@ export type AppEnvironment = "production" | "uat" | "dev";
 
 const UAT_DEPLOYMENT = "precious-magpie-647";
 
-export function getAppEnvironment(): AppEnvironment {
-  const convexUrl = import.meta.env.VITE_CONVEX_URL ?? "";
+function isLocalOrLanHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host === "0.0.0.0" ||
+    host.endsWith(".local") ||
+    host.endsWith(".lan") ||
+    host.endsWith(".home.arpa")
+  ) {
+    return true;
+  }
 
-  // Production is the self-hosted VPS - anything not on Convex Cloud.
-  if (!convexUrl.includes(".convex.cloud")) {
-    return "production";
+  // RFC1918 private IPv4 ranges
+  if (/^10\./.test(host) || /^192\.168\./.test(host)) {
+    return true;
+  }
+  const match172 = /^172\.(\d+)\./.exec(host);
+  if (match172) {
+    const secondOctet = Number(match172[1]);
+    if (secondOctet >= 16 && secondOctet <= 31) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function resolveAppEnvironment(
+  convexUrl: string,
+  explicitEnv?: string,
+): AppEnvironment {
+  const normalizedOverride = explicitEnv?.trim().toLowerCase();
+  if (
+    normalizedOverride === "production" ||
+    normalizedOverride === "uat" ||
+    normalizedOverride === "dev"
+  ) {
+    return normalizedOverride;
   }
 
   if (convexUrl.includes(UAT_DEPLOYMENT)) {
     return "uat";
   }
 
-  return "dev";
+  if (convexUrl.includes(".convex.cloud")) {
+    return "dev";
+  }
+
+  if (!convexUrl) {
+    return "production";
+  }
+
+  try {
+    const parsed = new URL(convexUrl);
+    // Self-hosted prod is always HTTPS on a public hostname; plain HTTP or
+    // local/LAN hosts are local dev sandboxes.
+    if (parsed.protocol === "http:" || isLocalOrLanHost(parsed.hostname)) {
+      return "dev";
+    }
+  } catch {
+    // Non-URL strings fall through to production.
+  }
+
+  return "production";
+}
+
+export function getAppEnvironment(): AppEnvironment {
+  return resolveAppEnvironment(
+    import.meta.env.VITE_CONVEX_URL ?? "",
+    import.meta.env.VITE_APP_ENV,
+  );
 }
 
 type BadgeStyle = {

@@ -58,8 +58,43 @@ const UAT_DEPLOYMENT = "precious-magpie-647";
  * because UAT holds a clone of real member data: two identical BRAVO icons on a
  * home screen is how someone does real-looking work in the copy.
  */
-function environmentAwareHtml(convexUrl: string) {
-  const isUat = convexUrl.includes(UAT_DEPLOYMENT);
+function resolveHtmlEnvironment(
+  convexUrl: string,
+  explicitEnv?: string,
+): "production" | "uat" | "dev" {
+  const override = explicitEnv?.trim().toLowerCase();
+  if (override === "production" || override === "uat" || override === "dev") {
+    return override;
+  }
+  if (convexUrl.includes(UAT_DEPLOYMENT)) return "uat";
+  if (convexUrl.includes(".convex.cloud")) return "dev";
+  if (!convexUrl) return "production";
+  try {
+    const parsed = new URL(convexUrl);
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (
+      parsed.protocol === "http:" ||
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "0.0.0.0" ||
+      host.endsWith(".local") ||
+      host.endsWith(".lan") ||
+      host.endsWith(".home.arpa") ||
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) {
+      return "dev";
+    }
+  } catch {
+    // Fall through to production.
+  }
+  return "production";
+}
+
+function environmentAwareHtml(convexUrl: string, explicitEnv?: string) {
+  const appEnv = resolveHtmlEnvironment(convexUrl, explicitEnv);
 
   return {
     name: "environment-aware-html",
@@ -74,27 +109,48 @@ function environmentAwareHtml(convexUrl: string) {
         );
       }
 
-      if (!isUat) return html;
+      if (appEnv === "uat") {
+        return html
+          .replace(/<title>[^<]*<\/title>/, "<title>BRAVO - UAT</title>")
+          .replace(
+            /<meta name="apple-mobile-web-app-title" content="[^"]*" \/>/,
+            '<meta name="apple-mobile-web-app-title" content="BRAVO UAT" />',
+          )
+          .replace('href="/manifest.json"', 'href="/manifest.uat.json"')
+          .replace(
+            /\/icons\/(favicon-96x96\.png|favicon\.svg|favicon\.ico|apple-touch-icon\.png)/g,
+            "/icons/uat/$1",
+          )
+          // Red status bar / theme colour, so even the chrome around the app
+          // reads as "not production".
+          .replace(
+            /<meta name="theme-color" content="#ffffff" media="\(prefers-color-scheme: light\)" \/>/,
+            '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: light)" />',
+          )
+          .replace(
+            /<meta name="theme-color" content="#1f2937" media="\(prefers-color-scheme: dark\)" \/>/,
+            '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: dark)" />',
+          );
+      }
 
-      return html
-        .replace(/<title>[^<]*<\/title>/, "<title>BRAVO - UAT</title>")
-        .replace(
-          /<meta name="apple-mobile-web-app-title" content="[^"]*" \/>/,
-          '<meta name="apple-mobile-web-app-title" content="BRAVO UAT" />',
-        )
-        .replace('href="/manifest.json"', 'href="/manifest.uat.json"')
-        .replace(/\/icons\/(favicon-96x96\.png|favicon\.svg|favicon\.ico|apple-touch-icon\.png)/g,
-                 "/icons/uat/$1")
-        // Red status bar / theme colour, so even the chrome around the app
-        // reads as "not production".
-        .replace(
-          /<meta name="theme-color" content="#ffffff" media="\(prefers-color-scheme: light\)" \/>/,
-          '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: light)" />',
-        )
-        .replace(
-          /<meta name="theme-color" content="#1f2937" media="\(prefers-color-scheme: dark\)" \/>/,
-          '<meta name="theme-color" content="#dc2626" media="(prefers-color-scheme: dark)" />',
-        );
+      if (appEnv === "dev") {
+        return html
+          .replace(/<title>[^<]*<\/title>/, "<title>BRAVO - DEV</title>")
+          .replace(
+            /<meta name="apple-mobile-web-app-title" content="[^"]*" \/>/,
+            '<meta name="apple-mobile-web-app-title" content="BRAVO DEV" />',
+          )
+          .replace(
+            /<meta name="theme-color" content="#ffffff" media="\(prefers-color-scheme: light\)" \/>/,
+            '<meta name="theme-color" content="#f59e0b" media="(prefers-color-scheme: light)" />',
+          )
+          .replace(
+            /<meta name="theme-color" content="#1f2937" media="\(prefers-color-scheme: dark\)" \/>/,
+            '<meta name="theme-color" content="#f59e0b" media="(prefers-color-scheme: dark)" />',
+          );
+      }
+
+      return html;
     },
   };
 }
@@ -160,7 +216,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     tailwindcss(),
     react(),
-    environmentAwareHtml(convexUrl),
+    environmentAwareHtml(convexUrl, env.VITE_APP_ENV),
     VitePWA({
       registerType: "autoUpdate", // automatically update when new SW available
       injectRegister: "auto", // automatically inject SW registration script

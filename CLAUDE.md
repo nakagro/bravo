@@ -50,11 +50,15 @@ docs changes inside that repo (`git -C docs ...`).
 ### Development
 - **Node**: 24.x LTS, pinned in `.nvmrc` and `package.json#engines`. Some backup scripts hardcode the nvm path, so bump them along with `.nvmrc`.
 - `npm run dev` / `npm run dev:vps:frontend` - Vite dev server pointed at the backend in `.env.vps`
+- `npm run dev:workshop:frontend` - Vite dev server (`--mode workshop`) pointed at the local-network self-hosted DEV backend in `.env.workshop` (shows amber `DEV` badge; UAT-equivalent guards on a local LAN sandbox)
+- `npm run dev:workshop` - Frontend + `convex dev` watch loop against `.env.workshop`
 - `npm run dev:uat` - Frontend + the UAT backend. ⚠️ Runs `convex dev`, a watch loop that continuously pushes your working copy to that deployment
 
 ### Build and Deployment
 - `npm run deploy:convex:vps` - Deploy the backend to production (human-only, guarded)
-- `npm run deploy:convex:uat` - Deploy the backend to UAT
+- `npm run deploy:convex:uat` - Deploy the backend to UAT (mid-tier live testing before production)
+- `npm run deploy:convex:workshop` - One-shot deploy of the backend to the local-network DEV instance in `.env.workshop`
+- `npm run clone:workshop -- --yes` - Guarded read-only prod export + verified import into `.env.workshop` (requires `EMAIL_ALLOWLIST` + `FRONTEND_URL`, clears cloned `pushSubscriptions`)
 - `npm run build:vps` - Build the frontend
 - `npm run lint` - Full gate: Oxlint + typecheck + tests + Convex codegen + production build
 - `npm run lint:code` - Oxlint only (`vp lint`, config in the `lint` block of `vite.config.ts`; also runs in the husky pre-commit)

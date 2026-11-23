@@ -355,15 +355,19 @@ your host's dashboard for production builds.
 | Variable | Needed for |
 |---|---|
 | `VITE_CONVEX_URL` | Your Convex deployment URL (required) |
+| `VITE_APP_ENV` | Optional UI badge override: `dev` (amber `DEV`), `uat` (red `UAT`), or `production`. Plain `http://` and local/LAN backends default to `dev` automatically |
 | `VITE_VAPID_PUBLIC_KEY` | Push notifications (the public half only) |
 | `VITE_HCAPTCHA_SITE_KEY` | Sign-in captcha; set your own, or `VITE_DISABLE_CAPTCHA=true` |
 | `VITE_PUBLIC_POSTHOG_KEY`, `VITE_PUBLIC_POSTHOG_HOST` | Analytics (optional) |
 | `VITE_GATE_API_BASE`, `VITE_GATE_MOCK` | Station door control on the kiosk (optional, station-specific) |
 
 ```bash
-npm run dev:vps:frontend   # local dev server against the backend in .env.vps
-npm run build              # production build into dist/
+npm run dev:vps:frontend       # local dev server against the backend in .env.vps
+npm run dev:workshop:frontend  # local dev server against a LAN self-hosted DEV backend (.env.workshop)
+npm run build                  # production build into dist/
 ```
+
+For an isolated local-network **DEV** environment (functionally equivalent to UAT with `EMAIL_ALLOWLIST`, `FRONTEND_URL`, `VITE_GATE_MOCK=true`, and its own auth/VAPID keys, shown with an amber `DEV` badge), point a gitignored `.env.workshop` file at a local self-hosted Convex Docker stack and use `npm run deploy:convex:workshop`, `npm run dev:workshop`, and `npm run clone:workshop -- --yes`.
 
 ### 4. First sign-in
 
