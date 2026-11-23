@@ -46,11 +46,11 @@ const EXTRA_LINKS: ExtraLink[] = [
     emoji: "⚡",
   },
   {
-    title: "Access Control (Mock)",
-    description: "Preview of station and satellite access control status and door controls with made-up data.",
+    title: "Access Control",
+    description: "Live station and satellite security status and remote door controls.",
     to: "/access-control",
     emoji: "🔐",
-    moduleId: "admin",
+    moduleId: "accessControl",
   },
 ];
 

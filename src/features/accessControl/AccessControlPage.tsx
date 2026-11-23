@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import {
   ChevronDown,
   DoorOpen,
@@ -14,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,26 +25,66 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Spinner } from "@/components/ui/spinner";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { formatDate } from "@/lib/dateFormat";
 import { statusToneClasses, type StatusTone } from "@/lib/statusTone";
 import { cn } from "@/lib/utils";
-import {
-  buildMockEvents,
-  buildMockSites,
-  PULSE_MS,
-  STALE_AFTER_MS,
-  type AccessArea,
-  type AccessDoor,
-  type AccessEvent,
-  type AccessSite,
-  type AreaStatus,
-  type DoorStatus,
-} from "./mockSites";
 
-// Mock only: every action resolves locally after a short fake round trip.
-const MOCK_ME = "You";
-const fakeRoundTrip = () => new Promise((r) => setTimeout(r, 700));
+type AreaStatus = "armed" | "disarmed" | "alarm" | "exitDelay" | "entryDelay";
+type DoorStatus = "secured" | "unlocked" | "open" | "heldOpen" | "forced" | "offline";
+type CommandAction =
+  | "arm"
+  | "arm_stay"
+  | "disarm"
+  | "pulse"
+  | "unlock"
+  | "lock"
+  | "open_roller"
+  | "disarm_and_open_roller";
+
+interface AccessArea {
+  id: string;
+  name: string;
+  status: AreaStatus;
+  changedAt: number;
+  changedBy?: string;
+  canControl: boolean;
+}
+
+interface AccessDoor {
+  id: string;
+  name: string;
+  kind: "door" | "roller";
+  status: DoorStatus;
+  changedAt: number;
+  canControl: boolean;
+  supportsHold: boolean;
+  unlockedUntil?: number;
+}
+
+interface AccessSite {
+  id: string;
+  name: string;
+  panel: "inception" | "challenger";
+  panelLabel: string;
+  writesEnabled: boolean;
+  bridgeVersion?: string;
+  lastSeenAt: number;
+  areas: AccessArea[];
+  doors: AccessDoor[];
+}
+
+interface AccessEvent {
+  id: string;
+  siteId: string;
+  at: number;
+  text: string;
+  who?: string;
+  source: "panel" | "bravo";
+}
+
+const STALE_AFTER_MS = 2 * 60 * 1000;
 
 const AREA_INFO: Record<AreaStatus, { label: string; tone: StatusTone; icon: LucideIcon }> = {
   armed: { label: "Armed", tone: "success", icon: ShieldCheck },
@@ -74,6 +116,7 @@ function ago(ms: number, now: number): string {
 }
 
 function siteSummary(site: AccessSite): { label: string; tone: StatusTone; icon: LucideIcon } {
+  if (site.areas.length === 0) return { label: "Connected", tone: "neutral", icon: ShieldCheck };
   if (site.areas.some((a) => a.status === "alarm")) return AREA_INFO.alarm;
   const armed = site.areas.filter((a) => a.status === "armed").length;
   if (armed === site.areas.length) return AREA_INFO.armed;
@@ -81,143 +124,157 @@ function siteSummary(site: AccessSite): { label: string; tone: StatusTone; icon:
   return { label: "Partly armed", tone: "warning", icon: ShieldAlert };
 }
 
+function formatError(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message.replace(/^\[CONVEX[^\]]*\]\s*/i, "").replace(/^Uncaught Error:\s*/i, "");
+  }
+  return "Command failed";
+}
+
 export function AccessControlPage() {
-  const [sites, setSites] = useState<AccessSite[]>(() => buildMockSites());
-  const [events, setEvents] = useState<AccessEvent[]>(() => buildMockEvents());
+  const dashboard = useQuery(api.accessControl.getDashboard);
+  const requestCommand = useMutation(api.accessControl.requestCommand);
   const [now, setNow] = useState(Date.now());
-  const [activeSiteId, setActiveSiteId] = useState<string>("main");
-  const pulseTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const [activeSiteId, setActiveSiteId] = useState<string>("");
+  const watchedCommands = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    const t = setInterval(() => {
-      const tick = Date.now();
-      setNow(tick);
-      // Keep live mock sites fresh so Main Station does not go stale while browsing.
-      // Satellite Station starts stale intentionally and stays stale.
-      setSites((prev) =>
-        prev.map((s) => (tick - s.lastSeenAt < STALE_AFTER_MS ? { ...s, lastSeenAt: tick } : s)),
-      );
-    }, 5_000);
+    const t = setInterval(() => setNow(Date.now()), 5_000);
     return () => clearInterval(t);
   }, []);
 
+  const sites = useMemo(() => dashboard?.sites ?? [], [dashboard]);
+  const events = useMemo(() => dashboard?.events ?? [], [dashboard]);
+  const recentCommands = useMemo(() => dashboard?.recentCommands ?? [], [dashboard]);
+
+  const effectiveSiteId = useMemo(() => {
+    if (sites.length === 0) return "";
+    if (sites.some((s) => s.id === activeSiteId)) return activeSiteId;
+    return sites[0].id;
+  }, [sites, activeSiteId]);
+
+  // Surface bridge completion results as toasts for commands queued in this tab.
   useEffect(() => {
-    const timers = pulseTimers.current;
-    return () => {
-      for (const timer of timers.values()) clearTimeout(timer);
-      timers.clear();
-    };
-  }, []);
+    for (const cmd of recentCommands) {
+      const label = watchedCommands.current.get(cmd.id);
+      if (!label) continue;
+      if (cmd.status === "succeeded") {
+        watchedCommands.current.delete(cmd.id);
+        toast.success(cmd.message || `${label}: done`);
+      } else if (cmd.status === "failed" || cmd.status === "expired") {
+        watchedCommands.current.delete(cmd.id);
+        toast.error(cmd.message || `${label}: ${cmd.status}`);
+      }
+    }
+  }, [recentCommands]);
 
-  const log = (siteId: string, text: string) =>
-    setEvents((prev) => [{ id: crypto.randomUUID(), siteId, at: Date.now(), text, who: MOCK_ME }, ...prev]);
+  const inFlightKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const cmd of recentCommands) {
+      if ((cmd.status === "pending" || cmd.status === "executing") && now <= cmd.expiresAt + 5_000) {
+        set.add(`${cmd.siteId}:${cmd.targetId}`);
+      }
+    }
+    return set;
+  }, [recentCommands, now]);
 
-  const patchSite = (siteId: string, fn: (s: AccessSite) => AccessSite) =>
-    setSites((prev) => prev.map((s) => (s.id === siteId ? fn(s) : s)));
-
-  const setArea = async (site: AccessSite, area: AccessArea, status: AreaStatus) => {
-    await fakeRoundTrip();
-    const ts = Date.now();
-    patchSite(site.id, (s) => ({
-      ...s,
-      lastSeenAt: ts,
-      areas: s.areas.map((a) => (a.id === area.id ? { ...a, status, changedAt: ts, changedBy: MOCK_ME } : a)),
-    }));
-    const verb = status === "armed" ? "armed" : "disarmed";
-    log(site.id, `${area.name} ${verb}`);
-    toast.success(`${site.name}: ${area.name} ${verb}`);
-  };
-
-  const setDoor = (siteId: string, doorId: string, status: DoorStatus, unlockedUntil?: number) =>
-    patchSite(siteId, (s) => ({
-      ...s,
-      doors: s.doors.map((d) => (d.id === doorId ? { ...d, status, unlockedUntil, changedAt: Date.now() } : d)),
-    }));
-
-  const clearPulseTimer = (key: string) => {
-    const existing = pulseTimers.current.get(key);
-    if (existing) {
-      clearTimeout(existing);
-      pulseTimers.current.delete(key);
+  const sendCommand = async (
+    params: {
+      siteId: string;
+      targetKind: "area" | "door" | "roller";
+      targetId: string;
+      action: CommandAction;
+      pulseMs?: number;
+    },
+    label: string,
+  ) => {
+    try {
+      const res = await requestCommand(params);
+      watchedCommands.current.set(res.commandId, label);
+    } catch (err) {
+      toast.error(formatError(err));
     }
   };
 
-  const pulseDoor = async (site: AccessSite, door: AccessDoor) => {
-    const key = `${site.id}:${door.id}`;
-    clearPulseTimer(key);
-    await fakeRoundTrip();
-    setDoor(site.id, door.id, "unlocked", Date.now() + PULSE_MS);
-    log(site.id, `${door.name} unlocked (${PULSE_MS / 1000}s)`);
-    toast.success(`${door.name} unlocked for ${PULSE_MS / 1000} seconds`);
-    const timer = setTimeout(() => {
-      pulseTimers.current.delete(key);
-      setDoor(site.id, door.id, "secured");
-    }, PULSE_MS);
-    pulseTimers.current.set(key, timer);
-  };
-
-  const toggleHold = async (site: AccessSite, door: AccessDoor) => {
-    clearPulseTimer(`${site.id}:${door.id}`);
-    await fakeRoundTrip();
-    const next = door.status === "unlocked" && !door.unlockedUntil ? "secured" : "unlocked";
-    setDoor(site.id, door.id, next);
-    const text = next === "unlocked" ? `${door.name} kept unlocked` : `${door.name} locked`;
-    log(site.id, text);
-    toast.success(text);
-  };
+  if (dashboard === undefined) {
+    return (
+      <div className="flex min-h-[240px] items-center justify-center">
+        <Spinner className="size-7 text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-6" data-component="AccessControlPage">
       <div>
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Control</h1>
-          <Badge tone="info">Mock</Badge>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">Sample data only. Not connected to the panels.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Control</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Live station security status and remote controls via local site bridges.
+        </p>
       </div>
 
-      {/* Mobile glance strip: shows both sites' status above the fold and switches active card */}
-      <div className="grid grid-cols-2 gap-2.5 lg:hidden" aria-label="Stations">
-        {sites.map((site) => {
-          const summary = siteSummary(site);
-          const stale = now - site.lastSeenAt > STALE_AFTER_MS;
-          const selected = site.id === activeSiteId;
-          return (
-            <button
-              key={site.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => setActiveSiteId(site.id)}
-              className={cn(
-                "min-w-0 rounded-xl border p-3 text-left transition-colors",
-                selected ? "border-primary/60 bg-card ring-1 ring-primary/25" : "border-border bg-card/40 hover:bg-card",
-              )}
-            >
-              <div className="truncate text-sm font-semibold text-foreground">{site.name}</div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <Badge tone={summary.tone}>{summary.label}</Badge>
-                {stale && <WifiOff className="size-3.5 text-muted-foreground" aria-label="Offline" />}
+      {sites.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <WifiOff className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">No stations reporting yet</p>
+            <p className="max-w-md text-xs text-muted-foreground">
+              Waiting for a local station bridge to push its first status update.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile glance strip: shows site status above the fold and switches active card */}
+          {sites.length > 1 && (
+            <div className="grid grid-cols-2 gap-2.5 lg:hidden" aria-label="Stations">
+              {sites.map((site) => {
+                const summary = siteSummary(site);
+                const stale = now - site.lastSeenAt > STALE_AFTER_MS;
+                const selected = site.id === effectiveSiteId;
+                return (
+                  <button
+                    key={site.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setActiveSiteId(site.id)}
+                    className={cn(
+                      "min-w-0 rounded-xl border p-3 text-left transition-colors",
+                      selected
+                        ? "border-primary/60 bg-card ring-1 ring-primary/25"
+                        : "border-border bg-card/40 hover:bg-card",
+                    )}
+                  >
+                    <div className="truncate text-sm font-semibold text-foreground">{site.name}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <Badge tone={summary.tone}>{summary.label}</Badge>
+                      {stale && <WifiOff className="size-3.5 text-muted-foreground" aria-label="Offline" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Site cards: selected site on mobile, both side-by-side on desktop */}
+          <div className={cn("grid gap-4", sites.length > 1 && "lg:grid-cols-2")}>
+            {sites.map((site) => (
+              <div
+                key={site.id}
+                className={cn("min-w-0", sites.length > 1 && site.id !== effectiveSiteId && "hidden lg:block")}
+              >
+                <SiteCard
+                  site={site}
+                  now={now}
+                  events={events.filter((e) => e.siteId === site.id).slice(0, 8)}
+                  inFlightKeys={inFlightKeys}
+                  onSendCommand={sendCommand}
+                />
               </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Site cards: selected site on mobile, both side-by-side on desktop */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {sites.map((site) => (
-          <div key={site.id} className={cn("min-w-0", site.id !== activeSiteId && "hidden lg:block")}>
-            <SiteCard
-              site={site}
-              now={now}
-              events={events.filter((e) => e.siteId === site.id).slice(0, 5)}
-              onSetArea={setArea}
-              onPulse={pulseDoor}
-              onToggleHold={toggleHold}
-            />
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -226,31 +283,46 @@ interface SiteCardProps {
   site: AccessSite;
   now: number;
   events: AccessEvent[];
-  onSetArea: (site: AccessSite, area: AccessArea, status: AreaStatus) => Promise<void>;
-  onPulse: (site: AccessSite, door: AccessDoor) => Promise<void>;
-  onToggleHold: (site: AccessSite, door: AccessDoor) => Promise<void>;
+  inFlightKeys: Set<string>;
+  onSendCommand: (
+    params: {
+      siteId: string;
+      targetKind: "area" | "door" | "roller";
+      targetId: string;
+      action: CommandAction;
+      pulseMs?: number;
+    },
+    label: string,
+  ) => Promise<void>;
 }
 
-function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteCardProps) {
+function SiteCard({ site, now, events, inFlightKeys, onSendCommand }: SiteCardProps) {
   const [activityOpen, setActivityOpen] = useState(false);
   const summary = useMemo(() => siteSummary(site), [site]);
   const stale = now - site.lastSeenAt > STALE_AFTER_MS;
+  const readOnly = !site.writesEnabled;
+  const controlsDisabled = stale || readOnly;
+  const siteHasArmedArea = site.areas.some((a) => a.status === "armed");
   const SummaryIcon = summary.icon;
   const latestEvent = events[0];
 
   return (
     <Card className="min-w-0 overflow-hidden">
-      <CardHeader className={cn("space-y-3 p-4 sm:p-5", !stale && "hidden lg:flex")}>
-        {/* On phones the station switcher above already shows name and status */}
-        <div className="hidden items-start justify-between gap-3 lg:flex">
+      <CardHeader className="space-y-3 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <CardTitle className="truncate text-lg">{site.name}</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">{site.panelLabel}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {site.panelLabel} · updated {ago(site.lastSeenAt, now)}
+            </p>
           </div>
-          <Badge tone={summary.tone} className="shrink-0 gap-1.5 px-2.5 py-1 text-xs">
-            <SummaryIcon className="size-3.5" />
-            {summary.label}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {readOnly && <Badge tone="warning">Read-only</Badge>}
+            <Badge tone={summary.tone} className="gap-1.5 px-2.5 py-1 text-xs">
+              <SummaryIcon className="size-3.5" />
+              {summary.label}
+            </Badge>
+          </div>
         </div>
 
         {stale && (
@@ -259,9 +331,16 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
             <span>No update since {ago(site.lastSeenAt, now)}. Controls are hidden until it reconnects.</span>
           </div>
         )}
+
+        {!stale && readOnly && (
+          <div className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-xs", statusToneClasses.info)}>
+            <Eye className="size-3.5 shrink-0" />
+            <span>Live status only. Remote writes are disabled on this bridge.</span>
+          </div>
+        )}
       </CardHeader>
 
-      <CardContent className={cn("space-y-5 p-4 sm:p-5 lg:pt-0", stale && "pt-0 sm:pt-0")}>
+      <CardContent className="space-y-5 p-4 pt-0 sm:p-5 sm:pt-0">
         {/* Areas */}
         <section className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Areas</h3>
@@ -269,6 +348,7 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
             {site.areas.map((area) => {
               const info = AREA_INFO[area.status];
               const armed = area.status === "armed";
+              const busy = inFlightKeys.has(`${site.id}:${area.id}`);
               return (
                 <li key={area.id} className="flex items-center justify-between gap-3 p-3">
                   <div className="min-w-0">
@@ -276,28 +356,51 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
                     <div className="mt-1 flex min-w-0 items-center gap-2">
                       <Badge tone={info.tone} className="shrink-0">{info.label}</Badge>
                       <span className="truncate text-xs text-muted-foreground">
-                      {ago(area.changedAt, now)}
-                      {area.changedBy ? ` · ${area.changedBy}` : ""}
-                    </span>
+                        {ago(area.changedAt, now)}
+                        {area.changedBy ? ` · ${area.changedBy}` : ""}
+                      </span>
                     </div>
                   </div>
-                  {!stale && <ConfirmDialog
-                    title={`${armed ? "Disarm" : "Arm"} ${site.name}: ${area.name}?`}
-                    description={
-                      armed
-                        ? "The area will be disarmed straight away."
-                        : "Make sure nobody is inside. The exit delay starts once it is armed."
-                    }
-                    confirmLabel={armed ? "Disarm" : "Arm"}
-                    tone={armed ? "destructive" : "default"}
-                    onConfirm={() => onSetArea(site, area, armed ? "disarmed" : "armed")}
-                    trigger={
-                      <Button variant="outline" size="sm" className="h-9 shrink-0 px-3 sm:h-8">
-                        {armed ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
-                        {armed ? "Disarm" : "Arm"}
-                      </Button>
-                    }
-                  />}
+                  {controlsDisabled ? null : area.canControl ? (
+                    <ConfirmDialog
+                      title={`${armed ? "Disarm" : "Arm"} ${site.name}: ${area.name}?`}
+                      description={
+                        armed
+                          ? "The area will be disarmed straight away."
+                          : "Make sure nobody is inside and all doors are closed before arming."
+                      }
+                      confirmLabel={armed ? "Disarm" : "Arm"}
+                      tone={armed ? "destructive" : "default"}
+                      onConfirm={() =>
+                        onSendCommand(
+                          {
+                            siteId: site.id,
+                            targetKind: "area",
+                            targetId: area.id,
+                            action: armed ? "disarm" : "arm",
+                          },
+                          `${site.name}: ${area.name}`,
+                        )
+                      }
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0 px-3 sm:h-8"
+                          loading={busy}
+                          disabled={busy}
+                        >
+                          {armed ? <ShieldOff className="size-3.5" /> : <ShieldCheck className="size-3.5" />}
+                          {armed ? "Disarm" : "Arm"}
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                      <Eye className="size-3.5" />
+                      View only
+                    </span>
+                  )}
                 </li>
               );
             })}
@@ -311,17 +414,19 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
             {site.doors.map((door) => (
               <DoorRow
                 key={door.id}
+                site={site}
                 door={door}
                 now={now}
-                disabled={stale}
-                onPulse={() => onPulse(site, door)}
-                onToggleHold={() => onToggleHold(site, door)}
+                siteHasArmedArea={siteHasArmedArea}
+                disabled={controlsDisabled}
+                busy={inFlightKeys.has(`${site.id}:${door.id}`)}
+                onSendCommand={onSendCommand}
               />
             ))}
           </ul>
         </section>
 
-        {/* Collapsible recent activity: shows latest event inline without adding vertical noise */}
+        {/* Collapsible recent activity */}
         <section className="border-t border-border pt-2">
           <button
             type="button"
@@ -368,28 +473,21 @@ function SiteCard({ site, now, events, onSetArea, onPulse, onToggleHold }: SiteC
 }
 
 interface DoorRowProps {
+  site: AccessSite;
   door: AccessDoor;
   now: number;
+  siteHasArmedArea: boolean;
   disabled: boolean;
-  onPulse: () => Promise<void>;
-  onToggleHold: () => Promise<void>;
+  busy: boolean;
+  onSendCommand: SiteCardProps["onSendCommand"];
 }
 
-function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
-  const [busy, setBusy] = useState<"pulse" | "hold" | null>(null);
+function DoorRow({ site, door, now, siteHasArmedArea, disabled, busy, onSendCommand }: DoorRowProps) {
   const info = DOOR_INFO[door.status];
   const held = door.status === "unlocked" && !door.unlockedUntil;
-  const pulsing = door.status === "unlocked" && !!door.unlockedUntil;
-  const label = pulsing ? `Unlocked · ${PULSE_MS / 1000}s` : held ? "Kept unlocked" : info.label;
-
-  const run = async (kind: "pulse" | "hold", fn: () => Promise<void>) => {
-    setBusy(kind);
-    try {
-      await fn();
-    } finally {
-      setBusy(null);
-    }
-  };
+  const label = held ? "Kept unlocked" : info.label;
+  const isRoller = door.kind === "roller";
+  const isAlreadyOpen = door.status === "open" || door.status === "heldOpen";
 
   return (
     <li className="flex items-center justify-between gap-3 p-3">
@@ -401,16 +499,68 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
         </div>
       </div>
 
-      {disabled ? null : door.canControl ? (
+      {disabled ? null : !door.canControl ? (
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <Eye className="size-3.5" />
+          View only
+        </span>
+      ) : isRoller ? (
+        isAlreadyOpen ? (
+          <span className="shrink-0 text-xs text-muted-foreground">Close on site</span>
+        ) : (
+          <ConfirmDialog
+            title={
+              siteHasArmedArea
+                ? `Disarm ${site.name} and open ${door.name}?`
+                : `Open ${site.name}: ${door.name}?`
+            }
+            description={
+              siteHasArmedArea
+                ? "This will disarm the station alarm first, verify it is disarmed, and then pulse the roller door open."
+                : "This will pulse the roller door relay to open the door."
+            }
+            confirmLabel={siteHasArmedArea ? "Disarm and Open" : "Open"}
+            tone={siteHasArmedArea ? "destructive" : "default"}
+            onConfirm={() =>
+              onSendCommand(
+                {
+                  siteId: site.id,
+                  targetKind: "roller",
+                  targetId: door.id,
+                  action: siteHasArmedArea ? "disarm_and_open_roller" : "open_roller",
+                },
+                `${site.name}: ${door.name}`,
+              )
+            }
+            trigger={
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 shrink-0 px-3 sm:h-8"
+                loading={busy}
+                disabled={busy}
+              >
+                <DoorOpen className="size-3.5" />
+                {siteHasArmedArea ? "Disarm & Open" : "Open"}
+              </Button>
+            }
+          />
+        )
+      ) : (
         <div className="flex shrink-0 items-center gap-1">
-          {held ? (
+          {held && door.supportsHold ? (
             <Button
               size="sm"
               variant="outline"
               className="h-9 px-3 sm:h-8"
-              loading={busy === "hold"}
-              disabled={busy !== null}
-              onClick={() => run("hold", onToggleHold)}
+              loading={busy}
+              disabled={busy}
+              onClick={() =>
+                onSendCommand(
+                  { siteId: site.id, targetKind: "door", targetId: door.id, action: "lock" },
+                  `${site.name}: ${door.name}`,
+                )
+              }
             >
               <Lock className="size-3.5" />
               Lock
@@ -420,29 +570,41 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
               size="sm"
               variant="outline"
               className="h-9 px-3 sm:h-8"
-              loading={busy === "pulse"}
-              disabled={busy !== null || pulsing}
-              onClick={() => run("pulse", onPulse)}
+              loading={busy}
+              disabled={busy}
+              onClick={() =>
+                onSendCommand(
+                  { siteId: site.id, targetKind: "door", targetId: door.id, action: "pulse" },
+                  `${site.name}: ${door.name}`,
+                )
+              }
             >
               <DoorOpen className="size-3.5" />
               Unlock
             </Button>
           )}
-          {!held && (
+          {!held && door.supportsHold && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="icon"
                   variant="ghost"
                   className="size-9 sm:size-8"
-                  disabled={busy !== null}
+                  disabled={busy}
                   aria-label={`More for ${door.name}`}
                 >
                   <MoreVertical className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => run("hold", onToggleHold)}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    onSendCommand(
+                      { siteId: site.id, targetKind: "door", targetId: door.id, action: "unlock" },
+                      `${site.name}: ${door.name}`,
+                    )
+                  }
+                >
                   <LockOpen className="size-4" />
                   Keep unlocked
                 </DropdownMenuItem>
@@ -450,11 +612,6 @@ function DoorRow({ door, now, disabled, onPulse, onToggleHold }: DoorRowProps) {
             </DropdownMenu>
           )}
         </div>
-      ) : (
-        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <Eye className="size-3.5" />
-          View only
-        </span>
       )}
     </li>
   );

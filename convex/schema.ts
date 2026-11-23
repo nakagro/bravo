@@ -1,4 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
+import {
+  accessAreaValidator,
+  accessDoorValidator,
+  accessEventSourceValidator,
+  commandActionValidator,
+  commandStatusValidator,
+  commandTargetKindValidator,
+  panelKindValidator,
+} from "./lib/accessControlValidators";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 import { accountTypeValidator } from "./lib/accountType";
@@ -1798,6 +1807,69 @@ const applicationTables = {
     .index("by_userId_and_date", ["userId", "date"])
     .index("by_shiftTypeId_and_state", ["shiftTypeId", "state"])
     .index("by_endAt", ["endAt"]),
+
+  // Normalised site state pushed by outbound LAN bridges (Challenger+ at
+  // Satellite Station, Inception at Main Station). Drives /access-control.
+  accessSites: defineTable({
+    siteId: v.string(),
+    name: v.string(),
+    panel: panelKindValidator,
+    panelLabel: v.string(),
+    writesEnabled: v.boolean(),
+    bridgeVersion: v.optional(v.string()),
+    lastSeenAt: v.number(),
+    areas: v.array(accessAreaValidator),
+    doors: v.array(accessDoorValidator),
+  }).index("by_siteId", ["siteId"]),
+
+  // Rolling recent panel and BRAVO-initiated access events per site.
+  accessEvents: defineTable({
+    siteId: v.string(),
+    externalId: v.optional(v.string()),
+    at: v.number(),
+    text: v.string(),
+    who: v.optional(v.string()),
+    source: accessEventSourceValidator,
+  })
+    .index("by_site_at", ["siteId", "at"])
+    .index("by_site_externalId", ["siteId", "externalId"]),
+
+  // Short-lived command queue claimed by outbound site bridges over TLS.
+  accessCommands: defineTable({
+    siteId: v.string(),
+    targetKind: commandTargetKindValidator,
+    targetId: v.string(),
+    targetName: v.string(),
+    action: commandActionValidator,
+    pulseMs: v.optional(v.number()),
+    status: commandStatusValidator,
+    requestedBy: v.id("users"),
+    actorName: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    claimedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    message: v.optional(v.string()),
+  })
+    .index("by_site_status", ["siteId", "status", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
+
+  // Append-only audit trail for every remote access-control attempt.
+  accessAuditLog: defineTable({
+    commandId: v.id("accessCommands"),
+    siteId: v.string(),
+    targetKind: v.string(),
+    targetId: v.string(),
+    action: v.string(),
+    requestedBy: v.id("users"),
+    actorName: v.string(),
+    status: v.string(),
+    message: v.optional(v.string()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_site_createdAt", ["siteId", "createdAt"]),
 };
 
 export default defineSchema({

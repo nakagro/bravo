@@ -360,4 +360,219 @@ http.route({
   }),
 });
 
+
+// ============================================================================
+// ACCESS CONTROL BRIDGE - outbound LAN site bridges (Challenger+, Inception)
+// ============================================================================
+
+const ACCESS_BRIDGE_ENV: Record<string, string> = {
+  satellite: "ACCESS_BRIDGE_SATELLITE_TOKEN",
+  main: "ACCESS_BRIDGE_MAIN_TOKEN",
+};
+
+const VALID_PANELS = new Set(["inception", "challenger"]);
+const VALID_AREA_STATUS = new Set(["armed", "disarmed", "alarm", "exitDelay", "entryDelay"]);
+const VALID_DOOR_STATUS = new Set(["secured", "unlocked", "open", "heldOpen", "forced", "offline"]);
+const VALID_DOOR_KIND = new Set(["door", "roller"]);
+const VALID_COMPLETION_STATUS = new Set(["succeeded", "failed", "expired"]);
+
+function accessJson(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+async function authenticateAccessBridge(
+  request: Request,
+): Promise<{ ok: true; siteId: string } | { ok: false; response: Response }> {
+  const siteId = request.headers.get("X-Access-Site")?.trim() ?? "";
+  const envKey = ACCESS_BRIDGE_ENV[siteId];
+  if (!envKey) {
+    return { ok: false, response: accessJson(401, { error: "Unauthorized" }) };
+  }
+  const header = request.headers.get("Authorization");
+  const presented = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!(await secretMatches(presented, process.env[envKey]))) {
+    return { ok: false, response: accessJson(401, { error: "Unauthorized" }) };
+  }
+  return { ok: true, siteId };
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function parseSitePayload(raw: unknown) {
+  if (!isRecord(raw)) return null;
+  if (typeof raw.name !== "string" || raw.name.length === 0 || raw.name.length > 80) return null;
+  if (typeof raw.panel !== "string" || !VALID_PANELS.has(raw.panel)) return null;
+  if (typeof raw.panelLabel !== "string" || raw.panelLabel.length === 0 || raw.panelLabel.length > 80) return null;
+  if (typeof raw.writesEnabled !== "boolean") return null;
+  if (raw.bridgeVersion !== undefined && (typeof raw.bridgeVersion !== "string" || raw.bridgeVersion.length > 40)) return null;
+  if (!Array.isArray(raw.areas) || raw.areas.length > 32) return null;
+  if (!Array.isArray(raw.doors) || raw.doors.length > 64) return null;
+
+  const areas = [];
+  for (const a of raw.areas) {
+    if (!isRecord(a)) return null;
+    if (typeof a.id !== "string" || a.id.length === 0 || a.id.length > 64) return null;
+    if (typeof a.name !== "string" || a.name.length === 0 || a.name.length > 80) return null;
+    if (typeof a.status !== "string" || !VALID_AREA_STATUS.has(a.status)) return null;
+    if (typeof a.changedAt !== "number" || !Number.isFinite(a.changedAt)) return null;
+    if (a.changedBy !== undefined && typeof a.changedBy !== "string") return null;
+    if (typeof a.canControl !== "boolean") return null;
+    areas.push({
+      id: a.id,
+      name: a.name,
+      status: a.status as "armed" | "disarmed" | "alarm" | "exitDelay" | "entryDelay",
+      changedAt: a.changedAt,
+      ...(a.changedBy !== undefined ? { changedBy: a.changedBy } : {}),
+      canControl: a.canControl,
+    });
+  }
+
+  const doors = [];
+  for (const d of raw.doors) {
+    if (!isRecord(d)) return null;
+    if (typeof d.id !== "string" || d.id.length === 0 || d.id.length > 64) return null;
+    if (typeof d.name !== "string" || d.name.length === 0 || d.name.length > 80) return null;
+    if (typeof d.kind !== "string" || !VALID_DOOR_KIND.has(d.kind)) return null;
+    if (typeof d.status !== "string" || !VALID_DOOR_STATUS.has(d.status)) return null;
+    if (typeof d.changedAt !== "number" || !Number.isFinite(d.changedAt)) return null;
+    if (typeof d.canControl !== "boolean") return null;
+    if (typeof d.supportsHold !== "boolean") return null;
+    if (d.unlockedUntil !== undefined && (typeof d.unlockedUntil !== "number" || !Number.isFinite(d.unlockedUntil))) return null;
+    doors.push({
+      id: d.id,
+      name: d.name,
+      kind: d.kind as "door" | "roller",
+      status: d.status as "secured" | "unlocked" | "open" | "heldOpen" | "forced" | "offline",
+      changedAt: d.changedAt,
+      canControl: d.canControl,
+      supportsHold: d.supportsHold,
+      ...(d.unlockedUntil !== undefined ? { unlockedUntil: d.unlockedUntil } : {}),
+    });
+  }
+
+  return {
+    name: raw.name,
+    panel: raw.panel as "inception" | "challenger",
+    panelLabel: raw.panelLabel,
+    writesEnabled: raw.writesEnabled,
+    ...(raw.bridgeVersion !== undefined ? { bridgeVersion: raw.bridgeVersion } : {}),
+    areas,
+    doors,
+  };
+}
+
+function parseEventsInput(raw: unknown) {
+  if (raw === undefined) return { ok: true as const, events: undefined };
+  if (!Array.isArray(raw) || raw.length > 100) return { ok: false as const };
+  const events = [];
+  for (const ev of raw) {
+    if (!isRecord(ev)) return { ok: false as const };
+    if (typeof ev.externalId !== "string" || ev.externalId.length === 0 || ev.externalId.length > 80) return { ok: false as const };
+    if (typeof ev.at !== "number" || !Number.isFinite(ev.at)) return { ok: false as const };
+    if (typeof ev.text !== "string" || ev.text.length === 0 || ev.text.length > 200) return { ok: false as const };
+    if (ev.who !== undefined && typeof ev.who !== "string") return { ok: false as const };
+    events.push({
+      externalId: ev.externalId,
+      at: ev.at,
+      text: ev.text,
+      ...(ev.who !== undefined ? { who: ev.who } : {}),
+    });
+  }
+  return { ok: true as const, events };
+}
+
+http.route({
+  path: "/api/access/state",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateAccessBridge(request);
+    if (!authRes.ok) return authRes.response;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return accessJson(400, { error: "Malformed JSON" });
+    }
+    if (!isRecord(body)) return accessJson(400, { error: "Body must be a JSON object" });
+
+    const site = parseSitePayload(body.site);
+    if (!site) return accessJson(400, { error: "Invalid site payload" });
+    const parsedEvents = parseEventsInput(body.events);
+    if (!parsedEvents.ok) return accessJson(400, { error: "Invalid events payload" });
+
+    const res = await ctx.runMutation(internal.accessControl.ingestSiteState, {
+      siteId: authRes.siteId,
+      site,
+      ...(parsedEvents.events ? { events: parsedEvents.events } : {}),
+    });
+    return accessJson(200, res);
+  }),
+});
+
+http.route({
+  path: "/api/access/claim",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateAccessBridge(request);
+    if (!authRes.ok) return authRes.response;
+
+    const res = await ctx.runMutation(internal.accessControl.claimNextCommand, {
+      siteId: authRes.siteId,
+    });
+    return accessJson(200, res);
+  }),
+});
+
+http.route({
+  path: "/api/access/result",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateAccessBridge(request);
+    if (!authRes.ok) return authRes.response;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return accessJson(400, { error: "Malformed JSON" });
+    }
+    if (!isRecord(body)) return accessJson(400, { error: "Body must be a JSON object" });
+
+    if (typeof body.commandId !== "string" || body.commandId.length === 0 || body.commandId.length > 64) {
+      return accessJson(400, { error: "Invalid commandId" });
+    }
+    if (typeof body.status !== "string" || !VALID_COMPLETION_STATUS.has(body.status)) {
+      return accessJson(400, { error: "Invalid status" });
+    }
+    if (body.message !== undefined && (typeof body.message !== "string" || body.message.length > 300)) {
+      return accessJson(400, { error: "Invalid message" });
+    }
+
+    let site = undefined;
+    if (body.site !== undefined) {
+      site = parseSitePayload(body.site);
+      if (!site) return accessJson(400, { error: "Invalid site payload" });
+    }
+    const parsedEvents = parseEventsInput(body.events);
+    if (!parsedEvents.ok) return accessJson(400, { error: "Invalid events payload" });
+
+    const res = await ctx.runMutation(internal.accessControl.completeCommand, {
+      siteId: authRes.siteId,
+      commandId: body.commandId,
+      status: body.status as "succeeded" | "failed" | "expired",
+      ...(body.message !== undefined ? { message: body.message } : {}),
+      ...(site ? { site } : {}),
+      ...(parsedEvents.events ? { events: parsedEvents.events } : {}),
+    });
+    if (!res.ok) return accessJson(409, res);
+    return accessJson(200, res);
+  }),
+});
+
 export default http;

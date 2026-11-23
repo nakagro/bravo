@@ -365,9 +365,8 @@ function AuthenticatedApp() {
               <UserSettingsPage />
             </ProtectedRoute>
           } />
-          {/* Mock preview, not wired to the panels yet: admins only, no menu tile. */}
           <Route path="/access-control" element={
-            <ProtectedRoute moduleId="admin">
+            <ProtectedRoute moduleId="accessControl">
               <AccessControlPage />
             </ProtectedRoute>
           } />

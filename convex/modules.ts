@@ -1,4 +1,4 @@
-import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { getActiveUser, isActiveAccount, moduleSettingAllows, requireAdmin, requireModule } from "./lib/access";
@@ -62,15 +62,9 @@ export const updateModuleConfig = mutation({
   },
 });
 
-/**
- * Sync missing modules to existing module settings
- */
-export const syncModuleSettings = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx, "change module settings");
-    // Define the default modules with role and rank requirements
-    const defaultModules = [
+async function syncModuleSettingsImpl(ctx: MutationCtx) {
+  // Define the default modules with role and rank requirements
+  const defaultModules = [
       {
         moduleId: "dashboard",
         moduleName: "Dashboard",
@@ -297,6 +291,14 @@ export const syncModuleSettings = mutation({
         minimumRank: undefined
       },
       {
+        moduleId: "accessControl",
+        moduleName: "Access Control",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "admin",
         moduleName: "Admin Settings",
         isEnabled: true,
@@ -325,7 +327,27 @@ export const syncModuleSettings = mutation({
       }
     }
 
-    return { addedCount, totalModules: defaultModules.length };
+  return { addedCount, totalModules: defaultModules.length };
+}
+
+/**
+ * Sync missing modules to existing module settings
+ */
+export const syncModuleSettings = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx, "change module settings");
+    return await syncModuleSettingsImpl(ctx);
+  },
+});
+
+/**
+ * Internal variant for CLI/ops sync (`npx convex run modules:syncModuleSettingsInternal`).
+ */
+export const syncModuleSettingsInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await syncModuleSettingsImpl(ctx);
   },
 });
 
@@ -564,6 +586,14 @@ export const initializeModuleSettings = mutation({
         minimumRank: undefined
       },
       {
+        moduleId: "accessControl",
+        moduleName: "Access Control",
+        isEnabled: true,
+        adminOnly: false,
+        requiredRoles: [],
+        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
+      },
+      {
         moduleId: "admin",
         moduleName: "Admin Settings",
         isEnabled: true,
@@ -743,6 +773,7 @@ export const getAllModuleAccess = query({
     links: v.boolean(),
     settings: v.boolean(),
     kiosk: v.boolean(),
+    accessControl: v.boolean(),
     admin: v.boolean(),
     actions: v.boolean(),
   }),
@@ -777,6 +808,7 @@ export const getAllModuleAccess = query({
         links: false,
         settings: false,
         kiosk: false,
+        accessControl: false,
         admin: false,
         actions: false,
       };
@@ -812,6 +844,7 @@ export const getAllModuleAccess = query({
         links: false,
         settings: false,
         kiosk: false,
+        accessControl: false,
         admin: false,
         actions: false,
       };
@@ -847,6 +880,7 @@ export const getAllModuleAccess = query({
         links: true,
         settings: true,
         kiosk: true,
+        accessControl: true,
         admin: true,
         actions: true,
       };
@@ -890,6 +924,7 @@ export const getAllModuleAccess = query({
       links: checkAccess("links"),
       settings: checkAccess("settings"),
       kiosk: checkAccess("kiosk"),
+      accessControl: checkAccess("accessControl"),
       admin: checkAccess("admin"),
       actions: checkAccess("actions"),
     };
