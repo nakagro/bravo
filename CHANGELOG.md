@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026.11.24]
+
+- Access Control: The page is redesigned for phones, one station at a time with its alarm state up front.
+- Access Control: Doors unlock with a press and hold, and an armed station offers Disarm and unlock.
+
 ## [2026.11.23]
 
 - Access Control: Lieutenants and above can see each station's alarm and door status live and control them from BRAVO.

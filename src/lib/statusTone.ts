@@ -13,3 +13,12 @@ export const statusToneClasses: Record<StatusTone, string> = {
   info: "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
   neutral: "border-transparent bg-muted text-muted-foreground",
 };
+
+/** A small solid dot in the same tone, for a status mark beside a name. */
+export const statusToneDotClasses: Record<StatusTone, string> = {
+  success: "bg-green-500",
+  warning: "bg-amber-500",
+  danger: "bg-red-500",
+  info: "bg-blue-500",
+  neutral: "bg-muted-foreground/60",
+};

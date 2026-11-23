@@ -1,9 +1,11 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface Segment<K extends string> {
   key: K;
   label: string;
+  /** Optional mark before the label, e.g. a status dot. */
+  adornment?: ReactNode;
 }
 
 interface SegmentedTabsProps<K extends string> {
@@ -66,7 +68,14 @@ export function SegmentedTabs<K extends string>({
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200",
             )}
           >
-            {segment.label}
+            {segment.adornment ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                {segment.adornment}
+                {segment.label}
+              </span>
+            ) : (
+              segment.label
+            )}
           </button>
         );
       })}
