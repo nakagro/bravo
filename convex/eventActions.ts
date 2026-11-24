@@ -72,6 +72,9 @@ export const notifyEventMembers = action({
     if (!event.canManage) {
       throw new Error("You do not have access to notify members about events");
     }
+    if (event.isPrivate) {
+      throw new Error("Use Message members to notify people about a private event");
+    }
 
     let body = args.message?.trim();
     if (!body) {

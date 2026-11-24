@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import {
   formatWeekday,
   formatMonth,
@@ -114,6 +115,22 @@ export const shortApplianceName = (name: string) => {
   const escaped = BRIGADE_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return name.replace(new RegExp(`^${escaped}\\s+`, "i"), "");
 };
+
+/**
+ * Small indicator that an event is private (invite-only) rather than visible
+ * to the whole brigade.
+ */
+export function PrivateBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      title="Private event (invite only)"
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 ${className}`}
+    >
+      <Lock className="h-3 w-3" />
+      Private
+    </span>
+  );
+}
 
 /**
  * Small indicator that member responses are closed - the organiser has set the

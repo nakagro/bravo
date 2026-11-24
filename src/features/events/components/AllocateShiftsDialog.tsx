@@ -104,6 +104,11 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
         </p>
       ) : (
         <div className="space-y-5 pb-6">
+          {roster.isPrivate && (
+            <p className="text-xs text-purple-800 dark:text-purple-200 bg-purple-50 dark:bg-purple-900/25 border border-purple-200 dark:border-purple-800 rounded-lg px-3 py-2">
+              Private event - placing an uninvited member automatically adds them to the invite list.
+            </p>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -119,13 +124,20 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
             const allocatedSet = new Set(slot.allocatedIds);
             const interestedSet = new Set(slot.interestedIds);
             const declinedSet = new Set(roster.declinedIds);
+            const invitedSet = new Set(roster.invitedIds);
             const when = slot.when;
             const underfilled = !!slot.targetCount && slot.allocatedIds.length < slot.targetCount;
 
             // Rostered decliners (conflicts) first, then interested members,
-            // then the rest - all already name-sorted
+            // then invited members on a private event, then the rest
             const rank = (id: Id<"users">) =>
-              allocatedSet.has(id) && declinedSet.has(id) ? 0 : interestedSet.has(id) ? 1 : 2;
+              allocatedSet.has(id) && declinedSet.has(id)
+                ? 0
+                : interestedSet.has(id)
+                  ? 1
+                  : roster.isPrivate && invitedSet.has(id)
+                    ? 2
+                    : 3;
             const ordered = [...filteredMembers].sort((a, b) => rank(a._id) - rank(b._id));
 
             return (
@@ -204,13 +216,15 @@ export function AllocateShiftsDialog({ open, onClose, eventId }: AllocateShiftsD
                             <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
                               {needsReplacing ? "can't make it, replace" : "can't make it"}
                             </span>
-                          ) : (
-                            isInterested && (
-                              <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                                interested
-                              </span>
-                            )
-                          )}
+                          ) : isInterested ? (
+                            <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                              interested
+                            </span>
+                          ) : roster.isPrivate && invitedSet.has(member._id) ? (
+                            <span className="flex-shrink-0 px-2 py-0.5 text-[11px] font-medium rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200">
+                              invited
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })

@@ -76,6 +76,92 @@ export function isEventTeamLeader(event: Doc<"events">, userId: Id<"users">): bo
   return event.teamLeaderIds?.includes(userId) ?? false;
 }
 
+/** Whether this event is private (invite-only) rather than brigade-wide. */
+export function isPrivateEvent(event: Doc<"events">): boolean {
+  return event.isPrivate === true;
+}
+
+/**
+ * The distinct set of user ids on a private event's invite list, always
+ * including the organiser and any named team leaders (the people running it).
+ */
+export function invitedPoolIds(event: Doc<"events">): Id<"users">[] {
+  return [
+    ...new Set([
+      event.createdBy,
+      ...(event.teamLeaderIds ?? []),
+      ...(event.invitedUserIds ?? []),
+    ]),
+  ];
+}
+
+/**
+ * Whether `userId` is part of this event's invited audience. Always true for
+ * brigade-wide events; for private events, true for the organiser, team
+ * leaders, and explicitly invited members.
+ */
+export function isInvitedToEvent(event: Doc<"events">, userId: Id<"users">): boolean {
+  if (!isPrivateEvent(event)) return true;
+  if (event.createdBy === userId) return true;
+  if (isEventTeamLeader(event, userId)) return true;
+  return event.invitedUserIds?.includes(userId) ?? false;
+}
+
+/**
+ * Whether `userId` may view this event at all. Brigade-wide events are visible
+ * to every member with Events access; private events are visible to invited
+ * members, the organiser, named team leaders, and Events Admins (so officers
+ * and Social Admins can still oversee and manage all events).
+ */
+export function canViewEvent(
+  event: Doc<"events">,
+  userId: Id<"users">,
+  viewerIsAdmin: boolean
+): boolean {
+  if (!isPrivateEvent(event)) return true;
+  return viewerIsAdmin || isInvitedToEvent(event, userId);
+}
+
+/**
+ * When a manager rosters or crews a member onto a private event they aren't
+ * invited to yet, add them to `invitedUserIds` so they can actually open and
+ * view the event they've been placed on.
+ */
+export async function ensureInvitedToPrivateEvent(
+  ctx: MutationCtx,
+  event: Doc<"events">,
+  userIds: Id<"users">[]
+): Promise<void> {
+  if (!isPrivateEvent(event) || userIds.length === 0) return;
+  const current = event.invitedUserIds ?? [];
+  const toAdd: Id<"users">[] = [];
+  for (const userId of userIds) {
+    if (isInvitedToEvent(event, userId) || toAdd.includes(userId)) continue;
+    const user = await ctx.db.get(userId);
+    if (user && isMemberAccount(user)) toAdd.push(userId);
+  }
+  if (toAdd.length === 0) return;
+  await ctx.db.patch(event._id, {
+    invitedUserIds: [...current, ...toAdd],
+    updatedAt: Date.now(),
+  });
+}
+
+async function validateInvitedUserIds(
+  ctx: MutationCtx,
+  userIds: Id<"users">[]
+): Promise<Id<"users">[]> {
+  const unique = [...new Set(userIds)];
+  for (const id of unique) {
+    const user = await ctx.db.get(id);
+    if (!user) throw new Error("That member no longer exists");
+    if (!isMemberAccount(user)) {
+      throw new Error("Pick a member, not a shared account");
+    }
+  }
+  return unique;
+}
+
 /**
  * Non-throwing per-event permission check. Returns the signed-in user id when
  * they may manage this event, otherwise null.
@@ -148,6 +234,8 @@ const enrichedEventValidator = v.object({
   cancellationReason: v.optional(v.string()),
   createdBy: v.id("users"),
   teamLeaderIds: v.optional(v.array(v.id("users"))),
+  isPrivate: v.optional(v.boolean()),
+  invitedUserIds: v.optional(v.array(v.id("users"))),
   attendanceConfirmedAt: v.optional(v.number()),
   attendanceConfirmedBy: v.optional(v.id("users")),
   attendanceNotNeeded: v.optional(v.boolean()),
@@ -183,6 +271,12 @@ const enrichedEventValidator = v.object({
   // only offered. Both read as "attending" in myRsvp, but they're different
   // things to say to the member: one is an answer, the other is a commitment.
   iAmRostered: v.boolean(),
+  // Whether the caller is on the invite list (always true for brigade-wide
+  // events; false only for an uninvited Events Admin viewing for oversight).
+  iAmInvited: v.boolean(),
+  // Total distinct people invited (incl. organiser & team leaders) on a private
+  // event, or 0 on a brigade-wide event.
+  invitedCount: v.number(),
   // Naming team leaders is the organiser's / eventsAdmin's call, never a team
   // leader's - the role must not be able to widen itself.
   canAppointLeaders: v.boolean(),
@@ -257,7 +351,7 @@ export async function attendanceFor(
   guestTotal: number;
   guestsByUser: Map<Id<"users">, number>;
 }> {
-  const [rsvps, allocations] = await Promise.all([
+  const [rawRsvps, rawAllocations] = await Promise.all([
     ctx.db
       .query("eventRsvps")
       .withIndex("by_event", (q) => q.eq("eventId", event._id))
@@ -268,6 +362,16 @@ export async function attendanceFor(
       .collect(),
   ]);
 
+  // On a private event, only invited members (incl. organiser & team leaders)
+  // count - anyone uninvited keeps their stored rows intact in case they're
+  // re-invited or the event opens up again, without leaking into headcounts.
+  const rsvps = isPrivateEvent(event)
+    ? rawRsvps.filter((r) => isInvitedToEvent(event, r.userId))
+    : rawRsvps;
+  const allocations = isPrivateEvent(event)
+    ? rawAllocations.filter((a) => isInvitedToEvent(event, a.userId))
+    : rawAllocations;
+
   const rostered = new Set<Id<"users">>(allocations.map((a) => a.userId));
   const going = new Set<Id<"users">>(rostered);
 
@@ -277,7 +381,9 @@ export async function attendanceFor(
         .query("eventSlotResponses")
         .withIndex("by_event", (q) => q.eq("eventId", event._id))
         .collect();
-      for (const r of interest) going.add(r.userId);
+      for (const r of interest) {
+        if (isInvitedToEvent(event, r.userId)) going.add(r.userId);
+      }
     } else {
       for (const r of rsvps) {
         if (r.status === "attending") going.add(r.userId);
@@ -410,6 +516,8 @@ async function enrichEvent(
     canManage: viewerIsAdmin || event.createdBy === userId || isEventTeamLeader(event, userId),
     iAmTeamLeader: isEventTeamLeader(event, userId),
     iAmRostered: rostered.has(userId),
+    iAmInvited: isInvitedToEvent(event, userId),
+    invitedCount: isPrivateEvent(event) ? invitedPoolIds(event).length : 0,
     canAppointLeaders: viewerIsAdmin || event.createdBy === userId,
     canDelete: viewerIsAdmin,
     createdByUser: createdByUser
@@ -568,11 +676,13 @@ export const getUpcomingEvents = query({
 
     const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
 
-    const events = await ctx.db
-      .query("events")
-      .withIndex("by_startDate", (q) => q.gte("startDate", args.fromDate))
-      .order("asc")
-      .collect();
+    const events = (
+      await ctx.db
+        .query("events")
+        .withIndex("by_startDate", (q) => q.gte("startDate", args.fromDate))
+        .order("asc")
+        .collect()
+    ).filter((event) => canViewEvent(event, userId, viewerIsAdmin));
 
     return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
   },
@@ -593,11 +703,20 @@ export const getPastEvents = query({
 
     const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
 
-    const events = await ctx.db
+    const events: Doc<"events">[] = [];
+    let scanned = 0;
+    const pastQuery = ctx.db
       .query("events")
       .withIndex("by_startDate", (q) => q.lt("startDate", args.beforeDate))
-      .order("desc")
-      .take(50);
+      .order("desc");
+    for await (const event of pastQuery) {
+      scanned++;
+      if (canViewEvent(event, userId, viewerIsAdmin)) {
+        events.push(event);
+        if (events.length >= 50) break;
+      }
+      if (scanned >= 500) break;
+    }
 
     return await Promise.all(events.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
   },
@@ -637,7 +756,9 @@ export const getPastEventsPaged = query({
         .query("events")
         .withSearchIndex("search_title", (q) => q.search("title", term))
         .paginate(args.paginationOpts);
-      const past = result.page.filter((event) => event.startDate < args.beforeDate);
+      const past = result.page.filter(
+        (event) => event.startDate < args.beforeDate && canViewEvent(event, userId, viewerIsAdmin)
+      );
       const page = await Promise.all(past.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
       return { page, isDone: result.isDone, continueCursor: result.continueCursor };
     }
@@ -647,7 +768,8 @@ export const getPastEventsPaged = query({
       .withIndex("by_startDate", (q) => q.lt("startDate", args.beforeDate))
       .order("desc")
       .paginate(args.paginationOpts);
-    const page = await Promise.all(result.page.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
+    const visible = result.page.filter((event) => canViewEvent(event, userId, viewerIsAdmin));
+    const page = await Promise.all(visible.map((event) => enrichEvent(ctx, event, userId, viewerIsAdmin)));
     return { page, isDone: result.isDone, continueCursor: result.continueCursor };
   },
 });
@@ -670,6 +792,9 @@ export const getEvent = query({
     }
 
     const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) {
+      return null;
+    }
 
     return await enrichEvent(ctx, event, userId, viewerIsAdmin);
   },
@@ -690,6 +815,9 @@ export const getEventAttendance = query({
       // non-empty on a shift event (where they'd otherwise be invisible,
       // appearing in no shift's roster); the shiftless list is just `attending`.
       rosteredNoShift: v.array(userNameValidator),
+      // Full invited list (incl. organiser & team leaders) on a private event;
+      // empty on brigade-wide events. Visible to everyone who can see the event.
+      invited: v.array(userNameValidator),
       // Per-member guest counts, so the attending list can render "Jane Smith
       // +2" without a second query. Only members bringing someone appear.
       guestCounts: v.array(v.object({ userId: v.id("users"), count: v.number() })),
@@ -736,6 +864,11 @@ export const getEventAttendance = query({
       return null;
     }
 
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) {
+      return null;
+    }
+
     const { going: attendingIds, rsvps, guestsByUser, guestTotal } = await attendanceFor(
       ctx,
       event
@@ -748,7 +881,14 @@ export const getEventAttendance = query({
       name: user.name,
     });
 
-    // Attending list - visible to all signed-in members
+    const invitedDocs = isPrivateEvent(event)
+      ? (await Promise.all(invitedPoolIds(event).map((id) => ctx.db.get(id)))).filter(
+          (user): user is Doc<"users"> => user !== null && isMemberAccount(user)
+        )
+      : [];
+    const invited = invitedDocs.map(nameOf);
+
+    // Attending list - visible to all signed-in members who can see the event
     const attending = (
       await Promise.all([...attendingIds].map((id) => ctx.db.get(id)))
     )
@@ -784,6 +924,7 @@ export const getEventAttendance = query({
       return {
         attending,
         rosteredNoShift,
+        invited,
         guestCounts,
         guestTotal,
         responseTimes: null,
@@ -793,9 +934,12 @@ export const getEventAttendance = query({
     }
 
     const rsvpByUser = new Map(rsvps.map((rsvp) => [rsvp.userId, rsvp.status]));
-    // "All members" = all member users rows (no isActive flag, per bookings.getAllUsers).
-    // Shared accounts would otherwise inflate totalMembers and sit in noResponse forever.
-    const users = (await ctx.db.query("users").collect()).filter(isMemberAccount);
+    // Private events count against the invited pool; brigade-wide events count
+    // against all member accounts (shared accounts excluded so they don't sit
+    // in noResponse forever).
+    const users = isPrivateEvent(event)
+      ? invitedDocs
+      : (await ctx.db.query("users").collect()).filter(isMemberAccount);
 
     const maybe: Array<ReturnType<typeof nameOf>> = [];
     const notAttending: Array<ReturnType<typeof nameOf>> = [];
@@ -840,6 +984,7 @@ export const getEventAttendance = query({
     return {
       attending,
       rosteredNoShift,
+      invited,
       guestCounts,
       guestTotal,
       responseTimes,
@@ -891,6 +1036,9 @@ export const getConfirmedAttendance = query({
 
     const event = await ctx.db.get(args.eventId);
     if (!event) return null;
+
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) return null;
 
     const rows = await ctx.db
       .query("eventAttendance")
@@ -1308,11 +1456,20 @@ export const createEvent = mutation({
     slots: v.optional(v.array(slotInputValidator)),
     // Appliances that need crewing; each becomes an empty eventCrews row
     crewAppliances: v.optional(v.array(v.string())),
+    // Invite-only visibility; set atomically at creation so a private event is
+    // never briefly visible to the whole brigade.
+    isPrivate: v.optional(v.boolean()),
+    invitedUserIds: v.optional(v.array(v.id("users"))),
     isAllDay: v.boolean(),
   },
   returns: v.id("events"),
   handler: async (ctx, args) => {
     const userId = await requireEventsAdmin(ctx);
+
+    const validatedInvited =
+      args.invitedUserIds !== undefined
+        ? await validateInvitedUserIds(ctx, args.invitedUserIds)
+        : undefined;
 
     const now = Date.now();
     const eventId = await ctx.db.insert("events", {
@@ -1335,6 +1492,8 @@ export const createEvent = mutation({
       maxGuestsPerMember: args.hasShifts ? undefined : args.maxGuestsPerMember,
       collectsDietary: args.hasShifts ? undefined : args.collectsDietary,
       attendanceNotNeeded: args.attendanceNotNeeded || undefined,
+      isPrivate: args.isPrivate || undefined,
+      invitedUserIds: validatedInvited,
       isAllDay: args.isAllDay,
       createdBy: userId,
       createdAt: now,
@@ -1552,6 +1711,58 @@ export const setTeamLeaders = mutation({
       field: "teamLeaders",
       oldValue: current,
       newValue: leaderIds,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Set whether an event is private (invite-only) and who is invited.
+ *
+ * Non-destructive in both directions: flipping a private event back to
+ * brigade-wide keeps `invitedUserIds` if none was supplied, and making a
+ * brigade-wide event private never deletes stored RSVPs (uninvited members'
+ * answers simply stop counting while the event is private).
+ */
+export const setEventPrivacy = mutation({
+  args: {
+    eventId: v.id("events"),
+    isPrivate: v.boolean(),
+    invitedUserIds: v.optional(v.array(v.id("users"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { userId, event } = await requireEventManager(ctx, args.eventId);
+
+    const prevPrivate = isPrivateEvent(event);
+    const prevInvited = event.invitedUserIds ?? [];
+    const nextInvited =
+      args.invitedUserIds !== undefined
+        ? await validateInvitedUserIds(ctx, args.invitedUserIds)
+        : prevInvited;
+
+    const invitedChanged =
+      prevInvited.length !== nextInvited.length ||
+      prevInvited.some((id) => !nextInvited.includes(id));
+
+    if (prevPrivate === args.isPrivate && !invitedChanged) {
+      return null;
+    }
+
+    await ctx.db.patch(args.eventId, {
+      isPrivate: args.isPrivate || undefined,
+      ...(args.invitedUserIds !== undefined ? { invitedUserIds: nextInvited } : {}),
+      updatedAt: Date.now(),
+    });
+
+    await recordHistory(ctx, {
+      eventId: args.eventId,
+      userId,
+      changeType: "privacy_change",
+      field: "privacy",
+      oldValue: { isPrivate: prevPrivate, invitedUserIds: prevInvited },
+      newValue: { isPrivate: args.isPrivate, invitedUserIds: nextInvited },
     });
 
     return null;
@@ -1832,6 +2043,9 @@ export const setRsvp = mutation({
     if (!event) {
       throw new Error("Event not found");
     }
+    if (!isInvitedToEvent(event, userId)) {
+      throw new Error("You are not invited to this event");
+    }
     if (event.status !== "active") {
       throw new Error("This event has been cancelled");
     }
@@ -2004,6 +2218,9 @@ export const toggleSlotResponse = mutation({
       throw new Error("Shift not found");
     }
     const event = await requireOpenEvent(ctx, slot.eventId);
+    if (!isInvitedToEvent(event, userId)) {
+      throw new Error("You are not invited to this event");
+    }
     if (!responsesAreOpen(event)) {
       throw new Error("The organiser has set who's on each shift for this event");
     }
@@ -2072,6 +2289,9 @@ export const declineSlotEvent = mutation({
     await requireModule(ctx, "events");
     const userId = await requireSignedIn(ctx);
     const event = await requireOpenEvent(ctx, args.eventId);
+    if (!isInvitedToEvent(event, userId)) {
+      throw new Error("You are not invited to this event");
+    }
 
     const existing = await ctx.db
       .query("eventRsvps")
@@ -2161,7 +2381,7 @@ export const toggleSlotAllocation = mutation({
     if (!slot) {
       throw new Error("Shift not found");
     }
-    const { userId: adminId } = await requireEventManager(ctx, slot.eventId);
+    const { userId: adminId, event } = await requireEventManager(ctx, slot.eventId);
 
     const existing = await ctx.db
       .query("eventSlotAllocations")
@@ -2173,6 +2393,7 @@ export const toggleSlotAllocation = mutation({
       return false;
     }
 
+    await ensureInvitedToPrivateEvent(ctx, event, [args.userId]);
     await ctx.db.insert("eventSlotAllocations", {
       eventId: slot.eventId,
       slotId: args.slotId,
@@ -2196,7 +2417,7 @@ export const toggleEventAllocation = mutation({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const { userId: adminId } = await requireEventManager(ctx, args.eventId);
+    const { userId: adminId, event } = await requireEventManager(ctx, args.eventId);
 
     const existing = (
       await ctx.db
@@ -2212,6 +2433,7 @@ export const toggleEventAllocation = mutation({
       return false;
     }
 
+    await ensureInvitedToPrivateEvent(ctx, event, [args.userId]);
     await ctx.db.insert("eventSlotAllocations", {
       eventId: args.eventId,
       slotId: undefined,
@@ -2256,6 +2478,7 @@ export const setMemberResponses = mutation({
       const alreadyRostered = new Set(existing.map((allocation) => allocation.userId));
 
       const now = Date.now();
+      await ensureInvitedToPrivateEvent(ctx, event, args.carryOverUserIds);
       for (const userId of args.carryOverUserIds) {
         if (alreadyRostered.has(userId)) continue;
         alreadyRostered.add(userId);
@@ -2331,6 +2554,15 @@ export const getEventSlots = query({
       return [];
     }
 
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return [];
+    }
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) {
+      return [];
+    }
+
     const slots = await ctx.db
       .query("eventSlots")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
@@ -2348,7 +2580,7 @@ export const getEventSlots = query({
 
     return await Promise.all(
       slots.map(async (slot) => {
-        const [allocations, interestRows] = await Promise.all([
+        const [rawAllocations, rawInterestRows] = await Promise.all([
           ctx.db
             .query("eventSlotAllocations")
             .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
@@ -2358,6 +2590,12 @@ export const getEventSlots = query({
             .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
             .collect(),
         ]);
+        const allocations = isPrivateEvent(event)
+          ? rawAllocations.filter((a) => isInvitedToEvent(event, a.userId))
+          : rawAllocations;
+        const interestRows = isPrivateEvent(event)
+          ? rawInterestRows.filter((r) => isInvitedToEvent(event, r.userId))
+          : rawInterestRows;
         const allocated = (
           await Promise.all(allocations.map((a) => ctx.db.get(a.userId)))
         )
@@ -2413,6 +2651,8 @@ export const getEventRoster = query({
   returns: v.union(
     v.object({
       members: v.array(userNameValidator),
+      isPrivate: v.boolean(),
+      invitedIds: v.array(v.id("users")),
       // Members who marked "can't make it" (event-wide) - flag them in the
       // allocation UI, especially when they're still on the roster
       declinedIds: v.array(v.id("users")),
@@ -2503,7 +2743,14 @@ export const getEventRoster = query({
       .filter((allocation) => allocation.slotId === undefined)
       .map((allocation) => allocation.userId);
 
-    return { members, declinedIds, eventAllocatedIds, slots: slotsWithRoster };
+    return {
+      members,
+      isPrivate: isPrivateEvent(event),
+      invitedIds: isPrivateEvent(event) ? invitedPoolIds(event) : [],
+      declinedIds,
+      eventAllocatedIds,
+      slots: slotsWithRoster,
+    };
   },
 });
 

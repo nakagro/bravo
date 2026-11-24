@@ -9,6 +9,7 @@ import {
   DateBadge,
   EventStatusBadge,
   EventTypeChip,
+  PrivateBadge,
   SetListBadge,
   ShiftsBadge,
 } from "./badges";
@@ -157,6 +158,7 @@ export function AdminTab() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900 dark:text-white">{event.title}</span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
+            {event.isPrivate && <PrivateBadge />}
             {event.hasShifts && <ShiftsBadge />}
             {event.memberResponses === "closed" && <SetListBadge />}
             <EventStatusBadge status={event.status} />
@@ -288,6 +290,7 @@ export function AdminTab() {
         }}
         eventId={notifyingEvent?._id ?? null}
         eventTitle={notifyingEvent?.title}
+        isPrivate={notifyingEvent?.isPrivate === true}
       />
 
       <DeleteEventDialog

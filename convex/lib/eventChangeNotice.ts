@@ -1,7 +1,7 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
-import { attendanceFor } from "../events";
+import { attendanceFor, invitedPoolIds, isInvitedToEvent, isPrivateEvent } from "../events";
 import { displayName, seatLines } from "./crewSeats";
 import { seatedCrewsFor } from "./eventCrews";
 import { eventIsOver, eventValues } from "./assignments/eventSource";
@@ -45,12 +45,16 @@ export async function involvedMembers(
 
   const crews = await seatedCrewsFor(ctx, event._id);
   for (const crew of crews) {
-    for (const m of seatLines(crew).members) involved.set(m.userId, "rostered");
+    for (const m of seatLines(crew).members) {
+      if (isInvitedToEvent(event, m.userId)) involved.set(m.userId, "rostered");
+    }
   }
 
   if ((event.memberResponses ?? "open") !== "closed") {
     const add = (id: Id<"users">, reason: InvolvedReason) => {
-      if (!involved.has(id) && !declined.has(id)) involved.set(id, reason);
+      if (!involved.has(id) && !declined.has(id) && isInvitedToEvent(event, id)) {
+        involved.set(id, reason);
+      }
     };
     for (const r of rsvps) if (r.status === "attending") add(r.userId, "going");
     if (event.hasShifts) {
@@ -122,15 +126,27 @@ export async function buildChangePreview(
   const row = await changeNoticeRow(ctx, event._id);
   if (!kindApplies(event, row, kind, pending)) return null;
 
-  // "Back on" goes to whoever was told it was off, even if the roster changed since.
+  // "Back on" goes to whoever was told it was off, even if the roster changed since
+  // (still scoped to invited members if the event is private).
   let audience: Map<Id<"users">, InvolvedReason | "told" | "member">;
   if (kind === "restored") {
-    audience = new Map(row!.recipientUserIds.map((id) => [id, "told" as const]));
+    audience = new Map(
+      row!.recipientUserIds
+        .filter((id) => isInvitedToEvent(event, id))
+        .map((id) => [id, "told" as const]),
+    );
   } else if (kind === "message" && messageAudience === "everyone") {
-    // Every member account; the reachability check below drops anyone who
-    // can't open Events. Capped well above brigade size.
-    const all = await ctx.db.query("users").take(1000);
-    audience = new Map(all.filter(isMemberAccount).map((u) => [u._id, "member" as const]));
+    if (isPrivateEvent(event)) {
+      const invitedDocs = (
+        await Promise.all(invitedPoolIds(event).map((id) => ctx.db.get(id)))
+      ).filter((u): u is Doc<"users"> => u !== null && isMemberAccount(u));
+      audience = new Map(invitedDocs.map((u) => [u._id, "member" as const]));
+    } else {
+      // Every member account; the reachability check below drops anyone who
+      // can't open Events. Capped well above brigade size.
+      const all = await ctx.db.query("users").take(1000);
+      audience = new Map(all.filter(isMemberAccount).map((u) => [u._id, "member" as const]));
+    }
   } else {
     audience = await involvedMembers(ctx, event);
   }

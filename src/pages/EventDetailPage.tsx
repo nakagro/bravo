@@ -33,9 +33,11 @@ import { NameColumns } from "../features/events/components/NameColumns";
 import {
   AttendanceBadge,
   EventTypeChip,
+  PrivateBadge,
   SetListBadge,
   TeamLeaderBadge,
 } from "../features/events/components/badges";
+import { EventInvitesDialog } from "../features/events/components/EventInvitesDialog";
 import { CancelEventDialog } from "../features/events/components/CancelEventDialog";
 import { NotifyMembersDialog } from "../features/events/components/NotifyMembersDialog";
 import { DeleteEventDialog } from "../features/events/components/DeleteEventDialog";
@@ -44,7 +46,7 @@ import { SendAssignmentsButton } from "@/components/shared/assignments/SendAssig
 import { NotificationLog } from "@/components/shared/assignments/NotificationLog";
 import { downloadEventIcs } from "../features/events/ics";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, SquarePen, CircleX, Undo2, BellRing, Clock, User, Users, Trash2, ChevronDown, Lock, LockOpen, EllipsisVertical, Clipboard, ClipboardCheck, Truck, EyeOff, UserPlus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -97,6 +99,7 @@ export function EventDetailPage() {
   const [addingCrew, setAddingCrew] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showResponsesDialog, setShowResponsesDialog] = useState(false);
+  const [showInvitesDialog, setShowInvitesDialog] = useState(false);
   const [showAttendanceDialog, setShowAttendanceDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [changeNotice, setChangeNotice] = useState<"detailsChanged" | "cancelled" | null>(null);
@@ -343,7 +346,20 @@ export function EventDetailPage() {
         onOpenChange={setShowNotifyDialog}
         eventId={typedEventId ?? null}
         eventTitle={event.title}
+        isPrivate={event.isPrivate === true}
       />
+      {typedEventId && canManageEvents && (
+        <EventInvitesDialog
+          open={showInvitesDialog}
+          onClose={() => setShowInvitesDialog(false)}
+          eventId={typedEventId}
+          isPrivate={event.isPrivate === true}
+          invitedUserIds={event.invitedUserIds ?? []}
+          organiserId={event.createdBy}
+          teamLeaderIds={leaderIds}
+          attendingIds={(attendance?.attending ?? []).map((member) => member._id)}
+        />
+      )}
       <DeleteEventDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -440,6 +456,14 @@ export function EventDetailPage() {
                       )}
                       {responsesClosed ? "Open responses" : "Close responses"}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setShowInvitesDialog(true)}>
+                      {event.isPrivate ? (
+                        <UserPlus className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                      {event.isPrivate ? "Manage invites" : "Make private"}
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setShowNotifyDialog(true)}>
                       <BellRing className="h-4 w-4" />
                       Message members
@@ -519,6 +543,7 @@ export function EventDetailPage() {
                 uppercase
                 className="text-[11px] font-bold"
               />
+              {event.isPrivate && <PrivateBadge />}
               {responsesClosed && <SetListBadge />}
               {/* Says out loud why this member has the organiser controls */}
               {event.iAmTeamLeader && <TeamLeaderBadge />}
@@ -570,7 +595,28 @@ export function EventDetailPage() {
               {event.myCrewSeat.shiftLabel && <> on {event.myCrewSeat.shiftLabel}</>}
             </div>
           )}
-          {responsesClosed ? (
+          {event.isPrivate && !event.iAmInvited ? (
+            <div className="sm:flex sm:items-center sm:justify-between sm:gap-6">
+              <div className="mb-3 sm:mb-0">
+                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                  Viewing as an Events Admin
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  This event is private and you&apos;re not on the invite list.
+                </div>
+              </div>
+              {canManageEvents && (
+                <button
+                  type="button"
+                  onClick={() => setShowInvitesDialog(true)}
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors inline-flex items-center gap-1.5"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Manage invites
+                </button>
+              )}
+            </div>
+          ) : responsesClosed ? (
             // Nothing to opt into - the organiser set the list. All that's left
             // is telling them if you can't make it after all, which stays
             // available precisely because being rostered isn't the same as
@@ -619,7 +665,8 @@ export function EventDetailPage() {
           )}
           {/* The +1 count only makes sense once you've said yes - it's an
               attribute of that answer, not a separate question. */}
-          {!responsesClosed &&
+          {event.iAmInvited &&
+            !responsesClosed &&
             !event.hasShifts &&
             event.allowsGuests &&
             event.myRsvp === "attending" && (
@@ -937,6 +984,41 @@ export function EventDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Invited list on private events - visible to everyone who can see
+              the event, with a quick Manage button for event managers. */}
+          {event.isPrivate && (
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500">
+                  Invited
+                  {attendance ? ` (${attendance.invited.length})` : ""}
+                </h3>
+                {canManageEvents && event.status === "active" && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInvitesDialog(true)}
+                    className="flex-shrink-0 px-2.5 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Manage
+                  </button>
+                )}
+              </div>
+              {!attendance ? (
+                <Skeleton className="h-8 w-48 rounded" />
+              ) : attendance.invited.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No members invited yet.
+                </p>
+              ) : (
+                <NameColumns
+                  members={attendance.invited}
+                  myUserId={myUserId}
+                  leaderIds={leaderIds}
+                />
+              )}
+            </div>
+          )}
 
           {/* Appliances crewed for the event - after who's coming, ahead of
               the response activity */}

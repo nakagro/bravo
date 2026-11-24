@@ -1,5 +1,6 @@
 import { ActionProvider } from "./types";
 import { brigadeDateStr, formatDateAU } from "../lib/dates";
+import { isInvitedToEvent } from "../events";
 
 export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
   if (!p.hasModuleAccess("events")) return [];
@@ -24,6 +25,7 @@ export const eventRsvpProvider: ActionProvider = async (ctx, p) => {
   // A closed event isn't asking anyone anything - the organiser sets who's
   // going - so it must never raise an action, however soon it is.
   const relevantEvents = futureEvents
+    .filter((event) => isInvitedToEvent(event, userId))
     .filter((event) => (event.memberResponses ?? "open") !== "closed")
     .filter((event) =>
       event.respondBy ? event.respondBy >= today : event.startDate <= thirtyDaysFromNow

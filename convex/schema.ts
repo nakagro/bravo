@@ -1323,6 +1323,13 @@ const applicationTables = {
     // without the brigade-wide eventsAdmin access an officer or Social Admin
     // role carries. Absent/empty means nobody beyond the organiser.
     teamLeaderIds: v.optional(v.array(v.id("users"))),
+    // Invite-only visibility. Absent/false = brigade-wide (every member with
+    // Events access). True = visible only to invitedUserIds, the organiser,
+    // named team leaders, and Events Admins. Stored separately from
+    // invitedUserIds so clearing the list never accidentally exposes a private
+    // event, and toggling back to brigade-wide preserves the saved list.
+    isPrivate: v.optional(v.boolean()),
+    invitedUserIds: v.optional(v.array(v.id("users"))),
     // Set when someone confirms who actually turned up (see eventAttendance).
     // Absent means "nobody has confirmed this yet" - which is a real state worth
     // showing on a past event, not just a missing value.

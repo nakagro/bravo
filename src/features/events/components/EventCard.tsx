@@ -8,6 +8,7 @@ import {
   DateBadge,
   EventStatusBadge,
   EventTypeChip,
+  PrivateBadge,
   SetListBadge,
   ShiftsBadge,
   TeamLeaderBadge,
@@ -37,9 +38,9 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
   // The red accent is a call to action, not decoration: it marks the events
   // still waiting on an answer from *you*. Once you've replied - yes, no or
   // maybe - the card goes quiet, so a long list reduces to the ones that need
-  // something. An event with responses closed is never asking, so it stays
-  // quiet too; declining is available there but isn't a question being put.
-  const needsResponse = showRsvp && !responsesClosed && event.myRsvp === null;
+  // something. An event with responses closed (or a private event an admin is
+  // only overseeing) is never asking, so it stays quiet too.
+  const needsResponse = showRsvp && event.iAmInvited && !responsesClosed && event.myRsvp === null;
 
   const countsSummary = formatCountsSummary(event.counts);
   const showRespondBy =
@@ -78,6 +79,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
               {event.title}
             </span>
             <EventTypeChip typeInfo={event.eventTypeInfo} legacyType={event.eventType} />
+            {event.isPrivate && <PrivateBadge />}
             {event.hasShifts && <ShiftsBadge />}
             {!isCancelled &&
               event.crews.map((crew) => (
@@ -146,7 +148,7 @@ export function EventCard({ event, readOnly = false }: EventCardProps) {
             </div>
           )}
 
-          {showRsvp && (
+          {showRsvp && event.iAmInvited && (
             // Stop clicks here from also opening the detail page
             <div className="mt-3" onClick={(e) => e.stopPropagation()}>
               {responsesClosed ? (

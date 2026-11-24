@@ -14,22 +14,37 @@ interface NotifyMembersDialogProps {
   onOpenChange: (open: boolean) => void;
   eventId: Id<"events"> | null;
   eventTitle?: string;
+  isPrivate?: boolean;
 }
 
 /**
  * The one place to message people about an event: the people involved
- * (rostered, crewed, yes, maybe, offered a shift) or every member. Shows the
- * exact notification before it goes, like every other targeted send. Crew
- * and roster notices stay on "Send to crew", which says what each member holds.
+ * (rostered, crewed, yes, maybe, offered a shift) or every member (or every
+ * invited member on a private event). Shows the exact notification before it
+ * goes, like every other targeted send. Crew and roster notices stay on "Send
+ * to crew", which says what each member holds.
  */
-export function NotifyMembersDialog({ open, onOpenChange, eventId, eventTitle }: NotifyMembersDialogProps) {
+export function NotifyMembersDialog({ open, onOpenChange, eventId, eventTitle, isPrivate }: NotifyMembersDialogProps) {
   if (!eventId) return null;
   return (
-    <MessageSheet key={eventId} open={open} onOpenChange={onOpenChange} eventId={eventId} eventTitle={eventTitle} />
+    <MessageSheet
+      key={eventId}
+      open={open}
+      onOpenChange={onOpenChange}
+      eventId={eventId}
+      eventTitle={eventTitle}
+      isPrivate={isPrivate}
+    />
   );
 }
 
-function MessageSheet({ open, onOpenChange, eventId, eventTitle }: NotifyMembersDialogProps & { eventId: Id<"events"> }) {
+function MessageSheet({
+  open,
+  onOpenChange,
+  eventId,
+  eventTitle,
+  isPrivate,
+}: NotifyMembersDialogProps & { eventId: Id<"events"> }) {
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<MessageAudience>("involved");
   const [sending, setSending] = useState(false);
@@ -71,7 +86,7 @@ function MessageSheet({ open, onOpenChange, eventId, eventTitle }: NotifyMembers
 
   const options: [MessageAudience, string, number | undefined][] = [
     ["involved", "People involved (going, maybe, rostered, crewed)", involved?.recipients.length],
-    ["everyone", "All members", everyone?.recipients.length],
+    ["everyone", isPrivate ? "All invited members" : "All members", everyone?.recipients.length],
   ];
 
   return (

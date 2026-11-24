@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, ArrowUp, ArrowDown, X } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, X, Lock } from "lucide-react";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +44,9 @@ const eventFormSchema = z
     organiserId: z.string(),
     // Members who can run this one event without brigade-wide Events Admin
     teamLeaderIds: z.array(z.string()),
+    // Invite-only visibility and explicit invite list
+    isPrivate: z.boolean(),
+    invitedUserIds: z.array(z.string()),
     location: z.string(),
     address: z.string(),
     startDate: z.string().min(1, "Please select a date"),
@@ -110,6 +113,8 @@ const blankDefaults: EventFormValues = {
   eventTypeId: "",
   organiserId: "",
   teamLeaderIds: [],
+  isPrivate: false,
+  invitedUserIds: [],
   location: "",
   address: "",
   startDate: "",
@@ -181,6 +186,7 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
   const updateEvent = useMutation(api.events.updateEvent);
   const changeOrganiser = useMutation(api.events.changeOrganiser);
   const setTeamLeaders = useMutation(api.events.setTeamLeaders);
+  const setEventPrivacy = useMutation(api.events.setEventPrivacy);
   // Populates the hand-over picker and the team-leader picker
   const members = useQuery(api.users.getMemberUsers);
   const memberOptions: MemberOption[] = useMemo(
@@ -230,6 +236,7 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
   const watchHasShifts = form.watch("hasShifts");
   const watchAllowsGuests = form.watch("allowsGuests");
   const watchNeedsCrew = form.watch("needsCrew");
+  const watchIsPrivate = form.watch("isPrivate");
 
   // Load existing event data when editing (wait for slots and crews too, so
   // everything is populated in the same reset)
@@ -240,6 +247,8 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
         eventTypeId: existingEvent.eventTypeId || "",
         organiserId: existingEvent.createdBy,
         teamLeaderIds: existingEvent.teamLeaderIds ?? [],
+        isPrivate: existingEvent.isPrivate ?? false,
+        invitedUserIds: existingEvent.invitedUserIds ?? [],
         location: existingEvent.location || "",
         address: existingEvent.address || "",
         startDate: existingEvent.startDate,
@@ -342,6 +351,18 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
         if (canAppointLeaders) {
           await setTeamLeaders({ eventId, userIds: values.teamLeaderIds as Id<"users">[] });
         }
+        const wasPrivate = existingEvent?.isPrivate === true;
+        const prevInvited = existingEvent?.invitedUserIds ?? [];
+        const invitedChanged =
+          prevInvited.length !== values.invitedUserIds.length ||
+          prevInvited.some((id) => !values.invitedUserIds.includes(id));
+        if (values.isPrivate !== wasPrivate || invitedChanged) {
+          await setEventPrivacy({
+            eventId,
+            isPrivate: values.isPrivate,
+            invitedUserIds: values.invitedUserIds as Id<"users">[],
+          });
+        }
         await updateEvent({
           eventId,
           ...fields,
@@ -396,6 +417,10 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
           memberResponses: values.responsesClosed ? ("closed" as const) : undefined,
           slots: values.hasShifts ? slots : undefined,
           crewAppliances: crewAppliances.length > 0 ? crewAppliances : undefined,
+          isPrivate: values.isPrivate || undefined,
+          invitedUserIds: values.isPrivate
+            ? (values.invitedUserIds as Id<"users">[])
+            : undefined,
         });
         if (values.teamLeaderIds.length > 0) {
           await setTeamLeaders({
@@ -568,6 +593,110 @@ export function EventForm({ eventId, onClose, onDetailsChanged }: EventFormProps
               );
             }}
           />
+        )}
+
+        {/* Privacy / invite-only visibility */}
+        <FormField
+          control={form.control}
+          name="isPrivate"
+          render={({ field }) => (
+            <FormItem>
+              <label className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg cursor-pointer">
+                <span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Lock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    Private event (invite only)
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Only invited members, the organiser, team leaders and Events Admins can see this event
+                  </span>
+                </span>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Private event (invite only)"
+                    className="h-7 w-12 flex-shrink-0 [&>span]:h-6 [&>span]:w-6 [&>span]:data-[state=checked]:translate-x-5"
+                  />
+                </FormControl>
+              </label>
+            </FormItem>
+          )}
+        />
+
+        {watchIsPrivate && (
+          <div className="space-y-3 pl-3 border-l-2 border-purple-200 dark:border-purple-800">
+            <FormField
+              control={form.control}
+              name="invitedUserIds"
+              render={({ field }) => {
+                const selected = field.value as string[];
+                const organiserId = form.watch("organiserId");
+                const teamLeaderIds = form.watch("teamLeaderIds");
+                const excluded = new Set([organiserId, ...teamLeaderIds].filter(Boolean));
+                const uninvitedOfficers = memberOptions.filter(
+                  (option) =>
+                    (option.rank === "Lieutenant" || option.rank === "Captain") &&
+                    !selected.includes(option._id) &&
+                    !excluded.has(option._id)
+                );
+                return (
+                  <FormItem>
+                    <MemberCombobox
+                      label="Invited members"
+                      options={memberOptions.filter(
+                        (option) => !selected.includes(option._id) && !excluded.has(option._id)
+                      )}
+                      value={null}
+                      onChange={(value) => value && field.onChange([...selected, value])}
+                      placeholder="Add a member to invite"
+                      helperText="The organiser and team leaders are always included. You can also manage invites any time from the event page."
+                    />
+                    {uninvitedOfficers.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            field.onChange([
+                              ...selected,
+                              ...uninvitedOfficers.map((option) => option._id),
+                            ])
+                          }
+                          className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          + Add all officers ({uninvitedOfficers.length})
+                        </button>
+                      </div>
+                    )}
+                    {selected.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selected.map((id) => (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm bg-purple-50 dark:bg-purple-900/25 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200"
+                          >
+                            {memberOptions.find((option) => option._id === id)?.name ??
+                              "Unknown member"}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                field.onChange(selected.filter((value) => value !== id))
+                              }
+                              aria-label="Remove invited member"
+                              className="p-0.5 rounded-full hover:bg-purple-200/60 dark:hover:bg-purple-800/60"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
         )}
 
         {/* Location */}

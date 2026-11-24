@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { attendanceFor, eventManagerId, requireEventManager } from "./events";
+import type { Id } from "./_generated/dataModel";
+import {
+  attendanceFor,
+  canViewEvent,
+  ensureInvitedToPrivateEvent,
+  eventManagerId,
+  hasEventsAdmin,
+  requireEventManager,
+} from "./events";
 import {
   crewSeatFields,
   filledSeats,
@@ -36,6 +44,11 @@ export const listEventCrews = query({
   handler: async (ctx, args) => {
     const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) return [];
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event) return [];
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) return [];
 
     const crews = (
       await ctx.db
@@ -103,7 +116,7 @@ export const saveEventCrew = mutation({
   },
   returns: v.id("eventCrews"),
   handler: async (ctx, { eventId, crewId, perShift: perShiftArg, ...args }) => {
-    const { userId } = await requireEventManager(ctx, eventId);
+    const { userId, event } = await requireEventManager(ctx, eventId);
     const fields = await validateCrew(ctx, args);
     const existing = crewId ? await ctx.db.get(crewId) : null;
     if (crewId && (!existing || existing.eventId !== eventId)) {
@@ -111,8 +124,7 @@ export const saveEventCrew = mutation({
     }
     const perShift = perShiftArg ?? existing?.perShift ?? false;
     if (perShift) {
-      const event = await ctx.db.get(eventId);
-      if (!event?.hasShifts) throw new Error("Only an event with shifts can crew an appliance per shift");
+      if (!event.hasShifts) throw new Error("Only an event with shifts can crew an appliance per shift");
       // The seats are per shift now; the appliance row keeps none of its own.
       if (filledSeats(fields) > 0) {
         throw new Error("Clear the whole-event seats before crewing this appliance per shift");
@@ -162,6 +174,11 @@ export const saveEventCrew = mutation({
         updatedAt: now,
       });
     }
+
+    const seatedUserIds = [fields.crewLeader, fields.driver, ...fields.crewMembers]
+      .filter((seat): seat is { userId: Id<"users"> } => !!seat && "userId" in seat)
+      .map((seat) => seat.userId);
+    await ensureInvitedToPrivateEvent(ctx, event, seatedUserIds);
 
     await ctx.db.insert("eventHistory", {
       eventId,
@@ -216,6 +233,10 @@ export const listShiftCrews = query({
   handler: async (ctx, args) => {
     const userId = (await getModuleUser(ctx, "events"))?._id;
     if (!userId) return [];
+    const event = await ctx.db.get(args.eventId);
+    if (!event) return [];
+    const viewerIsAdmin = (await hasEventsAdmin(ctx)) !== null;
+    if (!canViewEvent(event, userId, viewerIsAdmin)) return [];
     const rows = await shiftCrewsFor(ctx, args.eventId);
     const { resolve } = await seatResolver(ctx, rows);
     return rows.map((row) => ({
@@ -241,7 +262,7 @@ export const saveShiftCrew = mutation({
   handler: async (ctx, { crewId, slotId, ...seats }) => {
     const crew = await ctx.db.get(crewId);
     if (!crew) throw new Error("That appliance has been removed");
-    const { userId } = await requireEventManager(ctx, crew.eventId);
+    const { userId, event } = await requireEventManager(ctx, crew.eventId);
     if (!crew.perShift) throw new Error(`${crew.applianceName} isn't crewed per shift`);
     const slot = await ctx.db.get(slotId);
     if (!slot || slot.eventId !== crew.eventId) throw new Error("That shift has been removed");
@@ -278,6 +299,11 @@ export const saveShiftCrew = mutation({
         updatedAt: now,
       });
     }
+
+    const seatedUserIds = [fields.crewLeader, fields.driver, ...fields.crewMembers]
+      .filter((seat): seat is { userId: Id<"users"> } => !!seat && "userId" in seat)
+      .map((seat) => seat.userId);
+    await ensureInvitedToPrivateEvent(ctx, event, seatedUserIds);
 
     await ctx.db.insert("eventHistory", {
       eventId: crew.eventId,
