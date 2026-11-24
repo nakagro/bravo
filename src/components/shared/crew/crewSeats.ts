@@ -1,15 +1,16 @@
 import { errorMessage } from "@/lib/errors";
+import { BRIGADE_NAME, QUICK_APPLIANCES } from "@/lib/brigadeConfig";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 // Seats on a crewed appliance, shared by Availability → Deployment → Crews and
 // appliance crews on events. Mirrors convex/lib/crewSeats.ts.
 
-export const BRIGADE_NAME = "Wyndham Vale";
-export const QUICK_APPLIANCES = ["Pumper", "Tanker", "FCV"];
+export { BRIGADE_NAME, QUICK_APPLIANCES };
 export const CREW_SEATS = 3;
 
-/** The full name a quick-pick chip stands for, e.g. "Wyndham Vale Pumper". */
-export const quickApplianceName = (appliance: string) => `${BRIGADE_NAME} ${appliance}`;
+/** The full name a quick-pick chip stands for, e.g. "Alpha Pumper" (or "Pumper" if unconfigured). */
+export const quickApplianceName = (appliance: string) =>
+  BRIGADE_NAME ? `${BRIGADE_NAME} ${appliance}` : appliance;
 
 /** A seat holds a BRAVO member or, for crew from another brigade, a typed name. */
 export interface SeatDraft {

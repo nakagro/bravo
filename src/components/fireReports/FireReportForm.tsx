@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { ArrowLeft, Bookmark, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Id } from "../../../convex/_generated/dataModel";
+import { BRIGADE_FULL_NAME } from "@/lib/brigadeConfig";
 
 import { ActionsTakenSection } from "./sections/ActionsTakenSection";
 import { IncidentSummarySection } from "./sections/IncidentSummarySection";
@@ -382,7 +383,7 @@ export function FireReportForm({ reportId, onBack, onSaved }: FireReportFormProp
             {reportId ? "Edit Fire Report" : "New Fire Report"}
           </h1>
           <p className="text-muted-foreground">
-            Wyndham Vale Fire Brigade Preliminary Fire Report
+            {BRIGADE_FULL_NAME} Preliminary Fire Report
           </p>
         </div>
       </div>

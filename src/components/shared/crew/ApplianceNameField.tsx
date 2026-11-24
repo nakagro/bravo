@@ -39,7 +39,7 @@ export function ApplianceNameField({ id, value, onChange, error }: ApplianceName
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Or type a name, e.g. Werribee Tanker"
+        placeholder="Or type a name, e.g. Neighbouring Tanker"
         maxLength={60}
         aria-invalid={!!error}
         className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base"

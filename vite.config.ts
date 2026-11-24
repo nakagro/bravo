@@ -41,32 +41,17 @@ function scrubEmDashesFromBuild() {
 }
 
 
-const UAT_DEPLOYMENT = "precious-magpie-647";
-
-/**
- * Rewrite the shell HTML so a UAT build is unmistakable before a single byte of
- * React runs - the tab title, the installed PWA's name and icon, and the iOS
- * home-screen label.
- *
- * Keyed on VITE_CONVEX_URL rather than the Vite mode, deliberately. Vercel runs
- * `npm run build` (mode `vps`) for BOTH projects; the UAT project differs only
- * by its dashboard VITE_CONVEX_URL. A mode check would therefore pass locally
- * and silently do nothing on the deployed UAT build.
- *
- * UAT and prod are separate origins, so their service workers, caches and
- * installs never collide - nothing here is required for correctness. It exists
- * because UAT holds a clone of real member data: two identical BRAVO icons on a
- * home screen is how someone does real-looking work in the copy.
- */
 function resolveHtmlEnvironment(
   convexUrl: string,
   explicitEnv?: string,
+  uatDeployment?: string,
 ): "production" | "uat" | "dev" {
   const override = explicitEnv?.trim().toLowerCase();
   if (override === "production" || override === "uat" || override === "dev") {
     return override;
   }
-  if (convexUrl.includes(UAT_DEPLOYMENT)) return "uat";
+  const uatSlug = uatDeployment?.trim();
+  if (uatSlug && convexUrl.includes(uatSlug)) return "uat";
   if (convexUrl.includes(".convex.cloud")) return "dev";
   if (!convexUrl) return "production";
   try {
@@ -93,21 +78,23 @@ function resolveHtmlEnvironment(
   return "production";
 }
 
-function environmentAwareHtml(convexUrl: string, explicitEnv?: string) {
-  const appEnv = resolveHtmlEnvironment(convexUrl, explicitEnv);
+function environmentAwareHtml(
+  convexUrl: string,
+  explicitEnv?: string,
+  uatDeployment?: string,
+  brigadeCode?: string,
+) {
+  const appEnv = resolveHtmlEnvironment(convexUrl, explicitEnv, uatDeployment);
 
   return {
     name: "environment-aware-html",
     transformIndexHtml(html: string) {
-      // The backend to warm up is whichever one this build talks to; the
-      // literal in index.html is prod's.
+      // Warm up whichever backend this build talks to.
       const origin = convexUrl.replace(/\/+$/, "");
-      if (origin) {
-        html = html.replace(
-          /<link rel="preconnect" href="[^"]*" \/>/,
-          `<link rel="preconnect" href="${origin}" />`,
-        );
-      }
+      html = html.replace(
+        "<!-- __CONVEX_PRECONNECT__ -->",
+        origin ? `<link rel="preconnect" href="${origin}" />` : "",
+      );
 
       if (appEnv === "uat") {
         return html
@@ -147,6 +134,17 @@ function environmentAwareHtml(convexUrl: string, explicitEnv?: string) {
           .replace(
             /<meta name="theme-color" content="#1f2937" media="\(prefers-color-scheme: dark\)" \/>/,
             '<meta name="theme-color" content="#f59e0b" media="(prefers-color-scheme: dark)" />',
+          );
+      }
+
+      const code = brigadeCode?.trim();
+      if (code) {
+        const title = `BRAVO - ${code}`;
+        html = html
+          .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+          .replace(
+            /<meta name="apple-mobile-web-app-title" content="[^"]*" \/>/,
+            `<meta name="apple-mobile-web-app-title" content="${title}" />`,
           );
       }
 
@@ -216,7 +214,12 @@ export default defineConfig(({ mode }) => {
   plugins: [
     tailwindcss(),
     react(),
-    environmentAwareHtml(convexUrl, env.VITE_APP_ENV),
+    environmentAwareHtml(
+      convexUrl,
+      env.VITE_APP_ENV,
+      env.VITE_UAT_DEPLOYMENT,
+      env.VITE_BRIGADE_CODE,
+    ),
     VitePWA({
       registerType: "autoUpdate", // automatically update when new SW available
       injectRegister: "auto", // automatically inject SW registration script

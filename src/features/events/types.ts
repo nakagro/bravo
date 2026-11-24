@@ -119,7 +119,7 @@ export function formatGuestSplit(attending: number, guests: number): string {
   }`;
 }
 
-// Initials for avatar chips: "Shaun Gordon" → "SG"
+// Initials for avatar chips: "Alex Taylor" → "AT"
 export function getInitials(
   user: { firstName?: string; lastName?: string; name?: string } | null | undefined
 ): string {

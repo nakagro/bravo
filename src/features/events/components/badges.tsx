@@ -90,7 +90,7 @@ export function ShiftsBadge({ className = "" }: { className?: string }) {
 
 /**
  * An appliance crewed for the event. The brigade's own name is dropped so the
- * chip reads "Pumper" rather than repeating "Wyndham Vale" on every card.
+ * chip reads "Pumper" rather than repeating the brigade name on every card.
  */
 export function CrewBadge({
   applianceName,
@@ -109,8 +109,11 @@ export function CrewBadge({
   );
 }
 
-export const shortApplianceName = (name: string) =>
-  name.replace(new RegExp(`^${BRIGADE_NAME}\\s+`, "i"), "");
+export const shortApplianceName = (name: string) => {
+  if (!BRIGADE_NAME) return name;
+  const escaped = BRIGADE_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return name.replace(new RegExp(`^${escaped}\\s+`, "i"), "");
+};
 
 /**
  * Small indicator that member responses are closed - the organiser has set the

@@ -65,7 +65,7 @@ const EVENT_SAMPLE = {
   assignment: "Driver on Tanker 1\nShifts: Morning (09:00–11:00), Afternoon (11:00–14:00)",
   date: "Sat 14 Dec",
   message: "Bring hi-vis.",
-  sender: "Shaun Gordon",
+  sender: "Alex Taylor",
   eventTitle: "Open day",
   time: "9:00 AM",
   location: "Main Station",
@@ -75,7 +75,7 @@ const DEPLOYMENT_SAMPLE = {
   assignment: "Driver on Tanker 1",
   date: "Sat 14 Dec",
   message: "Meet at the station 0600.",
-  sender: "Shaun Gordon",
+  sender: "Alex Taylor",
 };
 
 export const NOTIFICATION_TEMPLATES = {

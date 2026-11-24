@@ -19,21 +19,32 @@ async function setup() {
 }
 
 describe("UAT test event", () => {
-  const original = process.env.CONVEX_CLOUD_URL;
+  const originalUrl = process.env.CONVEX_CLOUD_URL;
+  const originalUat = process.env.UAT_DEPLOYMENT;
   afterEach(() => {
-    process.env.CONVEX_CLOUD_URL = original;
+    process.env.CONVEX_CLOUD_URL = originalUrl;
+    process.env.UAT_DEPLOYMENT = originalUat;
   });
 
   it("refuses on any deployment that isn't UAT", async () => {
     const t = await setup();
-    process.env.CONVEX_CLOUD_URL = "https://boss-convex.grayhux.io";
+    process.env.UAT_DEPLOYMENT = "example-uat-123";
+    process.env.CONVEX_CLOUD_URL = "https://convex.example.org";
     await expect(t.mutation(internal.uatFixtures.createTestEvent, {})).rejects.toThrow("not the UAT");
     expect(await t.run((ctx) => ctx.db.query("events").collect())).toEqual([]);
   });
 
+  it("refuses when UAT_DEPLOYMENT is unset", async () => {
+    const t = await setup();
+    delete process.env.UAT_DEPLOYMENT;
+    process.env.CONVEX_CLOUD_URL = "https://example-uat-123.convex.cloud";
+    await expect(t.mutation(internal.uatFixtures.createTestEvent, {})).rejects.toThrow("not the UAT");
+  });
+
   it("makes a lived-in shift event on UAT", async () => {
     const t = await setup();
-    process.env.CONVEX_CLOUD_URL = "https://precious-magpie-647.convex.cloud";
+    process.env.UAT_DEPLOYMENT = "example-uat-123";
+    process.env.CONVEX_CLOUD_URL = "https://example-uat-123.convex.cloud";
     const { eventId, title, people } = await t.mutation(internal.uatFixtures.createTestEvent, {});
     expect(title).toBe("[TEST] Station crewing day");
     expect(people).toBe(12);

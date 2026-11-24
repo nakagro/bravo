@@ -35,6 +35,6 @@ echo "" >&2
 echo "  ✗ Refusing to push 'main' from a non-interactive shell." >&2
 echo "" >&2
 echo "    Pushing main triggers the Vercel PRODUCTION deploy." >&2
-echo "    If you are an AI agent: commit locally and hand the push back to Shaun." >&2
+echo "    If you are an AI agent: commit locally and hand the push back to a maintainer." >&2
 echo "" >&2
 exit 1

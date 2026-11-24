@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { fdrAppearance, fdrLabel, NO_RATING_CARD_CLASSES } from "./fdrLevels";
+import { FDR_API_BASE } from "@/lib/brigadeConfig";
 
 interface FDRData {
   category: string;
@@ -55,10 +56,15 @@ export function FireDangerRating() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!FDR_API_BASE) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
       try {
         // Fetch FDR data
         _t("FDR fetch start");
-        const fdrResponse = await fetch("https://api2.grayhux.io/fdr");
+        const fdrResponse = await fetch(`${FDR_API_BASE}/fdr`);
         const fdrData: FDRResponse = await fdrResponse.json();
         _t("FDR fetch complete");
 
@@ -83,7 +89,7 @@ export function FireDangerRating() {
 
         // Fetch TFB data
         _t("TFB fetch start");
-        const tfbResponse = await fetch("https://api2.grayhux.io/emv-conditions");
+        const tfbResponse = await fetch(`${FDR_API_BASE}/emv-conditions`);
         const tfbData: EMVConditionsResponse = await tfbResponse.json();
         _t("TFB fetch complete");
 

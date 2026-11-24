@@ -30,7 +30,7 @@ if ! (exec 3</dev/tty) 2>/dev/null; then
   ✗ Refusing: ${ACTION} targets PRODUCTION and there is no controlling terminal.
 
     Production deploys are performed by a human, from a real terminal.
-    If you are an AI agent: stop here and hand this step back to Shaun.
+    If you are an AI agent: stop here and hand this step back to a maintainer.
     Deploy to cloud/UAT instead — that path is unrestricted.
 
 EOF

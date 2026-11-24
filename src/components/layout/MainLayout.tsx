@@ -3,6 +3,7 @@ import { HamburgerMenu } from "./HamburgerMenu";
 import { Toaster } from "../ui/sonner";
 import { Link } from "react-router-dom";
 import { getEnvironmentBadge } from "@/utils/environment";
+import { BRIGADE_FULL_NAME, BRIGADE_SHORT_NAME } from "@/lib/brigadeConfig";
 import { ActionBell } from "../../features/actionCentre/components/ActionBell";
 
 interface MainLayoutProps {
@@ -42,10 +43,10 @@ export function MainLayout({ children }: MainLayoutProps) {
             {/* One line on every phone: the short name below the width where the full name would wrap */}
             <h2 className="flex min-w-0 items-center gap-2 whitespace-nowrap text-lg font-semibold text-red-700 dark:text-red-600 sm:text-xl">
               <span className={`truncate ${envBadge ? "min-[440px]:hidden" : "min-[380px]:hidden"}`}>
-                Wyndham Vale FB
+                {BRIGADE_SHORT_NAME}
               </span>
               <span className={`hidden truncate ${envBadge ? "min-[440px]:inline" : "min-[380px]:inline"}`}>
-                Wyndham Vale Fire Brigade
+                {BRIGADE_FULL_NAME}
               </span>
               {envBadge && (
                 <span

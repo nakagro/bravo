@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { FDR_LEVELS, fdrAppearance, fdrLabel } from "@/components/dashboard/fdrLevels";
 import { FdrAboutSheet } from "@/components/dashboard/FdrAboutSheet";
 import { Spinner } from "@/components/ui/spinner";
+import { FDR_API_BASE } from "@/lib/brigadeConfig";
 
 interface RegionForecast {
   description: string;
@@ -59,9 +60,14 @@ export function FDRPage() {
   }, []);
 
   const fetchData = async () => {
+    if (!FDR_API_BASE) {
+      setError("Fire Danger Rating feed is not configured (set VITE_FDR_API_URL).");
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const response = await fetch("https://api2.grayhux.io/fdr-all");
+      const response = await fetch(`${FDR_API_BASE}/fdr-all`);
       const xmlText = await response.text();
 
       // Parse XML
@@ -111,7 +117,7 @@ export function FDRPage() {
 
       // Fetch TFB data from EMV conditions API
       try {
-        const tfbResponse = await fetch("https://api2.grayhux.io/emv-conditions");
+        const tfbResponse = await fetch(`${FDR_API_BASE}/emv-conditions`);
         const tfbJson = await tfbResponse.json();
         setTfbData({
           current: tfbJson.current?.tfb || {},

@@ -10,10 +10,7 @@ export const ACCESS_RECENT_COMMANDS_WINDOW_MS = 5 * 60 * 1000;
 export const VALID_SITE_IDS = ["main", "satellite"] as const;
 export type AccessSiteId = (typeof VALID_SITE_IDS)[number];
 
-export const panelKindValidator = v.union(
-  v.literal("inception"),
-  v.literal("challenger"),
-);
+export const panelKindValidator = v.string();
 
 export const areaStatusValidator = v.union(
   v.literal("armed"),

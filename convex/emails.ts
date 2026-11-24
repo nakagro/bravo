@@ -4,7 +4,14 @@ import { Resend } from "resend";
 import { internal } from "./_generated/api";
 import { escapeHtml } from "./lib/access";
 
-const FROM_ADDRESS = "BRAVO <noreply@mail.bravo.grayhux.io>";
+function getFromAddress(): string {
+  return process.env.EMAIL_FROM?.trim() || "BRAVO <noreply@example.com>";
+}
+
+function getFrontendUrl(): string {
+  const raw = process.env.FRONTEND_URL?.trim() || process.env.SITE_URL?.trim() || "";
+  return raw.replace(/\/+$/, "");
+}
 
 /**
  * Every outbound email in this codebase goes through sendGuardedEmail() below.
@@ -81,7 +88,7 @@ export async function sendGuardedEmail(args: {
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const result = await resend.emails.send({
-    from: FROM_ADDRESS,
+    from: getFromAddress(),
     to: allowed,
     subject: args.subject,
     html: args.html,
@@ -340,7 +347,7 @@ export const sendPasswordResetEmail = internalAction({
     // Construct the reset URL using the frontend URL.
     // FRONTEND_URL must be set on any non-production deployment, or the reset
     // link in a UAT email points at PRODUCTION.
-    const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
+    const frontendUrl = getFrontendUrl();
     const resetUrl = `${frontendUrl}/reset-password?token=${args.token}`;
 
     try {
@@ -447,7 +454,7 @@ export const sendEventNoticeEmail = internalAction({
       return { success: true, message: "No recipients to notify" };
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || "https://bravo.grayhux.io";
+    const frontendUrl = getFrontendUrl();
     const link = args.url.startsWith("http")
       ? args.url
       : `${frontendUrl}${args.url.startsWith("/") ? "" : "/"}${args.url}`;

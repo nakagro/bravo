@@ -1,6 +1,8 @@
 // Client-side "Add to calendar" - builds a minimal RFC 5545 .ics file for an
 // event and triggers a download. No backend required.
 
+import { BRIGADE_CODE } from "@/lib/brigadeConfig";
+
 interface IcsEvent {
   _id: string;
   title: string;
@@ -34,12 +36,13 @@ function nextDay(date: string): string {
 }
 
 function buildIcs(event: IcsEvent): string {
+  const code = BRIGADE_CODE.replace(/[^A-Za-z0-9_-]/g, "") || "BRAVO";
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//WVFB//Events//EN",
+    `PRODID:-//${code}//Events//EN`,
     "BEGIN:VEVENT",
-    `UID:${event._id}@wvfb`,
+    `UID:${event._id}@${code.toLowerCase()}`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
   ];
 

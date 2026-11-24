@@ -151,7 +151,7 @@ async function applySiteSnapshot(
   siteId: string,
   site: {
     name: string;
-    panel: "inception" | "challenger";
+    panel: string;
     panelLabel: string;
     writesEnabled: boolean;
     bridgeVersion?: string;

@@ -311,8 +311,8 @@ export function BARecordForm({ onSuccess }: BARecordFormProps) {
           id="notes"
           placeholder={
             usageType === "firecall"
-              ? "e.g., Structure fire - 475 Ballan Rd, Wyndham Vale"
-              : "e.g., BA drill at Wyndham Vale Fire Station"
+              ? "e.g., Structure fire - 123 Main St"
+              : "e.g., BA drill at Main Fire Station"
           }
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

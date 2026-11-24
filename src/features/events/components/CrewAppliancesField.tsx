@@ -91,7 +91,7 @@ export function CrewAppliancesField({ value, onChange, crewedNames, savedNames }
               addCustom();
             }
           }}
-          placeholder="Another appliance, e.g. Werribee Tanker"
+          placeholder="Another appliance, e.g. Neighbouring Tanker"
           maxLength={60}
           aria-label="Another appliance name"
           className="min-w-0 flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base"

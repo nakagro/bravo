@@ -362,19 +362,18 @@ http.route({
 
 
 // ============================================================================
-// ACCESS CONTROL BRIDGE - outbound LAN site bridges (Challenger+, Inception)
+// ACCESS CONTROL BRIDGE - outbound LAN site bridges
 // ============================================================================
 
-const ACCESS_BRIDGE_ENV: Record<string, string> = {
-  satellite: "ACCESS_BRIDGE_SATELLITE_TOKEN",
-  main: "ACCESS_BRIDGE_MAIN_TOKEN",
-};
-
-const VALID_PANELS = new Set(["inception", "challenger"]);
+const VALID_SITE_ID_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 const VALID_AREA_STATUS = new Set(["armed", "disarmed", "alarm", "exitDelay", "entryDelay"]);
 const VALID_DOOR_STATUS = new Set(["secured", "unlocked", "open", "heldOpen", "forced", "offline"]);
 const VALID_DOOR_KIND = new Set(["door", "roller"]);
 const VALID_COMPLETION_STATUS = new Set(["succeeded", "failed", "expired"]);
+
+function bridgeTokenEnvName(siteId: string): string {
+  return `ACCESS_BRIDGE_${siteId.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_TOKEN`;
+}
 
 function accessJson(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -387,10 +386,10 @@ async function authenticateAccessBridge(
   request: Request,
 ): Promise<{ ok: true; siteId: string } | { ok: false; response: Response }> {
   const siteId = request.headers.get("X-Access-Site")?.trim() ?? "";
-  const envKey = ACCESS_BRIDGE_ENV[siteId];
-  if (!envKey) {
+  if (!VALID_SITE_ID_RE.test(siteId)) {
     return { ok: false, response: accessJson(401, { error: "Unauthorized" }) };
   }
+  const envKey = bridgeTokenEnvName(siteId);
   const header = request.headers.get("Authorization");
   const presented = header?.startsWith("Bearer ") ? header.slice(7) : null;
   if (!(await secretMatches(presented, process.env[envKey]))) {
@@ -406,7 +405,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 function parseSitePayload(raw: unknown) {
   if (!isRecord(raw)) return null;
   if (typeof raw.name !== "string" || raw.name.length === 0 || raw.name.length > 80) return null;
-  if (typeof raw.panel !== "string" || !VALID_PANELS.has(raw.panel)) return null;
+  if (typeof raw.panel !== "string" || raw.panel.length === 0 || raw.panel.length > 40) return null;
   if (typeof raw.panelLabel !== "string" || raw.panelLabel.length === 0 || raw.panelLabel.length > 80) return null;
   if (typeof raw.writesEnabled !== "boolean") return null;
   if (raw.bridgeVersion !== undefined && (typeof raw.bridgeVersion !== "string" || raw.bridgeVersion.length > 40)) return null;
@@ -457,7 +456,7 @@ function parseSitePayload(raw: unknown) {
 
   return {
     name: raw.name,
-    panel: raw.panel as "inception" | "challenger",
+    panel: raw.panel,
     panelLabel: raw.panelLabel,
     writesEnabled: raw.writesEnabled,
     ...(raw.bridgeVersion !== undefined ? { bridgeVersion: raw.bridgeVersion } : {}),

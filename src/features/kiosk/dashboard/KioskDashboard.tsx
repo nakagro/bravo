@@ -15,6 +15,7 @@ import { GridRenderer, type DashboardContext } from './GridRenderer';
 import { DoorControlModal, AreaControlModal, ConfirmDialog, type ConfirmConfig } from './modals';
 import { type ResolvedState } from './widgets';
 import { errorMessage } from "@/lib/errors";
+import { STATION_NAME } from "@/lib/brigadeConfig";
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 type ActiveModal = { type: 'door' | 'area'; id: string; name: string; secureLabel?: string } | null;
@@ -194,7 +195,7 @@ export default function KioskDashboard({
           </button>
           <HeaderTime />
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Wyndham Vale Fire Station</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">{STATION_NAME}</h1>
         <div className="flex items-center gap-3">
           <HeaderDate />
           <button

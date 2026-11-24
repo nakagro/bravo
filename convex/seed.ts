@@ -454,11 +454,11 @@ export const seedDevDatabase = internalMutation({
     }
     summary["equipmentCategories"] = equipmentCategories.length;
 
-    // ── 10. Links (9 entries from prod) ────────────────────────────────
+    // ── 10. Links (example entries) ────────────────────────────────────
     const links = [
       {
         title: "Hydrant Map",
-        url: "https://hydrant.grayhux.io/hydrant/",
+        url: "https://hydrant.example.com/",
         category: "Maps",
         icon: "💧",
         order: 0,
@@ -470,8 +470,8 @@ export const seedDevDatabase = internalMutation({
         order: 0,
       },
       {
-        title: "BA Set Skills Maintenance (Google Form)",
-        url: "https://docs.google.com/forms/d/e/1FAIpQLSc0PO7UoERDx02gcahzUVu0bJzNNc-OTdj-_ow8CCxbnDuRWQ/viewform",
+        title: "BA Set Skills Maintenance",
+        url: "https://forms.example.com/ba-skills",
         category: "CFA",
         order: 1,
       },
@@ -482,8 +482,8 @@ export const seedDevDatabase = internalMutation({
         order: 2,
       },
       {
-        title: "WYDV Status Page",
-        url: "https://uptime.grayhux.io/status/wydv",
+        title: "Brigade Status Page",
+        url: "https://status.example.com/",
         category: "General",
         icon: "📖",
         order: 3,

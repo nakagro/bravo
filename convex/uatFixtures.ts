@@ -9,19 +9,19 @@ import { brigadeDateStr } from "./lib/dates";
 // Three locks keep this off prod:
 //  1. internalMutation - no browser can call it, only the CLI/dashboard with
 //     the deployment's admin key;
-//  2. the npm script hard-targets UAT (CONVEX_DEPLOYMENT=precious-magpie-647);
-//  3. assertUat below refuses unless the deployment's own URL is UAT's. That
-//     URL is set by Convex itself, not by an env var someone could copy across.
+//  2. the npm script targets the UAT deployment;
+//  3. assertUat below refuses unless UAT_DEPLOYMENT is set on the deployment
+//     and matches Convex's own CONVEX_CLOUD_URL.
 //
 // Rows are inserted directly, so nothing is pushed or emailed. Everything it
 // makes is titled "[TEST] ..." and can be cancelled and deleted in the app.
 
-export const UAT_DEPLOYMENT = "precious-magpie-647";
 export const TEST_TITLE_PREFIX = "[TEST]";
 
 function assertUat() {
+  const expected = process.env.UAT_DEPLOYMENT?.trim() ?? "";
   const url = process.env.CONVEX_CLOUD_URL ?? "";
-  if (!url.includes(UAT_DEPLOYMENT)) {
+  if (!expected || !url.includes(expected)) {
     throw new Error(`Refusing to run: this is not the UAT deployment (${url || "unknown"})`);
   }
 }
@@ -126,7 +126,7 @@ export const createTestEvent = internalMutation({
 
     await ctx.db.insert("eventCrews", {
       eventId,
-      applianceName: "Wyndham Vale Pumper",
+      applianceName: "Brigade Pumper",
       perShift: true,
       crewMembers: [],
       createdBy: organiser._id,

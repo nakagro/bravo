@@ -11,8 +11,6 @@
  */
 export type AppEnvironment = "production" | "uat" | "dev";
 
-const UAT_DEPLOYMENT = "precious-magpie-647";
-
 function isLocalOrLanHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (
@@ -45,6 +43,7 @@ function isLocalOrLanHost(hostname: string): boolean {
 export function resolveAppEnvironment(
   convexUrl: string,
   explicitEnv?: string,
+  uatDeployment?: string,
 ): AppEnvironment {
   const normalizedOverride = explicitEnv?.trim().toLowerCase();
   if (
@@ -55,7 +54,8 @@ export function resolveAppEnvironment(
     return normalizedOverride;
   }
 
-  if (convexUrl.includes(UAT_DEPLOYMENT)) {
+  const uatSlug = uatDeployment?.trim();
+  if (uatSlug && convexUrl.includes(uatSlug)) {
     return "uat";
   }
 
@@ -85,6 +85,7 @@ export function getAppEnvironment(): AppEnvironment {
   return resolveAppEnvironment(
     import.meta.env.VITE_CONVEX_URL ?? "",
     import.meta.env.VITE_APP_ENV,
+    import.meta.env.VITE_UAT_DEPLOYMENT,
   );
 }
 

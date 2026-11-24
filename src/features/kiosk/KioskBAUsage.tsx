@@ -578,7 +578,7 @@ function KioskBAUsage({ onBack }: KioskBAUsageProps) {
                         }`}
                     >
                         <span className={`text-lg ${notes ? 'text-white' : 'text-slate-500'}`}>
-                            {notes || 'Tap to enter job details, e.g. "Structure fire, 475 Ballan Rd, Wyndham Vale"'}
+                            {notes || 'Tap to enter job details, e.g. "Structure fire, 123 Main St"'}
                         </span>
                         <Pencil className="h-6 w-6 shrink-0 text-slate-400" />
                     </button>

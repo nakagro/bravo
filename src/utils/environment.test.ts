@@ -7,9 +7,13 @@ describe("resolveAppEnvironment", () => {
     expect(resolveAppEnvironment("")).toBe("production");
   });
 
-  it("identifies the UAT Convex Cloud deployment", () => {
+  it("identifies a configured UAT Convex Cloud deployment", () => {
     expect(
-      resolveAppEnvironment("https://precious-magpie-647.convex.cloud"),
+      resolveAppEnvironment(
+        "https://example-uat-123.convex.cloud",
+        undefined,
+        "example-uat-123",
+      ),
     ).toBe("uat");
   });
 

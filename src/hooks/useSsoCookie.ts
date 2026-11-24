@@ -1,16 +1,16 @@
 import { useAuthToken } from "@convex-dev/auth/react";
 import { useEffect } from "react";
+import { SSO_DOMAIN } from "@/lib/brigadeConfig";
 
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 /**
- * Write (or clear) the `bravo_jwt` cookie Labs reads. Shared by the main app
- * and `/sso-refresh.html` so the attributes can't drift apart: Labs clears
- * this cookie on sign-out, and a delete only works if `secure`/`samesite`
- * match what was set.
+ * Write (or clear) the `bravo_jwt` cookie shared with companion apps under
+ * `VITE_SSO_DOMAIN`. No-op when `VITE_SSO_DOMAIN` is unset.
  */
-export function writeSsoCookie(token: string | null) {
-  const attrs = "domain=.grayhux.io; path=/; secure; samesite=lax";
+export function writeSsoCookie(token: string | null, domain = SSO_DOMAIN) {
+  if (!domain) return;
+  const attrs = `domain=.${domain}; path=/; secure; samesite=lax`;
   document.cookie = token
     ? `bravo_jwt=${token}; ${attrs}; max-age=${MAX_AGE_SECONDS}`
     : `bravo_jwt=; ${attrs}; max-age=0`;

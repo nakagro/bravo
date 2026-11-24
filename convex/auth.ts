@@ -60,6 +60,14 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         if (user && isDisabledAccount(user)) {
           throw new Error("This account has been disabled.");
         }
+        const otpOriginHost = (() => {
+          const raw = process.env.FRONTEND_URL?.trim() || process.env.SITE_URL?.trim() || "";
+          try {
+            return raw ? new URL(raw).hostname : "";
+          } catch {
+            return "";
+          }
+        })();
         await sendGuardedEmail({
           to: email,
           subject: `${token} is your BRAVO sign-in code`,
@@ -72,7 +80,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
                 ${token}
               </div>
               <p style="color: #6b7280; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
-              <p style="font-size: 0; color: transparent; line-height: 0; max-height: 0; overflow: hidden;">@bravo.grayhux.io #${token}</p>
+              ${otpOriginHost ? `<p style="font-size: 0; color: transparent; line-height: 0; max-height: 0; overflow: hidden;">@${otpOriginHost} #${token}</p>` : ""}
             </div>
           `,
         });
