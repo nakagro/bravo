@@ -11,9 +11,42 @@ import { NotificationCard } from "./NotificationCard";
 import { NotificationLog } from "./NotificationLog";
 import { errorMessage } from "@/lib/errors";
 
-export type AssignmentSourceKey = "event" | "deploymentDay";
+export type AssignmentSourceKey = "event" | "eventInvite" | "deploymentDay";
 type Audience = "changes" | "everyone";
 type State = "new" | "changed" | "unchanged" | "removed";
+
+const SOURCE_COPY: Record<
+  AssignmentSourceKey,
+  {
+    buttonLabel: string;
+    whoTitle: string;
+    changesLabel: string;
+    everyoneLabel: string;
+    allSentText: string;
+  }
+> = {
+  event: {
+    buttonLabel: "Send to crew",
+    whoTitle: "Send to crew",
+    changesLabel: "Only new, changed & removed",
+    everyoneLabel: "Everyone on the crew",
+    allSentText: "Everyone has already been told.",
+  },
+  eventInvite: {
+    buttonLabel: "Send invites",
+    whoTitle: "Send invites",
+    changesLabel: "Only new invitees",
+    everyoneLabel: "All invited members",
+    allSentText: "Everyone invited has already been notified.",
+  },
+  deploymentDay: {
+    buttonLabel: "Send to crew",
+    whoTitle: "Send to crew",
+    changesLabel: "Only new, changed & removed",
+    everyoneLabel: "Everyone on the crew",
+    allSentText: "Everyone has already been told.",
+  },
+};
 
 // Matches NOTE_MAX in convex/lib/notificationTemplates.ts
 const NOTE_MAX = 140;
@@ -96,6 +129,7 @@ export function SendAssignmentsSheet({
     }
   };
 
+  const copy = SOURCE_COPY[source];
   const recipients = preview?.recipients ?? [];
   const groups = (["new", "changed", "removed", "unchanged"] as State[])
     .map((state) => ({ state, members: recipients.filter((r) => r.state === state) }))
@@ -106,7 +140,7 @@ export function SendAssignmentsSheet({
     <ResponsiveModal
       open={open}
       onClose={close}
-      title={step === "who" ? "Send to crew" : "Check what they'll see"}
+      title={step === "who" ? copy.whoTitle : "Check what they'll see"}
       drawerHeight="max-h-[90vh]"
       footer={
         step === "who" ? (
@@ -176,7 +210,7 @@ export function SendAssignmentsSheet({
                 </li>
               )}
               {recipients.length === 0 && (
-                <li className="text-sm text-gray-600 dark:text-gray-400">Everyone has already been told.</li>
+                <li className="text-sm text-gray-600 dark:text-gray-400">{copy.allSentText}</li>
               )}
             </ul>
 
@@ -196,8 +230,8 @@ export function SendAssignmentsSheet({
             <fieldset className="space-y-1 text-sm">
               {(
                 [
-                  ["changes", "Only new, changed & removed"],
-                  ["everyone", "Everyone on the crew"],
+                  ["changes", copy.changesLabel],
+                  ["everyone", copy.everyoneLabel],
                 ] as const
               ).map(([value, label]) => (
                 <label key={value} className="flex items-center gap-2">
@@ -315,7 +349,7 @@ export function SendAssignmentsButton({
           "inline-flex items-center gap-1.5 rounded border border-gray-300 dark:border-gray-600 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
         }
       >
-        Send to crew
+        {SOURCE_COPY[source].buttonLabel}
         {preview.pendingCount > 0 && (
           <span className="rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
             {preview.pendingCount}

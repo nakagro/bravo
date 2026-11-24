@@ -6,6 +6,7 @@ import type { AssignmentSourceKey } from "./SendAssignmentsSheet";
 
 const KIND_LABEL: Record<string, string> = {
   assignment: "Crew / roster notice",
+  invite: "Private event invite",
   cancelled: "Cancellation",
   detailsChanged: "Change of details",
   restored: "Back on",

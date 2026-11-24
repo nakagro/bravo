@@ -375,4 +375,138 @@ describe("private event notifications and Action Centre", () => {
       [aliceId, organiserId].sort()
     );
   });
+
+  it("queues a waiting invite notice on private events, tracks receipts, and cleans up removed invitees", async () => {
+    const { asOrganiser, asAlice, asBob, aliceId, bobId, carolId } = await setup();
+
+    // Public event has no invite notice
+    const publicId = await asOrganiser.mutation(api.events.createEvent, {
+      title: "Open Day",
+      startDate: FUTURE,
+      isAllDay: true,
+    });
+    expect(
+      await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+        source: "eventInvite",
+        scopeId: publicId,
+        audience: "changes",
+      })
+    ).toBeNull();
+
+    // Private event with Alice invited and Carol as team leader: both are waiting
+    const eventId = await asOrganiser.mutation(api.events.createEvent, {
+      title: "BMT Strategy",
+      startDate: FUTURE,
+      location: "Main Station",
+      isAllDay: true,
+      isPrivate: true,
+      invitedUserIds: [aliceId],
+    });
+    await asOrganiser.mutation(api.events.setTeamLeaders, {
+      eventId,
+      userIds: [carolId],
+    });
+
+    const initial = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(initial).not.toBeNull();
+    expect(initial!.pendingCount).toBe(2);
+    expect(initial!.unchangedCount).toBe(0);
+    expect(initial!.recipients.map((r) => r.userId).sort()).toEqual([aliceId, carolId].sort());
+    expect(initial!.recipients[0].title).toBe("You're invited: BMT Strategy");
+    expect(initial!.recipients[0].body).toContain("Org Aniser invited you to BMT Strategy");
+
+    // Send invites
+    const sent = await asOrganiser.mutation(api.assignmentNotices.sendAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+      fingerprint: initial!.fingerprint,
+    });
+    expect(sent).toBe(2);
+
+    // Pending clears; unchanged tracks already-told members
+    const afterSend = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(afterSend?.pendingCount).toBe(0);
+    expect(afterSend?.unchangedCount).toBe(2);
+    expect(afterSend?.recipients).toHaveLength(0);
+
+    // Appears in the event's unified NotificationLog with kind "invite"
+    const eventLogs = await asOrganiser.query(api.assignmentNotices.listNotificationSends, {
+      source: "event",
+      scopeId: eventId,
+    });
+    expect(eventLogs).toHaveLength(1);
+    expect(eventLogs![0].kind).toBe("invite");
+    expect(eventLogs![0].recipientCount).toBe(2);
+
+    // Alice has an Action Centre notice for the invite
+    const aliceActions = await asAlice.query(api.actionCentre.getMyActions, {});
+    expect(aliceActions.some((a) => a.title === "You're invited: BMT Strategy")).toBe(true);
+
+    // Adding Bob lights up pendingCount = 1 with only Bob as "new"
+    await asOrganiser.mutation(api.events.setEventPrivacy, {
+      eventId,
+      isPrivate: true,
+      invitedUserIds: [aliceId, bobId],
+    });
+    const withBob = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(withBob?.pendingCount).toBe(1);
+    expect(withBob?.unchangedCount).toBe(2);
+    expect(withBob?.recipients.map((r) => r.userId)).toEqual([bobId]);
+
+    // Removing Alice does NOT emit a "removed" notice and clears her stale invite receipt
+    await asOrganiser.mutation(api.events.setEventPrivacy, {
+      eventId,
+      isPrivate: true,
+      invitedUserIds: [bobId],
+    });
+    const withoutAlice = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(withoutAlice?.recipients.map((r) => r.userId)).toEqual([bobId]);
+    const aliceActionsAfterRemoval = await asAlice.query(api.actionCentre.getMyActions, {});
+    expect(aliceActionsAfterRemoval.some((a) => a.title === "You're invited: BMT Strategy")).toBe(false);
+
+    // Re-inviting Alice marks her as "new" again
+    await asOrganiser.mutation(api.events.setEventPrivacy, {
+      eventId,
+      isPrivate: true,
+      invitedUserIds: [aliceId, bobId],
+    });
+    const reInvited = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "eventInvite",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(reInvited?.pendingCount).toBe(2);
+    expect(reInvited?.recipients.map((r) => r.userId).sort()).toEqual([aliceId, bobId].sort());
+
+    // Independent of crew/roster notices ("event" source)
+    await asOrganiser.mutation(api.events.toggleEventAllocation, {
+      eventId,
+      userId: bobId,
+    });
+    const crewPreview = await asOrganiser.query(api.assignmentNotices.previewAssignmentNotice, {
+      source: "event",
+      scopeId: eventId,
+      audience: "changes",
+    });
+    expect(crewPreview?.pendingCount).toBe(1);
+    expect(crewPreview?.recipients.map((r) => r.userId)).toEqual([bobId]);
+    expect(await asBob.query(api.events.getEvent, { eventId })).not.toBeNull();
+  });
 });

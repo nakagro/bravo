@@ -44,6 +44,15 @@ const EVENT_ASSIGNMENT: Placeholder[] = [
   "time",
   "location",
 ];
+const EVENT_INVITE: Placeholder[] = [
+  "firstName",
+  "date",
+  "message",
+  "sender",
+  "eventTitle",
+  "time",
+  "location",
+];
 const DEPLOYMENT_ASSIGNMENT: Placeholder[] = ["firstName", "assignment", "date", "message", "sender"];
 // Same text for every recipient, so nothing per-member.
 const EVENT_CHANGE: Placeholder[] = ["date", "message", "sender", "eventTitle", "time", "location"];
@@ -105,6 +114,15 @@ export const NOTIFICATION_TEMPLATES = {
     title: "Off the roster: {eventTitle}",
     body: "You're no longer rostered for {eventTitle} on {date}.\n{message}",
     sample: EVENT_SAMPLE,
+  },
+  "eventInvite.assigned": {
+    label: "Private event invite",
+    description: "Sent when an organiser notifies invited members about a private event (or sends a reminder to all invited members).",
+    group: "Events",
+    placeholders: EVENT_INVITE,
+    title: "You're invited: {eventTitle}",
+    body: "{sender} invited you to {eventTitle}\n{date} {time} · {location}\n{message}",
+    sample: { ...EVENT_SAMPLE, eventTitle: "BMT Planning", message: "Please RSVP by Friday." },
   },
   "deployment.assigned": {
     label: "Crewed for a deployment",

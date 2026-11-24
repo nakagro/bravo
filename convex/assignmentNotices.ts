@@ -122,10 +122,13 @@ async function buildAssignmentPreview(
     candidates.push({ userId: a.userId, state, lines: a.lines, previousLines, values: a.values });
   }
   // Told before and holding nothing now. Someone added and removed before any
-  // send has no receipt, so hears nothing.
-  for (const r of receipts) {
-    if (held.has(r.userId) || r.removed) continue;
-    candidates.push({ userId: r.userId, state: "removed", lines: [], previousLines: r.lines });
+  // send has no receipt, so hears nothing. Sources like private event invites
+  // opt out of removal notices (skipRemoved).
+  if (!scope.skipRemoved) {
+    for (const r of receipts) {
+      if (held.has(r.userId) || r.removed) continue;
+      candidates.push({ userId: r.userId, state: "removed", lines: [], previousLines: r.lines });
+    }
   }
 
   const notNotified = scope.externalNames.map((name) => ({ name, reason: "Not a BRAVO member" }));
@@ -254,16 +257,23 @@ export const sendAssignmentNotice = mutation({
     }
 
     const n = preview.recipients.length;
+    const logKind = scope.logKind ?? "assignment";
     await logNoticeSend(ctx, {
-      scopeKey: scope.scopeKey,
-      kind: "assignment",
+      scopeKey: scope.logScopeKey ?? scope.scopeKey,
+      kind: logKind,
       title: preview.recipients[0].title,
       message: args.message?.trim(),
       recipientCount: n,
       recipients: preview.recipients.map((r) => ({ userId: r.userId, state: r.state })),
       sentBy: senderId,
     });
-    await source.recordSend?.(ctx, args.scopeId, senderId, `Crew notice sent to ${n} member${n === 1 ? "" : "s"}`);
+    const summaryPrefix = logKind === "invite" ? "Invite notice" : "Crew notice";
+    await source.recordSend?.(
+      ctx,
+      args.scopeId,
+      senderId,
+      `${summaryPrefix} sent to ${n} member${n === 1 ? "" : "s"}`,
+    );
 
     await ctx.scheduler.runAfter(0, internal.pushNotificationAction.deliverToUsers, {
       messages: preview.recipients.map((r) => ({ userId: r.userId, title: r.title, body: r.body, url: scope.url })),
@@ -326,14 +336,18 @@ export const listNotificationSends = query({
   handler: async (ctx, args) => {
     if (!(await ASSIGNMENT_SOURCES[args.source].senderId(ctx, args.scopeId))) return null;
     const scopeKey =
-      args.source === "event"
+      args.source === "event" || args.source === "eventInvite"
         ? `event:${args.scopeId}`
         : `deployment:${args.scopeId}`;
-    const sends = await ctx.db
+    const rawSends = await ctx.db
       .query("notificationSends")
       .withIndex("by_scope_sentAt", (q) => q.eq("scopeKey", scopeKey))
       .order("desc")
       .take(50);
+    const sends =
+      args.source === "eventInvite"
+        ? rawSends.filter((s) => s.kind === "invite")
+        : rawSends;
     const users = await loadUsers(ctx, [
       ...sends.map((s) => s.sentBy),
       ...sends.flatMap((s) => s.recipients.map((r) => r.userId)),

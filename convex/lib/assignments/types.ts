@@ -15,8 +15,14 @@ export type Assignment = {
 };
 
 export type AssignmentScope = {
-  scopeKey: string; // "event:<id>" | "deployment:<dateMs>"
-  templatePrefix: "event" | "deployment"; // picks event.assigned etc.
+  scopeKey: string; // "event:<id>" | "eventInvite:<id>" | "deployment:<dateMs>"
+  /** Running-sheet scopeKey when logs are shared with another source (defaults to scopeKey). */
+  logScopeKey?: string;
+  /** Kind written to notificationSends (defaults to "assignment"). */
+  logKind?: string;
+  /** When true, previously-notified members who are no longer listed are not sent a removal notice. */
+  skipRemoved?: boolean;
+  templatePrefix: "event" | "eventInvite" | "deployment"; // picks event.assigned etc.
   moduleId: string; // module gate for the Action Centre item + push
   notificationType: string; // pref category lookup
   url: string; // deep link to the source page

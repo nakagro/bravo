@@ -1756,6 +1756,27 @@ export const setEventPrivacy = mutation({
       updatedAt: Date.now(),
     });
 
+    // Drop stale private-invite receipts for anyone removed from the invite
+    // list so they don't keep a dead Action Centre link (and if re-invited
+    // later, they show up as New again).
+    if (args.isPrivate && args.invitedUserIds !== undefined) {
+      const stillInvited = new Set<Id<"users">>([
+        event.createdBy,
+        ...(event.teamLeaderIds ?? []),
+        ...nextInvited,
+      ]);
+      const removedIds = prevInvited.filter((id) => !stillInvited.has(id));
+      for (const removedId of removedIds) {
+        const receipt = await ctx.db
+          .query("assignmentReceipts")
+          .withIndex("by_scope_user", (q) =>
+            q.eq("scopeKey", `eventInvite:${args.eventId}`).eq("userId", removedId)
+          )
+          .first();
+        if (receipt) await ctx.db.delete(receipt._id);
+      }
+    }
+
     await recordHistory(ctx, {
       eventId: args.eventId,
       userId,
@@ -1980,6 +2001,10 @@ export const deleteEvent = mutation({
       .query("assignmentReceipts")
       .withIndex("by_scope_user", (q) => q.eq("scopeKey", `event:${args.eventId}`))
       .collect();
+    const inviteReceipts = await ctx.db
+      .query("assignmentReceipts")
+      .withIndex("by_scope_user", (q) => q.eq("scopeKey", `eventInvite:${args.eventId}`))
+      .collect();
     const sends = await ctx.db
       .query("notificationSends")
       .withIndex("by_scope_sentAt", (q) => q.eq("scopeKey", `event:${args.eventId}`))
@@ -2005,6 +2030,7 @@ export const deleteEvent = mutation({
       ...history,
       ...attendance,
       ...receipts,
+      ...inviteReceipts,
       ...sends,
     ]) {
       await ctx.db.delete(row._id);

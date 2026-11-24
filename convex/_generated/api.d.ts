@@ -74,6 +74,7 @@ import type * as lib_accessControlValidators from "../lib/accessControlValidator
 import type * as lib_accessControlWrites from "../lib/accessControlWrites.js";
 import type * as lib_accountType from "../lib/accountType.js";
 import type * as lib_assignments_deploymentSource from "../lib/assignments/deploymentSource.js";
+import type * as lib_assignments_eventInviteSource from "../lib/assignments/eventInviteSource.js";
 import type * as lib_assignments_eventSource from "../lib/assignments/eventSource.js";
 import type * as lib_assignments_sources from "../lib/assignments/sources.js";
 import type * as lib_assignments_types from "../lib/assignments/types.js";
@@ -208,6 +209,7 @@ declare const fullApi: ApiFromModules<{
   "lib/accessControlWrites": typeof lib_accessControlWrites;
   "lib/accountType": typeof lib_accountType;
   "lib/assignments/deploymentSource": typeof lib_assignments_deploymentSource;
+  "lib/assignments/eventInviteSource": typeof lib_assignments_eventInviteSource;
   "lib/assignments/eventSource": typeof lib_assignments_eventSource;
   "lib/assignments/sources": typeof lib_assignments_sources;
   "lib/assignments/types": typeof lib_assignments_types;

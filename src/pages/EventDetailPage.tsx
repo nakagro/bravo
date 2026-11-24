@@ -401,8 +401,16 @@ export function EventDetailPage() {
             crowded out the back link, on the page where reading the event
             matters most. */}
         {canManageEvents && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {/* Hidden by itself once cancelled or over, or with nobody to tell */}
+            {typedEventId && event.status === "active" && !isPast && event.isPrivate && (
+              <SendAssignmentsButton
+                source="eventInvite"
+                scopeId={typedEventId}
+                heading={event.title}
+                className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors inline-flex items-center gap-1.5"
+              />
+            )}
             {typedEventId && event.status === "active" && !isPast && (
               <SendAssignmentsButton
                 source="event"
