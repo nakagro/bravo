@@ -205,3 +205,25 @@ body {
     font-size: max(16px, 1em);
   }
 }
+
+/* Native date/time inputs on iOS Safari ignore border-box width while native
+   appearance is active, making w-full + horizontal padding overflow past the
+   right edge of mobile drawers. Resetting appearance fixes the box model while
+   keeping the native picker; min-height prevents empty fields collapsing. */
+input[type="time"],
+input[type="date"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="time"]::-webkit-date-and-time-value,
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.5em;
+}
