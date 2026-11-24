@@ -101,6 +101,7 @@ function UserManagement() {
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>("member");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [isDutyOfficer, setIsDutyOfficer] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
@@ -132,6 +133,7 @@ function UserManagement() {
   const updateAccountType = useMutation(api.users.updateUserAccountType);
   const updateRoles = useMutation(api.users.updateUserRoles);
   const updateAdminStatus = useMutation(api.users.updateUserAdminStatus);
+  const updateSuperAdminStatus = useMutation(api.users.updateUserSuperAdminStatus);
   const setDutyOfficer = useMutation(api.availability.setDutyOfficer);
 
   // Actions
@@ -142,6 +144,8 @@ function UserManagement() {
   const selectedUserIsDisabled = isDisabledAccount(selectedUser);
   // The server refuses these too - this just keeps the buttons honest.
   const isSelfSelected = !!currentUser && currentUser._id === selectedUserId;
+  const callerIsSuperAdmin = currentUser?.isSuperAdmin === true;
+  const targetIsProtectedSuperAdmin = selectedUser?.isSuperAdmin === true && !callerIsSuperAdmin;
 
   // Update state when a user is selected
   useEffect(() => {
@@ -152,7 +156,8 @@ function UserManagement() {
       );
       setSelectedAccountType(selectedUser.accountType === "shared" ? "shared" : "member");
       setSelectedRoles(selectedUser.roles || []);
-      setIsAdmin(selectedUser.isAdmin || false);
+      setIsAdmin(selectedUser.isAdmin || selectedUser.isSuperAdmin || false);
+      setIsSuperAdmin(selectedUser.isSuperAdmin || false);
       setIsDutyOfficer(selectedUser.isDutyOfficer || false);
     } else {
       setSelectedRank(null);
@@ -160,6 +165,7 @@ function UserManagement() {
       setSelectedAccountType("member");
       setSelectedRoles([]);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
       setIsDutyOfficer(false);
     }
 
@@ -178,6 +184,11 @@ function UserManagement() {
       label: formatUserName(user),
       badges: (
         <>
+          {user.isSuperAdmin && (
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200 group-data-[selected=true]:bg-white/20 group-data-[selected=true]:text-white">
+              Super Admin
+            </span>
+          )}
           {isSharedAccount(user) && (
             <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200 group-data-[selected=true]:bg-white/20 group-data-[selected=true]:text-white">
               Shared
@@ -226,6 +237,12 @@ function UserManagement() {
   // Handle admin status toggle
   const handleAdminToggle = (checked: boolean) => {
     setIsAdmin(checked);
+  };
+
+  // Handle super admin status toggle
+  const handleSuperAdminToggle = (checked: boolean) => {
+    setIsSuperAdmin(checked);
+    if (checked) setIsAdmin(true);
   };
 
   // Handle duty officer toggle
@@ -395,8 +412,14 @@ function UserManagement() {
         await updateRoles({ userId: selectedUserId, roles: selectedRoles });
       }
 
+      // Update super admin status first so revoking super admin + admin in one
+      // save succeeds without tripping the "remove super admin first" guard.
+      if (callerIsSuperAdmin && !isSelfSelected && isSuperAdmin !== (selectedUser?.isSuperAdmin || false)) {
+        await updateSuperAdminStatus({ userId: selectedUserId, isSuperAdmin });
+      }
+
       // Update admin status if changed
-      if (isAdmin !== (selectedUser?.isAdmin || false)) {
+      if (!targetIsProtectedSuperAdmin && isAdmin !== (selectedUser?.isAdmin || false)) {
         await updateAdminStatus({ userId: selectedUserId, isAdmin });
       }
 
@@ -597,17 +620,48 @@ function UserManagement() {
               </div>
 
               {/* Admin status toggle */}
-              <div className="flex items-center justify-between">
-                <label htmlFor="admin-toggle" className="text-sm font-medium dark:text-gray-200">
-                  Admin
-                </label>
-                <Switch
-                  id="admin-toggle"
-                  checked={isAdmin}
-                  onCheckedChange={handleAdminToggle}
-                  className="dark:data-[state=unchecked]:bg-gray-600"
-                />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="admin-toggle" className="text-sm font-medium dark:text-gray-200">
+                    Admin
+                  </label>
+                  <Switch
+                    id="admin-toggle"
+                    checked={isAdmin}
+                    disabled={isSuperAdmin || targetIsProtectedSuperAdmin}
+                    onCheckedChange={handleAdminToggle}
+                    className="dark:data-[state=unchecked]:bg-gray-600"
+                  />
+                </div>
+                {targetIsProtectedSuperAdmin && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Only a super administrator can change a super administrator&apos;s admin status.
+                  </p>
+                )}
               </div>
+
+              {/* Super Admin status toggle (visible to super admins only) */}
+              {callerIsSuperAdmin && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="super-admin-toggle" className="text-sm font-medium dark:text-gray-200">
+                      Super Admin
+                    </label>
+                    <Switch
+                      id="super-admin-toggle"
+                      checked={isSuperAdmin}
+                      disabled={isSelfSelected}
+                      onCheckedChange={handleSuperAdminToggle}
+                      className="dark:data-[state=unchecked]:bg-gray-600 dark:data-[state=checked]:bg-purple-600"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {isSelfSelected
+                      ? "You can't change your own super admin status."
+                      : "Can lock modules from regular admins and manage super admin access. Always includes Admin."}
+                  </p>
+                </div>
+              )}
 
               {/* Duty Officer toggle */}
               <div className="flex items-center justify-between">
@@ -717,12 +771,23 @@ function UserManagement() {
                       <Button
                         type="button"
                         onClick={handlePasswordReset}
-                        disabled={isResettingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                        disabled={
+                          targetIsProtectedSuperAdmin ||
+                          isResettingPassword ||
+                          !newPassword ||
+                          !confirmPassword ||
+                          newPassword !== confirmPassword
+                        }
                         className="w-full"
                         variant="destructive"
                       >
                         {isResettingPassword ? "Resetting Password..." : "Reset Password"}
                       </Button>
+                      {targetIsProtectedSuperAdmin && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Only a super administrator can reset a super administrator&apos;s password.
+                        </p>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -764,6 +829,10 @@ function UserManagement() {
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           You can't disable or delete your own account. Ask another
                           administrator to do it.
+                        </p>
+                      ) : targetIsProtectedSuperAdmin ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Only a super administrator can disable or delete a super administrator account.
                         </p>
                       ) : (
                         <>

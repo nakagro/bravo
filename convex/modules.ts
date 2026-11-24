@@ -1,14 +1,25 @@
 import { query, mutation, internalMutation, QueryCtx, MutationCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { getActiveUser, isActiveAccount, moduleSettingAllows, requireAdmin, requireModule } from "./lib/access";
+import {
+  getActiveUser,
+  isActiveAccount,
+  isAdminUser,
+  isSuperAdmin,
+  requireAdmin,
+  requireModule,
+  userAllowsModuleSetting,
+} from "./lib/access";
 
-export { RANK_ORDER, moduleSettingAllows } from "./lib/access";
+export { RANK_ORDER, moduleSettingAllows, userAllowsModuleSetting } from "./lib/access";
+
+const MAX_ALLOWED_USERS = 200;
 
 /**
  * Throw unless the signed-in user passes a moduleSettings-gated module. The gate
  * lives in data so officers can retune rank/role requirements from the Admin UI
- * without a code change. Admins always pass. Returns the caller's user id.
+ * without a code change. Super admins always pass; regular admins pass unless
+ * the module is `superAdminOnly`. Returns the caller's user id.
  */
 export async function requireModuleAccess(
   ctx: QueryCtx | MutationCtx,
@@ -19,13 +30,18 @@ export async function requireModuleAccess(
 }
 
 /**
- * Get all module settings
+ * Get all module settings visible to the caller.
+ * Modules marked `superAdminOnly` are hidden from non-super-admins so regular
+ * administrators cannot see or alter pages locked behind super admin.
  */
 export const getModuleSettings = query({
   args: {},
   handler: async (ctx) => {
-    if (!(await getActiveUser(ctx))) return [];
-    return await ctx.db.query("moduleSettings").collect();
+    const caller = await getActiveUser(ctx);
+    if (!caller) return [];
+    const all = await ctx.db.query("moduleSettings").collect();
+    if (isSuperAdmin(caller)) return all;
+    return all.filter((m) => !m.superAdminOnly);
   },
 });
 
@@ -40,7 +56,7 @@ export const updateModuleConfig = mutation({
   handler: async (ctx, args) => {
     const { moduleId, config } = args;
 
-    const userId = (await requireAdmin(ctx, "change module settings"))._id;
+    const caller = await requireAdmin(ctx, "change module settings");
 
     // Find the module setting
     const moduleSetting = await ctx.db
@@ -52,282 +68,293 @@ export const updateModuleConfig = mutation({
       throw new Error(`Module with ID ${moduleId} not found`);
     }
 
+    if (moduleSetting.superAdminOnly && !isSuperAdmin(caller)) {
+      throw new ConvexError("Only super administrators can change a super-admin-only module");
+    }
+
     await ctx.db.patch(moduleSetting._id, {
       config,
       updatedAt: Date.now(),
-      updatedBy: userId,
+      updatedBy: caller._id,
     });
 
     return true;
   },
 });
 
+const DEFAULT_MODULES: Array<{
+  moduleId: string;
+  moduleName: string;
+  isEnabled: boolean;
+  adminOnly: boolean;
+  superAdminOnly?: boolean;
+  requiredRoles: string[];
+  minimumRank: "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined;
+  config?: Record<string, unknown>;
+}> = [
+  {
+    moduleId: "dashboard",
+    moduleName: "Dashboard",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "links",
+    moduleName: "Links",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "hoses",
+    moduleName: "Hose Inventory",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+    config: { defaultLocation: "Station" },
+  },
+  {
+    moduleId: "keys",
+    moduleName: "Key Management",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: ["Key Manager"],
+    minimumRank: "Firefighter",
+  },
+  {
+    moduleId: "availability",
+    moduleName: "Availability",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "availabilityAdmin",
+    moduleName: "Availability Admin Tab",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "dutyCrew",
+    moduleName: "Duty Crew",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "fireReports",
+    moduleName: "Fire Reports",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Firefighter",
+  },
+  {
+    moduleId: "inventory",
+    moduleName: "Inventory",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Probationary",
+  },
+  {
+    moduleId: "inventoryAdmin",
+    moduleName: "Inventory - Templates",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "memberRecords",
+    moduleName: "Member Records",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "memberRecordsAdmin",
+    moduleName: "Member Records - Kit",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "vehicleFaults",
+    moduleName: "Vehicle Faults",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Probationary",
+  },
+  {
+    moduleId: "bookings",
+    moduleName: "Bookings",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "bookingsAdmin",
+    moduleName: "Bookings Admin",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "settings",
+    moduleName: "User Settings",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "feedback",
+    moduleName: "Feedback",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "equipment",
+    moduleName: "Equipment",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Probationary",
+  },
+  {
+    moduleId: "equipmentAdmin",
+    moduleName: "Equipment Admin",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "baSkills",
+    moduleName: "BA Skills Maintenance",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Probationary",
+  },
+  {
+    moduleId: "baSkillsAdmin",
+    moduleName: "BA Skills Admin",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "training",
+    moduleName: "Training Roll",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "events",
+    moduleName: "Events",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "eventsAdmin",
+    moduleName: "Events Admin",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "calendar",
+    moduleName: "Calendar (Read)",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "calendarWrite",
+    moduleName: "Calendar (Write)",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "actions",
+    moduleName: "Action Centre",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "kiosk",
+    moduleName: "Kiosk Mode",
+    isEnabled: true,
+    adminOnly: false,
+    requiredRoles: [],
+    minimumRank: undefined,
+  },
+  {
+    moduleId: "accessControl",
+    moduleName: "Access Control",
+    isEnabled: true,
+    adminOnly: false,
+    superAdminOnly: true,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
+    moduleId: "admin",
+    moduleName: "Admin Settings",
+    isEnabled: true,
+    adminOnly: true,
+    requiredRoles: [],
+    minimumRank: "Captain",
+  },
+];
+
 async function syncModuleSettingsImpl(ctx: MutationCtx) {
-  // Define the default modules with role and rank requirements
-  const defaultModules = [
-      {
-        moduleId: "dashboard",
-        moduleName: "Dashboard",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "links",
-        moduleName: "Links",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "hoses",
-        moduleName: "Hose Inventory",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined,
-        config: { defaultLocation: "Station" }
-      },
-      {
-        moduleId: "keys",
-        moduleName: "Key Management",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: ["Key Manager"],
-        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "availability",
-        moduleName: "Availability",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "availabilityAdmin",
-        moduleName: "Availability Admin Tab",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "dutyCrew",
-        moduleName: "Duty Crew",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "fireReports",
-        moduleName: "Fire Reports",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "inventory",
-        moduleName: "Inventory",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "inventoryAdmin",
-        moduleName: "Inventory - Templates",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "memberRecords",
-        moduleName: "Member Records",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "memberRecordsAdmin",
-        moduleName: "Member Records - Kit",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "vehicleFaults",
-        moduleName: "Vehicle Faults",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "bookings",
-        moduleName: "Bookings",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "bookingsAdmin",
-        moduleName: "Bookings Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "settings",
-        moduleName: "User Settings",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "feedback",
-        moduleName: "Feedback",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "equipment",
-        moduleName: "Equipment",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "equipmentAdmin",
-        moduleName: "Equipment Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "baSkills",
-        moduleName: "BA Skills Maintenance",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "baSkillsAdmin",
-        moduleName: "BA Skills Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "training",
-        moduleName: "Training Roll",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "events",
-        moduleName: "Events",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "eventsAdmin",
-        moduleName: "Events Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "calendar",
-        moduleName: "Calendar (Read)",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "calendarWrite",
-        moduleName: "Calendar (Write)",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "actions",
-        moduleName: "Action Centre",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "kiosk",
-        moduleName: "Kiosk Mode",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "accessControl",
-        moduleName: "Access Control",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "admin",
-        moduleName: "Admin Settings",
-        isEnabled: true,
-        adminOnly: true,
-        requiredRoles: [],
-        minimumRank: "Captain" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-    ];
+  const existingSettings = await ctx.db.query("moduleSettings").collect();
+  const existingModuleIds = new Set(existingSettings.map((setting) => setting.moduleId));
 
-    // Get existing settings
-    const existingSettings = await ctx.db.query("moduleSettings").collect();
-    const existingModuleIds = new Set(existingSettings.map(setting => setting.moduleId));
+  const timestamp = Date.now();
+  let addedCount = 0;
 
-    // Add missing modules
-    const timestamp = Date.now();
-    let addedCount = 0;
-
-    for (const module of defaultModules) {
-      if (!existingModuleIds.has(module.moduleId)) {
-        await ctx.db.insert("moduleSettings", {
-          ...module,
-          updatedAt: timestamp,
-          updatedBy: undefined,
-        });
-        addedCount++;
-      }
+  for (const module of DEFAULT_MODULES) {
+    if (!existingModuleIds.has(module.moduleId)) {
+      await ctx.db.insert("moduleSettings", {
+        ...module,
+        updatedAt: timestamp,
+        updatedBy: undefined,
+      });
+      addedCount++;
     }
+  }
 
-  return { addedCount, totalModules: defaultModules.length };
+  return { addedCount, totalModules: DEFAULT_MODULES.length };
 }
 
 /**
@@ -352,265 +379,43 @@ export const syncModuleSettingsInternal = internalMutation({
 });
 
 /**
+ * Internal CLI helper to lock or unlock a module as super-admin-only on an
+ * existing deployment (e.g. `npx convex run modules:setModuleSuperAdminOnlyInternal '{"moduleId":"accessControl","superAdminOnly":true}'`).
+ */
+export const setModuleSuperAdminOnlyInternal = internalMutation({
+  args: {
+    moduleId: v.string(),
+    superAdminOnly: v.boolean(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, { moduleId, superAdminOnly }) => {
+    const existing = await ctx.db
+      .query("moduleSettings")
+      .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
+      .first();
+    if (!existing) {
+      throw new Error(`Module with ID ${moduleId} not found`);
+    }
+    await ctx.db.patch(existing._id, {
+      superAdminOnly,
+      updatedAt: Date.now(),
+    });
+    return true;
+  },
+});
+
+/**
  * Initialize default module settings if they don't exist
  */
 export const initializeModuleSettings = mutation({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx, "change module settings");
-    // Define the default modules with role and rank requirements
-    const defaultModules = [
-      {
-        moduleId: "dashboard",
-        moduleName: "Dashboard",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "links",
-        moduleName: "Links",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "hoses",
-        moduleName: "Hose Inventory",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined,
-        config: { defaultLocation: "Station" }
-      },
-      {
-        moduleId: "keys",
-        moduleName: "Key Management",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: ["Key Manager"],
-        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "availability",
-        moduleName: "Availability",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "availabilityAdmin",
-        moduleName: "Availability Admin Tab",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "dutyCrew",
-        moduleName: "Duty Crew",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "fireReports",
-        moduleName: "Fire Reports",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Firefighter" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "inventory",
-        moduleName: "Inventory",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "inventoryAdmin",
-        moduleName: "Inventory - Templates",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "memberRecords",
-        moduleName: "Member Records",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "memberRecordsAdmin",
-        moduleName: "Member Records - Kit",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "vehicleFaults",
-        moduleName: "Vehicle Faults",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "bookings",
-        moduleName: "Bookings",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "bookingsAdmin",
-        moduleName: "Bookings Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "settings",
-        moduleName: "User Settings",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "feedback",
-        moduleName: "Feedback",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "equipment",
-        moduleName: "Equipment",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "equipmentAdmin",
-        moduleName: "Equipment Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "baSkills",
-        moduleName: "BA Skills Maintenance",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Probationary" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "baSkillsAdmin",
-        moduleName: "BA Skills Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "training",
-        moduleName: "Training Roll",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "events",
-        moduleName: "Events",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "eventsAdmin",
-        moduleName: "Events Admin",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "calendar",
-        moduleName: "Calendar (Read)",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "calendarWrite",
-        moduleName: "Calendar (Write)",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "actions",
-        moduleName: "Action Centre",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "kiosk",
-        moduleName: "Kiosk Mode",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: undefined
-      },
-      {
-        moduleId: "accessControl",
-        moduleName: "Access Control",
-        isEnabled: true,
-        adminOnly: false,
-        requiredRoles: [],
-        minimumRank: "Lieutenant" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-      {
-        moduleId: "admin",
-        moduleName: "Admin Settings",
-        isEnabled: true,
-        adminOnly: true,
-        requiredRoles: [],
-        minimumRank: "Captain" as "Probationary" | "Firefighter" | "Lieutenant" | "Captain"
-      },
-    ];
 
-    // Check if any module settings already exist
     const existingSettings = await ctx.db.query("moduleSettings").collect();
-
-    // If no settings exist, create the defaults
     if (existingSettings.length === 0) {
       const timestamp = Date.now();
-
-      for (const module of defaultModules) {
+      for (const module of DEFAULT_MODULES) {
         await ctx.db.insert("moduleSettings", {
           ...module,
           updatedAt: timestamp,
@@ -634,9 +439,8 @@ export const updateModuleStatus = mutation({
   handler: async (ctx, args) => {
     const { moduleId, isEnabled } = args;
 
-    const userId = (await requireAdmin(ctx, "change module settings"))._id;
+    const caller = await requireAdmin(ctx, "change module settings");
 
-    // Find the module setting
     const moduleSetting = await ctx.db
       .query("moduleSettings")
       .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
@@ -646,11 +450,14 @@ export const updateModuleStatus = mutation({
       throw new Error(`Module with ID ${moduleId} not found`);
     }
 
-    // Update the module setting
+    if (moduleSetting.superAdminOnly && !isSuperAdmin(caller)) {
+      throw new ConvexError("Only super administrators can change a super-admin-only module");
+    }
+
     await ctx.db.patch(moduleSetting._id, {
       isEnabled,
       updatedAt: Date.now(),
-      updatedBy: userId,
+      updatedBy: caller._id,
     });
 
     return true;
@@ -658,28 +465,39 @@ export const updateModuleStatus = mutation({
 });
 
 /**
- * Update a module's role and rank requirements
+ * Update a module's role, rank, admin, super-admin, and individual user requirements
  */
 export const updateModuleRequirements = mutation({
   args: {
     moduleId: v.string(),
     adminOnly: v.boolean(),
+    superAdminOnly: v.optional(v.boolean()),
+    allowedUserIds: v.optional(v.array(v.id("users"))),
     requiredRoles: v.array(v.string()),
-    minimumRank: v.optional(v.union(
-      v.literal("Brigade Member"),
-      v.literal("Probationary"),
-      v.literal("Firefighter"),
-      v.literal("Lieutenant"),
-      v.literal("Captain")
-    )),
+    minimumRank: v.optional(
+      v.union(
+        v.literal("Brigade Member"),
+        v.literal("Probationary"),
+        v.literal("Firefighter"),
+        v.literal("Lieutenant"),
+        v.literal("Captain"),
+      ),
+    ),
     requirementMode: v.optional(v.union(v.literal("all"), v.literal("any"))),
   },
   handler: async (ctx, args) => {
-    const { moduleId, adminOnly, requiredRoles, minimumRank, requirementMode } = args;
+    const {
+      moduleId,
+      adminOnly,
+      superAdminOnly,
+      allowedUserIds,
+      requiredRoles,
+      minimumRank,
+      requirementMode,
+    } = args;
 
-    const userId = (await requireAdmin(ctx, "change module settings"))._id;
+    const caller = await requireAdmin(ctx, "change module settings");
 
-    // Find the module setting
     const moduleSetting = await ctx.db
       .query("moduleSettings")
       .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
@@ -689,14 +507,28 @@ export const updateModuleRequirements = mutation({
       throw new Error(`Module with ID ${moduleId} not found`);
     }
 
-    // Update the module setting
+    const currentlySuperAdminOnly = moduleSetting.superAdminOnly === true;
+    const changingSuperAdminOnly =
+      superAdminOnly !== undefined && superAdminOnly !== currentlySuperAdminOnly;
+    if ((currentlySuperAdminOnly || changingSuperAdminOnly) && !isSuperAdmin(caller)) {
+      throw new ConvexError("Only super administrators can change super-admin-only module access");
+    }
+
+    const dedupedAllowed =
+      allowedUserIds !== undefined ? Array.from(new Set(allowedUserIds)) : undefined;
+    if (dedupedAllowed && dedupedAllowed.length > MAX_ALLOWED_USERS) {
+      throw new ConvexError(`At most ${MAX_ALLOWED_USERS} individual users can be listed per module`);
+    }
+
     await ctx.db.patch(moduleSetting._id, {
       adminOnly,
+      ...(superAdminOnly !== undefined ? { superAdminOnly } : {}),
+      ...(dedupedAllowed !== undefined ? { allowedUserIds: dedupedAllowed } : {}),
       requiredRoles,
       minimumRank,
       requirementMode: requirementMode ?? "all",
       updatedAt: Date.now(),
-      updatedBy: userId,
+      updatedBy: caller._id,
     });
 
     return true;
@@ -717,27 +549,91 @@ export const checkModuleAccess = query({
     // Only admins may ask about someone else.
     const caller = await getActiveUser(ctx);
     if (!caller) return false;
-    if (userId && userId !== caller._id && !caller.isAdmin) return false;
+    if (userId && userId !== caller._id && !isAdminUser(caller)) return false;
 
     const user = userId ? await ctx.db.get(userId) : caller;
     if (!user || !isActiveAccount(user)) {
       return false;
     }
 
-    // Admin users always have access to all modules
-    if (user.isAdmin) {
+    if (isSuperAdmin(user)) {
       return true;
     }
 
-    // Get the module settings
     const moduleSetting = await ctx.db
       .query("moduleSettings")
       .withIndex("by_moduleId", (q) => q.eq("moduleId", moduleId))
       .first();
 
-    return moduleSettingAllows(user, moduleSetting);
+    return userAllowsModuleSetting(user, moduleSetting);
   },
 });
+
+const ALL_FALSE_ACCESS = {
+  dashboard: false,
+  hoses: false,
+  keys: false,
+  availability: false,
+  availabilityAdmin: false,
+  dutyCrew: false,
+  fireReports: false,
+  inventory: false,
+  inventoryAdmin: false,
+  memberRecords: false,
+  memberRecordsAdmin: false,
+  vehicleFaults: false,
+  equipment: false,
+  equipmentAdmin: false,
+  baSkills: false,
+  baSkillsAdmin: false,
+  training: false,
+  bookings: false,
+  bookingsAdmin: false,
+  events: false,
+  eventsAdmin: false,
+  calendar: false,
+  calendarWrite: false,
+  feedback: false,
+  links: false,
+  settings: false,
+  kiosk: false,
+  accessControl: false,
+  admin: false,
+  actions: false,
+};
+
+const ALL_TRUE_ACCESS = {
+  dashboard: true,
+  hoses: true,
+  keys: true,
+  availability: true,
+  availabilityAdmin: true,
+  dutyCrew: true,
+  fireReports: true,
+  inventory: true,
+  inventoryAdmin: true,
+  memberRecords: true,
+  memberRecordsAdmin: true,
+  vehicleFaults: true,
+  equipment: true,
+  equipmentAdmin: true,
+  baSkills: true,
+  baSkillsAdmin: true,
+  training: true,
+  bookings: true,
+  bookingsAdmin: true,
+  events: true,
+  eventsAdmin: true,
+  calendar: true,
+  calendarWrite: true,
+  feedback: true,
+  links: true,
+  settings: true,
+  kiosk: true,
+  accessControl: true,
+  admin: true,
+  actions: true,
+};
 
 /**
  * Get all module access permissions for the current user in a single query
@@ -779,120 +675,21 @@ export const getAllModuleAccess = query({
   }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      return {
-        dashboard: false,
-        hoses: false,
-        keys: false,
-        availability: false,
-        availabilityAdmin: false,
-        dutyCrew: false,
-        fireReports: false,
-        inventory: false,
-        inventoryAdmin: false,
-        memberRecords: false,
-        memberRecordsAdmin: false,
-        vehicleFaults: false,
-        equipment: false,
-        equipmentAdmin: false,
-        baSkills: false,
-        baSkillsAdmin: false,
-        training: false,
-        bookings: false,
-        bookingsAdmin: false,
-        events: false,
-        eventsAdmin: false,
-        calendar: false,
-        calendarWrite: false,
-        feedback: false,
-        links: false,
-        settings: false,
-        kiosk: false,
-        accessControl: false,
-        admin: false,
-        actions: false,
-      };
-    }
+    if (!userId) return ALL_FALSE_ACCESS;
 
     const user = await ctx.db.get(userId);
-    if (!user || !isActiveAccount(user)) {
-      return {
-        dashboard: false,
-        hoses: false,
-        keys: false,
-        availability: false,
-        availabilityAdmin: false,
-        dutyCrew: false,
-        fireReports: false,
-        inventory: false,
-        inventoryAdmin: false,
-        memberRecords: false,
-        memberRecordsAdmin: false,
-        vehicleFaults: false,
-        equipment: false,
-        equipmentAdmin: false,
-        baSkills: false,
-        baSkillsAdmin: false,
-        training: false,
-        bookings: false,
-        bookingsAdmin: false,
-        events: false,
-        eventsAdmin: false,
-        calendar: false,
-        calendarWrite: false,
-        feedback: false,
-        links: false,
-        settings: false,
-        kiosk: false,
-        accessControl: false,
-        admin: false,
-        actions: false,
-      };
-    }
+    if (!user || !isActiveAccount(user)) return ALL_FALSE_ACCESS;
 
-    // Admin users have access to everything
-    if (user.isAdmin) {
-      return {
-        dashboard: true,
-        hoses: true,
-        keys: true,
-        availability: true,
-        availabilityAdmin: true,
-        dutyCrew: true,
-        fireReports: true,
-        inventory: true,
-        inventoryAdmin: true,
-        memberRecords: true,
-        memberRecordsAdmin: true,
-        vehicleFaults: true,
-        equipment: true,
-        equipmentAdmin: true,
-        baSkills: true,
-        baSkillsAdmin: true,
-        training: true,
-        bookings: true,
-        bookingsAdmin: true,
-        events: true,
-        eventsAdmin: true,
-        calendar: true,
-        calendarWrite: true,
-        feedback: true,
-        links: true,
-        settings: true,
-        kiosk: true,
-        accessControl: true,
-        admin: true,
-        actions: true,
-      };
-    }
+    // Super admin users always have access to everything
+    if (isSuperAdmin(user)) return ALL_TRUE_ACCESS;
 
-    // Get all module settings in one query
+    // Get all module settings in one query (regular admins still get checked
+    // against `superAdminOnly` modules here).
     const allModuleSettings = await ctx.db.query("moduleSettings").collect();
-    const moduleMap = new Map(allModuleSettings.map(m => [m.moduleId, m]));
+    const moduleMap = new Map(allModuleSettings.map((m) => [m.moduleId, m]));
 
-    // Helper function to check access for a specific module
     const checkAccess = (moduleId: string): boolean =>
-      moduleSettingAllows(user, moduleMap.get(moduleId));
+      userAllowsModuleSetting(user, moduleMap.get(moduleId));
 
     return {
       dashboard: checkAccess("dashboard"),

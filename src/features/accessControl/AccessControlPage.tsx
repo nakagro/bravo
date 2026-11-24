@@ -150,7 +150,13 @@ export function AccessControlPage() {
       )}
 
       {dashboard.canManageControls && (
-        <ControlsSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} sites={sites} now={now} />
+        <ControlsSettings
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          sites={sites}
+          activeSiteId={siteId}
+          now={now}
+        />
       )}
     </div>
   );

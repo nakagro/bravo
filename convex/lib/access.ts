@@ -7,9 +7,12 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
  * Who may call what. Every public function starts with one of these.
  *
  * - `requireUser`: a signed-in account that is approved and not disabled.
- * - `requireAdmin`: the same, with `isAdmin`.
+ * - `requireAdmin`: the same, with `isAdmin` or `isSuperAdmin`.
+ * - `requireSuperAdmin`: the same, with `isSuperAdmin`.
  * - `requireModule`: the same, and passes the module's Module Settings gate
- *   (rank and role), the gate the frontend uses to show the page. Admins pass.
+ *   (superAdminOnly, allowedUserIds, rank and role), the gate the frontend uses
+ *   to show the page. Super admins always pass; regular admins pass unless the
+ *   module is marked `superAdminOnly`.
  *
  * Each has a `get*` twin that returns null instead of throwing. Queries use the
  * twin and return an empty result, so a widget a member can't see renders empty
@@ -30,6 +33,16 @@ export const RANK_ORDER: Record<string, number> = {
   Captain: 4,
 };
 
+/** One tier above admin: can lock modules from regular admins and manage super admins. */
+export function isSuperAdmin(user: Pick<Doc<"users">, "isSuperAdmin">): boolean {
+  return user.isSuperAdmin === true;
+}
+
+/** Regular admin or super admin. */
+export function isAdminUser(user: Pick<Doc<"users">, "isAdmin" | "isSuperAdmin">): boolean {
+  return user.isAdmin === true || user.isSuperAdmin === true;
+}
+
 /** Lieutenant and Captain: the officers. */
 export function isOfficer(user: Pick<Doc<"users">, "rank">): boolean {
   return !!user.rank && RANK_ORDER[user.rank] >= RANK_ORDER.Lieutenant;
@@ -48,8 +61,13 @@ export function isActiveAccount(
 }
 
 /**
- * Does this user satisfy a module's gate? A missing or disabled module denies.
- * Admins are handled by the callers, which short-circuit before getting here.
+ * Does this non-bypass user satisfy a module's gate? A missing or disabled
+ * module denies. Super admins always pass; regular admins are handled in
+ * `userAllowsModuleSetting` so `superAdminOnly` can lock them out while
+ * non-super-admin modules keep existing admin bypass behavior.
+ *
+ * When `allowedUserIds` contains the user on an enabled module, access is
+ * granted regardless of rank, roles, `adminOnly`, or `superAdminOnly`.
  *
  * When both a role list and a minimum rank are set, `requirementMode` decides
  * how they combine: "all" (the default, and what every row written before this
@@ -61,12 +79,15 @@ export function moduleSettingAllows(
   user: Doc<"users">,
   moduleSetting: Doc<"moduleSettings"> | null | undefined,
 ): boolean {
-  if (!moduleSetting || !moduleSetting.isEnabled) return false;
   // A disabled or unapproved account keeps its rank and roles (so re-enabling
   // is a single switch) but reaches nothing while it's off - including
-  // admin-only modules.
+  // admin-only and super-admin-only modules.
   if (!isActiveAccount(user)) return false;
-  if (moduleSetting.adminOnly && !user.isAdmin) return false;
+  if (isSuperAdmin(user)) return true;
+  if (!moduleSetting || !moduleSetting.isEnabled) return false;
+  if (moduleSetting.allowedUserIds?.includes(user._id)) return true;
+  if (moduleSetting.superAdminOnly) return false;
+  if (moduleSetting.adminOnly && !isAdminUser(user)) return false;
 
   const hasRoleReq = !!(moduleSetting.requiredRoles && moduleSetting.requiredRoles.length > 0);
   const hasRankReq = !!moduleSetting.minimumRank;
@@ -89,6 +110,28 @@ export function moduleSettingAllows(
   }
 
   return roleOk && rankOk;
+}
+
+/**
+ * Full module gate evaluation including admin and super-admin rules.
+ * - Disabled or pending accounts are always denied.
+ * - Super admins always pass.
+ * - Regular admins pass unless the module is `superAdminOnly`, in which case
+ *   they only pass if the module is enabled and explicitly lists them in
+ *   `allowedUserIds`.
+ * - Non-admins are evaluated by `moduleSettingAllows`.
+ */
+export function userAllowsModuleSetting(
+  user: Doc<"users">,
+  moduleSetting: Doc<"moduleSettings"> | null | undefined,
+): boolean {
+  if (!isActiveAccount(user)) return false;
+  if (isSuperAdmin(user)) return true;
+  if (isAdminUser(user)) {
+    if (!moduleSetting?.superAdminOnly) return true;
+    return !!moduleSetting.isEnabled && !!moduleSetting.allowedUserIds?.includes(user._id);
+  }
+  return moduleSettingAllows(user, moduleSetting);
 }
 
 /** The signed-in, approved, enabled user, or null. */
@@ -114,13 +157,28 @@ export async function requireUser(ctx: Ctx): Promise<Doc<"users">> {
 
 export async function getAdmin(ctx: Ctx): Promise<Doc<"users"> | null> {
   const user = await getActiveUser(ctx);
-  return user?.isAdmin ? user : null;
+  return user && isAdminUser(user) ? user : null;
 }
 
 export async function requireAdmin(ctx: Ctx, action?: string): Promise<Doc<"users">> {
   const user = await requireUser(ctx);
-  if (!user.isAdmin) {
+  if (!isAdminUser(user)) {
     throw new ConvexError(action ? `Only administrators can ${action}` : "Admin access required");
+  }
+  return user;
+}
+
+export async function getSuperAdmin(ctx: Ctx): Promise<Doc<"users"> | null> {
+  const user = await getActiveUser(ctx);
+  return user && isSuperAdmin(user) ? user : null;
+}
+
+export async function requireSuperAdmin(ctx: Ctx, action?: string): Promise<Doc<"users">> {
+  const user = await requireUser(ctx);
+  if (!isSuperAdmin(user)) {
+    throw new ConvexError(
+      action ? `Only super administrators can ${action}` : "Super admin access required",
+    );
   }
   return user;
 }
@@ -128,7 +186,7 @@ export async function requireAdmin(ctx: Ctx, action?: string): Promise<Doc<"user
 /** Lieutenant, Captain or admin. */
 export async function requireOfficer(ctx: Ctx, action?: string): Promise<Doc<"users">> {
   const user = await requireUser(ctx);
-  if (!user.isAdmin && !isOfficer(user)) {
+  if (!isAdminUser(user) && !isOfficer(user)) {
     throw new ConvexError(
       action ? `Only officers can ${action}` : "Only officers can do this",
     );
@@ -143,15 +201,15 @@ async function moduleSettingFor(ctx: Ctx, moduleId: string) {
     .first();
 }
 
-/** Does this (already active) user pass the module's gate? Admins always do. */
+/** Does this (already active) user pass the module's gate? */
 export async function userHasModule(
   ctx: Ctx,
   user: Doc<"users">,
   moduleId: string,
 ): Promise<boolean> {
   if (!isActiveAccount(user)) return false;
-  if (user.isAdmin) return true;
-  return moduleSettingAllows(user, await moduleSettingFor(ctx, moduleId));
+  if (isSuperAdmin(user)) return true;
+  return userAllowsModuleSetting(user, await moduleSettingFor(ctx, moduleId));
 }
 
 /** The caller, if they may use the module; null otherwise. Passes if any module matches. */

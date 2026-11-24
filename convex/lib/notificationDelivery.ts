@@ -1,6 +1,6 @@
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { moduleSettingAllows } from "../modules";
+import { userAllowsModuleSetting } from "../modules";
 import { categoryForType, isCategoryEnabled } from "./notificationPrefs";
 import { effectiveTemplate, type TemplateKey, type TemplateText } from "./notificationTemplates";
 
@@ -32,8 +32,7 @@ export function unreachableReason(
 ): string | null {
   if (!user) return "Account removed";
   if (user.isDisabled) return "Account disabled";
-  if (user.isAdmin) return null;
-  return moduleSettingAllows(user, moduleMap.get(moduleId)) ? null : "No access to this module";
+  return userAllowsModuleSetting(user, moduleMap.get(moduleId)) ? null : "No access to this module";
 }
 
 export type PushState = "on" | "muted" | "noDevice";

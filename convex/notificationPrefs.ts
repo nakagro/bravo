@@ -2,7 +2,7 @@ import { query, mutation, internalQuery, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
-import { moduleSettingAllows } from "./modules";
+import { userAllowsModuleSetting } from "./modules";
 import {
   NOTIFICATION_CATEGORIES,
   NotificationCategory,
@@ -40,8 +40,7 @@ function canReceive(
   moduleId: string,
 ): boolean {
   if (user.isDisabled) return false;
-  if (user.isAdmin) return true;
-  return moduleSettingAllows(user, moduleMap.get(moduleId));
+  return userAllowsModuleSetting(user, moduleMap.get(moduleId));
 }
 
 function prefRows(user: Doc<"users">, moduleMap: Map<string, Doc<"moduleSettings">>) {

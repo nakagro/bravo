@@ -351,12 +351,16 @@ export const adminResetPassword = action({
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal.access.assertAdmin, {});
-
-    // Get target user information
-    const targetUser = await ctx.runQuery(internal.users.getUserById, { userId: args.targetUserId });
+    const actorId = await ctx.runQuery(internal.access.assertAdmin, {});
+    const [actor, targetUser] = await Promise.all([
+      ctx.runQuery(internal.users.getUserById, { userId: actorId }),
+      ctx.runQuery(internal.users.getUserById, { userId: args.targetUserId }),
+    ]);
     if (!targetUser) {
       throw new Error("Target user not found");
+    }
+    if (targetUser.isSuperAdmin === true && actor?.isSuperAdmin !== true) {
+      throw new Error("Only super administrators can reset a super administrator's password");
     }
 
     // Get the target user's email

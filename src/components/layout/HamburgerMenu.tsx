@@ -178,7 +178,7 @@ export const HamburgerMenu = () => {
               </button>
             )}
 
-            {(hasModuleAccess("admin") || user?.isAdmin) && (
+            {(hasModuleAccess("admin") || user?.isAdmin || user?.isSuperAdmin) && (
               <button
                 onClick={() => handleNavigation("/admin")}
                 className={`flex flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-xs transition-colors ${location.pathname === '/admin'

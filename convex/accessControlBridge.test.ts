@@ -592,4 +592,182 @@ describe("accessControl RBAC and bridge contract", () => {
     });
     expect(stored.some((n) => n.includes("@"))).toBe(false);
   });
+
+  it("lets managers turn individual doors and areas on or off in BRAVO independent of bridge canControl", async () => {
+    const { t, ids } = await setup();
+    const asAdmin = t.withIdentity({ subject: ids.admin });
+    const asLt = t.withIdentity({ subject: ids.lt });
+
+    // Main station pushes Front Door controllable and Shed PA Door view-only (canControl: false).
+    const mainPayload = (now: number) => ({
+      name: "Main Station",
+      panel: "inception" as const,
+      panelLabel: "Inner Range Inception",
+      writesEnabled: true,
+      areas: [
+        { id: "main-station", name: "Station", status: "disarmed" as const, changedAt: now, canControl: true },
+        { id: "main-shed", name: "Shed", status: "disarmed" as const, changedAt: now, canControl: false },
+      ],
+      doors: [
+        {
+          id: "main-gate",
+          name: "Carpark Gate",
+          kind: "door" as const,
+          status: "secured" as const,
+          changedAt: now,
+          canControl: true,
+          supportsHold: false,
+        },
+        {
+          id: "main-shed-door",
+          name: "Shed PA Door",
+          kind: "door" as const,
+          status: "secured" as const,
+          changedAt: now,
+          canControl: false,
+          supportsHold: false,
+        },
+      ],
+    });
+
+    const pushMain = () =>
+      bridgePost(t, "/api/access/state", { site: mainPayload(Date.now()) }, { site: "main", token: MAIN_TOKEN });
+
+    await pushMain();
+    await enableControls(t, ids.admin, "main");
+
+    // Before overrides: Shed PA Door is blocked (bridge canControl: false).
+    await expect(
+      asLt.mutation(api.accessControl.requestCommand, {
+        siteId: "main",
+        targetKind: "door",
+        targetId: "main-shed-door",
+        action: "pulse",
+      }),
+    ).rejects.toThrow(/view-only/i);
+
+    // Turn Shed PA Door ON and Carpark Gate OFF in BRAVO.
+    await asAdmin.mutation(api.accessControl.setTargetControl, {
+      siteId: "main",
+      targetKind: "door",
+      targetId: "main-shed-door",
+      enabled: true,
+    });
+    await asAdmin.mutation(api.accessControl.setTargetControl, {
+      siteId: "main",
+      targetKind: "door",
+      targetId: "main-gate",
+      enabled: false,
+    });
+    await asAdmin.mutation(api.accessControl.setTargetControl, {
+      siteId: "main",
+      targetKind: "area",
+      targetId: "main-shed",
+      enabled: true,
+    });
+
+    // A fresh bridge snapshot does NOT wipe BRAVO's overrides.
+    await pushMain();
+
+    const dash = await asLt.query(api.accessControl.getDashboard, {});
+    const main = dash.sites.find((s) => s.id === "main")!;
+    const shedDoor = main.doors.find((d) => d.id === "main-shed-door")!;
+    const gateDoor = main.doors.find((d) => d.id === "main-gate")!;
+    const shedArea = main.areas.find((a) => a.id === "main-shed")!;
+
+    expect(shedDoor).toMatchObject({ canControl: true, bridgeCanControl: false, controlOverride: true });
+    expect(gateDoor).toMatchObject({ canControl: false, bridgeCanControl: true, controlOverride: false });
+    expect(shedArea).toMatchObject({ canControl: true, bridgeCanControl: false, controlOverride: true });
+
+    // Carpark Gate is now blocked in BRAVO; Shed PA Door is now controllable and claimable.
+    await expect(
+      asLt.mutation(api.accessControl.requestCommand, {
+        siteId: "main",
+        targetKind: "door",
+        targetId: "main-gate",
+        action: "pulse",
+      }),
+    ).rejects.toThrow(/view-only/i);
+
+    const queued = await asLt.mutation(api.accessControl.requestCommand, {
+      siteId: "main",
+      targetKind: "door",
+      targetId: "main-shed-door",
+      action: "pulse",
+    });
+    const claimed = await (
+      await bridgePost(t, "/api/access/claim", {}, { site: "main", token: MAIN_TOKEN })
+    ).json();
+    expect(claimed.command.commandId).toBe(queued.commandId);
+
+    // Turning a door off while a command is pending fails that command immediately.
+    vi.advanceTimersByTime(4_000);
+    const queued2 = await asLt.mutation(api.accessControl.requestCommand, {
+      siteId: "main",
+      targetKind: "door",
+      targetId: "main-shed-door",
+      action: "pulse",
+    });
+    await asAdmin.mutation(api.accessControl.setTargetControl, {
+      siteId: "main",
+      targetKind: "door",
+      targetId: "main-shed-door",
+      enabled: false,
+    });
+    const afterOff = await asLt.query(api.accessControl.getDashboard, {});
+    expect(afterOff.recentCommands.find((c) => c.id === queued2.commandId)?.status).toBe("failed");
+
+    // Resetting overrides restores bridge defaults.
+    await asAdmin.mutation(api.accessControl.resetSiteTargetControls, { siteId: "main" });
+    const afterReset = await asLt.query(api.accessControl.getDashboard, {});
+    const resetMain = afterReset.sites.find((s) => s.id === "main")!;
+    expect(resetMain.doors.find((d) => d.id === "main-gate")?.canControl).toBe(true);
+    expect(resetMain.doors.find((d) => d.id === "main-gate")?.controlOverride).toBeUndefined();
+    expect(resetMain.doors.find((d) => d.id === "main-shed-door")?.canControl).toBe(false);
+  });
+
+  it("restricts Access Control page and settings to super admins when superAdminOnly is enabled", async () => {
+    const { t, ids } = await setup();
+    const superAdmin = await t.run(async (ctx) => {
+      const mod = await ctx.db
+        .query("moduleSettings")
+        .withIndex("by_moduleId", (q) => q.eq("moduleId", "accessControl"))
+        .first();
+      await ctx.db.patch(mod!._id, { superAdminOnly: true, allowedUserIds: [ids.ff] });
+      return await ctx.db.insert("users", {
+        firstName: "Morgan",
+        lastName: "Shaw",
+        rank: "Captain",
+        isAdmin: true,
+        isSuperAdmin: true,
+      });
+    });
+
+    await bridgePost(
+      t,
+      "/api/access/state",
+      { site: satellitePayload(Date.now()) },
+      { site: "satellite", token: SAT_TOKEN },
+    );
+
+    const asAdmin = t.withIdentity({ subject: ids.admin });
+    const asSuper = t.withIdentity({ subject: superAdmin });
+    const asAllowedFf = t.withIdentity({ subject: ids.ff });
+
+    // Regular admin is locked out of both the dashboard and control settings.
+    await expect(asAdmin.query(api.accessControl.getDashboard, {})).rejects.toThrow(/super administrators/i);
+    await expect(
+      asAdmin.mutation(api.accessControl.setSiteControls, { siteId: "satellite", enabled: true }),
+    ).rejects.toThrow(/super administrators/i);
+
+    // Super admin has full dashboard + manage controls access.
+    const superDash = await asSuper.query(api.accessControl.getDashboard, {});
+    expect(superDash.canManageControls).toBe(true);
+    await asSuper.mutation(api.accessControl.setSiteControls, { siteId: "satellite", enabled: true });
+
+    // Explicitly allowed Firefighter can open the page, but cannot manage controls.
+    const ffDash = await asAllowedFf.query(api.accessControl.getDashboard, {});
+    expect(ffDash.canManageControls).toBe(false);
+    expect(ffDash.sites).toHaveLength(1);
+  });
 });

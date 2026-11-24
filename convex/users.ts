@@ -1,6 +1,13 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
-import { getActiveUser, getAdmin, requireAdmin as requireAdminUser, revokeSessions } from "./lib/access";
-import { v } from "convex/values";
+import {
+  getActiveUser,
+  getAdmin,
+  isSuperAdmin,
+  requireAdmin as requireAdminUser,
+  requireSuperAdmin,
+  revokeSessions,
+} from "./lib/access";
+import { ConvexError, v } from "convex/values";
 import { accountTypeValidator, isMemberAccount } from "./lib/accountType";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
@@ -10,20 +17,26 @@ import { isValidLieutenantNumber } from "./lib/ranks";
 /**
  * Shared gate for the account-lifecycle mutations below: only a signed-in admin
  * may run them, and never against their own account (an admin locking themselves
- * out of the only admin screen is unrecoverable from inside the app).
+ * out of the only admin screen is unrecoverable from inside the app). Regular
+ * admins cannot disable, delete, or otherwise modify a super admin account.
  */
 async function requireAdminActingOnSomeoneElse(
   ctx: MutationCtx,
   targetUserId: Id<"users">,
   verb: string,
 ) {
-  const actorId = (await requireAdminUser(ctx, `${verb} accounts`))._id;
+  const actor = await requireAdminUser(ctx, `${verb} accounts`);
+  const actorId = actor._id;
   if (actorId === targetUserId) {
     throw new Error(`You cannot ${verb} your own account`);
   }
 
   const target = await ctx.db.get(targetUserId);
   if (!target) throw new Error(`User with ID ${targetUserId} not found`);
+
+  if (isSuperAdmin(target) && !isSuperAdmin(actor)) {
+    throw new ConvexError("Only super administrators can modify a super administrator account");
+  }
 
   return { actorId, target };
 }
@@ -258,19 +271,92 @@ export const updateUserAdminStatus = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx, "change admin status");
+    const actor = await requireAdminUser(ctx, "change admin status");
     const { userId, isAdmin } = args;
-    
-    // Verify the user exists
+
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    
-    // Update the user's admin status
+
+    if (isSuperAdmin(user)) {
+      if (!isSuperAdmin(actor)) {
+        throw new ConvexError("Only super administrators can change a super administrator's status");
+      }
+      if (!isAdmin) {
+        throw new ConvexError("Remove super admin status before removing admin status");
+      }
+    }
+
     await ctx.db.patch(userId, { isAdmin });
-    
+
     return userId;
+  },
+});
+
+/**
+ * Update a user's super admin status (super admins only; cannot modify own).
+ * Granting super admin also sets `isAdmin: true` so every admin surface works.
+ */
+export const updateUserSuperAdminStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    isSuperAdmin: v.boolean(),
+  },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    const actor = await requireSuperAdmin(ctx, "change super admin status");
+    if (actor._id === args.userId) {
+      throw new ConvexError("You cannot change your own super admin status");
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error(`User with ID ${args.userId} not found`);
+    }
+
+    await ctx.db.patch(args.userId, {
+      isSuperAdmin: args.isSuperAdmin,
+      ...(args.isSuperAdmin ? { isAdmin: true } : {}),
+    });
+
+    return args.userId;
+  },
+});
+
+/**
+ * Internal CLI helper to grant or revoke super admin status (e.g. initial
+ * bootstrap: `npx convex run users:setSuperAdmin '{"email":"...","isSuperAdmin":true}'`).
+ */
+export const setSuperAdmin = internalMutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    isSuperAdmin: v.boolean(),
+  },
+  returns: v.object({
+    userId: v.id("users"),
+    isSuperAdmin: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    let user = args.userId ? await ctx.db.get(args.userId) : null;
+    if (!user && args.email) {
+      const normalized = args.email.toLowerCase().trim();
+      user = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", normalized))
+        .first();
+    }
+    if (!user) {
+      throw new Error("User not found (provide a valid userId or email)");
+    }
+
+    await ctx.db.patch(user._id, {
+      isSuperAdmin: args.isSuperAdmin,
+      ...(args.isSuperAdmin ? { isAdmin: true } : {}),
+    });
+
+    return { userId: user._id, isSuperAdmin: args.isSuperAdmin };
   },
 });
 

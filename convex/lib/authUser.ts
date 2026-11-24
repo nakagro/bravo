@@ -107,8 +107,10 @@ async function insertNewUser(ctx: GenericMutationCtx<DataModel>, userData: UserF
     ...(memberNumber !== undefined ? { memberNumber } : {}),
     rank: userData.rank ?? "Brigade Member",
     approvalStatus,
-    // Only an admin-created account may arrive as an admin.
+    // Only an admin-created account may arrive as an admin; super admin is
+    // never granted on sign-up or account creation.
     isAdmin: approvalStatus === "approved" ? userData.isAdmin : false,
+    isSuperAdmin: false,
   });
 
   if (approvalStatus === "pending") await notifyAdminsOfSignup(ctx, userId);

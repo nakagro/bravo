@@ -1,16 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { ResponsiveModal } from "@/components/shared/ResponsiveModal";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { errorMessage } from "@/lib/errors";
+import { isDisabledAccount } from "@/lib/accountType";
 
 interface ModuleSettingsProps {
   showTitle?: boolean
 }
+
+const formatMemberLabel = (user: {
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  email?: string;
+  memberNumber?: string;
+}): string => {
+  if (user.firstName && user.lastName) {
+    return `${user.firstName} ${user.lastName}${user.memberNumber ? ` (${user.memberNumber})` : ""}`;
+  }
+  return user.name || user.email || "Unknown User";
+};
 
 // Define rank options
 // Radix Select items cannot use an empty value, so "no rank" gets a sentinel.
@@ -26,15 +41,25 @@ const rankOptions = [
 ];
 
 function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
-  // Fetch module settings and roles
+  // Fetch module settings, roles, current user, and users for per-user overrides
   const moduleSettings = useQuery(api.modules.getModuleSettings);
   const roles = useQuery(api.users.getRoles);
+  const currentUser = useQuery(api.auth.loggedInUser);
+  const users = useQuery(api.users.getUsers);
+  const callerIsSuperAdmin = currentUser?.isSuperAdmin === true;
+
+  const userById = useMemo(
+    () => new Map((users ?? []).map((u) => [u._id, u])),
+    [users],
+  );
   
   // State for the module being edited
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedRank, setSelectedRank] = useState<"Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined>(undefined);
   const [isAdminOnly, setIsAdminOnly] = useState<boolean>(false);
+  const [isSuperAdminOnly, setIsSuperAdminOnly] = useState<boolean>(false);
+  const [allowedUserIds, setAllowedUserIds] = useState<Id<"users">[]>([]);
   const [requirementMode, setRequirementMode] = useState<"all" | "any">("all");
   
   // State for role management dialog
@@ -86,6 +111,8 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       const rank = module.minimumRank as "Brigade Member" | "Probationary" | "Firefighter" | "Lieutenant" | "Captain" | undefined;
       setSelectedRank(rank);
       setIsAdminOnly(module.adminOnly || false);
+      setIsSuperAdminOnly(module.superAdminOnly || false);
+      setAllowedUserIds(module.allowedUserIds || []);
       setRequirementMode(module.requirementMode === "any" ? "any" : "all");
     }
   };
@@ -98,6 +125,8 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       await updateModuleRequirements({
         moduleId: editingModuleId,
         adminOnly: isAdminOnly,
+        ...(callerIsSuperAdmin ? { superAdminOnly: isSuperAdminOnly } : {}),
+        allowedUserIds,
         requiredRoles: selectedRoles,
         minimumRank: selectedRank,
         requirementMode,
@@ -113,8 +142,32 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
     setEditingModuleId(null);
     setSelectedRoles([]);
     setSelectedRank(undefined);
+    setIsSuperAdminOnly(false);
+    setAllowedUserIds([]);
     setRequirementMode("all");
   };
+
+  const addAllowedUser = (userId: Id<"users"> | null) => {
+    if (!userId) return;
+    setAllowedUserIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+  };
+
+  const removeAllowedUser = (userId: Id<"users">) => {
+    setAllowedUserIds((prev) => prev.filter((id) => id !== userId));
+  };
+
+  const availableUserOptions: ComboboxOption[] = useMemo(
+    () =>
+      (users ?? [])
+        .filter((u) => !isDisabledAccount(u) && !allowedUserIds.includes(u._id))
+        .slice()
+        .sort((a, b) => formatMemberLabel(a).toLowerCase().localeCompare(formatMemberLabel(b).toLowerCase()))
+        .map((u) => ({
+          value: u._id,
+          label: formatMemberLabel(u),
+        })),
+    [users, allowedUserIds],
+  );
   
   // Toggle a role selection
   const toggleRole = (roleName: string) => {
@@ -398,13 +451,16 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                 Status
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Admin Only
+                Access Level
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Required Roles
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Minimum Rank
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Allowed Users
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Actions
@@ -414,7 +470,7 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {moduleSettings?.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No module settings found. Please initialize settings.
                 </td>
               </tr>
@@ -439,12 +495,16 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {module.adminOnly ? (
+                        {module.superAdminOnly ? (
+                          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
+                            Super Admin Only
+                          </span>
+                        ) : module.adminOnly ? (
                           <span className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs">
                             Admin Only
                           </span>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500">No</span>
+                          <span className="text-gray-400 dark:text-gray-500">Standard</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
@@ -476,6 +536,28 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                        {module.allowedUserIds && module.allowedUserIds.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {module.allowedUserIds.map((uid) => {
+                              const u = userById.get(uid);
+                              const name = u
+                                ? [u.firstName, u.lastName].filter(Boolean).join(" ") || u.name || "Member"
+                                : "Unknown";
+                              return (
+                                <span
+                                  key={uid}
+                                  className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-xs"
+                                >
+                                  {name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">None</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <button
                           onClick={() => startEditing(module.moduleId)}
@@ -489,11 +571,31 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                     {/* Edit requirements panel */}
                     {editingModuleId === module.moduleId && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4">
+                        <td colSpan={7} className="px-6 py-4">
                           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
                               Edit Access Requirements for {module.moduleName}
                             </h3>
+
+                            {/* Super-admin-only toggle (visible to super admins only) */}
+                            {callerIsSuperAdmin && (
+                              <div className="mb-4 rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 p-3">
+                                <div className="flex items-center justify-between">
+                                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    Super Admin Only Access
+                                  </label>
+                                  <Switch
+                                    checked={isSuperAdminOnly}
+                                    onCheckedChange={setIsSuperAdminOnly}
+                                    aria-label="Super admin only access"
+                                    className="dark:data-[state=unchecked]:bg-gray-600 dark:data-[state=checked]:bg-purple-600"
+                                  />
+                                </div>
+                                <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                                  Locks this page out even for regular administrators. Only super administrators and any specific users listed below can access it.
+                                </p>
+                              </div>
+                            )}
                             
                             {/* Admin-only toggle */}
                             <div className="mb-4">
@@ -509,7 +611,48 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
                                 />
                               </div>
                               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                When enabled, only admin users can access this module, regardless of their roles or rank.
+                                When enabled, only admin users (and any specific users listed below) can access this module, regardless of their roles or rank.
+                              </p>
+                            </div>
+
+                            {/* Individual user allowlist */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Allowed Individual Users
+                              </label>
+                              <Combobox
+                                id={`allowed-users-${module.moduleId}`}
+                                options={availableUserOptions}
+                                value={null}
+                                onValueChange={(v) => addAllowedUser(v as Id<"users"> | null)}
+                                placeholder="Add a specific member..."
+                                emptyText="No more active users found."
+                              />
+                              {allowedUserIds.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {allowedUserIds.map((uid) => {
+                                    const u = userById.get(uid);
+                                    return (
+                                      <span
+                                        key={uid}
+                                        className="inline-flex items-center gap-1 rounded-full bg-indigo-100 dark:bg-indigo-900 px-2.5 py-1 text-xs font-medium text-indigo-800 dark:text-indigo-200"
+                                      >
+                                        {u ? formatMemberLabel(u) : "Unknown User"}
+                                        <button
+                                          type="button"
+                                          onClick={() => removeAllowedUser(uid)}
+                                          aria-label={`Remove ${u ? formatMemberLabel(u) : "user"}`}
+                                          className="ml-0.5 rounded-full p-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-800"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Specific members listed here get access while the module is enabled, regardless of rank, roles, or admin status.
                               </p>
                             </div>
                             
@@ -647,8 +790,10 @@ function ModuleSettings({ showTitle = true }: ModuleSettingsProps) {
       <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
         <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Access Rules:</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Disabled modules are not accessible to any users</li>
-          <li>Admin users always have access to all enabled modules</li>
+          <li>Disabled modules are not accessible to standard members or explicitly allowed users</li>
+          <li>Super admins always have access to all modules and can lock modules away from regular admins</li>
+          <li>Regular admins have access to all modules except those marked Super Admin Only</li>
+          <li>Members listed under Allowed Individual Users gain access to an enabled module regardless of rank, roles, or admin status</li>
           <li>If role requirements are set, users must have at least one of the required roles</li>
           <li>If a minimum rank is set, users must have at least that rank</li>
           <li>

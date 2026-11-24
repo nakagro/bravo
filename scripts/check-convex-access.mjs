@@ -23,8 +23,8 @@ const allowlist = JSON.parse(
 
 const GUARDS = [
   // convex/lib/access.ts
-  "requireUser", "requireAdmin", "requireOfficer", "requireModule", "getActiveUser",
-  "getModuleUser", "getAdmin", "getKioskServiceAccount",
+  "requireUser", "requireAdmin", "requireSuperAdmin", "requireOfficer", "requireModule", "getActiveUser",
+  "getModuleUser", "getAdmin", "getSuperAdmin", "getKioskServiceAccount",
   // module helpers built on them
   "requireModuleAccess", "requireKitAccess", "requireKitAdmin", "requireEventsAdmin",
   "requireEventManager", "eventManagerId", "hasEventsAdmin", "requireInventoryAdmin",

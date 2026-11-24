@@ -62,6 +62,9 @@ const extendedAuthTables = {
     skills: v.optional(v.array(v.id("skills"))),
     // Admin flag - determines if the user has administrative privileges
     isAdmin: v.optional(v.boolean()),
+    // Super admin flag - one tier above admin. Can lock modules from regular
+    // admins (superAdminOnly) and manage super-admin status. Always implies admin.
+    isSuperAdmin: v.optional(v.boolean()),
     // Birthday flag - used for UI celebration
     isBirthday: v.optional(v.boolean()),
     // Status fields
@@ -186,6 +189,10 @@ const applicationTables = {
     isEnabled: v.boolean(),
     // Whether this module is restricted to admin users only
     adminOnly: v.optional(v.boolean()),
+    // Whether this module is restricted to super admin users only (locks out regular admins too)
+    superAdminOnly: v.optional(v.boolean()),
+    // Specific users explicitly granted access when enabled, regardless of rank/roles/admin status
+    allowedUserIds: v.optional(v.array(v.id("users"))),
     // Required roles to access this module (empty array means no role requirements)
     requiredRoles: v.optional(v.array(v.string())),
     // Required minimum rank to access this module (null means no rank requirement)
@@ -1831,9 +1838,13 @@ const applicationTables = {
 
   // BRAVO's own switch for remote controls, per site. Kept apart from
   // accessSites so a bridge push can never turn it back on. No row means off.
+  // Optional per-area and per-door overrides take precedence over the bridge's
+  // canControl flag when present.
   accessSiteControls: defineTable({
     siteId: v.string(),
     controlsEnabled: v.boolean(),
+    areaControls: v.optional(v.record(v.string(), v.boolean())),
+    doorControls: v.optional(v.record(v.string(), v.boolean())),
     changedBy: v.id("users"),
     changedByName: v.string(),
     changedAt: v.number(),

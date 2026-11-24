@@ -2,7 +2,7 @@ import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { isSharedAccount } from "./lib/accountType";
-import { moduleSettingAllows } from "./modules";
+import { userAllowsModuleSetting } from "./modules";
 import { availabilityProvider } from "./actionCentreProviders/availability";
 import { profileProvider } from "./actionCentreProviders/profile";
 import { bookingApprovalsProvider } from "./actionCentreProviders/bookings";
@@ -66,10 +66,8 @@ function buildModuleAccessChecker(
   user: Doc<"users">,
   moduleMap: Map<string, Doc<"moduleSettings">>
 ): (moduleId: string) => boolean {
-  if (user.isAdmin) return () => true;
-
   return (moduleId: string) => {
-    return moduleSettingAllows(user, moduleMap.get(moduleId));
+    return userAllowsModuleSetting(user, moduleMap.get(moduleId));
   };
 }
 

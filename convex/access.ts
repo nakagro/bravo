@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
-import { requireAdmin, requireModule, requireOfficer, requireUser } from "./lib/access";
+import {
+  requireAdmin,
+  requireModule,
+  requireOfficer,
+  requireSuperAdmin,
+  requireUser,
+} from "./lib/access";
 
 /**
  * Actions have no `ctx.db`, so they check the caller through these. The
@@ -18,6 +24,12 @@ export const assertAdmin = internalQuery({
   args: {},
   returns: v.id("users"),
   handler: async (ctx) => (await requireAdmin(ctx))._id,
+});
+
+export const assertSuperAdmin = internalQuery({
+  args: {},
+  returns: v.id("users"),
+  handler: async (ctx) => (await requireSuperAdmin(ctx))._id,
 });
 
 export const assertOfficer = internalQuery({

@@ -22,11 +22,11 @@ function site(overrides: Partial<Site> = {}): Site {
     lastSeenAt: NOW - 5_000,
     controlsEnabled: true,
     bravoWritesDisabled: false,
-    areas: [{ id: "a1", name: "Station", status: "armed", changedAt: NOW - 60_000, canControl: true }],
+    areas: [{ id: "a1", name: "Station", status: "armed", changedAt: NOW - 60_000, canControl: true, bridgeCanControl: true }],
     doors: [
-      { id: "d1", name: "Front Door", kind: "door", status: "secured", changedAt: NOW, canControl: true, supportsHold: false },
-      { id: "d2", name: "Shed PA Door", kind: "door", status: "secured", changedAt: NOW, canControl: false, supportsHold: false },
-      { id: "d3", name: "Rear Door", kind: "door", status: "open", changedAt: NOW, canControl: false, supportsHold: false },
+      { id: "d1", name: "Front Door", kind: "door", status: "secured", changedAt: NOW, canControl: true, bridgeCanControl: true, supportsHold: false },
+      { id: "d2", name: "Shed PA Door", kind: "door", status: "secured", changedAt: NOW, canControl: false, bridgeCanControl: false, supportsHold: false },
+      { id: "d3", name: "Rear Door", kind: "door", status: "open", changedAt: NOW, canControl: false, bridgeCanControl: false, supportsHold: false },
     ],
     ...overrides,
   } as Site;
@@ -66,8 +66,8 @@ describe("siteSummary", () => {
     const two = (a: Site["areas"][number]["status"], b: Site["areas"][number]["status"]) =>
       site({
         areas: [
-          { id: "a", name: "Station", status: a, changedAt: NOW, canControl: true },
-          { id: "b", name: "Shed", status: b, changedAt: NOW, canControl: true },
+          { id: "a", name: "Station", status: a, changedAt: NOW, canControl: true, bridgeCanControl: true },
+          { id: "b", name: "Shed", status: b, changedAt: NOW, canControl: true, bridgeCanControl: true },
         ],
       });
     expect(siteSummary(two("armed", "armed")).label).toBe("Armed");
@@ -97,8 +97,8 @@ describe("soleArmedArea", () => {
 describe("attentionItems", () => {
   it("flags alarms and forced or held doors", () => {
     const s = site({
-      areas: [{ id: "a1", name: "Station", status: "alarm", changedAt: NOW, canControl: true }],
-      doors: [{ id: "d1", name: "Front Door", kind: "door", status: "forced", changedAt: NOW, canControl: false, supportsHold: false }],
+      areas: [{ id: "a1", name: "Station", status: "alarm", changedAt: NOW, canControl: true, bridgeCanControl: true }],
+      doors: [{ id: "d1", name: "Front Door", kind: "door", status: "forced", changedAt: NOW, canControl: false, bridgeCanControl: false, supportsHold: false }],
     });
     expect(attentionItems([s]).map((a) => a.text)).toEqual([
       "Alarm at Satellite Station: Station",
@@ -128,7 +128,7 @@ describe("mergeActivity", () => {
         ev("b1", 0, "Shed armed", "bravo", "Alex Carter"),
         ev("p1", 1, "Shed PA Door: Door Unlocked", "panel"),
       ],
-      { ...site(), areas: [{ id: "a2", name: "Shed", status: "armed", changedAt: NOW, canControl: true }] },
+      { ...site(), areas: [{ id: "a2", name: "Shed", status: "armed", changedAt: NOW, canControl: true, bridgeCanControl: true }] },
     );
     expect(items).toHaveLength(2);
   });

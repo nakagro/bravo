@@ -9,7 +9,7 @@ import {
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireModuleAccess } from "./modules";
 import { isMemberAccount } from "./lib/accountType";
-import { requireAdmin } from "./lib/access";
+import { isAdminUser, isSuperAdmin, requireUser } from "./lib/access";
 import {
   ACCESS_COMMAND_TTL_MS,
   ACCESS_COOLDOWN_MS,
@@ -39,11 +39,73 @@ const SITE_ORDER: Record<string, number> = {
   satellite: 1,
 };
 
+const dashboardAreaValidator = accessAreaValidator.extend({
+  bridgeCanControl: v.boolean(),
+  controlOverride: v.optional(v.boolean()),
+});
+
+const dashboardDoorValidator = accessDoorValidator.extend({
+  bridgeCanControl: v.boolean(),
+  controlOverride: v.optional(v.boolean()),
+});
+
+function readOverride(
+  overrides: Record<string, boolean> | undefined,
+  targetId: string,
+): boolean | undefined {
+  if (!overrides || !Object.prototype.hasOwnProperty.call(overrides, targetId)) {
+    return undefined;
+  }
+  return overrides[targetId];
+}
+
+function effectiveCanControl(
+  bridgeCanControl: boolean,
+  overrides: Record<string, boolean> | undefined,
+  targetId: string,
+): boolean {
+  const override = readOverride(overrides, targetId);
+  return override !== undefined ? override : bridgeCanControl;
+}
+
+async function isAccessControlSuperAdminOnly(ctx: QueryCtx | MutationCtx): Promise<boolean> {
+  const setting = await ctx.db
+    .query("moduleSettings")
+    .withIndex("by_moduleId", (q) => q.eq("moduleId", "accessControl"))
+    .first();
+  return setting?.superAdminOnly === true;
+}
+
+async function canUserManageAccessControls(
+  ctx: QueryCtx | MutationCtx,
+  user: Doc<"users">,
+): Promise<boolean> {
+  if (isSuperAdmin(user)) return true;
+  if (!isAdminUser(user)) return false;
+  return !(await isAccessControlSuperAdminOnly(ctx));
+}
+
+async function requireAccessControlManager(ctx: MutationCtx, action: string): Promise<Doc<"users">> {
+  const user = await requireUser(ctx);
+  if (isSuperAdmin(user)) return user;
+  const superOnly = await isAccessControlSuperAdminOnly(ctx);
+  if (superOnly) {
+    throw new ConvexError(`Only super administrators can ${action}`);
+  }
+  if (!isAdminUser(user)) {
+    throw new ConvexError(`Only administrators can ${action}`);
+  }
+  return user;
+}
+
 async function requireAccessControlMember(ctx: QueryCtx | MutationCtx) {
+  const superOnly = await isAccessControlSuperAdminOnly(ctx);
   const userId = await requireModuleAccess(
     ctx,
     "accessControl",
-    "Access Control requires Lieutenant rank or above",
+    superOnly
+      ? "Access Control is restricted to super administrators"
+      : "Access Control requires Lieutenant rank or above",
   );
   const user = await ctx.db.get("users", userId);
   if (!user || !isMemberAccount(user)) {
@@ -88,18 +150,23 @@ async function siteControlsFor(ctx: QueryCtx | MutationCtx, siteId: string) {
     .unique();
 }
 
-/** Fail every unclaimed command for a site, e.g. when its controls are turned off. */
+/** Fail every unclaimed command for a site (or one target), e.g. when its controls are turned off. */
 async function failPendingCommands(
   ctx: MutationCtx,
   siteId: string,
   message: string,
   now: number,
+  targetFilter?: { targetKind?: "area" | "door" | "roller"; targetId: string },
 ) {
   const pending = await ctx.db
     .query("accessCommands")
     .withIndex("by_site_status", (q) => q.eq("siteId", siteId).eq("status", "pending"))
     .take(100);
   for (const cmd of pending) {
+    if (targetFilter) {
+      if (cmd.targetId !== targetFilter.targetId) continue;
+      if (targetFilter.targetKind && cmd.targetKind !== targetFilter.targetKind) continue;
+    }
     await ctx.db.patch("accessCommands", cmd._id, {
       status: "failed",
       completedAt: now,
@@ -122,6 +189,7 @@ async function failPendingCommands(
 }
 
 const CONTROLS_OFF_MESSAGE = "Remote controls are turned off for this station";
+const TARGET_OFF_MESSAGE = "Remote control is turned off for this item";
 
 function actionLabel(action: string, targetName: string): string {
   switch (action) {
@@ -251,8 +319,8 @@ export const getDashboard = query({
         writesEnabled: v.boolean(),
         bridgeVersion: v.optional(v.string()),
         lastSeenAt: v.number(),
-        areas: v.array(accessAreaValidator),
-        doors: v.array(accessDoorValidator),
+        areas: v.array(dashboardAreaValidator),
+        doors: v.array(dashboardDoorValidator),
         controlsEnabled: v.boolean(),
         controlsChangedBy: v.optional(v.string()),
         controlsChangedAt: v.optional(v.number()),
@@ -306,8 +374,24 @@ export const getDashboard = query({
           writesEnabled: s.writesEnabled,
           bridgeVersion: s.bridgeVersion,
           lastSeenAt: s.lastSeenAt,
-          areas: s.areas,
-          doors: s.doors,
+          areas: s.areas.map((a) => {
+            const controlOverride = readOverride(controls?.areaControls, a.id);
+            return {
+              ...a,
+              bridgeCanControl: a.canControl,
+              canControl: effectiveCanControl(a.canControl, controls?.areaControls, a.id),
+              ...(controlOverride !== undefined ? { controlOverride } : {}),
+            };
+          }),
+          doors: s.doors.map((d) => {
+            const controlOverride = readOverride(controls?.doorControls, d.id);
+            return {
+              ...d,
+              bridgeCanControl: d.canControl,
+              canControl: effectiveCanControl(d.canControl, controls?.doorControls, d.id),
+              ...(controlOverride !== undefined ? { controlOverride } : {}),
+            };
+          }),
           controlsEnabled: controls?.controlsEnabled ?? false,
           controlsChangedBy: controls?.changedByName,
           controlsChangedAt: controls?.changedAt,
@@ -359,7 +443,8 @@ export const getDashboard = query({
       message: c.message,
     }));
 
-    return { sites, canManageControls: user.isAdmin === true, events, recentCommands };
+    const canManageControls = await canUserManageAccessControls(ctx, user);
+    return { sites, canManageControls, events, recentCommands };
   },
 });
 
@@ -427,7 +512,8 @@ export const requestCommand = mutation({
       return { commandId, expiresAt: now };
     }
 
-    if (!(await siteControlsFor(ctx, args.siteId))?.controlsEnabled) {
+    const controls = await siteControlsFor(ctx, args.siteId);
+    if (!controls?.controlsEnabled) {
       throw new ConvexError(`Remote controls are turned off for ${site.name}`);
     }
     if (now - site.lastSeenAt > ACCESS_STALE_AFTER_MS) {
@@ -451,7 +537,9 @@ export const requestCommand = mutation({
       }
       const area = site.areas.find((a) => a.id === args.targetId);
       if (!area) throw new Error("Area not found on this site");
-      if (!area.canControl) throw new Error(`${area.name} is view-only`);
+      if (!effectiveCanControl(area.canControl, controls.areaControls, area.id)) {
+        throw new Error(`${area.name} is view-only`);
+      }
       targetName = area.name;
     } else if (args.targetKind === "door") {
       if (args.action !== "pulse" && args.action !== "unlock" && args.action !== "lock") {
@@ -459,7 +547,9 @@ export const requestCommand = mutation({
       }
       const door = site.doors.find((d) => d.id === args.targetId && d.kind === "door");
       if (!door) throw new Error("Door not found on this site");
-      if (!door.canControl) throw new Error(`${door.name} is view-only`);
+      if (!effectiveCanControl(door.canControl, controls.doorControls, door.id)) {
+        throw new Error(`${door.name} is view-only`);
+      }
       if ((args.action === "unlock" || args.action === "lock") && !door.supportsHold) {
         throw new Error(`${door.name} does not support hold unlock/lock`);
       }
@@ -470,7 +560,9 @@ export const requestCommand = mutation({
       }
       const roller = site.doors.find((d) => d.id === args.targetId && d.kind === "roller");
       if (!roller) throw new Error("Roller door not found on this site");
-      if (!roller.canControl) throw new Error(`${roller.name} is view-only`);
+      if (!effectiveCanControl(roller.canControl, controls.doorControls, roller.id)) {
+        throw new Error(`${roller.name} is view-only`);
+      }
       if (roller.status === "open" || roller.status === "heldOpen") {
         throw new Error(
           `${roller.name} is already open. Remote close is disabled without line of sight.`,
@@ -533,8 +625,9 @@ export const requestCommand = mutation({
 });
 
 /**
- * BRAVO's off switch for one site's remote controls. Admins only. Turning it
- * off fails anything still queued; a command the bridge already claimed is
+ * BRAVO's off switch for one site's remote controls. Managers only (super
+ * admins while Access Control is super-admin-only, admins otherwise). Turning
+ * it off fails anything still queued; a command the bridge already claimed is
  * left to report its own result.
  */
 export const setSiteControls = mutation({
@@ -544,7 +637,7 @@ export const setSiteControls = mutation({
   },
   returns: v.null(),
   handler: async (ctx, { siteId, enabled }) => {
-    const admin = await requireAdmin(ctx, "turn remote controls on or off");
+    const admin = await requireAccessControlManager(ctx, "turn remote controls on or off");
     const site = await ctx.db
       .query("accessSites")
       .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
@@ -556,11 +649,21 @@ export const setSiteControls = mutation({
     const existing = await siteControlsFor(ctx, siteId);
     if (existing?.controlsEnabled === enabled) return null;
 
-    const row = { siteId, controlsEnabled: enabled, changedBy: admin._id, changedByName, changedAt: now };
     if (existing) {
-      await ctx.db.patch("accessSiteControls", existing._id, row);
+      await ctx.db.patch("accessSiteControls", existing._id, {
+        controlsEnabled: enabled,
+        changedBy: admin._id,
+        changedByName,
+        changedAt: now,
+      });
     } else {
-      await ctx.db.insert("accessSiteControls", row);
+      await ctx.db.insert("accessSiteControls", {
+        siteId,
+        controlsEnabled: enabled,
+        changedBy: admin._id,
+        changedByName,
+        changedAt: now,
+      });
     }
 
     if (!enabled) {
@@ -572,6 +675,151 @@ export const setSiteControls = mutation({
       externalId: `bravo:controls:${now}`,
       at: now,
       text: enabled ? "Remote controls turned on" : "Remote controls turned off",
+      who: changedByName,
+      source: "bravo",
+    });
+    return null;
+  },
+});
+
+/**
+ * Per-door / per-area BRAVO control switch. Overrides the bridge's `canControl`
+ * flag in either direction (turn a view-only door on, or turn a controllable
+ * door off) without editing external bridge config. Passing `enabled: null`
+ * clears the override back to the bridge default.
+ */
+export const setTargetControl = mutation({
+  args: {
+    siteId: v.string(),
+    targetKind: v.union(v.literal("area"), v.literal("door")),
+    targetId: v.string(),
+    enabled: v.union(v.boolean(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, { siteId, targetKind, targetId, enabled }) => {
+    const manager = await requireAccessControlManager(ctx, "configure remote controls");
+    const site = await ctx.db
+      .query("accessSites")
+      .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+      .unique();
+    if (!site) throw new ConvexError("Site has not reported in yet");
+
+    const target =
+      targetKind === "area"
+        ? site.areas.find((a) => a.id === targetId)
+        : site.doors.find((d) => d.id === targetId);
+    if (!target) {
+      throw new ConvexError(targetKind === "area" ? "Area not found on this site" : "Door not found on this site");
+    }
+
+    const now = Date.now();
+    const changedByName = actorNameFor(manager);
+    const existing = await siteControlsFor(ctx, siteId);
+    const currentMap =
+      targetKind === "area" ? { ...(existing?.areaControls ?? {}) } : { ...(existing?.doorControls ?? {}) };
+
+    if (enabled === null) {
+      if (!Object.prototype.hasOwnProperty.call(currentMap, targetId)) return null;
+      delete currentMap[targetId];
+    } else {
+      if (currentMap[targetId] === enabled) return null;
+      currentMap[targetId] = enabled;
+    }
+
+    const fieldPatch =
+      targetKind === "area" ? { areaControls: currentMap } : { doorControls: currentMap };
+
+    if (existing) {
+      await ctx.db.patch("accessSiteControls", existing._id, {
+        ...fieldPatch,
+        changedBy: manager._id,
+        changedByName,
+        changedAt: now,
+      });
+    } else {
+      await ctx.db.insert("accessSiteControls", {
+        siteId,
+        controlsEnabled: false,
+        ...fieldPatch,
+        changedBy: manager._id,
+        changedByName,
+        changedAt: now,
+      });
+    }
+
+    const nowControllable = effectiveCanControl(target.canControl, currentMap, targetId);
+    if (!nowControllable) {
+      await failPendingCommands(ctx, siteId, TARGET_OFF_MESSAGE, now, { targetId });
+    }
+
+    const text =
+      enabled === null
+        ? `${target.name} control reset to bridge default`
+        : enabled
+          ? `${target.name} control turned on`
+          : `${target.name} control turned off`;
+
+    await ctx.db.insert("accessEvents", {
+      siteId,
+      externalId: `bravo:target:${targetKind}:${targetId}:${now}`,
+      at: now,
+      text,
+      who: changedByName,
+      source: "bravo",
+    });
+    return null;
+  },
+});
+
+/** Clear every per-area and per-door override for one site back to bridge defaults. */
+export const resetSiteTargetControls = mutation({
+  args: {
+    siteId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { siteId }) => {
+    const manager = await requireAccessControlManager(ctx, "configure remote controls");
+    const site = await ctx.db
+      .query("accessSites")
+      .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+      .unique();
+    if (!site) throw new ConvexError("Site has not reported in yet");
+
+    const existing = await siteControlsFor(ctx, siteId);
+    if (!existing) return null;
+    const hasOverrides =
+      Object.keys(existing.areaControls ?? {}).length > 0 ||
+      Object.keys(existing.doorControls ?? {}).length > 0;
+    if (!hasOverrides) return null;
+
+    const now = Date.now();
+    const changedByName = actorNameFor(manager);
+
+    await ctx.db.patch("accessSiteControls", existing._id, {
+      areaControls: {},
+      doorControls: {},
+      changedBy: manager._id,
+      changedByName,
+      changedAt: now,
+    });
+
+    // Fail any pending commands for targets that are view-only by bridge default.
+    for (const a of site.areas) {
+      if (!a.canControl) {
+        await failPendingCommands(ctx, siteId, TARGET_OFF_MESSAGE, now, { targetId: a.id });
+      }
+    }
+    for (const d of site.doors) {
+      if (!d.canControl) {
+        await failPendingCommands(ctx, siteId, TARGET_OFF_MESSAGE, now, { targetId: d.id });
+      }
+    }
+
+    await ctx.db.insert("accessEvents", {
+      siteId,
+      externalId: `bravo:target:reset:${now}`,
+      at: now,
+      text: "Door and area controls reset to bridge defaults",
       who: changedByName,
       source: "bravo",
     });
@@ -667,10 +915,16 @@ export const claimNextCommand = internalMutation({
 
     // Belt and braces: never hand the bridge a command while BRAVO has the
     // site's controls off, even one queued just before they were turned off.
-    if (!(await siteControlsFor(ctx, siteId))?.controlsEnabled) {
+    const siteControls = await siteControlsFor(ctx, siteId);
+    if (!siteControls?.controlsEnabled) {
       await failPendingCommands(ctx, siteId, CONTROLS_OFF_MESSAGE, now);
       return { serverTime: now, writesDisabled: false, command: null };
     }
+
+    const site = await ctx.db
+      .query("accessSites")
+      .withIndex("by_siteId", (q) => q.eq("siteId", siteId))
+      .unique();
 
     const pending = await ctx.db
       .query("accessCommands")
@@ -683,6 +937,39 @@ export const claimNextCommand = internalMutation({
     for (const cmd of pending) {
       if (now > cmd.expiresAt) {
         await expireCommand(ctx, cmd, now);
+        continue;
+      }
+
+      // Also refuse if this specific area/door was turned off in BRAVO after queuing.
+      const targetAllowed = (() => {
+        if (!site) return true;
+        if (cmd.targetKind === "area") {
+          const area = site.areas.find((a) => a.id === cmd.targetId);
+          return area ? effectiveCanControl(area.canControl, siteControls.areaControls, area.id) : false;
+        }
+        const door = site.doors.find((d) => d.id === cmd.targetId);
+        return door ? effectiveCanControl(door.canControl, siteControls.doorControls, door.id) : false;
+      })();
+
+      if (!targetAllowed) {
+        await ctx.db.patch(cmd._id, {
+          status: "failed",
+          completedAt: now,
+          message: TARGET_OFF_MESSAGE,
+        });
+        await ctx.db.insert("accessAuditLog", {
+          commandId: cmd._id,
+          siteId: cmd.siteId,
+          targetKind: cmd.targetKind,
+          targetId: cmd.targetId,
+          action: cmd.action,
+          requestedBy: cmd.requestedBy,
+          actorName: cmd.actorName,
+          status: "failed",
+          message: TARGET_OFF_MESSAGE,
+          createdAt: cmd.createdAt,
+          completedAt: now,
+        });
         continue;
       }
 
