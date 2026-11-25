@@ -1,11 +1,12 @@
-import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { isMemberAccount } from "./lib/accountType";
 import { isBARecordMemberOption } from "./lib/baEligibility";
 import { brigadeDateStr, isIsoCalendarDate } from "./lib/dates";
 import { knownLocationsFrom } from "./applianceLocations";
+import { kioskHubTokenMatches } from "./lib/kioskHubAuth";
 
 // Backs the station kiosk hub API, /api/kiosk/v1/* in convex/http.ts. The hub
 // (wvfb-kiosk on node01) authenticates per site with a bearer token; by the
@@ -82,8 +83,38 @@ async function skillCodesFor(ctx: QueryCtx, user: Doc<"users">): Promise<string[
   return skills.flatMap((s) => (s?.code ? [s.code] : []));
 }
 
+async function applianceSnapshot(ctx: QueryCtx) {
+  const rows = await ctx.db.query("applianceLocations").collect();
+  const applianceLocations = rows
+    .map(toApplianceOut)
+    .sort((a, b) => a.applianceName.localeCompare(b.applianceName));
+  return { applianceLocations, knownLocations: knownLocationsFrom(rows) };
+}
+
 /**
- * The hub's cached view of BRAVO. `appliances` is the 10-15 s fast poll;
+ * Live truck locations for the station kiosk hub, which subscribes over the
+ * Convex WebSocket (convex-rs) so a move made on a phone reaches the station
+ * tablets at once. A WebSocket can't carry the hub's Bearer header, so the
+ * site's hub token comes as an argument and is checked like the HTTP API's.
+ * Same shape as GET /api/kiosk/v1/sync?scope=appliances.
+ */
+export const watchAppliances = query({
+  args: { siteId: v.string(), token: v.string() },
+  returns: v.object({
+    applianceLocations: v.array(applianceLocationOut),
+    knownLocations: v.array(v.string()),
+  }),
+  handler: async (ctx, { siteId, token }) => {
+    if (!(await kioskHubTokenMatches(siteId, token))) {
+      throw new ConvexError("Unauthorized");
+    }
+    return await applianceSnapshot(ctx);
+  },
+});
+
+/**
+ * The hub's cached view of BRAVO. `appliances` is the fast poll (a fallback
+ * when the hub's watchAppliances subscription is down);
  * `full` adds the BA member pickers and the contact book's metadata. Never a
  * storage URL: the book itself comes through /api/kiosk/v1/contact-directory.
  * Ordering is stable so http.ts can hash the result into an ETag.
@@ -97,11 +128,7 @@ export const getSyncSnapshot = internalQuery({
     contactDirectory: v.optional(contactDirectoryOut),
   }),
   handler: async (ctx, { scope }) => {
-    const rows = await ctx.db.query("applianceLocations").collect();
-    const applianceLocations = rows
-      .map(toApplianceOut)
-      .sort((a, b) => a.applianceName.localeCompare(b.applianceName));
-    const knownLocations = knownLocationsFrom(rows);
+    const { applianceLocations, knownLocations } = await applianceSnapshot(ctx);
     if (scope === "appliances") return { applianceLocations, knownLocations };
 
     const [users, skills] = await Promise.all([

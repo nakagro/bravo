@@ -8,7 +8,8 @@
     "passwordReset:resetPasswordWithToken": "Reset link page; needs the emailed token.",
     "serviceAccounts:validateServicePin": "Kiosk PIN sign-in; rate-limited per device and brigade-wide.",
     "serviceAccounts:getServiceSession": "Kiosk checks its own session token.",
-    "serviceAccounts:logoutServiceAccount": "Kiosk ends its own session token."
+    "serviceAccounts:logoutServiceAccount": "Kiosk ends its own session token.",
+    "kioskApi:watchAppliances": "Station kiosk hub's live truck locations; checks the site's hub token (KIOSK_HUB_<SITE>_TOKEN) like /api/kiosk/v1."
   },
   "self": {
     "auth:loggedInUser": "The caller's own account row; the app needs it to show the pending and disabled screens.",
