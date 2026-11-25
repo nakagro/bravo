@@ -19,10 +19,12 @@ export function NotificationPrefsList({
   rows,
   onChange,
   emptyText = 'There are no notification types to manage.',
+  disabled = false,
 }: {
   rows: NotificationPrefRow[] | undefined;
   onChange: (key: NotificationPrefRow['key'], enabled: boolean) => Promise<unknown>;
   emptyText?: string;
+  disabled?: boolean;
 }) {
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -35,6 +37,7 @@ export function NotificationPrefsList({
   }
 
   const handle = async (key: NotificationPrefRow['key'], enabled: boolean) => {
+    if (disabled) return;
     setSaving(key);
     try {
       await onChange(key, enabled);
@@ -53,7 +56,7 @@ export function NotificationPrefsList({
         <label
           key={row.key}
           htmlFor={`notif-${row.key}`}
-          className="flex items-center justify-between gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer"
+          className={`flex items-center justify-between gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-white">{row.label}</p>
@@ -62,7 +65,7 @@ export function NotificationPrefsList({
           <Switch
             id={`notif-${row.key}`}
             checked={row.enabled}
-            disabled={saving !== null}
+            disabled={disabled || saving !== null}
             onCheckedChange={(checked) => void handle(row.key, checked)}
           />
         </label>

@@ -76,12 +76,13 @@ const getStrengthText = (strength: number) => {
 // submits by id rather than by nesting.
 const USER_FORM_ID = "user-settings-form";
 
-function MemberNotificationPrefs({ userId }: { userId: Id<"users"> }) {
+function MemberNotificationPrefs({ userId, disabled = false }: { userId: Id<"users">; disabled?: boolean }) {
   const rows = useQuery(api.notificationPrefs.getUserNotificationPrefs, { userId });
   const setPref = useMutation(api.notificationPrefs.setUserNotificationPref);
   return (
     <NotificationPrefsList
       rows={rows}
+      disabled={disabled}
       onChange={(category, enabled) => setPref({ userId, category, enabled })}
       emptyText="This member can't open any module that sends pushes."
     />
@@ -211,11 +212,16 @@ function UserManagement() {
   };
 
   // Who holds each Lieutenant number now, so the picker can say whose number a
-  // choice takes over
+  // choice takes over (and lock out numbers held by a super admin for regular admins)
   const lieutenantHolders = new Map(
     (users ?? [])
       .filter((user) => user.lieutenantNumber && user._id !== selectedUserId)
       .map((user) => [user.lieutenantNumber!, formatUserName(user)])
+  );
+  const protectedLieutenantNumbers = new Set(
+    (users ?? [])
+      .filter((user) => user.lieutenantNumber && user._id !== selectedUserId && user.isSuperAdmin === true && !callerIsSuperAdmin)
+      .map((user) => user.lieutenantNumber!)
   );
 
   // Handle rank selection via shadcn Select
@@ -247,6 +253,7 @@ function UserManagement() {
 
   // Handle duty officer toggle
   const handleDutyOfficerToggle = async (checked: boolean) => {
+    if (targetIsProtectedSuperAdmin) return;
     const newValue = checked;
     setIsDutyOfficer(newValue);
 
@@ -266,7 +273,7 @@ function UserManagement() {
 
   // Handle password reset
   const handlePasswordReset = async () => {
-    if (!selectedUserId) return;
+    if (!selectedUserId || targetIsProtectedSuperAdmin) return;
 
     // Validation
     if (!newPassword || !confirmPassword) {
@@ -373,7 +380,7 @@ function UserManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedUserId) return;
+    if (!selectedUserId || targetIsProtectedSuperAdmin) return;
 
     setIsSubmitting(true);
     setStatusMessage(null);
@@ -472,7 +479,7 @@ function UserManagement() {
         }}
         title={selectedUser ? formatUserName(selectedUser) : "User Settings"}
         footer={
-          selectedUser ? (
+          selectedUser && !targetIsProtectedSuperAdmin ? (
             <Button type="submit" form={USER_FORM_ID} disabled={isSubmitting}>
               {isSubmitting ? "Updating..." : "Update User"}
             </Button>
@@ -484,6 +491,12 @@ function UserManagement() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {selectedUser.email}
             </p>
+          )}
+
+          {targetIsProtectedSuperAdmin && (
+            <div className="mb-4 rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
+              Protected Super Admin account. Only a super administrator can view and change this account&apos;s settings, permissions, or status.
+            </div>
           )}
 
           {selectedUserIsDisabled && (
@@ -503,6 +516,7 @@ function UserManagement() {
                 <Select
                   value={selectedRank ?? DEFAULT_RANK}
                   onValueChange={handleRankChange}
+                  disabled={targetIsProtectedSuperAdmin}
                 >
                   <SelectTrigger id="rank-select" className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                     <SelectValue placeholder="Brigade Member" />
@@ -534,6 +548,7 @@ function UserManagement() {
                   <Select
                     value={selectedLieutenantNumber}
                     onValueChange={setSelectedLieutenantNumber}
+                    disabled={targetIsProtectedSuperAdmin}
                   >
                     <SelectTrigger
                       id="lieutenant-number-select"
@@ -544,9 +559,13 @@ function UserManagement() {
                     <SelectContent>
                       <SelectItem value="none">Not numbered</SelectItem>
                       {LIEUTENANT_NUMBERS.map((n) => (
-                        <SelectItem key={n} value={String(n)}>
+                        <SelectItem key={n} value={String(n)} disabled={protectedLieutenantNumbers.has(n)}>
                           {ordinal(n)} Lieutenant
-                          {lieutenantHolders.has(n) ? ` (now ${lieutenantHolders.get(n)})` : ""}
+                          {lieutenantHolders.has(n)
+                            ? protectedLieutenantNumbers.has(n)
+                              ? ` (now ${lieutenantHolders.get(n)} - Super Admin)`
+                              : ` (now ${lieutenantHolders.get(n)})`
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -569,6 +588,7 @@ function UserManagement() {
                 <Select
                   value={selectedAccountType}
                   onValueChange={(value) => setSelectedAccountType(value as AccountType)}
+                  disabled={targetIsProtectedSuperAdmin}
                 >
                   <SelectTrigger id="account-type-select" className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                     <SelectValue placeholder="Member" />
@@ -600,11 +620,12 @@ function UserManagement() {
                           <Checkbox
                             id={`role-${role._id}`}
                             checked={selectedRoles.includes(role.name)}
+                            disabled={targetIsProtectedSuperAdmin}
                             onCheckedChange={() => handleRoleToggle(role.name)}
                           />
                           <label
                             htmlFor={`role-${role._id}`}
-                            className="text-sm text-gray-900 dark:text-gray-200"
+                            className={`text-sm text-gray-900 dark:text-gray-200 ${targetIsProtectedSuperAdmin ? "opacity-60" : ""}`}
                           >
                             {role.name}
                             {role.description && (
@@ -671,6 +692,7 @@ function UserManagement() {
                 <Switch
                   id="duty-officer-toggle"
                   checked={isDutyOfficer}
+                  disabled={targetIsProtectedSuperAdmin}
                   onCheckedChange={handleDutyOfficerToggle}
                   className="dark:data-[state=unchecked]:bg-gray-600 dark:data-[state=checked]:bg-red-600"
                 />
@@ -698,14 +720,14 @@ function UserManagement() {
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             placeholder="Enter new password"
-                            disabled={isResettingPassword}
+                            disabled={targetIsProtectedSuperAdmin || isResettingPassword}
                             className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
                           />
                           <button
                             type="button"
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            disabled={isResettingPassword}
+                            disabled={targetIsProtectedSuperAdmin || isResettingPassword}
                           >
                             {showNewPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -747,14 +769,14 @@ function UserManagement() {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Confirm new password"
-                            disabled={isResettingPassword}
+                            disabled={targetIsProtectedSuperAdmin || isResettingPassword}
                             className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 pr-10"
                           />
                           <button
                             type="button"
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            disabled={isResettingPassword}
+                            disabled={targetIsProtectedSuperAdmin || isResettingPassword}
                           >
                             {showConfirmPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -806,9 +828,11 @@ function UserManagement() {
                       <AccordionContent>
                         <div className="space-y-3 pt-4">
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Pushes this member can receive. Types for modules they can't open are hidden and never sent.
+                            {targetIsProtectedSuperAdmin
+                              ? "Read-only. Only a super administrator can change a super administrator's notification preferences."
+                              : "Pushes this member can receive. Types for modules they can't open are hidden and never sent."}
                           </p>
-                          <MemberNotificationPrefs userId={selectedUserId} />
+                          <MemberNotificationPrefs userId={selectedUserId} disabled={targetIsProtectedSuperAdmin} />
                         </div>
                       </AccordionContent>
                     </AccordionItem>

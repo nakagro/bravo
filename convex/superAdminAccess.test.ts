@@ -144,8 +144,11 @@ describe("superAdminOnly modules and individual allowedUserIds", () => {
     expect((await asSuperAdmin.query(api.modules.getAllModuleAccess, {})).accessControl).toBe(true);
   });
 
-  it("protects super admin accounts from regular admins and supports CLI bootstrap helpers", async () => {
+  it("protects super admin accounts from regular admins across all user settings and supports CLI bootstrap helpers", async () => {
     const { t, asSuperAdmin, asAdmin, ids } = await setup();
+
+    // Give the super admin Lieutenant #1 so we also verify indirect reassignment is blocked.
+    await t.run((ctx) => ctx.db.patch(ids.superAdmin, { rank: "Lieutenant", lieutenantNumber: 1 }));
 
     await expect(
       asAdmin.mutation(api.users.updateUserSuperAdminStatus, { userId: ids.member, isSuperAdmin: true }),
@@ -154,11 +157,53 @@ describe("superAdminOnly modules and individual allowedUserIds", () => {
       asAdmin.mutation(api.users.updateUserAdminStatus, { userId: ids.superAdmin, isAdmin: false }),
     ).rejects.toThrow(/super administrators/i);
     await expect(
+      asAdmin.mutation(api.users.updateUserRank, { userId: ids.superAdmin, rank: "Brigade Member" }),
+    ).rejects.toThrow(/super administrators/i);
+    // Regular admin cannot steal a super admin's Lieutenant number by assigning it to someone else.
+    await expect(
+      asAdmin.mutation(api.users.updateUserRank, {
+        userId: ids.member,
+        rank: "Lieutenant",
+        lieutenantNumber: 1,
+      }),
+    ).rejects.toThrow(/super administrators/i);
+    await expect(
+      asAdmin.mutation(api.users.updateUserRoles, { userId: ids.superAdmin, roles: ["Key Manager"] }),
+    ).rejects.toThrow(/super administrators/i);
+    await expect(
+      asAdmin.mutation(api.users.updateUserAccountType, { userId: ids.superAdmin, accountType: "shared" }),
+    ).rejects.toThrow(/super administrators/i);
+    await expect(
       asAdmin.mutation(api.users.setUserDisabled, { userId: ids.superAdmin, isDisabled: true }),
     ).rejects.toThrow(/super administrators/i);
     await expect(
       asAdmin.mutation(api.users.deleteUser, { userId: ids.superAdmin }),
     ).rejects.toThrow(/super administrators/i);
+    await expect(
+      asAdmin.mutation(api.notificationPrefs.setUserNotificationPref, {
+        userId: ids.superAdmin,
+        category: "events",
+        enabled: false,
+      }),
+    ).rejects.toThrow(/super administrators/i);
+    await expect(
+      asAdmin.mutation(api.authManagement.purgeExpiredTokens, { userId: ids.superAdmin }),
+    ).rejects.toThrow(/super administrators/i);
+
+    // Super admin CAN update their own settings (rank, roles, account type, notification prefs, tokens).
+    await asSuperAdmin.mutation(api.users.updateUserRank, { userId: ids.superAdmin, rank: "Captain" });
+    await asSuperAdmin.mutation(api.users.updateUserRoles, { userId: ids.superAdmin, roles: ["Secretary"] });
+    await asSuperAdmin.mutation(api.notificationPrefs.setUserNotificationPref, {
+      userId: ids.superAdmin,
+      category: "events",
+      enabled: false,
+    });
+    const updatedSuper = await t.run((ctx) => ctx.db.get(ids.superAdmin));
+    expect(updatedSuper).toMatchObject({
+      rank: "Captain",
+      roles: ["Secretary"],
+      notificationPrefs: { events: false },
+    });
 
     // Super admin cannot change their own super admin status.
     await expect(

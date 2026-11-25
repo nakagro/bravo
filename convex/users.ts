@@ -1,5 +1,6 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import {
+  assertCanManageTargetUser,
   getActiveUser,
   getAdmin,
   isSuperAdmin,
@@ -34,9 +35,7 @@ async function requireAdminActingOnSomeoneElse(
   const target = await ctx.db.get(targetUserId);
   if (!target) throw new Error(`User with ID ${targetUserId} not found`);
 
-  if (isSuperAdmin(target) && !isSuperAdmin(actor)) {
-    throw new ConvexError("Only super administrators can modify a super administrator account");
-  }
+  assertCanManageTargetUser(actor, target);
 
   return { actorId, target };
 }
@@ -159,12 +158,14 @@ export const updateUserAccountType = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx, "change an account type");
+    const actor = await requireAdminUser(ctx, "change an account type");
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
       throw new Error(`User with ID ${args.userId} not found`);
     }
+
+    assertCanManageTargetUser(actor, user, "change account type");
 
     await ctx.db.patch(args.userId, { accountType: args.accountType });
     return args.userId;
@@ -202,7 +203,7 @@ export const updateUserRank = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx, "change a rank");
+    const actor = await requireAdminUser(ctx, "change a rank");
     const { userId, rank } = args;
 
     // Verify the user exists
@@ -210,6 +211,8 @@ export const updateUserRank = mutation({
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
+
+    assertCanManageTargetUser(actor, user, "change rank");
 
     let lieutenantNumber = rank === "Lieutenant" ? user.lieutenantNumber : undefined;
     if (rank === "Lieutenant" && args.lieutenantNumber !== undefined) {
@@ -224,6 +227,11 @@ export const updateUserRank = mutation({
         .query("users")
         .withIndex("by_lieutenantNumber", (q) => q.eq("lieutenantNumber", lieutenantNumber))
         .collect();
+      for (const holder of holders) {
+        if (holder._id !== userId) {
+          assertCanManageTargetUser(actor, holder, "reassign a Lieutenant number");
+        }
+      }
       for (const holder of holders) {
         if (holder._id !== userId) await ctx.db.patch(holder._id, { lieutenantNumber: undefined });
       }
@@ -245,18 +253,20 @@ export const updateUserRoles = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx, "change roles");
+    const actor = await requireAdminUser(ctx, "change roles");
     const { userId, roles } = args;
-    
+
     // Verify the user exists
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    
+
+    assertCanManageTargetUser(actor, user, "change roles");
+
     // Update the user's roles
     await ctx.db.patch(userId, { roles });
-    
+
     return userId;
   },
 });
@@ -279,13 +289,9 @@ export const updateUserAdminStatus = mutation({
       throw new Error(`User with ID ${userId} not found`);
     }
 
-    if (isSuperAdmin(user)) {
-      if (!isSuperAdmin(actor)) {
-        throw new ConvexError("Only super administrators can change a super administrator's status");
-      }
-      if (!isAdmin) {
-        throw new ConvexError("Remove super admin status before removing admin status");
-      }
+    assertCanManageTargetUser(actor, user, "change admin status");
+    if (isSuperAdmin(user) && !isAdmin) {
+      throw new ConvexError("Remove super admin status before removing admin status");
     }
 
     await ctx.db.patch(userId, { isAdmin });

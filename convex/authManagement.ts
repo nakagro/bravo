@@ -2,7 +2,7 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { logAction } from "./lib/logging";
 import { internal } from "./_generated/api";
-import { requireAdmin } from "./lib/access";
+import { assertCanManageTargetUser, requireAdmin } from "./lib/access";
 import { summarizeLaunches } from "./lib/launches";
 
 /**
@@ -72,6 +72,7 @@ export const getUserAuthInfo = query({
         firstName: v.optional(v.string()),
         lastName: v.optional(v.string()),
         isAdmin: v.optional(v.boolean()),
+        isSuperAdmin: v.optional(v.boolean()),
         rank: v.optional(v.union(
           v.literal("Brigade Member"),
           v.literal("Probationary"),
@@ -166,6 +167,7 @@ export const getUserAuthInfo = query({
         firstName: user.firstName,
         lastName: user.lastName,
         isAdmin: user.isAdmin,
+        isSuperAdmin: user.isSuperAdmin,
         rank: user.rank,
         currentStatus: user.currentStatus,
         statusUpdatedAt: user.statusUpdatedAt,
@@ -247,12 +249,15 @@ export const purgeExpiredTokens = mutation({
     deletedCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx, "manage sign-ins");
+    const actor = await requireAdmin(ctx, "manage sign-ins");
     const { userId } = args;
     const now = Date.now();
     
-    // Get the target user for logging
+    // Get the target user for logging and super-admin protection
     const targetUser = await ctx.db.get(userId);
+    if (targetUser) {
+      assertCanManageTargetUser(actor, targetUser, "purge auth tokens");
+    }
     const targetEmail = targetUser?.email || userId;
     
     await logAction(ctx, "purgeExpiredTokens", "Starting purge for user", { targetUser: targetEmail });

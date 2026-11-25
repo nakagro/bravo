@@ -9,7 +9,7 @@ import {
   categoryForType,
   isCategoryEnabled,
 } from "./lib/notificationPrefs";
-import { requireAdmin, requireUser } from "./lib/access";
+import { assertCanManageTargetUser, requireAdmin, requireUser } from "./lib/access";
 
 const categoryValidator = v.union(
   v.literal("availabilityReminders"),
@@ -87,7 +87,7 @@ export const setMyNotificationPref = mutation({
 });
 
 async function requireAdminUser(ctx: QueryCtx) {
-  await requireAdmin(ctx, "manage member notifications");
+  return await requireAdmin(ctx, "manage member notifications");
 }
 
 export const getUserNotificationPrefs = query({
@@ -105,9 +105,10 @@ export const setUserNotificationPref = mutation({
   args: { userId: v.id("users"), category: categoryValidator, enabled: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireAdminUser(ctx);
+    const actor = await requireAdminUser(ctx);
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("User not found");
+    assertCanManageTargetUser(actor, user, "change notification settings");
     await setPref(ctx, user, args.category, args.enabled);
     return null;
   },

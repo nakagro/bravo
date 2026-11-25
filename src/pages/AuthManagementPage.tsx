@@ -36,9 +36,12 @@ export default function AuthManagementPage() {
         selectedUserId ? { userId: selectedUserId } : "skip"
     );
     
+    const currentUser = useQuery(api.auth.loggedInUser);
     const authStats = useQuery(api.authManagement.getAuthStats);
     const purgeExpiredTokens = useMutation(api.authManagement.purgeExpiredTokens);
     const purgeAllExpiredTokens = useMutation(api.authManagement.purgeAllExpiredTokens);
+    const targetIsProtectedSuperAdmin =
+        authInfo?.user.isSuperAdmin === true && currentUser?.isSuperAdmin !== true;
 
     const formatDate = (timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('en-AU', {
@@ -419,12 +422,17 @@ export default function AuthManagementPage() {
                                     <span className="text-sm text-muted-foreground">
                                         {authInfo.user.email || "No email"}
                                     </span>
-                                    {authInfo.user.isAdmin && (
+                                    {authInfo.user.isSuperAdmin ? (
+                                        <Badge className="text-xs bg-purple-700 hover:bg-purple-800 text-white border-0">
+                                            <Shield className="h-3 w-3 mr-1" />
+                                            Super Admin
+                                        </Badge>
+                                    ) : authInfo.user.isAdmin ? (
                                         <Badge className="text-xs bg-purple-600 hover:bg-purple-700 text-white border-0">
                                             <Shield className="h-3 w-3 mr-1" />
                                             Admin
                                         </Badge>
-                                    )}
+                                    ) : null}
                                     {getSessionHealthBadge(authInfo.sessionCount)}
                                 </div>
 
@@ -529,7 +537,7 @@ export default function AuthManagementPage() {
                                             <RefreshCw className="h-4 w-4" />
                                             Refresh Tokens ({authInfo.refreshTokens.length})
                                         </h4>
-                                        {authInfo.refreshTokens.some(t => t.expirationTime && t.expirationTime < Date.now()) && (
+                                        {!targetIsProtectedSuperAdmin && authInfo.refreshTokens.some(t => t.expirationTime && t.expirationTime < Date.now()) && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"

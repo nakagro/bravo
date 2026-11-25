@@ -183,6 +183,24 @@ export async function requireSuperAdmin(ctx: Ctx, action?: string): Promise<Doc<
   return user;
 }
 
+/**
+ * Guard any admin action targeting another user: regular admins may never
+ * modify a super administrator's account, role, rank, auth, or preferences.
+ */
+export function assertCanManageTargetUser(
+  actor: Pick<Doc<"users">, "isSuperAdmin">,
+  target: Pick<Doc<"users">, "isSuperAdmin">,
+  action?: string,
+): void {
+  if (isSuperAdmin(target) && !isSuperAdmin(actor)) {
+    throw new ConvexError(
+      action
+        ? `Only super administrators can ${action} for a super administrator`
+        : "Only super administrators can modify a super administrator account",
+    );
+  }
+}
+
 /** Lieutenant, Captain or admin. */
 export async function requireOfficer(ctx: Ctx, action?: string): Promise<Doc<"users">> {
   const user = await requireUser(ctx);
