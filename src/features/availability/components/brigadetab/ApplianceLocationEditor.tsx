@@ -45,6 +45,10 @@ function ApplianceLocationEditor({ onClose }: ApplianceLocationEditorProps) {
   };
 
   const getUpdatedByLabel = (location: typeof applianceLocations[number]) => {
+    if (location.updatedBySource === 'kioskHub') {
+      return location.updatedByKioskDevice
+        ?? `Station Kiosk (${location.updatedByKioskSite ?? 'unknown site'})`;
+    }
     if (location.updatedBySource === 'serviceAccount') {
       return location.updatedByServiceAccountInfo?.name ?? 'Service Account';
     }

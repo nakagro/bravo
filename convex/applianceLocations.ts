@@ -9,6 +9,24 @@ async function canSeeLocations(ctx: QueryCtx, serviceToken: string | undefined) 
   return !!(await getModuleUser(ctx, "availability")) || !!(await getKioskServiceAccount(ctx, serviceToken));
 }
 
+// Who last moved an appliance. "kioskHub" is a station kiosk hub writing
+// through /api/kiosk/v1 (convex/kioskApi.ts); it sets updatedByKioskSite and,
+// when the tablet is known, updatedByKioskDevice.
+const applianceLocationSourceValidator = v.union(
+  v.literal("user"),
+  v.literal("serviceAccount"),
+  v.literal("kioskHub"),
+);
+
+/** The location options: the two stations plus any custom location in use. */
+export function knownLocationsFrom(rows: Array<{ stationLocation: string }>): string[] {
+  const uniqueLocations = new Set<string>(["Main Station", "Satellite Station"]);
+  for (const row of rows) {
+    if (row.stationLocation) uniqueLocations.add(row.stationLocation);
+  }
+  return Array.from(uniqueLocations).sort();
+}
+
 // Query to get all appliance locations
 export const getApplianceLocations = query({
   args: { serviceToken: v.optional(v.string()) },
@@ -23,9 +41,9 @@ export const getApplianceLocations = query({
     stationLocation: v.string(),
     updatedBy: v.optional(v.id("users")),
     updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
-    updatedBySource: v.optional(
-      v.union(v.literal("user"), v.literal("serviceAccount"))
-    ),
+    updatedBySource: v.optional(applianceLocationSourceValidator),
+    updatedByKioskSite: v.optional(v.string()),
+    updatedByKioskDevice: v.optional(v.string()),
     updatedAt: v.number(),
   })),
   handler: async (ctx, args) => {
@@ -41,20 +59,7 @@ export const getAllLocations = query({
   handler: async (ctx, args) => {
     if (!(await canSeeLocations(ctx, args.serviceToken))) return [];
     const locations = await ctx.db.query("applianceLocations").collect();
-    const uniqueLocations = new Set<string>();
-    
-    // Always include the two main stations
-    uniqueLocations.add("Main Station");
-    uniqueLocations.add("Satellite Station");
-    
-    // Add any custom locations from the database
-    locations.forEach(loc => {
-      if (loc.stationLocation) {
-        uniqueLocations.add(loc.stationLocation);
-      }
-    });
-    
-    return Array.from(uniqueLocations).sort();
+    return knownLocationsFrom(locations);
   },
 });
 
@@ -147,6 +152,9 @@ export const updateApplianceLocation = mutation({
         ...(updatedBy ? { updatedBy } : {}),
         ...(updatedByServiceAccount ? { updatedByServiceAccount } : {}),
         updatedBySource,
+        // A hub's attribution must not outlive the hub's write.
+        updatedByKioskSite: undefined,
+        updatedByKioskDevice: undefined,
         updatedAt: now,
       });
     } else {
@@ -267,9 +275,9 @@ export const getApplianceLocationsWithUsers = query({
     stationLocation: v.string(),
     updatedBy: v.optional(v.id("users")),
     updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
-    updatedBySource: v.optional(
-      v.union(v.literal("user"), v.literal("serviceAccount"))
-    ),
+    updatedBySource: v.optional(applianceLocationSourceValidator),
+    updatedByKioskSite: v.optional(v.string()),
+    updatedByKioskDevice: v.optional(v.string()),
     updatedAt: v.number(),
     updatedByUser: v.optional(v.object({
       _id: v.id("users"),

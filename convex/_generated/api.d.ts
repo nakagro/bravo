@@ -68,6 +68,7 @@ import type * as keyAuditTrail from "../keyAuditTrail.js";
 import type * as keyComments from "../keyComments.js";
 import type * as keyItems from "../keyItems.js";
 import type * as keys from "../keys.js";
+import type * as kioskApi from "../kioskApi.js";
 import type * as labsMember from "../labsMember.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_accessControlValidators from "../lib/accessControlValidators.js";
@@ -79,6 +80,7 @@ import type * as lib_assignments_eventSource from "../lib/assignments/eventSourc
 import type * as lib_assignments_sources from "../lib/assignments/sources.js";
 import type * as lib_assignments_types from "../lib/assignments/types.js";
 import type * as lib_authUser from "../lib/authUser.js";
+import type * as lib_baEligibility from "../lib/baEligibility.js";
 import type * as lib_bookingRecurrence from "../lib/bookingRecurrence.js";
 import type * as lib_crewSeats from "../lib/crewSeats.js";
 import type * as lib_dates from "../lib/dates.js";
@@ -203,6 +205,7 @@ declare const fullApi: ApiFromModules<{
   keyComments: typeof keyComments;
   keyItems: typeof keyItems;
   keys: typeof keys;
+  kioskApi: typeof kioskApi;
   labsMember: typeof labsMember;
   "lib/access": typeof lib_access;
   "lib/accessControlValidators": typeof lib_accessControlValidators;
@@ -214,6 +217,7 @@ declare const fullApi: ApiFromModules<{
   "lib/assignments/sources": typeof lib_assignments_sources;
   "lib/assignments/types": typeof lib_assignments_types;
   "lib/authUser": typeof lib_authUser;
+  "lib/baEligibility": typeof lib_baEligibility;
   "lib/bookingRecurrence": typeof lib_bookingRecurrence;
   "lib/crewSeats": typeof lib_crewSeats;
   "lib/dates": typeof lib_dates;

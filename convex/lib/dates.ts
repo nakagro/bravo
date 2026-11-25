@@ -98,3 +98,17 @@ export function brigadeDateStr(daysAhead = 0): string {
   const { year, month, day } = brigadeParts(Date.now());
   return new Date(Date.UTC(year, month - 1, day + daysAhead)).toISOString().slice(0, 10);
 }
+
+// A real YYYY-MM-DD calendar date: the shape, and a day that exists in that
+// month ("2026-02-30" fails). Civil dates only, so no timezone is involved.
+export function isIsoCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}

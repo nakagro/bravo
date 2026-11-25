@@ -5,6 +5,13 @@ import { internal } from "./_generated/api";
 import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
 import { isMemberAccount } from "./lib/accountType";
 import { secretMatches } from "./labsMember";
+import { isTruthyFlag } from "./lib/accessControlWrites";
+import {
+  CLIENT_REQUEST_ID_MAX,
+  KIOSK_DEVICE_RE,
+  STATION_LOCATION_MAX,
+  contactDirectoryEtag,
+} from "./kioskApi";
 
 const http = httpRouter();
 
@@ -571,6 +578,259 @@ http.route({
     });
     if (!res.ok) return accessJson(409, res);
     return accessJson(200, res);
+  }),
+});
+
+// ============================================================================
+// STATION KIOSK HUB API - /api/kiosk/v1/*, server-to-server from kiosk-hub
+// ============================================================================
+// Contract: docs/plans/kiosk-local-hub-architecture.md, section 3. The hub on
+// node01 calls out over HTTPS with `X-Kiosk-Site` and a per-site bearer
+// token. KIOSK_HUB_<SITE>_TOKEN_NEXT is accepted alongside _TOKEN so a token
+// can be rotated without downtime. KIOSK_HUB_WRITES_DISABLED switches off the
+// POST routes; reads keep serving. No CORS: browsers never call these.
+
+const KIOSK_API_VERSION = 1;
+const KIOSK_WRITES_DISABLED_ENV = "KIOSK_HUB_WRITES_DISABLED";
+const KIOSK_BUILD_ID_RE = /^[A-Za-z0-9._:+-]{1,64}$/;
+const KIOSK_MAX_QUEUE_LAG_MS = 7 * 24 * 60 * 60 * 1000;
+const APPLIANCE_NAMES = new Set(["Pumper", "Tanker", "FCV"]);
+const BA_USAGE_TYPES = new Set(["firecall", "drill"]);
+
+function kioskTokenEnvName(siteId: string): string {
+  return `KIOSK_HUB_${siteId.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_TOKEN`;
+}
+
+function kioskJson(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers },
+  });
+}
+
+async function authenticateKioskHub(
+  request: Request,
+): Promise<{ ok: true; siteId: string } | { ok: false; response: Response }> {
+  const unauthorized = { ok: false as const, response: kioskJson(401, { error: "Unauthorized" }) };
+  const siteId = request.headers.get("X-Kiosk-Site")?.trim() ?? "";
+  if (!VALID_SITE_ID_RE.test(siteId)) return unauthorized;
+  const header = request.headers.get("Authorization");
+  const presented = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  const envName = kioskTokenEnvName(siteId);
+  // Check both so the comparison takes the same time whichever one matches.
+  const [current, next] = await Promise.all([
+    secretMatches(presented, process.env[envName]),
+    secretMatches(presented, process.env[`${envName}_NEXT`]),
+  ]);
+  return current || next ? { ok: true, siteId } : unauthorized;
+}
+
+function kioskWritesDisabled(): Response | null {
+  return isTruthyFlag(process.env[KIOSK_WRITES_DISABLED_ENV])
+    ? kioskJson(503, { error: "Kiosk writes are switched off in BRAVO" }, { "Retry-After": "300" })
+    : null;
+}
+
+/**
+ * Whether an If-None-Match header names this ETag (weak or strong, or `*`).
+ * Convex Cloud's edge compresses larger responses and rewrites the tag to
+ * `W/"<tag>-gzip"` (verified on UAT 2026-11-25), so the hub echoes that back;
+ * the encoding suffix is dropped before comparing.
+ */
+function etagMatches(request: Request, etag: string): boolean {
+  const header = request.headers.get("If-None-Match");
+  if (!header) return false;
+  return header
+    .split(",")
+    .map((tag) =>
+      tag
+        .trim()
+        .replace(/^W\//, "")
+        .replace(/-(?:gzip|br|zstd|deflate)"$/, '"'),
+    )
+    .some((tag) => tag === "*" || tag === etag);
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function optionalKioskDevice(raw: unknown): { ok: true; value?: string } | { ok: false } {
+  if (raw === undefined || raw === null) return { ok: true };
+  if (typeof raw !== "string") return { ok: false };
+  const value = raw.trim();
+  return KIOSK_DEVICE_RE.test(value) ? { ok: true, value } : { ok: false };
+}
+
+async function readJsonObject(request: Request): Promise<Record<string, unknown> | null> {
+  try {
+    const body: unknown = await request.json();
+    return isRecord(body) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+http.route({
+  path: "/api/kiosk/v1/sync",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateKioskHub(request);
+    if (!authRes.ok) return authRes.response;
+
+    const scopeParam = new URL(request.url).searchParams.get("scope");
+    if (scopeParam !== null && scopeParam !== "full" && scopeParam !== "appliances") {
+      return kioskJson(400, { error: "scope must be full or appliances" });
+    }
+    const scope = scopeParam === "appliances" ? "appliances" : "full";
+
+    const snapshot = await ctx.runQuery(internal.kioskApi.getSyncSnapshot, { scope });
+    if (scope === "full") {
+      // A full sync is the hub's heartbeat, 304 or not.
+      const build = request.headers.get("X-Kiosk-Hub-Build")?.trim();
+      await ctx.runMutation(internal.kioskApi.recordHubSync, {
+        siteId: authRes.siteId,
+        ...(build && KIOSK_BUILD_ID_RE.test(build) ? { buildId: build } : {}),
+      });
+    }
+
+    const etag = `"${scope === "full" ? "f" : "a"}-${(await sha256Hex(JSON.stringify(snapshot))).slice(0, 32)}"`;
+    if (etagMatches(request, etag)) {
+      return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "no-store" } });
+    }
+    return kioskJson(
+      200,
+      { apiVersion: KIOSK_API_VERSION, syncedAt: Date.now(), siteId: authRes.siteId, ...snapshot },
+      { ETag: etag },
+    );
+  }),
+});
+
+http.route({
+  path: "/api/kiosk/v1/contact-directory",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateKioskHub(request);
+    if (!authRes.ok) return authRes.response;
+
+    const file = await ctx.runQuery(internal.kioskApi.getContactDirectoryFile, {});
+    if (!file) return kioskJson(404, { error: "No contact book uploaded" });
+    const etag = contactDirectoryEtag(file);
+    if (etagMatches(request, etag)) {
+      return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "no-store" } });
+    }
+    const blob = await ctx.storage.get(file.storageId);
+    if (!blob) return kioskJson(404, { error: "No contact book uploaded" });
+    return new Response(blob, {
+      status: 200,
+      headers: {
+        "Content-Type": file.contentType ?? "application/json",
+        "Cache-Control": "no-store",
+        ETag: etag,
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/kiosk/v1/appliance-location",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateKioskHub(request);
+    if (!authRes.ok) return authRes.response;
+    const disabled = kioskWritesDisabled();
+    if (disabled) return disabled;
+
+    const body = await readJsonObject(request);
+    if (!body) return kioskJson(400, { error: "Body must be a JSON object" });
+
+    const { applianceName, occurredAt, sentAt, clientRequestId } = body;
+    if (typeof applianceName !== "string" || !APPLIANCE_NAMES.has(applianceName)) {
+      return kioskJson(400, { error: "applianceName must be Pumper, Tanker or FCV" });
+    }
+    const stationLocation = typeof body.stationLocation === "string" ? body.stationLocation.trim() : "";
+    if (stationLocation.length === 0 || stationLocation.length > STATION_LOCATION_MAX) {
+      return kioskJson(400, { error: `stationLocation must be 1-${STATION_LOCATION_MAX} characters` });
+    }
+    const device = optionalKioskDevice(body.kioskDevice);
+    if (!device.ok) return kioskJson(400, { error: "Invalid kioskDevice" });
+    if (
+      clientRequestId !== undefined &&
+      (typeof clientRequestId !== "string" || clientRequestId.length > CLIENT_REQUEST_ID_MAX)
+    ) {
+      return kioskJson(400, { error: "Invalid clientRequestId" });
+    }
+    const isTime = (t: unknown): t is number => typeof t === "number" && Number.isFinite(t) && t > 0;
+    if ((occurredAt === undefined) !== (sentAt === undefined)) {
+      return kioskJson(400, { error: "occurredAt and sentAt must be sent together" });
+    }
+    if (occurredAt !== undefined) {
+      if (!isTime(occurredAt) || !isTime(sentAt)) {
+        return kioskJson(400, { error: "occurredAt and sentAt must be epoch milliseconds" });
+      }
+      if (occurredAt > sentAt || sentAt - occurredAt > KIOSK_MAX_QUEUE_LAG_MS) {
+        return kioskJson(400, { error: "occurredAt must be no later than sentAt and at most 7 days before it" });
+      }
+    }
+
+    const res = await ctx.runMutation(internal.kioskApi.setApplianceLocation, {
+      siteId: authRes.siteId,
+      applianceName: applianceName as "Pumper" | "Tanker" | "FCV",
+      stationLocation,
+      ...(device.value ? { kioskDevice: device.value } : {}),
+      ...(occurredAt !== undefined ? { occurredAt: occurredAt as number, sentAt: sentAt as number } : {}),
+    });
+    return kioskJson(200, { ok: true, ...res });
+  }),
+});
+
+http.route({
+  path: "/api/kiosk/v1/ba-record",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateKioskHub(request);
+    if (!authRes.ok) return authRes.response;
+    const disabled = kioskWritesDisabled();
+    if (disabled) return disabled;
+
+    const body = await readJsonObject(request);
+    if (!body) return kioskJson(400, { error: "Body must be a JSON object" });
+
+    const { clientRequestId, memberId, verifiedBy, dateUsed, durationMinutes, usageType, notes } = body;
+    const isId = (id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 64;
+    if (typeof clientRequestId !== "string") return kioskJson(400, { error: "clientRequestId is required" });
+    if (!isId(memberId)) return kioskJson(400, { error: "memberId is required" });
+    if (!isId(verifiedBy)) return kioskJson(400, { error: "verifiedBy is required" });
+    if (typeof dateUsed !== "string") return kioskJson(400, { error: "dateUsed is required" });
+    if (typeof durationMinutes !== "number") return kioskJson(400, { error: "durationMinutes is required" });
+    if (typeof usageType !== "string" || !BA_USAGE_TYPES.has(usageType)) {
+      return kioskJson(400, { error: "usageType must be firecall or drill" });
+    }
+    if (typeof notes !== "string") return kioskJson(400, { error: "notes are required" });
+    const device = optionalKioskDevice(body.kioskDevice);
+    if (!device.ok) return kioskJson(400, { error: "Invalid kioskDevice" });
+
+    const res = await ctx.runMutation(internal.kioskApi.submitBaRecord, {
+      siteId: authRes.siteId,
+      clientRequestId,
+      memberId,
+      verifiedBy,
+      dateUsed,
+      durationMinutes,
+      usageType: usageType as "firecall" | "drill",
+      notes,
+      ...(device.value ? { kioskDevice: device.value } : {}),
+    });
+    switch (res.status) {
+      case "created":
+      case "deduped":
+        return kioskJson(200, { ok: true, deduped: res.status === "deduped", recordId: res.recordId });
+      case "conflict":
+        return kioskJson(409, { error: res.error });
+      case "invalid":
+        return kioskJson(400, { error: res.error });
+    }
   }),
 });
 
