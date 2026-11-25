@@ -16,6 +16,7 @@ import {
   BellRing,
   ClipboardList,
   ClipboardCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { MaskVentilatorIcon } from "@/components/icons/MaskVentilatorIcon";
 
@@ -150,6 +151,20 @@ export const NAV_ITEMS: NavItem[] = [
       bg: "bg-red-100 dark:bg-red-900/20",
       bgHover: "group-hover:bg-red-200 dark:group-hover:bg-red-900/40",
       fg: "text-red-600 dark:text-red-400",
+    },
+  },
+  {
+    // Module is seeded `superAdminOnly`, so only super admins see this item.
+    id: "accessControl",
+    label: "Access Control",
+    shortLabel: "Access",
+    path: "/access-control",
+    icon: ShieldCheck,
+    group: "equipment",
+    color: {
+      bg: "bg-slate-100 dark:bg-slate-900/20",
+      bgHover: "group-hover:bg-slate-200 dark:group-hover:bg-slate-900/40",
+      fg: "text-slate-600 dark:text-slate-400",
     },
   },
   {
