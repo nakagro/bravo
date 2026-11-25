@@ -6,6 +6,7 @@ import { validateApiKey, getCorsHeaders } from "./apiKeyAuth";
 import { isMemberAccount } from "./lib/accountType";
 import { secretMatches } from "./labsMember";
 import { isTruthyFlag } from "./lib/accessControlWrites";
+import { kioskHubTokenMatches } from "./lib/kioskHubAuth";
 import {
   CLIENT_REQUEST_ID_MAX,
   KIOSK_DEVICE_RE,
@@ -597,10 +598,6 @@ const KIOSK_MAX_QUEUE_LAG_MS = 7 * 24 * 60 * 60 * 1000;
 const APPLIANCE_NAMES = new Set(["Pumper", "Tanker", "FCV"]);
 const BA_USAGE_TYPES = new Set(["firecall", "drill"]);
 
-function kioskTokenEnvName(siteId: string): string {
-  return `KIOSK_HUB_${siteId.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_TOKEN`;
-}
-
 function kioskJson(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -613,16 +610,9 @@ async function authenticateKioskHub(
 ): Promise<{ ok: true; siteId: string } | { ok: false; response: Response }> {
   const unauthorized = { ok: false as const, response: kioskJson(401, { error: "Unauthorized" }) };
   const siteId = request.headers.get("X-Kiosk-Site")?.trim() ?? "";
-  if (!VALID_SITE_ID_RE.test(siteId)) return unauthorized;
   const header = request.headers.get("Authorization");
   const presented = header?.startsWith("Bearer ") ? header.slice(7) : null;
-  const envName = kioskTokenEnvName(siteId);
-  // Check both so the comparison takes the same time whichever one matches.
-  const [current, next] = await Promise.all([
-    secretMatches(presented, process.env[envName]),
-    secretMatches(presented, process.env[`${envName}_NEXT`]),
-  ]);
-  return current || next ? { ok: true, siteId } : unauthorized;
+  return (await kioskHubTokenMatches(siteId, presented)) ? { ok: true, siteId } : unauthorized;
 }
 
 function kioskWritesDisabled(): Response | null {

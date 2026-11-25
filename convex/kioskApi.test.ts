@@ -573,3 +573,40 @@ describe("POST /api/kiosk/v1/ba-record", () => {
     expect((await submit(baBody({ durationMinutes: 480, notes: "x".repeat(500) }))).status).toBe(200);
   });
 });
+
+describe("kioskApi.watchAppliances (hub's live subscription)", () => {
+  it("returns the same truck locations as the HTTP sync for the site's token", async () => {
+    await t.run((ctx) =>
+      ctx.db.insert("applianceLocations", {
+        applianceName: "Tanker",
+        stationLocation: "Main Station",
+        updatedBy: ids.adminId,
+        updatedBySource: "user",
+        updatedAt: 1_000,
+      }),
+    );
+    const live = await t.query(api.kioskApi.watchAppliances, { siteId: "main", token: MAIN_TOKEN });
+    expect(live.applianceLocations).toEqual([
+      { applianceName: "Tanker", stationLocation: "Main Station", updatedAt: 1_000 },
+    ]);
+    const http = await (await kioskFetch(t, "/api/kiosk/v1/sync?scope=appliances")).json();
+    expect(live.applianceLocations).toEqual(http.applianceLocations);
+    expect(live.knownLocations).toEqual(http.knownLocations);
+  });
+
+  it("refuses a wrong token, another site's token and a bad site id", async () => {
+    const watch = (siteId: string, token: string) =>
+      t.query(api.kioskApi.watchAppliances, { siteId, token });
+    await expect(watch("main", "nope")).rejects.toThrow(/Unauthorized/);
+    await expect(watch("main", SAT_TOKEN)).rejects.toThrow(/Unauthorized/);
+    await expect(watch("Main!", MAIN_TOKEN)).rejects.toThrow(/Unauthorized/);
+    await expect(watch("workshop", "")).rejects.toThrow(/Unauthorized/);
+    expect((await watch("satellite", SAT_TOKEN)).applianceLocations).toEqual([]);
+  });
+
+  it("accepts _TOKEN_NEXT during a rotation", async () => {
+    vi.stubEnv("KIOSK_HUB_MAIN_TOKEN_NEXT", NEXT_TOKEN);
+    const live = await t.query(api.kioskApi.watchAppliances, { siteId: "main", token: NEXT_TOKEN });
+    expect(live.applianceLocations).toEqual([]);
+  });
+});

@@ -89,6 +89,7 @@ import type * as lib_eventBackouts from "../lib/eventBackouts.js";
 import type * as lib_eventChangeNotice from "../lib/eventChangeNotice.js";
 import type * as lib_eventCrews from "../lib/eventCrews.js";
 import type * as lib_hoseId from "../lib/hoseId.js";
+import type * as lib_kioskHubAuth from "../lib/kioskHubAuth.js";
 import type * as lib_launches from "../lib/launches.js";
 import type * as lib_logging from "../lib/logging.js";
 import type * as lib_memberKit from "../lib/memberKit.js";
@@ -226,6 +227,7 @@ declare const fullApi: ApiFromModules<{
   "lib/eventChangeNotice": typeof lib_eventChangeNotice;
   "lib/eventCrews": typeof lib_eventCrews;
   "lib/hoseId": typeof lib_hoseId;
+  "lib/kioskHubAuth": typeof lib_kioskHubAuth;
   "lib/launches": typeof lib_launches;
   "lib/logging": typeof lib_logging;
   "lib/memberKit": typeof lib_memberKit;
