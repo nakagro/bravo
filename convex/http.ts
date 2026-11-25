@@ -631,13 +631,23 @@ function kioskWritesDisabled(): Response | null {
     : null;
 }
 
-/** Whether an If-None-Match header names this ETag (weak or strong, or `*`). */
+/**
+ * Whether an If-None-Match header names this ETag (weak or strong, or `*`).
+ * Convex Cloud's edge compresses larger responses and rewrites the tag to
+ * `W/"<tag>-gzip"` (verified on UAT 2026-11-25), so the hub echoes that back;
+ * the encoding suffix is dropped before comparing.
+ */
 function etagMatches(request: Request, etag: string): boolean {
   const header = request.headers.get("If-None-Match");
   if (!header) return false;
   return header
     .split(",")
-    .map((tag) => tag.trim().replace(/^W\//, ""))
+    .map((tag) =>
+      tag
+        .trim()
+        .replace(/^W\//, "")
+        .replace(/-(?:gzip|br|zstd|deflate)"$/, '"'),
+    )
     .some((tag) => tag === "*" || tag === etag);
 }
 

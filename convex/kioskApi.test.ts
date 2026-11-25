@@ -254,6 +254,10 @@ describe("GET /api/kiosk/v1/sync", () => {
       expect(again.status).toBe(304);
       expect(again.headers.get("ETag")).toBe(etag);
       expect(await again.text()).toBe("");
+
+      const gzipped = `W/${etag.slice(0, -1)}-gzip"`;
+      const viaEdge = await kioskFetch(t, path, { headers: { "If-None-Match": gzipped } });
+      expect(viaEdge.status).toBe(304);
     }
 
     const before = (await kioskFetch(t, "/api/kiosk/v1/sync?scope=appliances")).headers.get("ETag")!;
@@ -317,6 +321,12 @@ describe("GET /api/kiosk/v1/contact-directory", () => {
     });
     expect(cached.status).toBe(304);
     expect(await cached.text()).toBe("");
+
+    // Convex Cloud's edge rewrites a compressed response's tag this way.
+    const viaEdge = await kioskFetch(t, "/api/kiosk/v1/contact-directory", {
+      headers: { "If-None-Match": `W/"1700000000000-${json.length}-gzip"` },
+    });
+    expect(viaEdge.status).toBe(304);
 
     const stale = await kioskFetch(t, "/api/kiosk/v1/contact-directory", {
       headers: { "If-None-Match": '"1-1"' },
