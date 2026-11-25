@@ -595,10 +595,22 @@ const applicationTables = {
     updatedBy: v.optional(v.id("users")),
     updatedByServiceAccount: v.optional(v.id("serviceAccounts")),
     updatedBySource: v.optional(
-      v.union(v.literal("user"), v.literal("serviceAccount"))
+      v.union(v.literal("user"), v.literal("serviceAccount"), v.literal("kioskHub"))
     ),
+    // Set when a station kiosk hub wrote the row via /api/kiosk/v1 (convex/kioskApi.ts).
+    updatedByKioskSite: v.optional(v.string()),
+    updatedByKioskDevice: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_applianceName", ["applianceName"]),
+
+  // One row per station kiosk hub, touched on each full /api/kiosk/v1/sync so
+  // admins can see whether a hub is alive and which build it runs.
+  kioskHubStatus: defineTable({
+    siteId: v.string(),
+    lastSyncAt: v.number(),
+    buildId: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_siteId", ["siteId"]),
 
   fireReports: defineTable({
     // Meta information
@@ -1577,6 +1589,9 @@ const applicationTables = {
     submittedBy: v.id("users"), // User who submitted this record (may differ from memberId)
     submittedByServiceAccount: v.optional(v.id("serviceAccounts")), // Service account that submitted it, when applicable
     submittedOnBehalf: v.boolean(), // True if submitted by someone else on behalf of the member
+    submittedByKioskSite: v.optional(v.string()), // Station kiosk hub site, when submitted via /api/kiosk/v1
+    submittedByKioskDevice: v.optional(v.string()), // Tablet name (e.g. KIOSK01), when the hub knows it
+    clientRequestId: v.optional(v.string()), // Hub idempotency key; a retry with the same key is deduped
     lmsEnteredAt: v.optional(v.number()), // Timestamp when the record was entered into CFA LMS
     lmsEnteredBy: v.optional(v.id("users")), // Training officer who marked the LMS entry complete
     createdAt: v.number(),
@@ -1585,7 +1600,8 @@ const applicationTables = {
     .index("by_member_date", ["memberId", "dateUsed"])
     .index("by_dateUsed", ["dateUsed"])
     .index("by_verifiedBy", ["verifiedBy"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_clientRequestId", ["clientRequestId"]),
 
   // Shortcut tokens table for automating status changes via tools like Apple Shortcuts
   shortcutTokens: defineTable({

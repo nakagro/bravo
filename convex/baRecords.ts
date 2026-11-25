@@ -60,6 +60,9 @@ const recordReturnValidator = v.object({
   verifierName: v.string(),
   submittedBy: v.id("users"),
   submittedByServiceAccount: v.optional(v.id("serviceAccounts")),
+  submittedByKioskSite: v.optional(v.string()),
+  submittedByKioskDevice: v.optional(v.string()),
+  clientRequestId: v.optional(v.string()),
   submitterName: v.string(),
   submittedOnBehalf: v.boolean(),
   lmsEnteredAt: v.optional(v.number()),
@@ -73,6 +76,11 @@ function userDisplayName(user: Doc<"users"> | null | undefined): string {
   if (!user) return "Unknown";
   const full = `${user.firstName || ""} ${user.lastName || ""}`.trim();
   return full || user.name || "Unknown";
+}
+
+/** "Station Kiosk (KIOSK01)", or the site when the hub didn't name a tablet. */
+export function kioskSubmitterName(siteId: string, device: string | undefined): string {
+  return `Station Kiosk (${device || siteId})`;
 }
 
 async function decorateRecord(ctx: QueryCtx, record: Doc<"baRecords">) {
@@ -89,7 +97,9 @@ async function decorateRecord(ctx: QueryCtx, record: Doc<"baRecords">) {
     ...record,
     memberName: userDisplayName(member),
     verifierName: userDisplayName(verifier),
-    submitterName: submitterServiceAccount?.name ?? userDisplayName(submitter),
+    submitterName: record.submittedByKioskSite
+      ? kioskSubmitterName(record.submittedByKioskSite, record.submittedByKioskDevice)
+      : (submitterServiceAccount?.name ?? userDisplayName(submitter)),
     lmsEnteredByName: record.lmsEnteredBy ? userDisplayName(lmsEnteredBy) : undefined,
   };
 }
