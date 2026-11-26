@@ -258,10 +258,40 @@ describe("turnoutControl training simulation lifecycle", () => {
         ttlMinutes: 15,
       }),
     ).rejects.toThrow(/Coordinates/);
+    await expect(
+      asSuperAdmin.mutation(api.turnoutControl.startSimulation, {
+        messageText: "ALERT WYDV1 TEST",
+        address: "45 Ison Rd",
+        ttlMinutes: 0,
+      }),
+    ).rejects.toThrow(/1 to 99/);
+    await expect(
+      asSuperAdmin.mutation(api.turnoutControl.startSimulation, {
+        messageText: "ALERT WYDV1 TEST",
+        address: "45 Ison Rd",
+        ttlMinutes: 100,
+      }),
+    ).rejects.toThrow(/1 to 99/);
+    await expect(
+      asSuperAdmin.mutation(api.turnoutControl.startSimulation, {
+        messageText: "ALERT WYDV1 TEST",
+        address: "45 Ison Rd",
+        ttlMinutes: 10.5,
+      }),
+    ).rejects.toThrow(/1 to 99/);
+
+    // Custom 2-digit TTL (e.g. 10 min default or 45 min custom) is accepted.
+    const quick = await asSuperAdmin.mutation(api.turnoutControl.startSimulation, {
+      messageText: "ALERT WYDV1 QUICK DRILL",
+      address: "45 Ison Rd",
+      ttlMinutes: 10,
+    });
+    expect(quick.revision).toBe(1);
+    await asSuperAdmin.mutation(api.turnoutControl.stopSimulation, {});
 
     // Stopping when nothing is running is an idempotent no-op.
     expect(await asSuperAdmin.mutation(api.turnoutControl.stopSimulation, {})).toEqual({
-      revision: 0,
+      revision: 2,
       wasActive: false,
     });
 
@@ -269,10 +299,10 @@ describe("turnoutControl training simulation lifecycle", () => {
       messageText: "  ALERT WYDV1 TEST DRILL  ",
       address: "  45 Ison Rd Werribee  ",
       coordinates: { latitude: -37.89123, longitude: 144.62346 },
-      ttlMinutes: 30,
+      ttlMinutes: 45,
       playAudio: true,
     });
-    expect(started.revision).toBe(1);
+    expect(started.revision).toBe(3);
 
     const activeState = await asSuperAdmin.query(api.turnoutControl.getState, {});
     expect(activeState?.activeSimulation).toMatchObject({
@@ -285,17 +315,17 @@ describe("turnoutControl training simulation lifecycle", () => {
     });
     expect(
       activeState!.activeSimulation!.expiresAt - activeState!.activeSimulation!.startedAt,
-    ).toBe(30 * 60_000);
+    ).toBe(45 * 60_000);
 
     const stopped = await asSuperAdmin.mutation(api.turnoutControl.stopSimulation, {});
-    expect(stopped).toEqual({ revision: 2, wasActive: true });
+    expect(stopped).toEqual({ revision: 4, wasActive: true });
 
     const stoppedState = await asSuperAdmin.query(api.turnoutControl.getState, {});
     expect(stoppedState?.activeSimulation).toBeNull();
     expect(stoppedState?.recentAudit[0]).toMatchObject({
       action: "stopSimulation",
       actorName: "Morgan Shaw",
-      revision: 2,
+      revision: 4,
     });
   });
 

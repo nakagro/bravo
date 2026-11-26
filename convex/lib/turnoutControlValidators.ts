@@ -11,8 +11,9 @@ export const TURNOUT_DEFAULT_HEADER_HEIGHT_TRIPLE = 40;
 
 export const TURNOUT_SIM_MESSAGE_MAX = 500;
 export const TURNOUT_SIM_ADDRESS_MAX = 200;
-export const TURNOUT_SIM_TTL_OPTIONS = [15, 30, 60] as const;
-export const TURNOUT_SIM_MAX_TTL_MINUTES = 60;
+export const TURNOUT_SIM_DEFAULT_TTL_MINUTES = 10;
+export const TURNOUT_SIM_MIN_TTL_MINUTES = 1;
+export const TURNOUT_SIM_MAX_TTL_MINUTES = 99;
 export const TURNOUT_AUDIT_PAGE_LIMIT = 25;
 
 export const forceMultiJobCountValidator = v.union(
@@ -56,11 +57,7 @@ export const turnoutControlWireValidator = v.object({
   updatedAt: v.number(),
 });
 
-export const turnoutSimTtlValidator = v.union(
-  v.literal(15),
-  v.literal(30),
-  v.literal(60),
-);
+export const turnoutSimTtlValidator = v.number();
 
 export const turnoutAuditActionValidator = v.union(
   v.literal("updateOverrides"),

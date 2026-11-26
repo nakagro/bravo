@@ -42,8 +42,9 @@ const DEFAULT_HEADER = {
 
 const SIM_MESSAGE_MAX = 500;
 const SIM_ADDRESS_MAX = 200;
-const TTL_OPTIONS = [15, 30, 60] as const;
-type TtlOption = (typeof TTL_OPTIONS)[number];
+const TTL_PRESETS = [10, 15, 30] as const;
+const TTL_MIN = 1;
+const TTL_MAX = 99;
 type MultiJobOption = 0 | 2 | 3;
 
 const HUB_STALE_AFTER_MS = 5 * 60 * 1000;
@@ -191,7 +192,8 @@ export function TurnoutControlPage() {
   const [address, setAddress] = useState("");
   const [messageText, setMessageText] = useState("");
   const [lastAutoTemplate, setLastAutoTemplate] = useState<string | null>(null);
-  const [ttlMinutes, setTtlMinutes] = useState<TtlOption>(15);
+  const [ttlMinutes, setTtlMinutes] = useState<number>(10);
+  const [customTtlInput, setCustomTtlInput] = useState("");
   const [playAudio, setPlayAudio] = useState(false);
   const [pinnedCoords, setPinnedCoords] = useState<{ latitude: number; longitude: number } | null>(
     null,
@@ -421,6 +423,10 @@ export function TurnoutControlPage() {
     e.preventDefault();
     if (!address.trim() || !messageText.trim()) {
       toast.error("Pick or enter an address and pager message.");
+      return;
+    }
+    if (!Number.isInteger(ttlMinutes) || ttlMinutes < TTL_MIN || ttlMinutes > TTL_MAX) {
+      toast.error(`Auto-clear duration must be between ${TTL_MIN} and ${TTL_MAX} minutes.`);
       return;
     }
     const coords = resolveCoordinates();
@@ -800,24 +806,64 @@ export function TurnoutControlPage() {
             {/* Step 3: Duration + Alert Tone */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Auto-clear after</Label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {TTL_OPTIONS.map((mins) => (
-                    <button
-                      key={mins}
-                      type="button"
+                <Label htmlFor="sim-custom-ttl">Auto-clear after</Label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {TTL_PRESETS.map((mins) => {
+                    const selected = customTtlInput === "" && ttlMinutes === mins;
+                    return (
+                      <button
+                        key={mins}
+                        type="button"
+                        disabled={busySim}
+                        onClick={() => {
+                          setTtlMinutes(mins);
+                          setCustomTtlInput("");
+                        }}
+                        className={cn(
+                          "rounded-lg border px-2 py-2 text-xs font-semibold tabular-nums transition-colors",
+                          selected
+                            ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
+                            : "border-border bg-background text-foreground hover:bg-muted",
+                        )}
+                      >
+                        {mins}m
+                      </button>
+                    );
+                  })}
+                  <div className="relative">
+                    <input
+                      id="sim-custom-ttl"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      placeholder="1-99"
+                      aria-label="Custom auto-clear minutes (1 to 99)"
+                      value={customTtlInput}
                       disabled={busySim}
-                      onClick={() => setTtlMinutes(mins)}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                        setCustomTtlInput(digits);
+                        if (digits === "") {
+                          setTtlMinutes(10);
+                        } else {
+                          const parsed = Number.parseInt(digits, 10);
+                          if (Number.isFinite(parsed)) {
+                            setTtlMinutes(parsed);
+                          }
+                        }
+                      }}
                       className={cn(
-                        "rounded-lg border px-2 py-2 text-xs font-semibold tabular-nums transition-colors",
-                        ttlMinutes === mins
-                          ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
-                          : "border-border bg-background text-foreground hover:bg-muted",
+                        "h-[34px] w-full rounded-lg border bg-background px-2 pr-5 text-center text-xs font-semibold tabular-nums text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground focus:border-amber-500",
+                        customTtlInput !== ""
+                          ? "border-amber-500 bg-amber-100/70 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
+                          : "border-border",
                       )}
-                    >
-                      {mins} min
-                    </button>
-                  ))}
+                    />
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
+                      m
+                    </span>
+                  </div>
                 </div>
               </div>
 

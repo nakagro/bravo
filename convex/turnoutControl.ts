@@ -12,6 +12,7 @@ import {
   TURNOUT_SIM_ADDRESS_MAX,
   TURNOUT_SIM_MAX_TTL_MINUTES,
   TURNOUT_SIM_MESSAGE_MAX,
+  TURNOUT_SIM_MIN_TTL_MINUTES,
   TURNOUT_SITE_ID_RE,
   turnoutAuditActionValidator,
   turnoutControlWireValidator,
@@ -378,8 +379,14 @@ export const startSimulation = mutation({
       coordinates = { latitude, longitude };
     }
 
-    if (args.ttlMinutes > TURNOUT_SIM_MAX_TTL_MINUTES) {
-      throw new ConvexError(`Simulation TTL cannot exceed ${TURNOUT_SIM_MAX_TTL_MINUTES} minutes`);
+    if (
+      !Number.isInteger(args.ttlMinutes) ||
+      args.ttlMinutes < TURNOUT_SIM_MIN_TTL_MINUTES ||
+      args.ttlMinutes > TURNOUT_SIM_MAX_TTL_MINUTES
+    ) {
+      throw new ConvexError(
+        `Auto-clear duration must be a whole number from ${TURNOUT_SIM_MIN_TTL_MINUTES} to ${TURNOUT_SIM_MAX_TTL_MINUTES} minutes`,
+      );
     }
 
     const playAudio = args.playAudio === true;
