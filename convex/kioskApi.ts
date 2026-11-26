@@ -7,6 +7,13 @@ import { isBARecordMemberOption } from "./lib/baEligibility";
 import { brigadeDateStr, isIsoCalendarDate } from "./lib/dates";
 import { knownLocationsFrom } from "./applianceLocations";
 import { kioskHubTokenMatches } from "./lib/kioskHubAuth";
+import {
+  NOTICE_DETAIL_MAX,
+  NOTICE_KEY_RE,
+  NOTICE_MAX_COUNT,
+  NOTICE_TITLE_MAX,
+  stationNoticeSeverityValidator,
+} from "./stationNotices";
 
 // Backs the station kiosk hub API, /api/kiosk/v1/* in convex/http.ts. The hub
 // (wvfb-kiosk on node01) authenticates per site with a bearer token; by the
@@ -22,6 +29,33 @@ const applianceLocationOut = v.object({
   applianceName: applianceNameValidator,
   stationLocation: v.string(),
   updatedAt: v.number(),
+});
+
+const stationNoticeOut = v.object({
+  key: v.string(),
+  title: v.string(),
+  detail: v.optional(v.string()),
+  severity: stationNoticeSeverityValidator,
+  count: v.optional(v.number()),
+  source: v.string(),
+  updatedBy: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  expiresAt: v.optional(v.number()),
+});
+
+const stationNoticeSyncResultOut = v.object({
+  key: v.string(),
+  active: v.boolean(),
+  title: v.string(),
+  detail: v.optional(v.string()),
+  severity: stationNoticeSeverityValidator,
+  count: v.optional(v.number()),
+  source: v.string(),
+  updatedBy: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  expiresAt: v.optional(v.number()),
 });
 
 const baMemberOut = v.object({
@@ -91,24 +125,80 @@ async function applianceSnapshot(ctx: QueryCtx) {
   return { applianceLocations, knownLocations: knownLocationsFrom(rows) };
 }
 
+async function formatNoticeActor(
+  ctx: QueryCtx,
+  row: Doc<"stationNotices">,
+): Promise<{ source: string; updatedBy?: string }> {
+  if (row.updatedBySource === "kioskHub") {
+    return {
+      source: "kiosk-hub",
+      updatedBy:
+        row.updatedByKioskDevice ??
+        (row.updatedByKioskSite ? `Station Kiosk (${row.updatedByKioskSite})` : undefined),
+    };
+  }
+  const user = row.updatedBy ? await ctx.db.get("users", row.updatedBy) : null;
+  return {
+    source: "bravo",
+    updatedBy: user ? displayName(user) : undefined,
+  };
+}
+
+async function toNoticeOut(ctx: QueryCtx, row: Doc<"stationNotices">) {
+  const { source, updatedBy } = await formatNoticeActor(ctx, row);
+  return {
+    key: row.key,
+    title: row.title,
+    ...(row.detail !== undefined ? { detail: row.detail } : {}),
+    severity: row.severity,
+    ...(row.count !== undefined ? { count: row.count } : {}),
+    source,
+    ...(updatedBy !== undefined ? { updatedBy } : {}),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    ...(row.expiresAt !== undefined ? { expiresAt: row.expiresAt } : {}),
+  };
+}
+
+async function activeNoticesSnapshot(ctx: QueryCtx) {
+  const now = Date.now();
+  const rows = await ctx.db.query("stationNotices").collect();
+  const active = rows.filter(
+    (r) => r.active && (r.expiresAt === undefined || r.expiresAt > now),
+  );
+  const severityOrder = (s: "info" | "warning") => (s === "warning" ? 0 : 1);
+  active.sort(
+    (a, b) =>
+      severityOrder(a.severity) - severityOrder(b.severity) ||
+      b.updatedAt - a.updatedAt ||
+      a.key.localeCompare(b.key),
+  );
+  return await Promise.all(active.map((r) => toNoticeOut(ctx, r)));
+}
+
 /**
- * Live truck locations for the station kiosk hub, which subscribes over the
- * Convex WebSocket (convex-rs) so a move made on a phone reaches the station
- * tablets at once. A WebSocket can't carry the hub's Bearer header, so the
- * site's hub token comes as an argument and is checked like the HTTP API's.
- * Same shape as GET /api/kiosk/v1/sync?scope=appliances.
+ * Live truck locations and station notices for the station kiosk hub, which
+ * subscribes over the Convex WebSocket (convex-rs) so a change made on a phone
+ * reaches the station tablets and turnout screen at once. A WebSocket can't
+ * carry the hub's Bearer header, so the site's hub token comes as an argument
+ * and is checked like the HTTP API's. Same shape as GET /api/kiosk/v1/sync?scope=appliances.
  */
 export const watchAppliances = query({
   args: { siteId: v.string(), token: v.string() },
   returns: v.object({
     applianceLocations: v.array(applianceLocationOut),
     knownLocations: v.array(v.string()),
+    stationNotices: v.array(stationNoticeOut),
   }),
   handler: async (ctx, { siteId, token }) => {
     if (!(await kioskHubTokenMatches(siteId, token))) {
       throw new ConvexError("Unauthorized");
     }
-    return await applianceSnapshot(ctx);
+    const [{ applianceLocations, knownLocations }, stationNotices] = await Promise.all([
+      applianceSnapshot(ctx),
+      activeNoticesSnapshot(ctx),
+    ]);
+    return { applianceLocations, knownLocations, stationNotices };
   },
 });
 
@@ -124,12 +214,16 @@ export const getSyncSnapshot = internalQuery({
   returns: v.object({
     applianceLocations: v.array(applianceLocationOut),
     knownLocations: v.array(v.string()),
+    stationNotices: v.array(stationNoticeOut),
     baMembers: v.optional(v.array(baMemberOut)),
     contactDirectory: v.optional(contactDirectoryOut),
   }),
   handler: async (ctx, { scope }) => {
-    const { applianceLocations, knownLocations } = await applianceSnapshot(ctx);
-    if (scope === "appliances") return { applianceLocations, knownLocations };
+    const [{ applianceLocations, knownLocations }, stationNotices] = await Promise.all([
+      applianceSnapshot(ctx),
+      activeNoticesSnapshot(ctx),
+    ]);
+    if (scope === "appliances") return { applianceLocations, knownLocations, stationNotices };
 
     const [users, skills] = await Promise.all([
       ctx.db.query("users").collect(),
@@ -163,7 +257,7 @@ export const getSyncSnapshot = internalQuery({
         }
       : { status: "missing" as const };
 
-    return { applianceLocations, knownLocations, baMembers, contactDirectory };
+    return { applianceLocations, knownLocations, stationNotices, baMembers, contactDirectory };
   },
 });
 
@@ -402,5 +496,147 @@ export const submitBaRecord = internalMutation({
       updatedAt: now,
     });
     return { status: "created", recordId };
+  },
+});
+
+/**
+ * Upsert or clear a station notice from a foyer kiosk via kiosk-hub.
+ * Uses the same skew-corrected timestamp conflict rule as setApplianceLocation:
+ * if a member on their phone made a newer change while the hub was offline,
+ * the stale kiosk write is dropped and BRAVO's authoritative row is returned.
+ */
+export const syncStationNotice = internalMutation({
+  args: {
+    siteId: v.string(),
+    key: v.string(),
+    active: v.boolean(),
+    title: v.optional(v.string()),
+    detail: v.optional(v.string()),
+    severity: v.optional(stationNoticeSeverityValidator),
+    count: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    kioskDevice: v.optional(v.string()),
+    occurredAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+  },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      applied: v.boolean(),
+      notice: stationNoticeSyncResultOut,
+    }),
+    v.object({
+      status: v.literal("invalid"),
+      error: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    if (!NOTICE_KEY_RE.test(args.key)) {
+      return { status: "invalid" as const, error: "Invalid notice key" };
+    }
+    const serverNow = Date.now();
+    const effectiveOccurredAt =
+      args.occurredAt !== undefined && args.sentAt !== undefined
+        ? Math.min(serverNow, args.occurredAt + (serverNow - args.sentAt))
+        : serverNow;
+
+    let title = "";
+    let detail: string | undefined;
+    const severity = args.severity ?? "warning";
+    if (args.active) {
+      title = args.title?.trim() ?? "";
+      if (title.length === 0 || title.length > NOTICE_TITLE_MAX) {
+        return {
+          status: "invalid" as const,
+          error: `title must be 1-${NOTICE_TITLE_MAX} characters`,
+        };
+      }
+      const trimmedDetail = args.detail?.trim() ?? "";
+      if (trimmedDetail.length > NOTICE_DETAIL_MAX) {
+        return {
+          status: "invalid" as const,
+          error: `detail must be at most ${NOTICE_DETAIL_MAX} characters`,
+        };
+      }
+      detail = trimmedDetail.length > 0 ? trimmedDetail : undefined;
+      if (
+        args.count !== undefined &&
+        (!Number.isInteger(args.count) || args.count < 0 || args.count > NOTICE_MAX_COUNT)
+      ) {
+        return {
+          status: "invalid" as const,
+          error: `count must be a whole number from 0 to ${NOTICE_MAX_COUNT}`,
+        };
+      }
+      if (args.expiresAt !== undefined && (!Number.isFinite(args.expiresAt) || args.expiresAt <= serverNow)) {
+        return { status: "invalid" as const, error: "expiresAt must be in the future" };
+      }
+    }
+
+    const existing = await ctx.db
+      .query("stationNotices")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    if (existing && existing.updatedAt > effectiveOccurredAt) {
+      const expired = existing.expiresAt !== undefined && existing.expiresAt <= serverNow;
+      const out = await toNoticeOut(ctx, existing);
+      return {
+        status: "ok" as const,
+        applied: false,
+        notice: { ...out, active: existing.active && !expired },
+      };
+    }
+
+    const wasActive =
+      existing !== null &&
+      existing.active &&
+      (existing.expiresAt === undefined || existing.expiresAt > serverNow);
+    const createdAt = args.active && wasActive && existing ? existing.createdAt : serverNow;
+    const resolvedTitle = args.active ? title : (existing?.title ?? args.key);
+
+    const fields = {
+      title: resolvedTitle,
+      detail: args.active ? detail : undefined,
+      severity: args.active ? severity : (existing?.severity ?? ("warning" as const)),
+      count: args.active ? args.count : undefined,
+      active: args.active,
+      updatedBy: undefined,
+      updatedBySource: "kioskHub" as const,
+      updatedByKioskSite: args.siteId,
+      updatedByKioskDevice: args.kioskDevice,
+      createdAt,
+      updatedAt: serverNow,
+      expiresAt: args.active ? args.expiresAt : undefined,
+    };
+
+    if (existing) {
+      await ctx.db.patch("stationNotices", existing._id, fields);
+    } else {
+      await ctx.db.insert("stationNotices", {
+        key: args.key,
+        ...fields,
+      });
+    }
+
+    return {
+      status: "ok" as const,
+      applied: true,
+      notice: {
+        key: args.key,
+        active: args.active,
+        title: resolvedTitle,
+        ...(args.active && detail !== undefined ? { detail } : {}),
+        severity: fields.severity,
+        ...(args.active && args.count !== undefined ? { count: args.count } : {}),
+        source: "kiosk-hub",
+        ...(args.kioskDevice !== undefined
+          ? { updatedBy: args.kioskDevice }
+          : { updatedBy: `Station Kiosk (${args.siteId})` }),
+        createdAt,
+        updatedAt: serverNow,
+        ...(args.active && args.expiresAt !== undefined ? { expiresAt: args.expiresAt } : {}),
+      },
+    };
   },
 });

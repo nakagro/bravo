@@ -24,7 +24,7 @@ const MODULE_NAV: Record<string, { path: string; label: string }> = {
   feedback: { path: "/feedback", label: "Feedback" },
   links: { path: "/links", label: "Links" },
   equipment: { path: "/equipment", label: "Equipment" },
-  baSkills: { path: "/ba-skills", label: "BA Skills" },
+  baSkills: { path: "/ba", label: "BA" },
 };
 
 export function ServiceLayout({ children }: ServiceLayoutProps) {

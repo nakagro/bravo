@@ -247,7 +247,7 @@ const DEFAULT_MODULES: Array<{
   },
   {
     moduleId: "baSkills",
-    moduleName: "BA Skills Maintenance",
+    moduleName: "BA",
     isEnabled: true,
     adminOnly: false,
     requiredRoles: [],
@@ -255,7 +255,7 @@ const DEFAULT_MODULES: Array<{
   },
   {
     moduleId: "baSkillsAdmin",
-    moduleName: "BA Skills Admin",
+    moduleName: "BA Admin",
     isEnabled: true,
     adminOnly: false,
     requiredRoles: [],
