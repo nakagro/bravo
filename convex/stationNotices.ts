@@ -4,7 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { getModuleUser, requireModule } from "./lib/access";
 
 export const BA_CYLINDERS_NOTICE_KEY = "ba_cylinders_refill";
-export const BA_CYLINDERS_NOTICE_TITLE = "Empty BA Cylinders";
+export const BA_CYLINDERS_NOTICE_TITLE = "BA Cylinders Need Filling";
 export const NOTICE_KEY_RE = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 export const NOTICE_TITLE_MAX = 80;
 export const NOTICE_DETAIL_MAX = 160;
