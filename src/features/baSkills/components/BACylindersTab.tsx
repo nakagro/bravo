@@ -40,8 +40,8 @@ export function BACylindersTab() {
       });
       toast.success(
         active
-          ? "BA cylinder refill count updated"
-          : "BA cylinders flagged for refill on the turnout screen",
+          ? "Empty BA cylinder count updated"
+          : "Empty BA cylinders flagged on the turnout screen",
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update BA cylinder status");
@@ -54,7 +54,7 @@ export function BACylindersTab() {
     setBusy(true);
     try {
       await clearNotice({});
-      toast.success("BA cylinders marked filled and cleared from the turnout screen");
+      toast.success("Empty BA cylinders cleared from the turnout screen");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not clear BA cylinder notice");
     } finally {
@@ -103,19 +103,19 @@ export function BACylindersTab() {
             <h2 className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
               {active
                 ? notice?.count !== undefined
-                  ? `BA Cylinders Need Filling (${notice.count})`
-                  : notice?.title ?? "BA Cylinders Need Filling"
-                : "All BA Cylinders Full"}
+                  ? `Empty BA Cylinders (${notice.count})`
+                  : "Empty BA Cylinders"
+                : "No Empty BA Cylinders"}
             </h2>
             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
               {notice
                 ? `${active ? "Flagged" : "Last cleared"}${notice.updatedByName ? ` by ${notice.updatedByName}` : ""} · ${formatUpdatedAt(notice.updatedAt)}`
-                : "No refill notice currently active."}
+                : "No empty cylinders currently flagged."}
             </p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {active
                 ? "Showing on the station turnout idle screen and foyer kiosks."
-                : "Flagging cylinders here updates the station turnout idle screen and foyer kiosks."}
+                : "Flagging empty cylinders here updates the station turnout idle screen and foyer kiosks."}
             </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export function BACylindersTab() {
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-5 space-y-5">
         <div>
           <label className="block text-sm font-semibold text-gray-900 dark:text-white">
-            Cylinders needing refill{" "}
+            Empty cylinders{" "}
             <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
           </label>
           <div className="mt-2 grid grid-cols-4 sm:grid-cols-7 gap-2">
@@ -192,7 +192,7 @@ export function BACylindersTab() {
                 disabled={busy}
                 className="flex-1 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 transition-colors"
               >
-                {busy ? "Saving..." : "Mark All Filled"}
+                {busy ? "Saving..." : "Clear Notice"}
               </button>
               {countChanged && (
                 <button
@@ -215,8 +215,8 @@ export function BACylindersTab() {
               {busy
                 ? "Saving..."
                 : count !== null
-                  ? `Flag ${count} Cylinder${count === 1 ? "" : "s"} for Refill`
-                  : "Flag Cylinders for Refill"}
+                  ? `Flag ${count} Empty Cylinder${count === 1 ? "" : "s"}`
+                  : "Flag Empty Cylinders"}
             </button>
           )}
         </div>

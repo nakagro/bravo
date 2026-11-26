@@ -4,7 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { getModuleUser, requireModule } from "./lib/access";
 
 export const BA_CYLINDERS_NOTICE_KEY = "ba_cylinders_refill";
-export const BA_CYLINDERS_NOTICE_TITLE = "BA Cylinders Need Filling";
+export const BA_CYLINDERS_NOTICE_TITLE = "Empty BA Cylinders";
 export const NOTICE_KEY_RE = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 export const NOTICE_TITLE_MAX = 80;
 export const NOTICE_DETAIL_MAX = 160;
@@ -84,7 +84,7 @@ export const getBaCylindersNotice = query({
   },
 });
 
-/** Flag or update how many BA cylinders need refilling (syncs live to kiosks and turnout screen). */
+/** Flag or update how many empty BA cylinders need attention (syncs live to kiosks and turnout screen). */
 export const setBaCylindersNotice = mutation({
   args: {
     count: v.optional(v.number()),
@@ -95,7 +95,7 @@ export const setBaCylindersNotice = mutation({
     const user = await requireModule(
       ctx,
       ["baSkills", "baSkillsAdmin"],
-      "You do not have access to update BA cylinder refill status",
+      "You do not have access to update BA cylinder status",
     );
 
     if (args.count !== undefined) {
@@ -150,7 +150,7 @@ export const setBaCylindersNotice = mutation({
   },
 });
 
-/** Clear the BA Cylinders refill notice once cylinders have been refilled. */
+/** Clear the empty BA cylinders notice once cylinders have been sorted. */
 export const clearBaCylindersNotice = mutation({
   args: {},
   returns: v.null(),
@@ -158,7 +158,7 @@ export const clearBaCylindersNotice = mutation({
     const user = await requireModule(
       ctx,
       ["baSkills", "baSkillsAdmin"],
-      "You do not have access to clear BA cylinder refill status",
+      "You do not have access to clear BA cylinder status",
     );
 
     const now = Date.now();

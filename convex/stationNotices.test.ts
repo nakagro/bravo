@@ -82,7 +82,7 @@ describe("BA cylinder station notices (BRAVO <-> kiosk-hub)", () => {
     const first = await asMember.query(api.stationNotices.getBaCylindersNotice, {});
     expect(first).toMatchObject({
       key: "ba_cylinders_refill",
-      title: "BA Cylinders Need Filling",
+      title: "Empty BA Cylinders",
       detail: "Used at drill",
       count: 3,
       active: true,
