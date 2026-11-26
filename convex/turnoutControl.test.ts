@@ -121,6 +121,9 @@ describe("turnoutControl superAdminOnly access", () => {
       await expect(
         caller.mutation(api.turnoutControl.stopSimulation, {}),
       ).rejects.toThrow();
+      await expect(
+        caller.action(api.turnoutControl.searchAddress, { query: "45 Ison Rd" }),
+      ).rejects.toThrow();
     }
   });
 

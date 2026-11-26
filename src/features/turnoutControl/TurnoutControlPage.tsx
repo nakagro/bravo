@@ -1,25 +1,27 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   AlertTriangle,
-  CheckCircle2,
+  Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   History,
+  Loader2,
   MapPin,
-  Monitor,
   Play,
   RotateCcw,
-  ShieldAlert,
+  Search,
   Sliders,
   Square,
   Volume2,
   VolumeX,
   Wifi,
   WifiOff,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,9 +48,70 @@ type MultiJobOption = 0 | 2 | 3;
 
 const HUB_STALE_AFTER_MS = 5 * 60 * 1000;
 
-interface OverridesDraft {
-  isIdleScreenDisabled: boolean;
-  forceMultiJobCount: MultiJobOption;
+interface QuickAddress {
+  label: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+const QUICK_ADDRESSES: QuickAddress[] = [
+  {
+    label: "Main Station",
+    address: "Wyndham Vale Fire Station, 85 Manor Lakes Blvd, Wyndham Vale",
+    latitude: -37.87186,
+    longitude: 144.609538,
+  },
+  {
+    label: "Satellite Station",
+    address: "Wyndham Vale Satellite Station, Werribee",
+    latitude: -37.89685,
+    longitude: 144.623158,
+  },
+  {
+    label: "45 Ison Rd",
+    address: "45 Ison Rd, Werribee",
+    latitude: -37.89123,
+    longitude: 144.62346,
+  },
+];
+
+interface DrillTemplate {
+  label: string;
+  buildMessage: (address: string) => string;
+}
+
+const DRILL_TEMPLATES: DrillTemplate[] = [
+  {
+    label: "Structure Fire",
+    buildMessage: (addr) =>
+      `ALERT WYDV1 G&SC1 STRUCTURE FIRE ${(addr || "45 ISON RD WERRIBEE").toUpperCase()} WYDVP1 WYDVT1 FGD15`,
+  },
+  {
+    label: "Grass & Scrub",
+    buildMessage: (addr) =>
+      `ALERT WYDV1 G&SC1 GRASS & SCRUB FIRE ${(addr || "45 ISON RD WERRIBEE").toUpperCase()} WYDVT1 WYDVFC FGD15`,
+  },
+  {
+    label: "MVA",
+    buildMessage: (addr) =>
+      `ALERT WYDV1 INC1 MOTOR VEHICLE ACCIDENT ${(addr || "45 ISON RD WERRIBEE").toUpperCase()} WYDVP1 FGD15`,
+  },
+  {
+    label: "Alarm",
+    buildMessage: (addr) =>
+      `ALERT WYDV1 ALAR1 FIRE ALARM ${(addr || "45 ISON RD WERRIBEE").toUpperCase()} WYDVP1 FGD15`,
+  },
+];
+
+interface AddressSuggestion {
+  shortAddress: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
+interface HeightsDraft {
   headerHeightSingle: number | undefined;
   headerHeightDouble: number | undefined;
   headerHeightTriple: number | undefined;
@@ -86,17 +149,17 @@ function actionBadge(action: string): { label: string; className: string } {
   switch (action) {
     case "startSimulation":
       return {
-        label: "Sim Started",
+        label: "Started",
         className: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200",
       };
     case "stopSimulation":
       return {
-        label: "Sim Ended",
+        label: "Ended",
         className: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200",
       };
     case "expireSimulation":
       return {
-        label: "Auto-Expired",
+        label: "Expired",
         className: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200",
       };
     case "resetOverrides":
@@ -106,7 +169,7 @@ function actionBadge(action: string): { label: string; className: string } {
       };
     default:
       return {
-        label: "Overrides",
+        label: "Display",
         className: "bg-purple-100 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200",
       };
   }
@@ -118,31 +181,42 @@ export function TurnoutControlPage() {
   const resetOverrides = useMutation(api.turnoutControl.resetOverrides);
   const startSimulation = useMutation(api.turnoutControl.startSimulation);
   const stopSimulation = useMutation(api.turnoutControl.stopSimulation);
+  const searchAddress = useAction(api.turnoutControl.searchAddress);
 
   const [now, setNow] = useState(() => Date.now());
   const [busyOverrides, setBusyOverrides] = useState(false);
   const [busySim, setBusySim] = useState(false);
 
-  // Display overrides form state
-  const [draft, setDraft] = useState<OverridesDraft>({
-    isIdleScreenDisabled: false,
-    forceMultiJobCount: 0,
-    headerHeightSingle: undefined,
-    headerHeightDouble: undefined,
-    headerHeightTriple: undefined,
-  });
-
   // Training simulator form state
-  const [messageText, setMessageText] = useState("");
   const [address, setAddress] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [lastAutoTemplate, setLastAutoTemplate] = useState<string | null>(null);
   const [ttlMinutes, setTtlMinutes] = useState<TtlOption>(15);
   const [playAudio, setPlayAudio] = useState(false);
-  const [showCoords, setShowCoords] = useState(false);
+  const [pinnedCoords, setPinnedCoords] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
+  const [showCustomCoords, setShowCustomCoords] = useState(false);
   const [latInput, setLatInput] = useState("");
   const [lngInput, setLngInput] = useState("");
   const [audioConfirmOpen, setAudioConfirmOpen] = useState(false);
 
-  // Tick every second while a simulation is running, else every 15s for hub age.
+  // Address lookup state
+  const [searchingAddr, setSearchingAddr] = useState(false);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchSeqRef = useRef(0);
+  const skipNextSearchRef = useRef(false);
+
+  // Advanced header height sliders (kept collapsed unless overridden)
+  const [heightsDraft, setHeightsDraft] = useState<HeightsDraft>({
+    headerHeightSingle: undefined,
+    headerHeightDouble: undefined,
+    headerHeightTriple: undefined,
+  });
+  const [heightsOpen, setHeightsOpen] = useState(false);
+  const [showAllAudit, setShowAllAudit] = useState(false);
+
   const hasActiveSim = Boolean(state?.activeSimulation);
   useEffect(() => {
     const ms = hasActiveSim ? 1_000 : 15_000;
@@ -150,30 +224,66 @@ export function TurnoutControlPage() {
     return () => clearInterval(timer);
   }, [hasActiveSim]);
 
-  // Sync draft whenever server revision changes.
   const serverRevision = state?.revision ?? 0;
   const serverOverrides = state?.overrides;
   useEffect(() => {
     if (!serverOverrides) return;
-    setDraft({
-      isIdleScreenDisabled: serverOverrides.isIdleScreenDisabled ?? false,
-      forceMultiJobCount: serverOverrides.forceMultiJobCount ?? 0,
+    setHeightsDraft({
       headerHeightSingle: serverOverrides.headerHeightSingle,
       headerHeightDouble: serverOverrides.headerHeightDouble,
       headerHeightTriple: serverOverrides.headerHeightTriple,
     });
+    if (
+      serverOverrides.headerHeightSingle !== undefined ||
+      serverOverrides.headerHeightDouble !== undefined ||
+      serverOverrides.headerHeightTriple !== undefined
+    ) {
+      setHeightsOpen(true);
+    }
   }, [serverRevision, serverOverrides]);
 
-  const overridesDirty = useMemo(() => {
+  // Debounced address search as user types (skip when programmatically filled).
+  useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
+    const q = address.trim();
+    if (q.length < 4) {
+      setSuggestions([]);
+      setSearchingAddr(false);
+      return;
+    }
+    const seq = ++searchSeqRef.current;
+    const timer = setTimeout(async () => {
+      setSearchingAddr(true);
+      try {
+        const results = await searchAddress({ query: q });
+        if (searchSeqRef.current === seq) {
+          setSuggestions(results);
+          setShowSuggestions(results.length > 0);
+        }
+      } catch {
+        if (searchSeqRef.current === seq) {
+          setSuggestions([]);
+        }
+      } finally {
+        if (searchSeqRef.current === seq) {
+          setSearchingAddr(false);
+        }
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [address, searchAddress]);
+
+  const heightsDirty = useMemo(() => {
     if (!serverOverrides) return false;
     return (
-      draft.isIdleScreenDisabled !== (serverOverrides.isIdleScreenDisabled ?? false) ||
-      draft.forceMultiJobCount !== (serverOverrides.forceMultiJobCount ?? 0) ||
-      draft.headerHeightSingle !== serverOverrides.headerHeightSingle ||
-      draft.headerHeightDouble !== serverOverrides.headerHeightDouble ||
-      draft.headerHeightTriple !== serverOverrides.headerHeightTriple
+      heightsDraft.headerHeightSingle !== serverOverrides.headerHeightSingle ||
+      heightsDraft.headerHeightDouble !== serverOverrides.headerHeightDouble ||
+      heightsDraft.headerHeightTriple !== serverOverrides.headerHeightTriple
     );
-  }, [draft, serverOverrides]);
+  }, [heightsDraft, serverOverrides]);
 
   const hasAnyRemoteOverride = useMemo(() => {
     if (!serverOverrides) return false;
@@ -207,32 +317,84 @@ export function TurnoutControlPage() {
   const hubOnline =
     state.hubStatus !== null && now - state.hubStatus.lastSyncAt < HUB_STALE_AFTER_MS;
 
-  const parseCoordinates = (): { latitude: number; longitude: number } | undefined | null => {
-    const latTrim = latInput.trim();
-    const lngTrim = lngInput.trim();
-    if (!latTrim && !lngTrim) return undefined;
-    if (!latTrim || !lngTrim) {
-      toast.error("Enter both latitude and longitude, or leave both blank for default coordinates.");
-      return null;
+  const applyAddressChoice = (nextAddress: string, coords: { latitude: number; longitude: number }) => {
+    skipNextSearchRef.current = true;
+    setAddress(nextAddress);
+    setPinnedCoords(coords);
+    setLatInput(coords.latitude.toFixed(5));
+    setLngInput(coords.longitude.toFixed(5));
+    setSuggestions([]);
+    setShowSuggestions(false);
+
+    // If the user has not typed a custom message yet, keep the template synced to the chosen address.
+    if (!messageText.trim() || lastAutoTemplate !== null) {
+      const tpl =
+        DRILL_TEMPLATES.find((t) => t.label === lastAutoTemplate) ?? DRILL_TEMPLATES[0];
+      setMessageText(tpl.buildMessage(nextAddress));
+      setLastAutoTemplate(tpl.label);
     }
-    const latitude = Number(latTrim);
-    const longitude = Number(lngTrim);
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      toast.error("Coordinates must be valid numbers (lat -90..90, lng -180..180).");
-      return null;
+  };
+
+  const applyDrillTemplate = (tpl: DrillTemplate) => {
+    setMessageText(tpl.buildMessage(address.trim()));
+    setLastAutoTemplate(tpl.label);
+  };
+
+  const handleManualAddressLookup = async () => {
+    const q = address.trim();
+    if (q.length < 3) {
+      toast.error("Type at least 3 characters to search an address.");
+      return;
     }
-    return { latitude, longitude };
+    const seq = ++searchSeqRef.current;
+    setSearchingAddr(true);
+    try {
+      const results = await searchAddress({ query: q });
+      if (searchSeqRef.current === seq) {
+        setSuggestions(results);
+        setShowSuggestions(true);
+        if (results.length === 0) {
+          toast.info("No matching local addresses found. You can still start with the typed address.");
+        }
+      }
+    } catch (err) {
+      toastError(err, "Address lookup failed");
+    } finally {
+      if (searchSeqRef.current === seq) {
+        setSearchingAddr(false);
+      }
+    }
+  };
+
+  const resolveCoordinates = (): { latitude: number; longitude: number } | undefined | null => {
+    if (showCustomCoords) {
+      const latTrim = latInput.trim();
+      const lngTrim = lngInput.trim();
+      if (!latTrim && !lngTrim) return undefined;
+      if (!latTrim || !lngTrim) {
+        toast.error("Enter both latitude and longitude, or clear both.");
+        return null;
+      }
+      const latitude = Number(latTrim);
+      const longitude = Number(lngTrim);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        toast.error("Coordinates must be valid numbers (lat -90..90, lng -180..180).");
+        return null;
+      }
+      return { latitude, longitude };
+    }
+    return pinnedCoords ?? undefined;
   };
 
   const executeStartSimulation = async () => {
-    const coords = parseCoordinates();
+    const coords = resolveCoordinates();
     if (coords === null) return;
 
     setBusySim(true);
@@ -245,10 +407,10 @@ export function TurnoutControlPage() {
         playAudio,
       });
       toast.success(
-        `Training simulation started (${ttlMinutes}m auto-expire${playAudio ? ", audio ON" : ", silent"})`,
+        `Training drill started (${ttlMinutes}m${playAudio ? ", alert tone ON" : ", silent"})`,
       );
     } catch (err) {
-      toastError(err, "Could not start training simulation");
+      toastError(err, "Could not start training drill");
       throw err;
     } finally {
       setBusySim(false);
@@ -257,11 +419,11 @@ export function TurnoutControlPage() {
 
   const handleSimSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !address.trim()) {
-      toast.error("Enter both a pager message and an incident address.");
+    if (!address.trim() || !messageText.trim()) {
+      toast.error("Pick or enter an address and pager message.");
       return;
     }
-    const coords = parseCoordinates();
+    const coords = resolveCoordinates();
     if (coords === null) return;
 
     if (playAudio) {
@@ -271,7 +433,7 @@ export function TurnoutControlPage() {
     try {
       await executeStartSimulation();
     } catch {
-      // Already toasted inside executeStartSimulation.
+      // Already toasted.
     }
   };
 
@@ -280,37 +442,53 @@ export function TurnoutControlPage() {
     try {
       const res = await stopSimulation({});
       if (res.wasActive) {
-        toast.success("Training simulation ended");
+        toast.success("Training drill ended");
       } else {
-        toast.info("No active simulation to end");
+        toast.info("No active drill to end");
       }
     } catch (err) {
-      toastError(err, "Could not end training simulation");
+      toastError(err, "Could not end training drill");
     } finally {
       setBusySim(false);
     }
   };
 
-  const handleSaveOverrides = async () => {
+  // Immediate save helper for 1-tap display toggles (Idle Screen & Multi-Job).
+  const patchDisplayOverrides = async (
+    patch: Partial<{
+      isIdleScreenDisabled: boolean | undefined;
+      forceMultiJobCount: MultiJobOption | undefined;
+      headerHeightSingle: number | undefined;
+      headerHeightDouble: number | undefined;
+      headerHeightTriple: number | undefined;
+    }>,
+    successMessage: string,
+  ) => {
     setBusyOverrides(true);
     try {
+      const merged = {
+        ...state.overrides,
+        ...patch,
+      };
       const payload = {
-        ...(draft.isIdleScreenDisabled ? { isIdleScreenDisabled: true } : {}),
-        ...(draft.forceMultiJobCount !== 0 ? { forceMultiJobCount: draft.forceMultiJobCount } : {}),
-        ...(draft.headerHeightSingle !== undefined
-          ? { headerHeightSingle: draft.headerHeightSingle }
+        ...(merged.isIdleScreenDisabled ? { isIdleScreenDisabled: true } : {}),
+        ...(merged.forceMultiJobCount === 2 || merged.forceMultiJobCount === 3
+          ? { forceMultiJobCount: merged.forceMultiJobCount }
           : {}),
-        ...(draft.headerHeightDouble !== undefined
-          ? { headerHeightDouble: draft.headerHeightDouble }
+        ...(merged.headerHeightSingle !== undefined
+          ? { headerHeightSingle: merged.headerHeightSingle }
           : {}),
-        ...(draft.headerHeightTriple !== undefined
-          ? { headerHeightTriple: draft.headerHeightTriple }
+        ...(merged.headerHeightDouble !== undefined
+          ? { headerHeightDouble: merged.headerHeightDouble }
+          : {}),
+        ...(merged.headerHeightTriple !== undefined
+          ? { headerHeightTriple: merged.headerHeightTriple }
           : {}),
       };
       await updateOverrides({ overrides: payload });
-      toast.success("Display overrides pushed to turnout screen");
+      toast.success(successMessage);
     } catch (err) {
-      toastError(err, "Could not update display overrides");
+      toastError(err, "Could not update display setting");
     } finally {
       setBusyOverrides(false);
     }
@@ -320,55 +498,26 @@ export function TurnoutControlPage() {
     setBusyOverrides(true);
     try {
       await resetOverrides({});
-      toast.success("Remote display overrides reset to local defaults");
+      toast.success("Display settings reset to defaults");
     } catch (err) {
-      toastError(err, "Could not reset display overrides");
+      toastError(err, "Could not reset display settings");
     } finally {
       setBusyOverrides(false);
     }
   };
 
-  const handleReenableIdleScreen = async () => {
-    setBusyOverrides(true);
-    try {
-      const next = { ...state.overrides };
-      delete next.isIdleScreenDisabled;
-      await updateOverrides({ overrides: next });
-      toast.success("Idle screen re-enabled on turnout display");
-    } catch (err) {
-      toastError(err, "Could not re-enable idle screen");
-    } finally {
-      setBusyOverrides(false);
-    }
-  };
+  const idleDisabled = state.overrides.isIdleScreenDisabled === true;
+  const activeMultiJob: MultiJobOption = state.overrides.forceMultiJobCount ?? 0;
+  const visibleAudit = showAllAudit ? state.recentAudit : state.recentAudit.slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 pb-10" data-component="TurnoutControlPage">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            <Monitor className="size-5" />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Turnout Control
-              </h1>
-              <Badge variant="outline" className="text-xs">
-                Super Admin
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Main Station (TURNOUT01) remote display overrides &amp; training job simulator
-            </p>
-          </div>
-        </div>
-
-        {/* Live kiosk-hub status pill */}
+    <div className="mx-auto max-w-4xl space-y-4 pb-10" data-component="TurnoutControlPage">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Turnout Control</h1>
         <div
           className={cn(
-            "inline-flex items-center gap-2 self-start rounded-full border px-3 py-1.5 text-xs font-medium sm:self-auto",
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
             hubOnline
               ? "border-emerald-500/40 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
               : "border-amber-500/40 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300",
@@ -376,30 +525,28 @@ export function TurnoutControlPage() {
         >
           {hubOnline ? <Wifi className="size-3.5" /> : <WifiOff className="size-3.5" />}
           {state.hubStatus ? (
-            <span>
-              Hub {hubOnline ? "online" : "stale"} ({formatAge(state.hubStatus.lastSyncAt, now)})
-            </span>
+            <span>{hubOnline ? "Hub online" : `Hub stale (${formatAge(state.hubStatus.lastSyncAt, now)})`}</span>
           ) : (
-            <span>Hub not yet reported</span>
+            <span>Hub offline</span>
           )}
         </div>
       </div>
 
-      {/* Active Training Simulation Banner */}
+      {/* Active Training Drill Banner */}
       {activeSim && (
-        <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4 shadow-sm dark:bg-amber-950/40 sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4 shadow-sm dark:bg-amber-950/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-black">
+                <span className="inline-flex items-center gap-1.5 rounded bg-amber-500 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-black">
                   <AlertTriangle className="size-3.5" />
-                  Training Simulation Active
+                  For Training Purposes Only
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-amber-900 dark:text-amber-200">
                   <Clock className="size-3.5" />
                   {simExpiredLocally
                     ? "Expiring..."
-                    : `Auto-expires in ${formatRemaining(activeSim.expiresAt, now)}`}
+                    : `${formatRemaining(activeSim.expiresAt, now)} left`}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs text-amber-800 dark:text-amber-300">
                   {activeSim.playAudio ? (
@@ -414,23 +561,15 @@ export function TurnoutControlPage() {
                 </span>
               </div>
 
-              <p className="break-words rounded-md bg-white/80 p-2.5 font-mono text-xs text-gray-900 dark:bg-black/30 dark:text-amber-100">
+              <p className="break-words rounded-md bg-white/80 p-2 font-mono text-xs text-gray-900 dark:bg-black/30 dark:text-amber-100">
                 {activeSim.messageText}
               </p>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-200/90">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-amber-900/90 dark:text-amber-200/90">
                 <span className="inline-flex items-center gap-1 font-medium">
                   <MapPin className="size-3.5" />
                   {activeSim.address}
                 </span>
-                {activeSim.coordinates ? (
-                  <span className="font-mono">
-                    {activeSim.coordinates.latitude.toFixed(5)},{" "}
-                    {activeSim.coordinates.longitude.toFixed(5)}
-                  </span>
-                ) : (
-                  <span>Default Werribee test map coords</span>
-                )}
                 <span>
                   Started by {activeSim.startedByName} at {formatDateTime(activeSim.startedAt)}
                 </span>
@@ -446,31 +585,30 @@ export function TurnoutControlPage() {
               className="w-full shrink-0 gap-2 font-semibold sm:w-auto"
             >
               <Square className="size-4 fill-current" />
-              {busySim ? "Ending..." : "End Simulation"}
+              {busySim ? "Ending..." : "End Drill"}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Persistent Idle-Screen-Disabled Warning */}
-      {state.overrides.isIdleScreenDisabled && (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-500/60 bg-amber-50/80 p-4 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2.5 text-sm text-amber-950 dark:text-amber-200">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            <div>
-              <p className="font-semibold">Idle screen is currently disabled remotely</p>
-              <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
-                TURNOUT01 will remain on the turnout screen until you re-enable the idle screen or
-                reset overrides.
-              </p>
-            </div>
+      {/* Persistent Idle-Screen-Disabled Banner */}
+      {idleDisabled && (
+        <div className="flex flex-col gap-2.5 rounded-xl border border-amber-500/60 bg-amber-50/80 px-4 py-3 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-amber-950 dark:text-amber-200">
+            <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>Idle screen is disabled on TURNOUT01</span>
           </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
             disabled={busyOverrides}
-            onClick={handleReenableIdleScreen}
+            onClick={() =>
+              patchDisplayOverrides(
+                { isIdleScreenDisabled: undefined },
+                "Idle screen re-enabled",
+              )
+            }
             className="shrink-0"
           >
             Re-enable Idle Screen
@@ -478,128 +616,243 @@ export function TurnoutControlPage() {
         </div>
       )}
 
-      {/* Safety Guardrails Strip */}
-      <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-        <div className="flex items-start gap-2.5">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <p className="leading-relaxed">
-            <span className="font-semibold text-foreground">Emergency safety:</span> Real SAS /
-            PDT2000 callouts always preempt training simulations immediately. Simulations never
-            trigger CUPS printing, never write to Zabbix/Loki job metrics or ntfy alerts, and
-            auto-expire on schedule. The local top-left corner menu remains available offline.
-          </p>
-        </div>
-      </div>
-
-      {/* Main 2-column grid on desktop */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Card 1: Training Job Simulator */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Training Job Simulator</h2>
-              <p className="text-xs text-muted-foreground">
-                Push a clearly-badged training callout to the turnout screen with auto-expiry.
-              </p>
-            </div>
+      {/* Main 2-column layout */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        {/* Left (wider): Training Drill Simulator */}
+        <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:col-span-7">
+          <div className="mb-3.5 flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-foreground">Training Job Simulator</h2>
             {!activeSim && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                <CheckCircle2 className="size-3" /> Idle
-              </span>
+              <span className="text-xs font-medium text-muted-foreground">Idle</span>
             )}
           </div>
 
           <form onSubmit={handleSimSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+            {/* Step 1: Quick Address + Live Search */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sim-address">Address</Label>
+                {pinnedCoords ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <Check className="size-3.5" /> Map pin ready
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Search or tap a quick location</span>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="flex gap-1.5">
+                  <div className="relative flex-1">
+                    <Input
+                      id="sim-address"
+                      maxLength={SIM_ADDRESS_MAX}
+                      placeholder="Search street or suburb (e.g. 45 Ison Rd Werribee)"
+                      value={address}
+                      onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        setPinnedCoords(null);
+                      }}
+                      disabled={busySim}
+                      className="pr-8"
+                    />
+                    {address && (
+                      <button
+                        type="button"
+                        aria-label="Clear address"
+                        onClick={() => {
+                          skipNextSearchRef.current = true;
+                          setAddress("");
+                          setPinnedCoords(null);
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Look up address"
+                    disabled={busySim || searchingAddr || address.trim().length < 3}
+                    onClick={handleManualAddressLookup}
+                    className="shrink-0"
+                  >
+                    {searchingAddr ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Search className="size-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Autocomplete results */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+                    <ul className="divide-y divide-border">
+                      {suggestions.map((s) => (
+                        <li key={`${s.latitude},${s.longitude},${s.shortAddress}`}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              applyAddressChoice(s.shortAddress, {
+                                latitude: s.latitude,
+                                longitude: s.longitude,
+                              })
+                            }
+                            className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-accent"
+                          >
+                            <MapPin className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">
+                                {s.shortAddress}
+                              </p>
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {s.label}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* 1-tap Quick Locations */}
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_ADDRESSES.map((loc) => {
+                  const selected = address === loc.address;
+                  return (
+                    <button
+                      key={loc.label}
+                      type="button"
+                      disabled={busySim}
+                      onClick={() =>
+                        applyAddressChoice(loc.address, {
+                          latitude: loc.latitude,
+                          longitude: loc.longitude,
+                        })
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        selected
+                          ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
+                          : "border-border bg-muted/40 text-foreground hover:bg-muted",
+                      )}
+                    >
+                      <MapPin className="size-3 text-amber-600 dark:text-amber-400" />
+                      {loc.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2: Pager Message + Quick Drill Type Pills */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="sim-message">Pager Message</Label>
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {messageText.length}/{SIM_MESSAGE_MAX}
                 </span>
               </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {DRILL_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.label}
+                    type="button"
+                    disabled={busySim}
+                    onClick={() => applyDrillTemplate(tpl)}
+                    className={cn(
+                      "rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+                      lastAutoTemplate === tpl.label
+                        ? "border-amber-500/70 bg-amber-100/80 text-amber-950 dark:bg-amber-900/30 dark:text-amber-100"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {tpl.label}
+                  </button>
+                ))}
+              </div>
+
               <Textarea
                 id="sim-message"
-                rows={4}
+                rows={3}
                 maxLength={SIM_MESSAGE_MAX}
-                placeholder="ALERT WYDV1 G&SC1 STRUCTURE FIRE 45 ISON RD WERRIBEE M 220 A5 WYDVP1 WYDVT1 FGD15"
+                placeholder="Tap a drill type above or enter a custom pager message"
                 value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
+                onChange={(e) => {
+                  setMessageText(e.target.value);
+                  setLastAutoTemplate(null);
+                }}
                 disabled={busySim}
                 className="font-mono text-xs"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="sim-address">Incident Address</Label>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {address.length}/{SIM_ADDRESS_MAX}
-                </span>
+            {/* Step 3: Duration + Alert Tone */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Auto-clear after</Label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {TTL_OPTIONS.map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      disabled={busySim}
+                      onClick={() => setTtlMinutes(mins)}
+                      className={cn(
+                        "rounded-lg border px-2 py-2 text-xs font-semibold tabular-nums transition-colors",
+                        ttlMinutes === mins
+                          ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
+                          : "border-border bg-background text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
               </div>
-              <Input
-                id="sim-address"
-                maxLength={SIM_ADDRESS_MAX}
-                placeholder="45 Ison Rd Werribee"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                disabled={busySim}
-              />
-            </div>
 
-            {/* TTL Selector */}
-            <div className="space-y-1.5">
-              <Label>Auto-Expire Duration</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {TTL_OPTIONS.map((mins) => (
-                  <button
-                    key={mins}
-                    type="button"
+              <div className="space-y-1.5">
+                <Label htmlFor="sim-audio">Alert tone</Label>
+                <div className="flex h-[38px] items-center justify-between rounded-lg border border-border bg-muted/30 px-3">
+                  <span className="text-xs font-medium text-foreground">
+                    {playAudio ? "Plays on station speakers" : "Silent (default)"}
+                  </span>
+                  <Switch
+                    id="sim-audio"
+                    checked={playAudio}
+                    onCheckedChange={setPlayAudio}
                     disabled={busySim}
-                    onClick={() => setTtlMinutes(mins)}
-                    className={cn(
-                      "rounded-lg border px-3 py-2 text-sm font-semibold tabular-nums transition-colors",
-                      ttlMinutes === mins
-                        ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
-                        : "border-border bg-background text-foreground hover:bg-muted",
-                    )}
-                  >
-                    {mins} min
-                  </button>
-                ))}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Play Audio Toggle */}
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3.5 py-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="sim-audio" className="cursor-pointer text-sm font-medium">
-                  Play station alert tone (/6.mp3)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Off by default so drills start silently unless you explicitly opt in.
-                </p>
-              </div>
-              <Switch
-                id="sim-audio"
-                checked={playAudio}
-                onCheckedChange={setPlayAudio}
-                disabled={busySim}
-              />
-            </div>
-
-            {/* Optional Coordinates */}
-            <div className="space-y-2">
+            {/* Optional manual coordinates */}
+            <div>
               <button
                 type="button"
-                onClick={() => setShowCoords((v) => !v)}
-                className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                onClick={() => setShowCustomCoords((v) => !v)}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                {showCoords
-                  ? "Hide custom map coordinates"
-                  : "Optional: custom map coordinates (defaults to Werribee test pin)"}
+                {showCustomCoords ? (
+                  <ChevronUp className="size-3.5" />
+                ) : (
+                  <ChevronDown className="size-3.5" />
+                )}
+                Manual coordinates
               </button>
-              {showCoords && (
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/20 p-3">
+              {showCustomCoords && (
+                <div className="mt-2 grid grid-cols-2 gap-2.5 rounded-lg border border-border bg-muted/20 p-3">
                   <div className="space-y-1">
                     <Label htmlFor="sim-lat" className="text-xs">
                       Latitude
@@ -641,60 +894,67 @@ export function TurnoutControlPage() {
               {busySim
                 ? "Starting..."
                 : activeSim
-                  ? "Replace Active Simulation"
-                  : "Start Training Simulation"}
+                  ? "Replace Active Drill"
+                  : "Start Training Drill"}
             </Button>
           </form>
         </section>
 
-        {/* Card 2: Display Overrides */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Sliders className="size-4 text-muted-foreground" />
-                Display Overrides
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Applied in-memory on top of TURNOUT01 local defaults. Clearing restores local
-                settings.
-              </p>
-            </div>
-            <Badge variant="secondary" className="tabular-nums text-xs">
-              Rev #{state.revision}
-            </Badge>
+        {/* Right: Display Controls (Instant Toggles + Collapsible Heights) */}
+        <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:col-span-5">
+          <div className="mb-3.5 flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Sliders className="size-4 text-muted-foreground" />
+              Display Controls
+            </h2>
+            {hasAnyRemoteOverride && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busyOverrides}
+                onClick={handleResetOverrides}
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="size-3.5" />
+                Reset
+              </Button>
+            )}
           </div>
 
-          <div className="space-y-5">
-            {/* Disable Idle Screen */}
+          <div className="space-y-4">
+            {/* Instant Toggle: Disable Idle Screen */}
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3.5 py-3">
               <div className="space-y-0.5">
                 <Label htmlFor="override-idle" className="cursor-pointer text-sm font-medium">
                   Disable Idle Screen
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Keep the turnout screen visible instead of returning to idle after 30 minutes.
+                  Keep turnout screen open past 30 min.
                 </p>
               </div>
               <Switch
                 id="override-idle"
-                checked={draft.isIdleScreenDisabled}
-                onCheckedChange={(checked) =>
-                  setDraft((prev) => ({ ...prev, isIdleScreenDisabled: checked }))
-                }
+                checked={idleDisabled}
                 disabled={busyOverrides}
+                onCheckedChange={(checked) =>
+                  patchDisplayOverrides(
+                    { isIdleScreenDisabled: checked ? true : undefined },
+                    checked ? "Idle screen disabled" : "Idle screen re-enabled",
+                  )
+                }
               />
             </div>
 
-            {/* Force Multi-Job */}
+            {/* Instant Selector: Force Multi-Job Layout */}
             <div className="space-y-1.5">
-              <Label>Force Multi-Job Layout</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <Label>Multi-Job Layout</Label>
+              <div className="grid grid-cols-3 gap-1.5">
                 {(
                   [
-                    { value: 0, label: "Off (Auto)" },
-                    { value: 2, label: "Double (2)" },
-                    { value: 3, label: "Triple (3)" },
+                    { value: 0, label: "Auto" },
+                    { value: 2, label: "Double" },
+                    { value: 3, label: "Triple" },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -702,12 +962,17 @@ export function TurnoutControlPage() {
                     type="button"
                     disabled={busyOverrides}
                     onClick={() =>
-                      setDraft((prev) => ({ ...prev, forceMultiJobCount: opt.value }))
+                      patchDisplayOverrides(
+                        { forceMultiJobCount: opt.value === 0 ? undefined : opt.value },
+                        opt.value === 0
+                          ? "Multi-job layout set to Auto"
+                          : `Multi-job layout forced to ${opt.label}`,
+                      )
                     }
                     className={cn(
-                      "rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
-                      draft.forceMultiJobCount === opt.value
-                        ? "border-primary bg-primary text-primary-foreground"
+                      "rounded-lg border px-2.5 py-2 text-xs font-semibold transition-colors",
+                      activeMultiJob === opt.value
+                        ? "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100"
                         : "border-border bg-background text-foreground hover:bg-muted",
                     )}
                   >
@@ -717,149 +982,167 @@ export function TurnoutControlPage() {
               </div>
             </div>
 
-            {/* Header Height Sliders */}
-            <div className="space-y-3 rounded-lg border border-border p-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Header Height %</span>
-                <span className="text-xs text-muted-foreground">Range {HEADER_MIN}-{HEADER_MAX}%</span>
-              </div>
+            {/* Collapsible Header Heights */}
+            <div className="rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setHeightsOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs font-medium text-foreground hover:bg-muted/40"
+              >
+                <span>Header Height %</span>
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                  {state.overrides.headerHeightSingle !== undefined ||
+                  state.overrides.headerHeightDouble !== undefined ||
+                  state.overrides.headerHeightTriple !== undefined
+                    ? "Custom"
+                    : "Defaults"}
+                  {heightsOpen ? (
+                    <ChevronUp className="size-3.5" />
+                  ) : (
+                    <ChevronDown className="size-3.5" />
+                  )}
+                </span>
+              </button>
 
-              {(
-                [
-                  {
-                    key: "headerHeightSingle",
-                    label: "Single Job",
-                    fallback: DEFAULT_HEADER.single,
-                  },
-                  {
-                    key: "headerHeightDouble",
-                    label: "Double Job",
-                    fallback: DEFAULT_HEADER.double,
-                  },
-                  {
-                    key: "headerHeightTriple",
-                    label: "Triple Job",
-                    fallback: DEFAULT_HEADER.triple,
-                  },
-                ] as const
-              ).map(({ key, label, fallback }) => {
-                const rawValue = draft[key];
-                const isOverridden = rawValue !== undefined;
-                const displayValue = rawValue ?? fallback;
-                return (
-                  <div key={key} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <Label htmlFor={`slider-${key}`} className="text-xs font-medium">
-                        {label}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold tabular-nums text-foreground">
-                          {displayValue}%
-                        </span>
-                        {isOverridden ? (
-                          <button
-                            type="button"
-                            disabled={busyOverrides}
-                            onClick={() => setDraft((prev) => ({ ...prev, [key]: undefined }))}
-                            className="text-[11px] text-amber-700 underline-offset-2 hover:underline dark:text-amber-300"
-                          >
-                            clear
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">default</span>
-                        )}
+              {heightsOpen && (
+                <div className="space-y-3 border-t border-border p-3.5">
+                  {(
+                    [
+                      {
+                        key: "headerHeightSingle",
+                        label: "Single",
+                        fallback: DEFAULT_HEADER.single,
+                      },
+                      {
+                        key: "headerHeightDouble",
+                        label: "Double",
+                        fallback: DEFAULT_HEADER.double,
+                      },
+                      {
+                        key: "headerHeightTriple",
+                        label: "Triple",
+                        fallback: DEFAULT_HEADER.triple,
+                      },
+                    ] as const
+                  ).map(({ key, label, fallback }) => {
+                    const rawValue = heightsDraft[key];
+                    const isOverridden = rawValue !== undefined;
+                    const displayValue = rawValue ?? fallback;
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <Label htmlFor={`slider-${key}`} className="text-xs font-medium">
+                            {label}
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-semibold tabular-nums text-foreground">
+                              {displayValue}%
+                            </span>
+                            {isOverridden ? (
+                              <button
+                                type="button"
+                                disabled={busyOverrides}
+                                onClick={() =>
+                                  setHeightsDraft((prev) => ({ ...prev, [key]: undefined }))
+                                }
+                                className="text-[11px] text-amber-700 hover:underline dark:text-amber-300"
+                              >
+                                clear
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">default</span>
+                            )}
+                          </div>
+                        </div>
+                        <input
+                          id={`slider-${key}`}
+                          type="range"
+                          min={HEADER_MIN}
+                          max={HEADER_MAX}
+                          step={1}
+                          value={displayValue}
+                          disabled={busyOverrides}
+                          onChange={(e) =>
+                            setHeightsDraft((prev) => ({
+                              ...prev,
+                              [key]: Number(e.target.value),
+                            }))
+                          }
+                          className="h-2 w-full cursor-pointer accent-amber-600"
+                        />
                       </div>
-                    </div>
-                    <input
-                      id={`slider-${key}`}
-                      type="range"
-                      min={HEADER_MIN}
-                      max={HEADER_MAX}
-                      step={1}
-                      value={displayValue}
-                      disabled={busyOverrides}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          [key]: Number(e.target.value),
-                        }))
-                      }
-                      className="h-2 w-full cursor-pointer accent-amber-600"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                disabled={busyOverrides || !overridesDirty}
-                onClick={handleSaveOverrides}
-                className="flex-1"
-              >
-                {busyOverrides ? "Saving..." : "Apply Overrides"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busyOverrides || (!hasAnyRemoteOverride && !overridesDirty)}
-                onClick={handleResetOverrides}
-                className="gap-1.5"
-              >
-                <RotateCcw className="size-4" />
-                Reset Remote Overrides
-              </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={busyOverrides || !heightsDirty}
+                    onClick={() =>
+                      patchDisplayOverrides(
+                        {
+                          headerHeightSingle: heightsDraft.headerHeightSingle,
+                          headerHeightDouble: heightsDraft.headerHeightDouble,
+                          headerHeightTriple: heightsDraft.headerHeightTriple,
+                        },
+                        "Header heights updated",
+                      )
+                    }
+                    className="w-full"
+                  >
+                    {busyOverrides ? "Saving..." : "Apply Heights"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </section>
       </div>
 
-      {/* Audit Trail */}
-      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+      {/* Compact Recent Activity */}
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <History className="size-4 text-muted-foreground" />
             Recent Activity
           </h2>
-          {state.updatedAt > 0 && (
-            <span className="text-xs text-muted-foreground">
-              Last updated {formatDateTime(state.updatedAt)}
-              {state.updatedByName ? ` by ${state.updatedByName}` : ""}
-            </span>
+          {state.recentAudit.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllAudit((v) => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showAllAudit ? "Show less" : `Show all (${state.recentAudit.length})`}
+            </button>
           )}
         </div>
 
-        {state.recentAudit.length === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground">
-            No turnout control changes recorded yet.
-          </p>
+        {visibleAudit.length === 0 ? (
+          <p className="py-3 text-center text-xs text-muted-foreground">No activity yet.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {state.recentAudit.map((entry) => {
+            {visibleAudit.map((entry) => {
               const badge = actionBadge(entry.action);
               return (
                 <li
                   key={entry.id}
-                  className="flex flex-col gap-1 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-1 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={cn(
-                        "inline-flex rounded px-2 py-0.5 text-[11px] font-semibold",
+                        "inline-flex rounded px-1.5 py-0.5 text-[11px] font-semibold",
                         badge.className,
                       )}
                     >
                       {badge.label}
                     </span>
-                    <span className="font-medium text-foreground">{entry.summary}</span>
+                    <span className="text-foreground">{entry.summary}</span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 text-muted-foreground tabular-nums">
+                  <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground tabular-nums">
                     <span>{entry.actorName}</span>
                     <span>·</span>
                     <span>{formatDateTime(entry.createdAt)}</span>
-                    <span>·</span>
-                    <span>#{entry.revision}</span>
                   </div>
                 </li>
               );
@@ -868,12 +1151,18 @@ export function TurnoutControlPage() {
         )}
       </section>
 
+      {/* Subtle 1-line Safety Footnote */}
+      <p className="text-center text-xs text-muted-foreground">
+        Real emergencies always override training drills. No printing, alerts, or job metrics are
+        triggered.
+      </p>
+
       {/* Extra confirmation when alert audio is opted in */}
       <ConfirmDialog
         open={audioConfirmOpen}
         onOpenChange={setAudioConfirmOpen}
-        title="Start training simulation with alert audio?"
-        description="This will play the station alert tone (/6.mp3) on TURNOUT01 when the training screen opens. Real emergencies will still preempt immediately."
+        title="Start drill with station alert tone?"
+        description="This will play the alert tone on TURNOUT01 when the drill starts. Real emergencies still override immediately."
         confirmLabel="Start With Audio"
         onConfirm={executeStartSimulation}
       />

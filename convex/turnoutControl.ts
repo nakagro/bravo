@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { getModuleUser, randomToken, requireModule } from "./lib/access";
@@ -539,6 +539,137 @@ export const expireSimulationIfDue = internalMutation({
     });
 
     return true;
+  },
+});
+
+/** Internal access assertion called by actions in this module. */
+export const assertAccess = internalQuery({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    await requireModule(
+      ctx,
+      MODULE_ID,
+      "Only authorised Turnout Control administrators can use Turnout Control",
+    );
+    return null;
+  },
+});
+
+const addressSuggestionOut = v.object({
+  shortAddress: v.string(),
+  label: v.string(),
+  latitude: v.number(),
+  longitude: v.number(),
+});
+
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  suburb?: string;
+  town?: string;
+  village?: string;
+  city_district?: string;
+  city?: string;
+  state?: string;
+}
+
+interface NominatimItem {
+  display_name?: string;
+  lat?: string;
+  lon?: string;
+  address?: NominatimAddress;
+}
+
+function formatNominatimShortAddress(item: NominatimItem): string {
+  const a = item.address;
+  if (a) {
+    const street = [a.house_number, a.road].filter(Boolean).join(" ").trim();
+    const locality = a.suburb || a.town || a.village || a.city_district || a.city || "";
+    const combined = [street, locality].filter(Boolean).join(", ");
+    if (combined) return combined.slice(0, TURNOUT_SIM_ADDRESS_MAX);
+  }
+  const parts = (item.display_name ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join(", ").slice(0, TURNOUT_SIM_ADDRESS_MAX);
+}
+
+/**
+ * Look up local Australian addresses (biased around Wyndham Vale / Werribee)
+ * via OpenStreetMap Nominatim so operators can pick an address + map pin in one tap.
+ */
+export const searchAddress = action({
+  args: {
+    query: v.string(),
+  },
+  returns: v.array(addressSuggestionOut),
+  handler: async (ctx, args) => {
+    const _access: null = await ctx.runQuery(internal.turnoutControl.assertAccess, {});
+    void _access;
+
+    const q = args.query.trim();
+    if (q.length < 3 || q.length > 120) {
+      return [];
+    }
+
+    const params = new URLSearchParams({
+      format: "jsonv2",
+      addressdetails: "1",
+      countrycodes: "au",
+      viewbox: "144.45,-37.75,144.80,-38.00",
+      limit: "5",
+      q,
+    });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6_000);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "BRAVO-TurnoutControl/1.0 (WVFB)",
+          },
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok) return [];
+      const raw: unknown = await res.json();
+      if (!Array.isArray(raw)) return [];
+
+      const out: Array<{
+        shortAddress: string;
+        label: string;
+        latitude: number;
+        longitude: number;
+      }> = [];
+      for (const entry of raw as NominatimItem[]) {
+        const latitude = Number(entry.lat);
+        const longitude = Number(entry.lon);
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          continue;
+        }
+        const shortAddress = formatNominatimShortAddress(entry);
+        const label = (entry.display_name ?? shortAddress).trim();
+        if (!shortAddress) continue;
+        out.push({ shortAddress, label, latitude, longitude });
+      }
+      return out;
+    } catch {
+      return [];
+    } finally {
+      clearTimeout(timer);
+    }
   },
 });
 
