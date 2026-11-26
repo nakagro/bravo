@@ -597,6 +597,7 @@ const KIOSK_BUILD_ID_RE = /^[A-Za-z0-9._:+-]{1,64}$/;
 const KIOSK_MAX_QUEUE_LAG_MS = 7 * 24 * 60 * 60 * 1000;
 const APPLIANCE_NAMES = new Set(["Pumper", "Tanker", "FCV"]);
 const BA_USAGE_TYPES = new Set(["firecall", "drill"]);
+const STATION_NOTICE_SEVERITIES = new Set(["info", "warning"]);
 
 function kioskJson(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -821,6 +822,79 @@ http.route({
       case "invalid":
         return kioskJson(400, { error: res.error });
     }
+  }),
+});
+
+http.route({
+  path: "/api/kiosk/v1/station-notice",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authRes = await authenticateKioskHub(request);
+    if (!authRes.ok) return authRes.response;
+    const disabled = kioskWritesDisabled();
+    if (disabled) return disabled;
+
+    const body = await readJsonObject(request);
+    if (!body) return kioskJson(400, { error: "Body must be a JSON object" });
+
+    const { key, active, title, detail, severity, count, expiresAt, occurredAt, sentAt } = body;
+    if (typeof key !== "string" || key.length === 0) {
+      return kioskJson(400, { error: "key is required" });
+    }
+    if (typeof active !== "boolean") {
+      return kioskJson(400, { error: "active must be a boolean" });
+    }
+    if (title !== undefined && title !== null && typeof title !== "string") {
+      return kioskJson(400, { error: "title must be a string" });
+    }
+    if (detail !== undefined && detail !== null && typeof detail !== "string") {
+      return kioskJson(400, { error: "detail must be a string" });
+    }
+    if (
+      severity !== undefined &&
+      severity !== null &&
+      (typeof severity !== "string" || !STATION_NOTICE_SEVERITIES.has(severity))
+    ) {
+      return kioskJson(400, { error: "severity must be info or warning" });
+    }
+    if (count !== undefined && count !== null && typeof count !== "number") {
+      return kioskJson(400, { error: "count must be a number" });
+    }
+    if (expiresAt !== undefined && expiresAt !== null && typeof expiresAt !== "number") {
+      return kioskJson(400, { error: "expiresAt must be epoch milliseconds" });
+    }
+    const device = optionalKioskDevice(body.kioskDevice);
+    if (!device.ok) return kioskJson(400, { error: "Invalid kioskDevice" });
+
+    const isTime = (t: unknown): t is number => typeof t === "number" && Number.isFinite(t) && t > 0;
+    if ((occurredAt === undefined) !== (sentAt === undefined)) {
+      return kioskJson(400, { error: "occurredAt and sentAt must be sent together" });
+    }
+    if (occurredAt !== undefined) {
+      if (!isTime(occurredAt) || !isTime(sentAt)) {
+        return kioskJson(400, { error: "occurredAt and sentAt must be epoch milliseconds" });
+      }
+      if (occurredAt > sentAt || sentAt - occurredAt > KIOSK_MAX_QUEUE_LAG_MS) {
+        return kioskJson(400, { error: "occurredAt must be no later than sentAt and at most 7 days before it" });
+      }
+    }
+
+    const res = await ctx.runMutation(internal.kioskApi.syncStationNotice, {
+      siteId: authRes.siteId,
+      key,
+      active,
+      ...(typeof title === "string" ? { title } : {}),
+      ...(typeof detail === "string" ? { detail } : {}),
+      ...(typeof severity === "string" ? { severity: severity as "info" | "warning" } : {}),
+      ...(typeof count === "number" ? { count } : {}),
+      ...(typeof expiresAt === "number" ? { expiresAt } : {}),
+      ...(device.value ? { kioskDevice: device.value } : {}),
+      ...(occurredAt !== undefined ? { occurredAt: occurredAt as number, sentAt: sentAt as number } : {}),
+    });
+    if (res.status === "invalid") {
+      return kioskJson(400, { error: res.error });
+    }
+    return kioskJson(200, { ok: true, applied: res.applied, notice: res.notice });
   }),
 });
 

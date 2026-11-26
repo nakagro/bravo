@@ -9,10 +9,11 @@ import { BASkillsMyRecordsTab } from "./components/BASkillsMyRecordsTab";
 import { BASkillsHistoryTab } from "./components/BASkillsHistoryTab";
 import { BASkillsCurrencyTab } from "./components/BASkillsCurrencyTab";
 import { BASkillsLMSTab } from "./components/BASkillsLMSTab";
+import { BACylindersTab } from "./components/BACylindersTab";
 
-type BASkillsTab = "log" | "mine" | "history" | "currency" | "lms";
+type BASkillsTab = "log" | "cylinders" | "mine" | "history" | "currency" | "lms";
 
-const KNOWN_TABS: BASkillsTab[] = ["log", "mine", "history", "currency", "lms"];
+const KNOWN_TABS: BASkillsTab[] = ["log", "cylinders", "mine", "history", "currency", "lms"];
 
 function BASkillsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,6 +21,7 @@ function BASkillsPage() {
   const moduleAccess = useQuery(api.modules.getAllModuleAccess);
   const canSubmit = moduleAccess?.baSkills ?? false;
   const isAdmin = moduleAccess?.baSkillsAdmin ?? false;
+  const canManageCylinders = canSubmit || isAdmin;
 
   // Pending-LMS count for the tab badge (admins only)
   const adminRecords = useQuery(api.baRecords.listRecords, isAdmin ? {} : "skip");
@@ -28,15 +30,23 @@ function BASkillsPage() {
     [adminRecords],
   );
 
+  // Active BA cylinders needing refill badge
+  const cylindersNotice = useQuery(
+    api.stationNotices.getBaCylindersNotice,
+    canManageCylinders ? {} : "skip",
+  );
+  const cylindersBadgeCount = cylindersNotice?.active ? (cylindersNotice.count ?? 1) : 0;
+
   const accessByTab: Record<BASkillsTab, boolean> = useMemo(
     () => ({
       log: canSubmit,
+      cylinders: canManageCylinders,
       mine: canSubmit,
       history: isAdmin,
       currency: isAdmin,
       lms: isAdmin,
     }),
-    [canSubmit, isAdmin],
+    [canSubmit, canManageCylinders, isAdmin],
   );
 
   const requestedTab = searchParams.get("tab") as BASkillsTab | null;
@@ -112,19 +122,26 @@ function BASkillsPage() {
   const tabs = useMemo(() => {
     const list: Array<{ key: BASkillsTab; label: string; badgeCount?: number }> = [];
     if (canSubmit) list.push({ key: "log", label: "Log" });
+    if (canManageCylinders) {
+      list.push({
+        key: "cylinders",
+        label: "Cylinders",
+        ...(cylindersBadgeCount > 0 ? { badgeCount: cylindersBadgeCount } : {}),
+      });
+    }
     if (canSubmit) list.push({ key: "mine", label: "My Records" });
     if (isAdmin) list.push({ key: "history", label: "History" });
     if (isAdmin) list.push({ key: "currency", label: "Currency" });
     if (isAdmin) list.push({ key: "lms", label: "LMS", badgeCount: lmsPendingCount });
     return list;
-  }, [canSubmit, isAdmin, lmsPendingCount]);
+  }, [canSubmit, canManageCylinders, cylindersBadgeCount, isAdmin, lmsPendingCount]);
 
   const showTabs = tabs.length > 1;
 
   return (
     <div className="space-y-4" data-component="BASkillsPage">
       <div className="flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BA Skills</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BA</h1>
       </div>
 
       {showTabs && (
@@ -132,7 +149,7 @@ function BASkillsPage() {
           tabs={tabs}
           activeTab={activeTab}
           onChange={handleTabChange}
-          ariaLabel="BA Skills tabs"
+          ariaLabel="BA tabs"
         />
       )}
 
@@ -143,6 +160,7 @@ function BASkillsPage() {
         aria-labelledby={`tab-${activeTab}`}
       >
         {activeTab === "log" && canSubmit && <BASkillsLogTab />}
+        {activeTab === "cylinders" && canManageCylinders && <BACylindersTab />}
         {activeTab === "mine" && canSubmit && (
           <BASkillsMyRecordsTab canManageRecords={isAdmin} />
         )}

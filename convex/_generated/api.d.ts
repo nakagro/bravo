@@ -131,6 +131,7 @@ import type * as simulation from "../simulation.js";
 import type * as skills from "../skills.js";
 import type * as stationCheckAllocations from "../stationCheckAllocations.js";
 import type * as stationChecks from "../stationChecks.js";
+import type * as stationNotices from "../stationNotices.js";
 import type * as training from "../training.js";
 import type * as uatFixtures from "../uatFixtures.js";
 import type * as userLaunches from "../userLaunches.js";
@@ -269,6 +270,7 @@ declare const fullApi: ApiFromModules<{
   skills: typeof skills;
   stationCheckAllocations: typeof stationCheckAllocations;
   stationChecks: typeof stationChecks;
+  stationNotices: typeof stationNotices;
   training: typeof training;
   uatFixtures: typeof uatFixtures;
   userLaunches: typeof userLaunches;

@@ -409,6 +409,11 @@ function AuthenticatedApp() {
               <EquipmentPage />
             </ProtectedRoute>
           } />
+          <Route path="/ba" element={
+            <ProtectedRoute moduleId="baSkills">
+              <BASkillsPage />
+            </ProtectedRoute>
+          } />
           <Route path="/ba-skills" element={
             <ProtectedRoute moduleId="baSkills">
               <BASkillsPage />

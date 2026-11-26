@@ -612,6 +612,26 @@ const applicationTables = {
     updatedAt: v.number(),
   }).index("by_siteId", ["siteId"]),
 
+  // Station idle-screen notices (e.g. BA Cylinders Need Filling).
+  // Owned by BRAVO and mirrored live to kiosk-hub over Convex WebSocket,
+  // with offline outbox fallback from foyer tablets. Cleared notices stay as
+  // inactive tombstones so stale offline writes cannot resurrect them.
+  stationNotices: defineTable({
+    key: v.string(),
+    title: v.string(),
+    detail: v.optional(v.string()),
+    severity: v.union(v.literal("info"), v.literal("warning")),
+    count: v.optional(v.number()),
+    active: v.boolean(),
+    updatedBy: v.optional(v.id("users")),
+    updatedBySource: v.union(v.literal("user"), v.literal("kioskHub")),
+    updatedByKioskSite: v.optional(v.string()),
+    updatedByKioskDevice: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    expiresAt: v.optional(v.number()),
+  }).index("by_key", ["key"]),
+
   fireReports: defineTable({
     // Meta information
     createdBy: v.id("users"),

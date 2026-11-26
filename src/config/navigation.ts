@@ -206,8 +206,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "baSkills",
-    label: "BA Skills",
-    path: "/ba-skills",
+    label: "BA",
+    path: "/ba",
     icon: MaskVentilatorIcon,
     group: "equipment",
     color: {
