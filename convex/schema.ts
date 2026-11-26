@@ -24,6 +24,11 @@ import {
   kitTracksValidator,
   kitValueValidator,
 } from "./lib/memberKit";
+import {
+  turnoutAuditActionValidator,
+  turnoutOverridesValidator,
+  turnoutSimulationStoredValidator,
+} from "./lib/turnoutControlValidators";
 
 // We need to keep all the original auth fields and add our custom ones
 const extendedAuthTables = {
@@ -631,6 +636,32 @@ const applicationTables = {
     updatedAt: v.number(),
     expiresAt: v.optional(v.number()),
   }).index("by_key", ["key"]),
+
+  // Remote turnout screen overrides & training job simulator state (one row per site).
+  // Owned by BRAVO (Super Admin only), pushed live to kiosk-hub over Convex WebSocket,
+  // and forwarded read-only over SSE to turnoutsrv01.
+  turnoutControl: defineTable({
+    siteId: v.string(),
+    revision: v.number(),
+    overrides: turnoutOverridesValidator,
+    activeSimulation: v.optional(turnoutSimulationStoredValidator),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+    updatedByName: v.optional(v.string()),
+  }).index("by_siteId", ["siteId"]),
+
+  // Append-only audit trail for turnout display overrides and training simulations.
+  turnoutControlAudit: defineTable({
+    siteId: v.string(),
+    action: turnoutAuditActionValidator,
+    actorId: v.optional(v.id("users")),
+    actorName: v.string(),
+    summary: v.string(),
+    revision: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_siteId_and_createdAt", ["siteId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
 
   fireReports: defineTable({
     // Meta information

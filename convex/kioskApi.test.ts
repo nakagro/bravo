@@ -237,7 +237,15 @@ describe("GET /api/kiosk/v1/sync", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual(
-      ["apiVersion", "applianceLocations", "knownLocations", "siteId", "stationNotices", "syncedAt"].sort(),
+      [
+        "apiVersion",
+        "applianceLocations",
+        "knownLocations",
+        "siteId",
+        "stationNotices",
+        "syncedAt",
+        "turnoutControl",
+      ].sort(),
     );
     const status = await t.run((ctx) => ctx.db.query("kioskHubStatus").collect());
     expect(status).toHaveLength(0);

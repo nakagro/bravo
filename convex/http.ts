@@ -676,7 +676,10 @@ http.route({
     }
     const scope = scopeParam === "appliances" ? "appliances" : "full";
 
-    const snapshot = await ctx.runQuery(internal.kioskApi.getSyncSnapshot, { scope });
+    const snapshot = await ctx.runQuery(internal.kioskApi.getSyncSnapshot, {
+      scope,
+      siteId: authRes.siteId,
+    });
     if (scope === "full") {
       // A full sync is the hub's heartbeat, 304 or not.
       const build = request.headers.get("X-Kiosk-Hub-Build")?.trim();

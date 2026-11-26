@@ -17,6 +17,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   ShieldCheck,
+  Monitor,
 } from "lucide-react";
 import { MaskVentilatorIcon } from "@/components/icons/MaskVentilatorIcon";
 
@@ -165,6 +166,20 @@ export const NAV_ITEMS: NavItem[] = [
       bg: "bg-slate-100 dark:bg-slate-900/20",
       bgHover: "group-hover:bg-slate-200 dark:group-hover:bg-slate-900/40",
       fg: "text-slate-600 dark:text-slate-400",
+    },
+  },
+  {
+    // Module is seeded `superAdminOnly`, so only super admins see this item.
+    id: "turnoutControl",
+    label: "Turnout Control",
+    shortLabel: "Turnout",
+    path: "/turnout-control",
+    icon: Monitor,
+    group: "equipment",
+    color: {
+      bg: "bg-amber-100 dark:bg-amber-900/20",
+      bgHover: "group-hover:bg-amber-200 dark:group-hover:bg-amber-900/40",
+      fg: "text-amber-600 dark:text-amber-400",
     },
   },
   {

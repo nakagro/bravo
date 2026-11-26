@@ -14,6 +14,11 @@ import {
   NOTICE_TITLE_MAX,
   stationNoticeSeverityValidator,
 } from "./stationNotices";
+import { turnoutControlSnapshot } from "./turnoutControl";
+import {
+  TURNOUT_DEFAULT_SITE_ID,
+  turnoutControlWireValidator,
+} from "./lib/turnoutControlValidators";
 
 // Backs the station kiosk hub API, /api/kiosk/v1/* in convex/http.ts. The hub
 // (wvfb-kiosk on node01) authenticates per site with a bearer token; by the
@@ -177,11 +182,12 @@ async function activeNoticesSnapshot(ctx: QueryCtx) {
 }
 
 /**
- * Live truck locations and station notices for the station kiosk hub, which
- * subscribes over the Convex WebSocket (convex-rs) so a change made on a phone
- * reaches the station tablets and turnout screen at once. A WebSocket can't
- * carry the hub's Bearer header, so the site's hub token comes as an argument
- * and is checked like the HTTP API's. Same shape as GET /api/kiosk/v1/sync?scope=appliances.
+ * Live truck locations, station notices, and turnout display/simulation control
+ * for the station kiosk hub, which subscribes over the Convex WebSocket
+ * (convex-rs) so a change made on a phone reaches the station tablets and
+ * turnout screen at once. A WebSocket can't carry the hub's Bearer header, so
+ * the site's hub token comes as an argument and is checked like the HTTP API's.
+ * Same shape as GET /api/kiosk/v1/sync?scope=appliances.
  */
 export const watchAppliances = query({
   args: { siteId: v.string(), token: v.string() },
@@ -189,16 +195,19 @@ export const watchAppliances = query({
     applianceLocations: v.array(applianceLocationOut),
     knownLocations: v.array(v.string()),
     stationNotices: v.array(stationNoticeOut),
+    turnoutControl: turnoutControlWireValidator,
   }),
   handler: async (ctx, { siteId, token }) => {
     if (!(await kioskHubTokenMatches(siteId, token))) {
       throw new ConvexError("Unauthorized");
     }
-    const [{ applianceLocations, knownLocations }, stationNotices] = await Promise.all([
-      applianceSnapshot(ctx),
-      activeNoticesSnapshot(ctx),
-    ]);
-    return { applianceLocations, knownLocations, stationNotices };
+    const [{ applianceLocations, knownLocations }, stationNotices, turnoutControl] =
+      await Promise.all([
+        applianceSnapshot(ctx),
+        activeNoticesSnapshot(ctx),
+        turnoutControlSnapshot(ctx, siteId),
+      ]);
+    return { applianceLocations, knownLocations, stationNotices, turnoutControl };
   },
 });
 
@@ -210,20 +219,29 @@ export const watchAppliances = query({
  * Ordering is stable so http.ts can hash the result into an ETag.
  */
 export const getSyncSnapshot = internalQuery({
-  args: { scope: v.union(v.literal("appliances"), v.literal("full")) },
+  args: {
+    scope: v.union(v.literal("appliances"), v.literal("full")),
+    siteId: v.optional(v.string()),
+  },
   returns: v.object({
     applianceLocations: v.array(applianceLocationOut),
     knownLocations: v.array(v.string()),
     stationNotices: v.array(stationNoticeOut),
+    turnoutControl: turnoutControlWireValidator,
     baMembers: v.optional(v.array(baMemberOut)),
     contactDirectory: v.optional(contactDirectoryOut),
   }),
-  handler: async (ctx, { scope }) => {
-    const [{ applianceLocations, knownLocations }, stationNotices] = await Promise.all([
-      applianceSnapshot(ctx),
-      activeNoticesSnapshot(ctx),
-    ]);
-    if (scope === "appliances") return { applianceLocations, knownLocations, stationNotices };
+  handler: async (ctx, { scope, siteId }) => {
+    const resolvedSiteId = siteId ?? TURNOUT_DEFAULT_SITE_ID;
+    const [{ applianceLocations, knownLocations }, stationNotices, turnoutControl] =
+      await Promise.all([
+        applianceSnapshot(ctx),
+        activeNoticesSnapshot(ctx),
+        turnoutControlSnapshot(ctx, resolvedSiteId),
+      ]);
+    if (scope === "appliances") {
+      return { applianceLocations, knownLocations, stationNotices, turnoutControl };
+    }
 
     const [users, skills] = await Promise.all([
       ctx.db.query("users").collect(),
@@ -257,7 +275,14 @@ export const getSyncSnapshot = internalQuery({
         }
       : { status: "missing" as const };
 
-    return { applianceLocations, knownLocations, stationNotices, baMembers, contactDirectory };
+    return {
+      applianceLocations,
+      knownLocations,
+      stationNotices,
+      turnoutControl,
+      baMembers,
+      contactDirectory,
+    };
   },
 });
 

@@ -33,6 +33,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 const HosesPage = lazy(() => import("./pages/HosesPage").then((m) => ({ default: m.HosesPage })));
 const AccessControlPage = lazy(() => import("./features/accessControl/AccessControlPage").then((m) => ({ default: m.AccessControlPage })));
+const TurnoutControlPage = lazy(() => import("./features/turnoutControl/TurnoutControlPage").then((m) => ({ default: m.TurnoutControlPage })));
 const KeysPage = lazy(() => import("./pages/KeysPage").then((m) => ({ default: m.KeysPage })));
 const AuthPage = lazy(() => import("./pages/AuthPage").then((m) => ({ default: m.AuthPage })));
 const DutyCrewPage = lazy(() => import("./pages/DutyCrewPage").then((m) => ({ default: m.DutyCrewPage })));
@@ -368,6 +369,11 @@ function AuthenticatedApp() {
           <Route path="/access-control" element={
             <ProtectedRoute moduleId="accessControl">
               <AccessControlPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/turnout-control" element={
+            <ProtectedRoute moduleId="turnoutControl">
+              <TurnoutControlPage />
             </ProtectedRoute>
           } />
           <Route path="/admin" element={

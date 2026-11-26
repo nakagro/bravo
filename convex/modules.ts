@@ -327,6 +327,15 @@ const DEFAULT_MODULES: Array<{
     minimumRank: "Lieutenant",
   },
   {
+    moduleId: "turnoutControl",
+    moduleName: "Turnout Control",
+    isEnabled: true,
+    adminOnly: false,
+    superAdminOnly: true,
+    requiredRoles: [],
+    minimumRank: "Lieutenant",
+  },
+  {
     moduleId: "admin",
     moduleName: "Admin Settings",
     isEnabled: true,
@@ -598,6 +607,7 @@ const ALL_FALSE_ACCESS = {
   settings: false,
   kiosk: false,
   accessControl: false,
+  turnoutControl: false,
   admin: false,
   actions: false,
 };
@@ -631,6 +641,7 @@ const ALL_TRUE_ACCESS = {
   settings: true,
   kiosk: true,
   accessControl: true,
+  turnoutControl: true,
   admin: true,
   actions: true,
 };
@@ -670,6 +681,7 @@ export const getAllModuleAccess = query({
     settings: v.boolean(),
     kiosk: v.boolean(),
     accessControl: v.boolean(),
+    turnoutControl: v.boolean(),
     admin: v.boolean(),
     actions: v.boolean(),
   }),
@@ -722,6 +734,7 @@ export const getAllModuleAccess = query({
       settings: checkAccess("settings"),
       kiosk: checkAccess("kiosk"),
       accessControl: checkAccess("accessControl"),
+      turnoutControl: checkAccess("turnoutControl"),
       admin: checkAccess("admin"),
       actions: checkAccess("actions"),
     };
